@@ -10,6 +10,13 @@ import {
   kayitIlerlemeleri,
 } from "@/lib/puanlama-verisi";
 import { pdfGecmisi, raporOzetleri } from "@/lib/rapor-verisi";
+import {
+  AKTIF_DONEM_DURUMLARI,
+  AKTIF_KULUP_DURUMLARI,
+  DONEM_DURUMLARI,
+  KULUP_DURUMLARI,
+} from "@/lib/durumlar";
+import type { ClubStatus, TermStatus } from "@/generated/prisma/enums";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
@@ -82,12 +89,16 @@ export default async function OgrenciProfilSayfasi(
     { etiket: "Acil durum", deger: saglik?.emergencyInfo },
   ].filter((satir) => satir.deger);
 
+  // Aktiflik ölçütü dashboard ve liste ekranlarıyla aynı yerden okunur;
+  // burada ikinci bir tanım yazılsaydı zamanla ayrışırdı (P11).
   const aktifKayitlar = ogrenci.enrollments.filter(
     (kayit) =>
       kayit.status === "AKTIF" &&
-      (kayit.group.term?.status === "KAYIT_ALIYOR" ||
-        kayit.group.term?.status === "DEVAM_EDIYOR" ||
-        kayit.group.club?.status === "KAYIT_ALIYOR"),
+      (kayit.group.term
+        ? AKTIF_DONEM_DURUMLARI.includes(kayit.group.term.status)
+        : kayit.group.club
+          ? AKTIF_KULUP_DURUMLARI.includes(kayit.group.club.status)
+          : false),
   );
   const gecmisKayitlar = ogrenci.enrollments.filter(
     (kayit) => !aktifKayitlar.includes(kayit),
@@ -485,8 +496,8 @@ type ProfilKaydi = {
     name: string;
     day: "CUMARTESI" | "PAZAR";
     timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
-    term: { name: string; status: string } | null;
-    club: { name: string; status: string; date: Date } | null;
+    term: { name: string; status: TermStatus } | null;
+    club: { name: string; status: ClubStatus; date: Date } | null;
   };
 };
 
@@ -506,7 +517,19 @@ function KayitBolumu({
         <BosDurum baslik={bosAciklama} />
       ) : (
         <div className="space-y-2">
-          {kayitlar.map((kayit) => (
+          {kayitlar.map((kayit) => {
+            // İki ayrı durum var ve karıştırılmamalı: kaydın kendi durumu
+            // (aktif / iptal) ve programın durumu (tamamlandı, arşivlendi...).
+            // Kayıt aktif olduğu hâlde program bittiyse bunu yazmak gerekiyor;
+            // yoksa "Geçmiş kayıtlar" başlığı altındaki "Aktif" rozeti
+            // çelişkili görünüyor.
+            const programDurumu = kayit.group.term
+              ? DONEM_DURUMLARI[kayit.group.term.status]
+              : kayit.group.club
+                ? KULUP_DURUMLARI[kayit.group.club.status]
+                : null;
+
+            return (
             <Kart key={kayit.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-zinc-900">
@@ -516,8 +539,13 @@ function KayitBolumu({
                 </span>
                 <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
                 <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
-                  {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
+                  Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
                 </Rozet>
+                {programDurumu ? (
+                  <Rozet tur={programDurumu.rozet}>
+                    Program: {programDurumu.etiket}
+                  </Rozet>
+                ) : null}
               </div>
               <p className="mt-1 text-sm text-zinc-700">
                 {kayit.group.name} ·{" "}
@@ -532,7 +560,8 @@ function KayitBolumu({
                 Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
               </p>
             </Kart>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
-import { KULUP_DURUMLARI } from "@/lib/durumlar";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { AKTIF_KULUP_KOSULU, KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { tarihGunleBicimle } from "@/lib/tarih";
 
@@ -11,12 +12,28 @@ export const metadata: Metadata = {
   title: "Kulüpler",
 };
 
-/** §5 — Kulüp listesi. */
-export default async function KuluplerSayfasi() {
+const TEMEL_YOL = "/koordinator/kulupler";
+
+/**
+ * §5 — Kulüp listesi.
+ *
+ * Arşivlenmiş kulüpler Arşiv ekranında durur. "Aktif" süzgeci dashboard
+ * kartıyla aynı koşulu (`AKTIF_KULUP_KOSULU`) okur.
+ */
+export default async function KuluplerSayfasi(
+  props: PageProps<"/koordinator/kulupler">,
+) {
   await koordinatorZorunlu();
 
-  const kulupler = await db.club.findMany({
-    where: { status: { not: "ARSIVLENDI" } },
+  const parametreler = await props.searchParams;
+  const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
+
+  const [kulupler, arsivSayisi] = await Promise.all([
+    db.club.findMany({
+    where:
+      kapsam === "aktif"
+        ? AKTIF_KULUP_KOSULU
+        : { status: { not: "ARSIVLENDI" } },
     orderBy: { date: "desc" },
     include: {
       workshops: {
@@ -31,7 +48,9 @@ export default async function KuluplerSayfasi() {
         },
       },
     },
-  });
+    }),
+    db.club.count({ where: { status: "ARSIVLENDI" } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -48,10 +67,39 @@ export default async function KuluplerSayfasi() {
         }
       />
 
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kapsam"
+          temelYol={TEMEL_YOL}
+          anahtar="kapsam"
+          secenekler={[
+            { deger: "aktif", etiket: "Aktif" },
+            { deger: "tumu", etiket: "Tümü" },
+          ]}
+          secili={kapsam}
+        />
+        {arsivSayisi > 0 ? (
+          <Link
+            href="/koordinator/arsiv"
+            className="text-sm text-marka-700 hover:underline"
+          >
+            Arşivde {arsivSayisi} kulüp
+          </Link>
+        ) : null}
+      </SuzgecCubugu>
+
       {kulupler.length === 0 ? (
         <BosDurum
-          baslik="Henüz kulüp oluşturulmamış."
-          aciklama="Yarım günlük 3 atölyelik bir program açmak için “Yeni kulüp” düğmesini kullanın."
+          baslik={
+            kapsam === "aktif"
+              ? "Kayıt alan kulüp yok."
+              : "Henüz kulüp oluşturulmamış."
+          }
+          aciklama={
+            kapsam === "aktif"
+              ? "“Tümü” süzgeciyle taslak, tamamlanmış ve iptal edilmiş kulüpleri de görebilirsiniz."
+              : "Yarım günlük 3 atölyelik bir program açmak için “Yeni kulüp” düğmesini kullanın."
+          }
         />
       ) : (
         <div className="space-y-3">

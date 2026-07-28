@@ -3,6 +3,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { AKTIF_GRUP_KOSULU } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani } from "@/lib/tarih";
 
@@ -10,16 +12,30 @@ export const metadata: Metadata = {
   title: "Gruplar",
 };
 
+const TEMEL_YOL = "/koordinator/gruplar";
+
 /**
  * §12.2 — Bütün grupların tek listesi.
  *
  * Dönem ve kulüp grupları birlikte gösterilir; koordinatörün "hangi gruplar
  * dolu, nereye kayıt alabilirim" sorusunun tek ekrandan cevabı burasıdır.
+ *
+ * Süzgeçler dashboard kartlarının karşılığıdır: "Aktif grup" kartı
+ * `?kapsam=aktif`, "Kontenjanı dolan grup" kartı `?kapsam=aktif&durum=dolu`
+ * adresine gider. Aktiflik koşulu `AKTIF_GRUP_KOSULU` ile paylaşıldığı için
+ * karttaki sayı ile buradaki liste uzunluğu her zaman aynıdır.
  */
-export default async function GruplarSayfasi() {
+export default async function GruplarSayfasi(
+  props: PageProps<"/koordinator/gruplar">,
+) {
   await koordinatorZorunlu();
 
+  const parametreler = await props.searchParams;
+  const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
+  const durum = parametreler.durum === "dolu" ? "dolu" : "tumu";
+
   const gruplar = await db.group.findMany({
+    where: kapsam === "aktif" ? AKTIF_GRUP_KOSULU : {},
     orderBy: [{ active: "desc" }, { createdAt: "desc" }],
     include: {
       term: { select: { id: true, name: true } },
@@ -33,6 +49,17 @@ export default async function GruplarSayfasi() {
     },
   });
 
+  // Kontenjan doluluğu iki sütunun karşılaştırması olduğu için veritabanı
+  // koşuluyla değil, `kontenjanDurumu` ile — yani ekranda gösterilen sayıyı
+  // üreten aynı fonksiyonla — süzülüyor.
+  const gosterilecek =
+    durum === "dolu"
+      ? gruplar.filter(
+          (grup) =>
+            kontenjanDurumu(grup.capacity, grup._count.enrollments).dolu,
+        )
+      : gruplar;
+
   return (
     <div className="space-y-6">
       <SayfaBasligi
@@ -40,14 +67,49 @@ export default async function GruplarSayfasi() {
         aciklama="Dönem ve kulüp gruplarının tamamı. Kontenjanı dolan gruplara yeni kayıt alınamaz; aynı programa yeni grup eklenebilir."
       />
 
-      {gruplar.length === 0 ? (
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kapsam"
+          temelYol={TEMEL_YOL}
+          anahtar="kapsam"
+          secenekler={[
+            { deger: "aktif", etiket: "Aktif programlar" },
+            { deger: "tumu", etiket: "Tümü" },
+          ]}
+          secili={kapsam}
+          digerler={{ durum }}
+        />
+        <SuzgecGrubu
+          etiket="Kontenjan"
+          temelYol={TEMEL_YOL}
+          anahtar="durum"
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            { deger: "dolu", etiket: "Yalnızca dolanlar" },
+          ]}
+          secili={durum}
+          digerler={{ kapsam }}
+        />
+      </SuzgecCubugu>
+
+      {gosterilecek.length === 0 ? (
         <BosDurum
-          baslik="Henüz grup yok."
-          aciklama="Grup, bir dönem veya kulüp oluşturulduğunda açılır."
+          baslik={
+            durum === "dolu"
+              ? "Kontenjanı dolan grup yok."
+              : kapsam === "aktif"
+                ? "Aktif programda grup yok."
+                : "Henüz grup yok."
+          }
+          aciklama={
+            durum === "dolu" || kapsam === "aktif"
+              ? "Süzgeci “Tümü” yaparak bütün grupları görebilirsiniz."
+              : "Grup, bir dönem veya kulüp oluşturulduğunda açılır."
+          }
         />
       ) : (
         <div className="space-y-3">
-          {gruplar.map((grup) => {
+          {gosterilecek.map((grup) => {
             const kontenjan = kontenjanDurumu(
               grup.capacity,
               grup._count.enrollments,

@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, SayfaBasligi } from "@/components/ui";
+import { BosDurum, SayfaBasligi } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { KayitListesi } from "@/components/puanlama-ekranlari";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Puanlamalar",
 };
+
+const TEMEL_YOL = "/koordinator/puanlamalar";
 
 /**
  * §10.5 — Koordinatör bütün puanlamaları görüntüleyip düzenleyebilir.
@@ -26,8 +27,12 @@ export default async function PuanlamalarSayfasi(
   const suzgec = parametreler.suzgec === "tumu" ? "tumu" : "eksik";
   const kapsam = parametreler.kapsam === "tumu" ? "tumu" : "aktif";
 
+  // "Aktif" kapsamı dashboarddaki "Eksik puanlama" kartıyla aynı: hem kaydın
+  // hem programın aktif olması gerekir. Arşivlenmiş bir programın bekleyen
+  // formları "Tümü" kapsamında görünmeye devam eder.
   const ilerlemeler = await kayitIlerlemeleri({
     yalnizcaAktif: kapsam === "aktif",
+    yalnizcaAktifProgram: kapsam === "aktif",
   });
 
   const gosterilecek =
@@ -47,28 +52,30 @@ export default async function PuanlamalarSayfasi(
         aciklama="Stajyerlerin doldurduğu bütün formlar burada görüntülenir ve düzenlenebilir. Yalnızca yapılmış oturumlar sayılır; gelecek haftaların formları eksik sayılmaz."
       />
 
-      <Kart className="flex flex-wrap items-center gap-4 p-3">
+      <SuzgecCubugu>
         <SuzgecGrubu
           etiket="Formlar"
+          temelYol={TEMEL_YOL}
+          anahtar="suzgec"
           secenekler={[
             { deger: "eksik", etiket: `Eksik olanlar (${toplamBekleyen})` },
             { deger: "tumu", etiket: "Tümü" },
           ]}
           secili={suzgec}
-          anahtar="suzgec"
           digerler={{ kapsam }}
         />
         <SuzgecGrubu
           etiket="Kayıtlar"
+          temelYol={TEMEL_YOL}
+          anahtar="kapsam"
           secenekler={[
-            { deger: "aktif", etiket: "Aktif" },
-            { deger: "tumu", etiket: "İptaller dahil" },
+            { deger: "aktif", etiket: "Aktif programlar" },
+            { deger: "tumu", etiket: "İptal ve arşiv dahil" },
           ]}
           secili={kapsam}
-          anahtar="kapsam"
           digerler={{ suzgec }}
         />
-      </Kart>
+      </SuzgecCubugu>
 
       {gosterilecek.length === 0 ? (
         <BosDurum
@@ -90,49 +97,6 @@ export default async function PuanlamalarSayfasi(
           ogrenciYolu="/koordinator/ogrenciler"
         />
       )}
-    </div>
-  );
-}
-
-function SuzgecGrubu({
-  etiket,
-  secenekler,
-  secili,
-  anahtar,
-  digerler,
-}: {
-  etiket: string;
-  secenekler: { deger: string; etiket: string }[];
-  secili: string;
-  anahtar: string;
-  digerler: Record<string, string>;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-zinc-500">{etiket}:</span>
-      <div className="flex flex-wrap gap-1">
-        {secenekler.map((secenek) => {
-          const parametreler = new URLSearchParams({
-            ...digerler,
-            [anahtar]: secenek.deger,
-          });
-
-          return (
-            <Link
-              key={secenek.deger}
-              href={`/koordinator/puanlamalar?${parametreler.toString()}`}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-sm",
-                secili === secenek.deger
-                  ? "bg-marka-50 font-medium text-marka-700"
-                  : "text-zinc-600 hover:bg-zinc-100",
-              )}
-            >
-              {secenek.etiket}
-            </Link>
-          );
-        })}
-      </div>
     </div>
   );
 }

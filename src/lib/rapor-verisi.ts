@@ -162,6 +162,12 @@ export type RaporOzeti = {
 };
 
 /**
+ * Rapor listelerinin ortak üst sınırı. Dashboard kartı ile Raporlar listesi
+ * aynı sayıyı göstersin diye ikisi de bu sınırı kullanır (P11).
+ */
+export const RAPOR_LISTE_SINIRI = 200;
+
+/**
  * Raporları güncellik bilgisiyle birlikte listeler.
  *
  * Güncellik için kapsamdaki kayıtların en yeni puan güncellemesi okunur;
@@ -174,7 +180,7 @@ export async function raporOzetleri(kosul: {
   const raporlar = await db.report.findMany({
     where: kosul.ogrenciId ? { studentId: kosul.ogrenciId } : {},
     orderBy: { generatedAt: "desc" },
-    take: kosul.enFazla ?? 100,
+    take: kosul.enFazla ?? RAPOR_LISTE_SINIRI,
     select: {
       id: true,
       generatedAt: true,

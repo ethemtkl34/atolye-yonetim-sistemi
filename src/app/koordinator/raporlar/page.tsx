@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
-import { raporOzetleri } from "@/lib/rapor-verisi";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { raporOzetleri, RAPOR_LISTE_SINIRI } from "@/lib/rapor-verisi";
 import { tarihBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Raporlar",
 };
+
+const TEMEL_YOL = "/koordinator/raporlar";
 
 /**
  * §11 — Üretilmiş bütün raporlar.
@@ -15,11 +18,17 @@ export const metadata: Metadata = {
  * "Güncel değil" rozeti saklanan bir alandan değil, okuma anında puanların
  * son güncelleme zamanıyla karşılaştırmadan çıkar (§13.16).
  */
-export default async function RaporlarSayfasi() {
+export default async function RaporlarSayfasi(
+  props: PageProps<"/koordinator/raporlar">,
+) {
   await koordinatorZorunlu();
 
+  const parametreler = await props.searchParams;
+  const suzgec = parametreler.suzgec === "eski" ? "eski" : "tumu";
+
   const raporlar = await raporOzetleri({});
-  const guncelOlmayan = raporlar.filter((rapor) => !rapor.guncel).length;
+  const guncelOlmayanlar = raporlar.filter((rapor) => !rapor.guncel);
+  const gosterilecek = suzgec === "eski" ? guncelOlmayanlar : raporlar;
 
   return (
     <div className="space-y-6">
@@ -28,23 +37,45 @@ export default async function RaporlarSayfasi() {
         aciklama="Rapor istenildiği anda mevcut puanlardan üretilir. Puanlar sonradan değişirse rapor “Güncel değil” olarak işaretlenir; yeniden üretmek eski raporu ve PDF’lerini silmez."
       />
 
-      {guncelOlmayan > 0 ? (
-        <Kart className="bg-amber-50 p-3">
-          <p className="text-sm text-amber-900">
-            {guncelOlmayan} rapor, üretildikten sonra değişen puanlar yüzünden
-            güncelliğini yitirdi.
-          </p>
-        </Kart>
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Durum"
+          temelYol={TEMEL_YOL}
+          anahtar="suzgec"
+          secenekler={[
+            { deger: "tumu", etiket: `Tümü (${raporlar.length})` },
+            {
+              deger: "eski",
+              etiket: `Güncelliğini yitirenler (${guncelOlmayanlar.length})`,
+            },
+          ]}
+          secili={suzgec}
+        />
+      </SuzgecCubugu>
+
+      {raporlar.length === RAPOR_LISTE_SINIRI ? (
+        <p className="text-sm text-amber-700">
+          En yeni {RAPOR_LISTE_SINIRI} rapor gösteriliyor. Daha eskileri
+          öğrenci profilinden görebilirsiniz.
+        </p>
       ) : null}
 
-      {raporlar.length === 0 ? (
+      {gosterilecek.length === 0 ? (
         <BosDurum
-          baslik="Henüz rapor üretilmemiş."
-          aciklama="Rapor, öğrenci profilindeki “Rapor oluştur” düğmesiyle üretilir."
+          baslik={
+            suzgec === "eski"
+              ? "Güncelliğini yitiren rapor yok."
+              : "Henüz rapor üretilmemiş."
+          }
+          aciklama={
+            suzgec === "eski"
+              ? "Bütün raporlar üretildikleri günkü puanlarla uyumlu."
+              : "Rapor, öğrenci profilindeki “Rapor oluştur” düğmesiyle üretilir."
+          }
         />
       ) : (
         <div className="space-y-2">
-          {raporlar.map((rapor) => (
+          {gosterilecek.map((rapor) => (
             <Kart key={rapor.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Link

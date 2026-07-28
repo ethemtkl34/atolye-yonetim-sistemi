@@ -202,6 +202,10 @@ export async function kulupDurumDegistir(
 
   revalidatePath("/koordinator/kulupler");
   revalidatePath(`/koordinator/kulupler/${kulupId}`);
+  // Durum değişince kulüp aktif listelerden arşive (ya da tersine) geçebilir.
+  revalidatePath("/koordinator/arsiv");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator");
   return { basari: "Kulüp durumu güncellendi." };
 }
 

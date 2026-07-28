@@ -61,7 +61,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     paket: "P7",
   },
   { etiket: "Raporlar", yol: "/koordinator/raporlar", hazir: true, paket: "P9" },
-  { etiket: "Arşiv", yol: "/koordinator/arsiv", hazir: false, paket: "P11" },
+  { etiket: "Arşiv", yol: "/koordinator/arsiv", hazir: true, paket: "P11" },
 ];
 
 /** §12.3 — Stajyer panelinin ekranları. */

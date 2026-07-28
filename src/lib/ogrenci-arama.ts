@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { AKTIF_OGRENCI_KOSULU } from "./durumlar";
 import { normalizeArama, normalizeTelefon } from "./turkce";
 
 /**
@@ -14,7 +15,20 @@ import { normalizeArama, normalizeTelefon } from "./turkce";
 
 export type AramaSonucu = Awaited<ReturnType<typeof ogrenciAra>>[number];
 
-export async function ogrenciAra(sorgu: string, enFazla = 50) {
+export type AramaSecenekleri = {
+  enFazla?: number;
+  /**
+   * "aktif" seçilirse yalnızca aktif bir programda aktif kaydı olan öğrenciler
+   * döner — dashboardun "Aktif öğrenci" kartının karşılığı (§12.1).
+   */
+  kapsam?: "tumu" | "aktif";
+};
+
+export async function ogrenciAra(
+  sorgu: string,
+  secenekler: AramaSecenekleri = {},
+) {
+  const { enFazla = 50, kapsam = "tumu" } = secenekler;
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
   const telefonAnahtari = normalizeTelefon(temizSorgu);
@@ -23,7 +37,7 @@ export async function ogrenciAra(sorgu: string, enFazla = 50) {
   // yüzünden bütün velileri taramanın anlamı yok.
   const telefonAranabilir = telefonAnahtari.length >= 3;
 
-  const kosullar = temizSorgu
+  const aramaKosulu = temizSorgu
     ? {
         OR: [
           { searchName: { contains: isimAnahtari } },
@@ -41,7 +55,10 @@ export async function ogrenciAra(sorgu: string, enFazla = 50) {
     : {};
 
   return db.student.findMany({
-    where: kosullar,
+    where: {
+      ...aramaKosulu,
+      ...(kapsam === "aktif" ? AKTIF_OGRENCI_KOSULU : {}),
+    },
     // §6.2 — Aynı isimli öğrencileri ayırt edebilmek için doğum tarihi,
     // okul ve sınıf sonuçlarda gösterilir.
     select: {

@@ -3,25 +3,45 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
-import { DONEM_DURUMLARI } from "@/lib/durumlar";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { AKTIF_DONEM_KOSULU, DONEM_DURUMLARI } from "@/lib/durumlar";
 import { haftaSonuBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Dönemler",
 };
 
-/** §4 — Dönem listesi. */
-export default async function DonemlerSayfasi() {
+const TEMEL_YOL = "/koordinator/donemler";
+
+/**
+ * §4 — Dönem listesi.
+ *
+ * Arşivlenmiş dönemler burada değil, Arşiv ekranında durur; iki liste
+ * birbirinin tamamlayıcısıdır. "Aktif" süzgeci dashboard kartıyla aynı
+ * koşulu (`AKTIF_DONEM_KOSULU`) okur.
+ */
+export default async function DonemlerSayfasi(
+  props: PageProps<"/koordinator/donemler">,
+) {
   await koordinatorZorunlu();
 
-  const donemler = await db.term.findMany({
-    where: { status: { not: "ARSIVLENDI" } },
-    orderBy: { createdAt: "desc" },
-    include: {
-      weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
-      _count: { select: { groups: true, workshops: true } },
-    },
-  });
+  const parametreler = await props.searchParams;
+  const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
+
+  const [donemler, arsivSayisi] = await Promise.all([
+    db.term.findMany({
+      where:
+        kapsam === "aktif"
+          ? AKTIF_DONEM_KOSULU
+          : { status: { not: "ARSIVLENDI" } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
+        _count: { select: { groups: true, workshops: true } },
+      },
+    }),
+    db.term.count({ where: { status: "ARSIVLENDI" } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -38,10 +58,39 @@ export default async function DonemlerSayfasi() {
         }
       />
 
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kapsam"
+          temelYol={TEMEL_YOL}
+          anahtar="kapsam"
+          secenekler={[
+            { deger: "aktif", etiket: "Aktif" },
+            { deger: "tumu", etiket: "Tümü" },
+          ]}
+          secili={kapsam}
+        />
+        {arsivSayisi > 0 ? (
+          <Link
+            href="/koordinator/arsiv"
+            className="text-sm text-marka-700 hover:underline"
+          >
+            Arşivde {arsivSayisi} dönem
+          </Link>
+        ) : null}
+      </SuzgecCubugu>
+
       {donemler.length === 0 ? (
         <BosDurum
-          baslik="Henüz dönem oluşturulmamış."
-          aciklama="Öğrenci kaydı alabilmek için önce bir dönem ve grup açın."
+          baslik={
+            kapsam === "aktif"
+              ? "Aktif dönem yok."
+              : "Henüz dönem oluşturulmamış."
+          }
+          aciklama={
+            kapsam === "aktif"
+              ? "Kayıt alan veya devam eden dönem bulunmuyor. “Tümü” süzgeciyle taslak ve tamamlanmış dönemleri görebilirsiniz."
+              : "Öğrenci kaydı alabilmek için önce bir dönem ve grup açın."
+          }
         />
       ) : (
         <div className="space-y-3">

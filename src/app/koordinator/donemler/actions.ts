@@ -238,6 +238,10 @@ export async function donemDurumDegistir(
 
   revalidatePath("/koordinator/donemler");
   revalidatePath(`/koordinator/donemler/${donemId}`);
+  // Durum değişince dönem aktif listelerden arşive (ya da tersine) geçebilir.
+  revalidatePath("/koordinator/arsiv");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator");
   return { basari: "Dönem durumu güncellendi." };
 }
 

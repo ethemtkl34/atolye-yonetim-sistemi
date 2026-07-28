@@ -38,6 +38,9 @@ yarn-error.log*
 # Prisma tarafından üretilen istemci — `npm run db:generate` ile yeniden üretilir.
 /src/generated
 
+# Geliştirme aracının yerel ayarları (önizleme sunucusu tanımı vb.)
+/.claude
+
 # vercel
 .vercel
 

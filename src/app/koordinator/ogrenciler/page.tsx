@@ -3,11 +3,21 @@ import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
 import { BosDurum, Girdi, Kart, SayfaBasligi } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { tarihBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Öğrenciler",
 };
+
+const TEMEL_YOL = "/koordinator/ogrenciler";
+
+/**
+ * Listenin üst sınırı. Dashboardun "Aktif öğrenci" kartı gerçek sayıyı
+ * gösterdiği için, liste bu sınıra dayandığında kesildiği açıkça yazılır —
+ * sessizce eksik liste göstermek kartla çelişki gibi görünürdü.
+ */
+const LISTE_SINIRI = 200;
 
 /**
  * §6.2 — Öğrenci arama ve liste.
@@ -23,8 +33,12 @@ export default async function OgrencilerSayfasi(
 
   const parametreler = await props.searchParams;
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";
+  const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
 
-  const ogrenciler = await ogrenciAra(sorgu);
+  const ogrenciler = await ogrenciAra(sorgu, {
+    kapsam,
+    enFazla: LISTE_SINIRI,
+  });
 
   return (
     <div className="space-y-6">
@@ -42,6 +56,10 @@ export default async function OgrencilerSayfasi(
       />
 
       <form method="get" className="flex max-w-lg gap-2">
+        {/* Süzgeç arama yapılınca kaybolmasın diye adresle birlikte taşınır. */}
+        {kapsam === "aktif" ? (
+          <input type="hidden" name="kapsam" value="aktif" />
+        ) : null}
         <Girdi
           name="q"
           type="search"
@@ -57,12 +75,40 @@ export default async function OgrencilerSayfasi(
         </button>
       </form>
 
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kapsam"
+          temelYol={TEMEL_YOL}
+          anahtar="kapsam"
+          secenekler={[
+            { deger: "aktif", etiket: "Aktif programlarda" },
+            { deger: "tumu", etiket: "Tümü" },
+          ]}
+          secili={kapsam}
+          digerler={sorgu ? { q: sorgu } : {}}
+        />
+      </SuzgecCubugu>
+
       {sorgu ? (
         <p className="text-sm text-zinc-600">
           <span className="font-medium">{ogrenciler.length}</span> sonuç ·{" "}
-          <Link href="/koordinator/ogrenciler" className="text-marka-700 hover:underline">
+          <Link
+            href={
+              kapsam === "aktif"
+                ? `${TEMEL_YOL}?kapsam=aktif`
+                : TEMEL_YOL
+            }
+            className="text-marka-700 hover:underline"
+          >
             aramayı temizle
           </Link>
+        </p>
+      ) : null}
+
+      {ogrenciler.length === LISTE_SINIRI ? (
+        <p className="text-sm text-amber-700">
+          İlk {LISTE_SINIRI} öğrenci gösteriliyor. Aramayı daraltarak listeyi
+          küçültebilirsiniz.
         </p>
       ) : null}
 
@@ -71,12 +117,16 @@ export default async function OgrencilerSayfasi(
           baslik={
             sorgu
               ? `"${sorgu}" için sonuç bulunamadı.`
-              : "Henüz öğrenci kaydı yok."
+              : kapsam === "aktif"
+                ? "Aktif programda kayıtlı öğrenci yok."
+                : "Henüz öğrenci kaydı yok."
           }
           aciklama={
             sorgu
               ? "Farklı bir yazım deneyin veya yeni öğrenci ekleyin."
-              : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."
+              : kapsam === "aktif"
+                ? "“Tümü” süzgeciyle bütün öğrencileri görebilirsiniz."
+                : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."
           }
         />
       ) : (

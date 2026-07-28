@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { AKTIF_GRUP_KOSULU } from "./durumlar";
 import { bugun, tarihMetni } from "./tarih";
 import { puanlamaOrtalamasi } from "./scoring";
 import {
@@ -285,6 +286,12 @@ export type KayitIlerlemesi = {
 export async function kayitIlerlemeleri(kosul: {
   internId?: string;
   yalnizcaAktif?: boolean;
+  /**
+   * Kayıt aktif olsa bile programı arşivlenmişse listeye alınmaz. Dashboard
+   * "aktif dönem 0" derken aynı ekranda o dönemin eksik formlarını saymasın
+   * diye koordinatör ekranları bunu açar (P11).
+   */
+  yalnizcaAktifProgram?: boolean;
   studentId?: string;
 }): Promise<KayitIlerlemesi[]> {
   const kayitlar = await db.enrollment.findMany({
@@ -292,6 +299,7 @@ export async function kayitIlerlemeleri(kosul: {
       ...(kosul.internId ? { internId: kosul.internId } : {}),
       ...(kosul.studentId ? { studentId: kosul.studentId } : {}),
       ...(kosul.yalnizcaAktif ? { status: "AKTIF" } : {}),
+      ...(kosul.yalnizcaAktifProgram ? { group: AKTIF_GRUP_KOSULU } : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {

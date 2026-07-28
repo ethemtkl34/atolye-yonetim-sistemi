@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P11 — Dashboard ve arşiv
+**Şu an:** P12 — Yayına alma
 
 ---
 
@@ -22,7 +22,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P8 | Kulüp yönetimi | ✅ Tamam | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ✅ Tamam | Rapor üretilir, puan değişince "Güncel değil" olur |
 | P10 | PDF ve rapor geçmişi | ✅ Tamam | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
-| P11 | Dashboard ve arşiv | ⬜ Bekliyor | Dashboard sayıları listelerle birebir uyuşur |
+| P11 | Dashboard ve arşiv | ✅ Tamam | Dashboard sayıları listelerle birebir uyuşur |
 | P12 | Yayına alma | ⬜ Bekliyor | 16 kabul ölçütü gerçek ortamda doğrulanır |
 | P13 | AI rapor metni *(sonraya bırakıldı)* | ⬜ Bekliyor | Metin katmanı Claude API ile üretilir, şablon yedek kalır |
 
@@ -522,6 +522,76 @@ Kararlar:
 (macOS `qlmanage` yalnızca ilk sayfayı üretiyor). İkinci sayfanın varlığı ve
 sayfa numarası altbilgisi belge yapısından doğrulandı, göz kontrolü
 yapılmadı.
+
+### P11 — Dashboard ve arşiv ✅
+
+Koordinatör dashboardu (§12.1) ve **Arşiv** modülü devrede; 13 modülün
+tamamı artık açık. Menüde tıklanamayan madde kalmadı.
+
+**Kabul ölçütü — her kart tıklandı, açılan listeyle karşılaştırıldı:**
+
+| Kart | Sayı | Açılan liste | Sonuç |
+|---|---|---|---|
+| Aktif dönem | 1 | `donemler?kapsam=aktif` | 1 dönem |
+| Aktif kulüp | 1 | `kulupler?kapsam=aktif` | 1 kulüp |
+| Aktif grup | 4 | `gruplar?kapsam=aktif` | 4 grup |
+| Aktif öğrenci | 1 | `ogrenciler?kapsam=aktif` | 1 öğrenci (2 kaydı var, bir kez sayıldı) |
+| Kontenjanı dolan grup | 0 | `gruplar?...&durum=dolu` | boş |
+| Eksik puanlama | 12 (1 kayıtta) | `puanlamalar?suzgec=eksik` | 1 kayıt · 12 form |
+| Güncelliğini yitiren rapor | 1 | `raporlar?suzgec=eski` | 1 rapor |
+| Toplam rapor | 2 | `raporlar?suzgec=tumu` | 2 rapor |
+
+**Arşiv uçtan uca doğrulandı** (kulüp ve dönem ayrı ayrı arşivlenip geri
+alındı, veri başlangıç durumuna döndürüldü):
+
+| Adım | Sonuç |
+|---|---|
+| Kulüp "Arşivlendi" yapıldı | Kulüpler listesinden çıktı, arşivde göründü |
+| Dashboard | Aktif kulüp 1→0, aktif grup 4→2 (kulübün 2 grubu) |
+| Yeni kayıt formu | Arşivlenmiş kulüp seçeneklerde yok |
+| Öğrenci profili | Kulüp kaydı, puanlamalar, raporlar ve PDF'ler yerinde |
+| İkisi de arşivlendi | Bütün kartlar 0; "Tümü" süzgeciyle 12 eksik form hâlâ erişilebilir |
+| Durum geri alındı | Sayılar başlangıçtaki 1 / 1 / 4 / 1 değerlerine döndü |
+
+Kararlar:
+
+- **Sayı ile listenin aynı koşuldan çıkması sözle değil kodla garanti
+  ediliyor.** `AKTIF_DONEM_KOSULU`, `AKTIF_GRUP_KOSULU`, `AKTIF_OGRENCI_KOSULU`
+  gibi Prisma koşulları `lib/durumlar.ts` içinde tek yerde duruyor; hem kart
+  hem liste aynı nesneyi okuyor. Koşulu iki yere ayrı yazmak kısa vadede
+  çalışırdı ama biri değişince sessizce ayrışırdı. Öğrenci profilindeki
+  "aktif kayıt" ayrımı da bu kaynağa bağlandı — orada elle yazılmış ikinci
+  bir tanım vardı.
+- **Her kart süzgeçli adrese gidiyor** (`?kapsam=aktif`, `?durum=dolu`,
+  `?suzgec=eski`). Bunun için Dönemler, Kulüpler, Gruplar, Öğrenciler ve
+  Raporlar ekranlarına GET süzgeçleri eklendi; seçim adres satırında duruyor,
+  sonuç paylaşılabiliyor. Puanlamalar ekranındaki süzgeç bileşeni
+  `components/suzgec.tsx` dosyasına çıkarılıp beşi tarafından paylaşıldı.
+- **Arşiv, aktif listelerin tam tümleyeni.** Arşiv yalnızca "Arşivlendi"
+  durumundakileri gösteriyor, Dönemler ve Kulüpler listeleri de tam olarak
+  bunların dışını. Böylece her program tam olarak bir listede görünüyor;
+  "hangisi nerede" sorusu ortaya çıkmıyor. Tamamlanmış ama arşivlenmemiş
+  program aktif listede kalır — arşive taşımak koordinatörün kararı.
+- **Arşivlemek silmek değil.** Kayıt, puanlama, rapor ve PDF'ler yerinde
+  kalıyor, program sayfası açılmaya devam ediyor. Değişen tek şey yeni kayıt
+  alınamaması (kayıt zaten yalnızca "Kayıt alıyor" durumundaki programa
+  açılıyordu) ve günlük listeleri meşgul etmemesi.
+- **Arşivlenen programın eksik formları dashboardu meşgul etmiyor.** Kayıt
+  aktif olsa bile programı arşivlendiyse "Eksik puanlama" sayılmıyor; aksi
+  hâlde dashboard aynı ekranda "aktif dönem 0" derken o dönemin 12 formunu
+  sayıyordu. Formlar kaybolmuyor, Puanlamalar ekranının "İptal ve arşiv
+  dahil" kapsamında duruyor.
+- **Kesilen liste açıkça söyleniyor.** Öğrenci listesi 200, rapor listesi 200
+  satırla sınırlı; sınıra dayanınca ekranda yazıyor. Kart gerçek sayıyı
+  gösterdiği için sessiz kesme kartla çelişki gibi görünürdü.
+- **Öğrenci profilinde iki durum ayrıldı.** Rozetler artık "Kayıt: Aktif" ve
+  "Program: Arşivlendi" diye ayrı yazıyor; önceden "Geçmiş kayıtlar" başlığı
+  altında yalnız başına duran "Aktif" rozeti çelişkili görünüyordu.
+
+**Doğrulama notu:** Tarayıcı konsolunda görülen derleme hataları iki düzenleme
+arasındaki yarım dosya durumundan kalmıştı; Turbopack günlüğü temizlenmediği
+için sonraki sayfalarda da görünmeye devam etti. Güncel kaynak `npm run build`
+ile uçtan uca temiz derleniyor — konsol geçmişi tek başına kanıt sayılmamalı.
 
 ---
 
