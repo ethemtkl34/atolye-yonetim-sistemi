@@ -1,0 +1,246 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { girisZorunlu } from "@/lib/auth-guard";
+import { db } from "@/lib/db";
+import {
+  cevapCozumle,
+  formSatirlariOlustur,
+  oturumPuanlanabilirMi,
+} from "@/lib/puanlama";
+import { bugun, tarihBicimle, tarihMetni } from "@/lib/tarih";
+
+/**
+ * §10 — Puanlama formunun kaydedilmesi.
+ *
+ * Tek eylem hem stajyerin hem koordinatörün formunu kaydeder; ikisi de aynı
+ * kuralları geçer, fark yalnızca kimin hangi kaydı düzenleyebildiğidir
+ * (§10.5: stajyer kendi öğrencilerini, koordinatör hepsini).
+ *
+ * Formdan gelen hiçbir bilgi doğru kabul edilmez: hangi soruların
+ * cevaplanacağı istemcinin gönderdiği alanlardan değil, sunucunun kendi
+ * okuduğu aktif soru listesinden çıkarılır. Aksi halde eksik form gönderip
+ * §10.3'ü atlamak mümkün olurdu.
+ */
+
+export type PuanlamaEylemDurumu = {
+  basari?: string;
+  hata?: string;
+  /** Cevaplanmadığı için işaretlenecek satır anahtarları. */
+  eksikSatirlar?: string[];
+};
+
+export async function puanlamaKaydet(
+  _oncekiDurum: PuanlamaEylemDurumu,
+  formVerisi: FormData,
+): Promise<PuanlamaEylemDurumu> {
+  const kullanici = await girisZorunlu();
+
+  const oturumId = String(formVerisi.get("oturumId") ?? "");
+  const kayitId = String(formVerisi.get("kayitId") ?? "");
+  if (!oturumId || !kayitId) return { hata: "Form eksik gönderildi." };
+
+  const [kayit, oturum] = await Promise.all([
+    db.enrollment.findUnique({
+      where: { id: kayitId },
+      select: {
+        id: true,
+        status: true,
+        internId: true,
+        groupId: true,
+        studentId: true,
+      },
+    }),
+    db.session.findUnique({
+      where: { id: oturumId },
+      select: {
+        id: true,
+        groupId: true,
+        date: true,
+        workshopType: {
+          select: {
+            name: true,
+            questions: {
+              where: { active: true },
+              orderBy: { sortOrder: "asc" },
+              select: { id: true, text: true, sortOrder: true },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!kayit) return { hata: "Kayıt bulunamadı." };
+  if (!oturum) return { hata: "Atölye oturumu bulunamadı." };
+
+  // Oturum ile kayıt aynı gruba ait olmalı; başka bir grubun oturumuna puan
+  // yazılamaz.
+  if (oturum.groupId !== kayit.groupId) {
+    return { hata: "Bu atölye oturumu bu kayda ait değil." };
+  }
+
+  // §3.2 — Stajyer yalnızca kendisine atanmış öğrencileri puanlar.
+  if (kullanici.role === "STAJYER" && kayit.internId !== kullanici.id) {
+    return { hata: "Bu öğrenci size atanmamış." };
+  }
+
+  if (kayit.status !== "AKTIF") {
+    return {
+      hata: "Bu kayıt iptal edilmiş; puanlama yapılamaz.",
+    };
+  }
+
+  if (!oturumPuanlanabilirMi(oturum.date, bugun())) {
+    return {
+      hata: `Bu atölye ${tarihBicimle(oturum.date)} tarihinde yapılacak; henüz puanlanamaz.`,
+    };
+  }
+
+  const katilim = formVerisi.get("attended");
+  if (katilim !== "katildi" && katilim !== "katilmadi") {
+    return { hata: "Katılım durumunu seçin." };
+  }
+  const katildi = katilim === "katildi";
+
+  const mevcut = await db.score.findUnique({
+    where: {
+      sessionId_enrollmentId: { sessionId: oturumId, enrollmentId: kayitId },
+    },
+    select: {
+      id: true,
+      answers: {
+        select: {
+          id: true,
+          questionId: true,
+          questionTextSnapshot: true,
+          value: true,
+          sortOrder: true,
+        },
+      },
+    },
+  });
+
+  /**
+   * §10.2 — Katılmadı işaretlenirse cevap satırı tutulmaz.
+   *
+   * Satırlar silinir çünkü "satır var, değer null" bu üründe
+   * "Değerlendirilemedi" demek; katılmayan öğrencinin formunda böyle bir
+   * satırın kalması ortalamayı değil ama okumayı yanıltırdı.
+   */
+  if (!katildi) {
+    await db.$transaction(async (tx) => {
+      const puanlama = await tx.score.upsert({
+        where: {
+          sessionId_enrollmentId: {
+            sessionId: oturumId,
+            enrollmentId: kayitId,
+          },
+        },
+        create: {
+          sessionId: oturumId,
+          enrollmentId: kayitId,
+          attended: false,
+          scoredByUserId: kullanici.id,
+        },
+        update: { attended: false, scoredByUserId: kullanici.id },
+        select: { id: true },
+      });
+
+      await tx.scoreAnswer.deleteMany({ where: { scoreId: puanlama.id } });
+    });
+
+    ekranlariTazele(kayit.studentId, kayitId, oturum.date);
+    return {
+      basari: `${oturum.workshopType.name}: katılmadı olarak işaretlendi.`,
+    };
+  }
+
+  // §10.3 — Katıldıysa bütün soruların cevaplanması zorunlu.
+  const satirlar = formSatirlariOlustur(
+    oturum.workshopType.questions,
+    mevcut?.answers ?? [],
+  );
+
+  if (satirlar.length === 0) {
+    return {
+      hata: "Bu atölyenin aktif değerlendirme sorusu yok. Koordinatörden soru eklemesini isteyin.",
+    };
+  }
+
+  const eksikSatirlar: string[] = [];
+  const yazilacakCevaplar: {
+    questionId: string | null;
+    questionTextSnapshot: string;
+    sortOrder: number;
+    value: number | null;
+  }[] = [];
+
+  for (const satir of satirlar) {
+    const cozum = cevapCozumle(formVerisi.get(`cevap:${satir.anahtar}`));
+
+    if (!cozum.gecerli) {
+      eksikSatirlar.push(satir.anahtar);
+      continue;
+    }
+
+    yazilacakCevaplar.push({
+      questionId: satir.questionId,
+      // §13.14 — Zaten cevaplanmış satırın o günkü metni korunur.
+      questionTextSnapshot: satir.kaydedilecekMetin,
+      sortOrder: satir.sortOrder,
+      value: cozum.deger,
+    });
+  }
+
+  if (eksikSatirlar.length > 0) {
+    return {
+      hata: `Katıldı işaretlenen formda bütün sorular cevaplanmalı. ${eksikSatirlar.length} soru eksik.`,
+      eksikSatirlar,
+    };
+  }
+
+  await db.$transaction(async (tx) => {
+    const puanlama = await tx.score.upsert({
+      where: {
+        sessionId_enrollmentId: { sessionId: oturumId, enrollmentId: kayitId },
+      },
+      create: {
+        sessionId: oturumId,
+        enrollmentId: kayitId,
+        attended: true,
+        scoredByUserId: kullanici.id,
+      },
+      update: { attended: true, scoredByUserId: kullanici.id },
+      select: { id: true },
+    });
+
+    // Cevaplar silinip yeniden yazılıyor: satır sayısı 10 civarında ve tek
+    // transaction içinde. Tek tek upsert etmek aynı sonucu daha çok sorguyla
+    // üretirdi.
+    await tx.scoreAnswer.deleteMany({ where: { scoreId: puanlama.id } });
+    await tx.scoreAnswer.createMany({
+      data: yazilacakCevaplar.map((cevap) => ({
+        scoreId: puanlama.id,
+        ...cevap,
+      })),
+    });
+  });
+
+  ekranlariTazele(kayit.studentId, kayitId, oturum.date);
+  return { basari: `${oturum.workshopType.name} formu kaydedildi.` };
+}
+
+function ekranlariTazele(ogrenciId: string, kayitId: string, tarih: Date) {
+  const gun = tarihMetni(tarih);
+
+  revalidatePath("/stajyer");
+  revalidatePath("/stajyer/ogrencilerim");
+  revalidatePath("/stajyer/formlarim");
+  revalidatePath(`/stajyer/puanlama/${kayitId}`);
+  revalidatePath(`/stajyer/puanlama/${kayitId}/${gun}`);
+  revalidatePath("/koordinator/puanlamalar");
+  revalidatePath(`/koordinator/puanlamalar/${kayitId}`);
+  revalidatePath(`/koordinator/puanlamalar/${kayitId}/${gun}`);
+  revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
+}

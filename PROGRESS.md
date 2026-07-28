@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P7 — Puanlama
+**Şu an:** P8 — Kulüp yönetimi
 
 ---
 
@@ -18,7 +18,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P4 | Dönem, takvim ve gruplar | ✅ Tamam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
 | P5 | Öğrenci yönetimi | ✅ Tamam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
 | P6 | Kayıt ve stajyer ataması | ✅ Tamam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
-| P7 | Puanlama | ⬜ Bekliyor | Kabul ölçütleri 1–12 uçtan uca çalışır |
+| P7 | Puanlama | ✅ Tamam | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ⬜ Bekliyor | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ⬜ Bekliyor | Rapor üretilir, puan değişince "Güncel değil" olur |
 | P10 | PDF ve rapor geçmişi | ⬜ Bekliyor | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
@@ -316,6 +316,62 @@ Kararlar ve güvenlik önlemleri:
 `pg_advisory_xact_lock` fonksiyonu `void` döndürür; Prisma bu sütunu doğrudan
 serileştiremedi. Kilit sonucu sorguda `text` tipine çevrilerek hem kilit
 davranışı korundu hem Prisma sürücü uyumu sağlandı.
+
+### P7 — Puanlama ✅
+
+Çekirdek zincir tamamlandı. Stajyer paneli (Görevlerim, Öğrencilerim,
+Doldurduğum formlar) ve koordinatörün **Puanlamalar** modülü devrede;
+öğrenci profiline katılım ve puanlama geçmişi bölümleri eklendi.
+
+**Tarayıcıda ve veritabanında doğrulandı:**
+
+| Senaryo | Sonuç |
+|---|---|
+| Bilim Atölyesi formu (örnek karttaki 10 puan) | Ortalama **4,3** — `sample-scorecard.md` ile birebir |
+| Robotik "Katılmadı" | Cevap satırı yazılmadı, ortalamaya girmedi |
+| Katıldı + 2 soru boş (istemci doğrulaması atlanarak) | Sunucu reddetti, **kayıt oluşmadı**, eksik satırlar kırmızı işaretlendi |
+| Soru metni değiştirildi | Form o günkü metni gösterdi; yeniden kaydedince snapshot **değişmedi** (§13.14) |
+| Koordinatör aynı formu düzenledi (5→4) | Ortalama 4,2, "Son giren: Kurum Koordinatörü" |
+| Kayıt başka stajyere atandı | Eski stajyer aynı adresi yazınca **404**, görev listesi boşaldı |
+| Stajyer sayfalarının HTML'i | Veli telefonu ve sağlık detayı **hiç geçmiyor**; yalnızca kısa güvenlik uyarısı var |
+| Gelecek tarihli oturum | Form kilitli: "Bu atölye henüz yapılmadı" |
+
+Kararlar:
+
+- **Gelecek oturumun formu kilitli.** §10.5 son tarih koymuyor ama oturumlar
+  10 hafta boyunca önden üretiliyor; gözlenmemiş davranış puanlanamayacağı
+  için form oturum günü açılıyor. Bu yüzden ilerleme sayaçları da yalnızca
+  yapılmış oturumları sayar — 3 hafta geçmişse "3/15", "3/50" değil. Gelecek
+  haftalar "eksik puanlama" olarak raporlanmaz.
+- **Form durumu soru kimliğiyle hesaplanır, sayıyla değil.** Koordinatör bir
+  soruyu pasife alıp yerine yenisini eklerse sayı aynı kalır ama form gerçekte
+  eksiktir; `puanlamaDurumu()` bunu yakalar ve form "Eksik"e düşer.
+- **Cevabı olan satırın snapshot metni asla değişmez.** Soru sonradan
+  düzenlenirse form o günkü metni gösterir, güncel metin yanına not olarak
+  yazılır. Yeni açılan satırlar bugünkü metni alır. Pasife alınmış sorunun
+  geçmiş cevabı formun sonunda korunur ve silinmez.
+- **Zorunlu soru listesini sunucu kendisi çıkarır.** Hangi soruların
+  cevaplanacağı formdan gelen alanlara değil, sunucunun okuduğu aktif soru
+  setine bakılarak belirlenir; aksi halde eksik form gönderip §10.3 atlanabilirdi.
+- **Tek eylem, iki rol.** `puanlamaKaydet` hem stajyerin hem koordinatörün
+  formunu kaydeder; fark yalnızca yetki kontrolünde (stajyer yalnızca kendi
+  kayıtları). İki ayrı form yazılmadı ki iki taraf aynı kuralları ve aynı
+  ölçeği görsün.
+- **İptal edilmiş kayda puanlama yapılamaz**, girilmiş puanlar korunur ve
+  ekranda salt okunur görünür.
+- **"Doldurduğum formlar" atama üzerinden süzülür**, puanı kimin girdiği
+  üzerinden değil. Kayıt başka stajyere geçtiğinde eski stajyer o öğrenciyi
+  hiçbir ekranda göremez (§3.2).
+
+Kod yapısı: kurallar `src/lib/puanlama.ts` (saf, **19 yeni test**), sorgular
+`src/lib/puanlama-verisi.ts`, ortak ekran parçaları
+`src/components/puanlama-ekranlari.tsx`, sunucu eylemi
+`src/app/stajyer/puanlama/actions.ts`. Ortalama hesabı yine tek yerden —
+`scoring.ts` — okunuyor, ikinci kopyası yazılmadı.
+
+**Veritabanında bırakılan örnek veri:** Şule Çınar'ın 1. Grup kaydı ve 25
+Temmuz gününün 3 formu (Bilim 4,2 · Astronomi 3,0 · Robotik katılmadı) duruyor.
+P9'daki rapor motorunu denemek için bilinçli olarak silinmedi.
 
 ---
 

@@ -4,7 +4,13 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
-import { grupZamani, tarihBicimle } from "@/lib/tarih";
+import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
+import {
+  doldurulmusFormlar,
+  kayitIlerlemeleri,
+} from "@/lib/puanlama-verisi";
+import { ortalamaBicimle } from "@/lib/scoring";
+import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -52,6 +58,13 @@ export default async function OgrenciProfilSayfasi(
   });
 
   if (!ogrenci) notFound();
+
+  // §6.3.7–8 — Katılım ve puanlama geçmişi. Filtreli tam geçmiş ekranı (§6.4)
+  // P9'da geliyor; profilde en son kayıtlar ve kayıt bazlı ilerleme duruyor.
+  const [katilimGecmisi, puanlamaIlerlemeleri] = await Promise.all([
+    doldurulmusFormlar({ studentId: id, enFazla: 30 }),
+    kayitIlerlemeleri({ studentId: id }),
+  ]);
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");
@@ -257,10 +270,114 @@ export default async function OgrenciProfilSayfasi(
         )}
       </Kart>
 
-      {/* 7–11. Sonraki paketlerde dolacak bölümler */}
+      {/* 7. Atölye katılım geçmişi */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-zinc-900">
+          Atölye katılım geçmişi
+        </h2>
+        {katilimGecmisi.length === 0 ? (
+          <BosDurum
+            baslik="Henüz doldurulmuş atölye formu yok."
+            aciklama="Stajyer bir atölye formunu kaydettiğinde katılım ve puan burada görünür."
+          />
+        ) : (
+          <Kart className="overflow-x-auto">
+            <table className="w-full min-w-[46rem] text-sm">
+              <thead className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Tarih</th>
+                  <th className="px-4 py-2 font-medium">Program</th>
+                  <th className="px-4 py-2 font-medium">Atölye</th>
+                  <th className="px-4 py-2 font-medium">Katılım</th>
+                  <th className="px-4 py-2 font-medium">Ortalama</th>
+                  <th className="px-4 py-2 font-medium">Stajyer</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {katilimGecmisi.map((satir) => (
+                  <tr key={`${satir.kayitId}-${satir.oturumId}`}>
+                    <td className="px-4 py-2 whitespace-nowrap text-zinc-700">
+                      <Link
+                        href={`/koordinator/puanlamalar/${satir.kayitId}/${satir.tarihAnahtari}`}
+                        className="hover:text-marka-700 hover:underline"
+                      >
+                        {tarihGunleBicimle(satir.tarih)}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-zinc-700">
+                      {satir.program}
+                      <span className="text-zinc-400"> · {satir.grupAdi}</span>
+                    </td>
+                    <td className="px-4 py-2 text-zinc-700">
+                      {satir.atolyeAdi}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Rozet tur={satir.attended ? "olumlu" : "pasif"}>
+                        {satir.attended ? "Katıldı" : "Katılmadı"}
+                      </Rozet>
+                    </td>
+                    <td className="px-4 py-2 text-zinc-700">
+                      {satir.attended ? ortalamaBicimle(satir.ortalama) : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-700">
+                      {satir.stajyerAdi ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Kart>
+        )}
+        <p className="text-xs text-zinc-500">
+          En son güncellenen 30 form gösteriliyor. Filtreli tam geçmiş ekranı
+          (§6.4) P9’da eklenecek.
+        </p>
+      </div>
+
+      {/* 8. Puanlama geçmişi */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-zinc-900">
+          Puanlama geçmişi
+        </h2>
+        {puanlamaIlerlemeleri.length === 0 ? (
+          <BosDurum baslik="Kayıt oluşturulduğunda puanlama takibi başlar." />
+        ) : (
+          <div className="space-y-2">
+            {puanlamaIlerlemeleri.map((ilerleme) => (
+              <Kart key={ilerleme.kayit.id} className="p-4">
+                <div className="grid gap-3 lg:grid-cols-[1fr_16rem] lg:items-center">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/koordinator/puanlamalar/${ilerleme.kayit.id}`}
+                        className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                      >
+                        {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi}
+                      </Link>
+                      <Rozet>{ilerleme.kayit.programTuru}</Rozet>
+                      {ilerleme.kayit.aktif ? null : (
+                        <Rozet tur="pasif">İptal</Rozet>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Sorumlu stajyer: {ilerleme.kayit.stajyerAdi ?? "Atanmamış"}
+                      {ilerleme.sonPuanlama
+                        ? ` · Son puanlama ${tarihBicimle(ilerleme.sonPuanlama)}`
+                        : " · Henüz puanlama girilmedi"}
+                    </p>
+                  </div>
+                  <IlerlemeCubugu ozet={ilerleme.ozet} />
+                </div>
+              </Kart>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 9–11. Sonraki paketlerde dolacak bölümler */}
       <BosDurum
-        baslik="Atölye geçmişi ve raporlar henüz oluşmadı."
-        aciklama="Katılım ve puanlama P7’de; atölye/genel raporlar ve PDF geçmişi P9–P10’da bu profile eklenecek."
+        baslik="Raporlar henüz oluşmadı."
+        aciklama="Atölye bazlı ve genel raporlar P9’da, PDF rapor geçmişi P10’da bu profile eklenecek."
       />
     </div>
   );

@@ -57,7 +57,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Puanlamalar",
     yol: "/koordinator/puanlamalar",
-    hazir: false,
+    hazir: true,
     paket: "P7",
   },
   { etiket: "Raporlar", yol: "/koordinator/raporlar", hazir: false, paket: "P9" },
@@ -70,13 +70,13 @@ export const STAJYER_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Öğrencilerim",
     yol: "/stajyer/ogrencilerim",
-    hazir: false,
+    hazir: true,
     paket: "P7",
   },
   {
     etiket: "Doldurduğum formlar",
     yol: "/stajyer/formlarim",
-    hazir: false,
+    hazir: true,
     paket: "P7",
   },
 ];
