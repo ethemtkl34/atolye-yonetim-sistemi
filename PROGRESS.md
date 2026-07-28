@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P3 — Atölye çeşitleri ve değerlendirme soruları
+**Şu an:** P4 — Dönem, takvim ve gruplar
 
 ---
 
@@ -14,8 +14,8 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P0 | Proje iskeleti | ✅ Tamam | `npm run dev` çalışır, yerel Postgres ayakta |
 | P1 | Veri modeli ve seed | ✅ Tamam | 6 atölye + 60 soru veritabanında görünür |
 | P2 | Kimlik doğrulama ve rol erişimi | ✅ Tamam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
-| P3 | Atölye çeşitleri ve sorular | 🔨 Devam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
-| P4 | Dönem, takvim ve gruplar | ⬜ Bekliyor | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
+| P3 | Atölye çeşitleri ve sorular | ✅ Tamam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
+| P4 | Dönem, takvim ve gruplar | 🔨 Devam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
 | P5 | Öğrenci yönetimi | ⬜ Bekliyor | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
 | P6 | Kayıt ve stajyer ataması | ⬜ Bekliyor | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ⬜ Bekliyor | Kabul ölçütleri 1–12 uçtan uca çalışır |
@@ -141,6 +141,39 @@ yalnızca yeniden dışa aktarıyor ve yeniden dışa aktaran modülü genişlet
 Vercel ve Supabase hesabınıza bağlanmayı gerektirdiği için yapılmadı —
 hazır olduğunuzda söyleyin, P12'deki adımlarla birlikte kuralım. Uygulama
 derleme olarak yayına hazır.
+
+### P3 — Atölye çeşitleri ve değerlendirme soruları ✅
+
+İki modül devreye girdi: **Atölye çeşitleri** ve **Değerlendirme soruları**.
+Atölye ekleme/düzenleme/pasife alma, atölye başına soru ekleme, metin
+düzenleme, sıralama, aktif/pasif ve silme çalışıyor.
+
+**Tarayıcıda doğrulandı (kabul ölçütü):** Bilim Atölyesi'nde bir sorunun hem
+sırası hem metni değiştirildi; Robotik ve Astronomi atölyelerinin setleri
+hiç etkilenmedi. Soru setleri gerçekten bağımsız. (Test değişikliği sonrasında
+geri alındı, başlangıç verisi orijinal halinde.)
+
+Ürün kararları:
+
+- **Atölye silinmiyor, pasife alınıyor.** §2.1 zaten silme demiyor; pasif
+  atölye yeni programlarda seçilemez ama geçmiş oturum ve raporlarda kalır.
+- **Soru silme akıllı davranıyor.** Hiç kullanılmamış soru gerçekten silinir.
+  Puanlamada kullanılmış soru silinmez, pasife alınır ve koordinatöre sebebi
+  açıkça yazılır: *"Bu soru N değerlendirmede kullanılmış. Geçmiş kayıtlar
+  bozulmasın diye silinmedi, pasife alındı."* Onay kutusunda da aynı uyarı
+  çıkar. Sessizce farklı davranmak hata gibi algılanırdı.
+- **Her satırda kullanım sayısı görünüyor** ("Henüz kullanılmadı" / "N
+  değerlendirmede kullanıldı"), böylece koordinatör silmeden önce ne olacağını
+  biliyor.
+- **Sıralama ok tuşlarıyla**, sürükle-bırak değil: komşu soruyla `sortOrder`
+  takası tek işlemde (transaction) yapılıyor, sıra hiçbir an bozuk kalmıyor.
+- **Aktif sorusu olmayan atölye uyarı veriyor** — o atölyede puanlama
+  yapılamayacağı için.
+
+**Karşılaşılan uyarı:** React derleyici kuralı, effect içinde `setState`
+çağrısını zincirleme render sebebiyle reddetti. Panel kapatma mantığı React'in
+önerdiği "render sırasında durum ayarlama" biçimine çevrildi; panel kapanınca
+form zaten DOM'dan kalktığı için ayrıca temizlemeye de gerek kalmadı.
 
 ---
 

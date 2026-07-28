@@ -1,0 +1,260 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
+import { Alan, Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
+import {
+  soruDurumDegistir,
+  soruEkle,
+  soruGuncelle,
+  soruSil,
+  soruSiraDegistir,
+  type EylemDurumu,
+} from "../actions";
+
+export type SoruSatiri = {
+  id: string;
+  text: string;
+  active: boolean;
+  sortOrder: number;
+  kullanimSayisi: number;
+};
+
+/**
+ * §9.2 — Bir atölyenin değerlendirme soru setinin yönetimi.
+ *
+ * Tek bir bildirim alanı kullanılıyor: silme işleminin sonucu koordinatöre
+ * mutlaka açıklanmalı, çünkü kullanılmış bir soru silinmek yerine pasife
+ * alınıyor ve bunun sebebi görünmezse davranış hata gibi algılanır.
+ */
+export function SoruYonetimi({
+  atolyeId,
+  sorular,
+}: {
+  atolyeId: string;
+  sorular: SoruSatiri[];
+}) {
+  const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
+  const [bekliyor, basla] = useTransition();
+  const [duzenlenenId, setDuzenlenenId] = useState<string | null>(null);
+
+  function calistir(eylem: () => Promise<EylemDurumu>) {
+    basla(async () => setMesaj(await eylem()));
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-base font-semibold text-zinc-900">
+          Değerlendirme soruları
+        </h2>
+        <span className="text-xs text-zinc-500">
+          {sorular.filter((s) => s.active).length} aktif / {sorular.length}{" "}
+          toplam
+        </span>
+      </div>
+
+      {mesaj?.basari ? (
+        <Bildirim tur="bilgi">{mesaj.basari}</Bildirim>
+      ) : null}
+      {mesaj?.hata ? <Bildirim tur="hata">{mesaj.hata}</Bildirim> : null}
+
+      {sorular.length === 0 ? (
+        <Kart className="border-dashed p-6 text-center">
+          <p className="text-sm text-zinc-600">
+            Bu atölyenin henüz sorusu yok.
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Puanlama yapılabilmesi için en az bir soru gerekir.
+          </p>
+        </Kart>
+      ) : (
+        <ol className="space-y-2">
+          {sorular.map((soru, sira) => (
+            <li key={soru.id}>
+              <Kart className="p-3">
+                {duzenlenenId === soru.id ? (
+                  <SoruDuzenleFormu
+                    soru={soru}
+                    kapat={() => setDuzenlenenId(null)}
+                  />
+                ) : (
+                  <div className="flex flex-wrap items-start gap-3">
+                    <span className="mt-0.5 w-6 shrink-0 text-sm tabular-nums text-zinc-400">
+                      {sira + 1}.
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={
+                          soru.active
+                            ? "text-sm text-zinc-900"
+                            : "text-sm text-zinc-400 line-through"
+                        }
+                      >
+                        {soru.text}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {soru.active ? null : <Rozet tur="pasif">Pasif</Rozet>}
+                        {soru.kullanimSayisi > 0 ? (
+                          <span className="text-xs text-zinc-500">
+                            {soru.kullanimSayisi} değerlendirmede kullanıldı
+                          </span>
+                        ) : (
+                          <span className="text-xs text-zinc-400">
+                            Henüz kullanılmadı
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap items-center gap-1">
+                      <Buton
+                        tur="sade"
+                        className="px-2"
+                        title="Yukarı taşı"
+                        aria-label="Yukarı taşı"
+                        disabled={bekliyor || sira === 0}
+                        onClick={() =>
+                          calistir(
+                            soruSiraDegistir.bind(null, soru.id, "yukari"),
+                          )
+                        }
+                      >
+                        ↑
+                      </Buton>
+                      <Buton
+                        tur="sade"
+                        className="px-2"
+                        title="Aşağı taşı"
+                        aria-label="Aşağı taşı"
+                        disabled={bekliyor || sira === sorular.length - 1}
+                        onClick={() =>
+                          calistir(
+                            soruSiraDegistir.bind(null, soru.id, "asagi"),
+                          )
+                        }
+                      >
+                        ↓
+                      </Buton>
+                      <Buton
+                        tur="sade"
+                        disabled={bekliyor}
+                        onClick={() => setDuzenlenenId(soru.id)}
+                      >
+                        Düzenle
+                      </Buton>
+                      <Buton
+                        tur="sade"
+                        disabled={bekliyor}
+                        onClick={() =>
+                          calistir(soruDurumDegistir.bind(null, soru.id))
+                        }
+                      >
+                        {soru.active ? "Pasife al" : "Aktifleştir"}
+                      </Buton>
+                      <Buton
+                        tur="tehlike"
+                        disabled={bekliyor}
+                        onClick={() => {
+                          const onay =
+                            soru.kullanimSayisi > 0
+                              ? `Bu soru ${soru.kullanimSayisi} değerlendirmede kullanılmış. Geçmiş kayıtlar korunacağı için silinmeyecek, pasife alınacak. Devam edilsin mi?`
+                              : "Soru silinecek. Devam edilsin mi?";
+                          if (window.confirm(onay)) {
+                            calistir(soruSil.bind(null, soru.id));
+                          }
+                        }}
+                      >
+                        Sil
+                      </Buton>
+                    </div>
+                  </div>
+                )}
+              </Kart>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <SoruEkleFormu atolyeId={atolyeId} />
+    </div>
+  );
+}
+
+function GonderButonu({ etiket }: { etiket: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <Buton type="submit" disabled={pending}>
+      {pending ? "Kaydediliyor…" : etiket}
+    </Buton>
+  );
+}
+
+function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
+  const [durum, eylem] = useActionState<EylemDurumu, FormData>(
+    soruEkle.bind(null, atolyeId),
+    {},
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (durum.basari) formRef.current?.reset();
+  }, [durum.basari]);
+
+  return (
+    <Kart className="p-4">
+      <form ref={formRef} action={eylem} className="space-y-3">
+        <Alan etiket="Yeni soru" hata={durum.alanHatalari?.text}>
+          <CokSatirli
+            name="text"
+            rows={2}
+            placeholder="Örnek: Atölye ve etkinliklere ilgi gösterir."
+            required
+          />
+        </Alan>
+        <GonderButonu etiket="Soru ekle" />
+      </form>
+    </Kart>
+  );
+}
+
+function SoruDuzenleFormu({
+  soru,
+  kapat,
+}: {
+  soru: SoruSatiri;
+  kapat: () => void;
+}) {
+  const [durum, eylem] = useActionState<EylemDurumu, FormData>(
+    soruGuncelle.bind(null, soru.id),
+    {},
+  );
+
+  useEffect(() => {
+    if (durum.basari) kapat();
+  }, [durum.basari, kapat]);
+
+  return (
+    <form action={eylem} className="space-y-3">
+      <Alan etiket="Soru metni" hata={durum.alanHatalari?.text}>
+        <CokSatirli name="text" rows={2} defaultValue={soru.text} autoFocus />
+      </Alan>
+
+      {soru.kullanimSayisi > 0 ? (
+        <p className="text-xs text-zinc-500">
+          Bu soru {soru.kullanimSayisi} değerlendirmede kullanılmış. Metni
+          değiştirmek geçmiş değerlendirmeleri etkilemez; onlar o gün sorulan
+          metni gösterir.
+        </p>
+      ) : null}
+
+      <div className="flex gap-2">
+        <GonderButonu etiket="Kaydet" />
+        <Buton type="button" tur="ikincil" onClick={kapat}>
+          Vazgeç
+        </Buton>
+      </div>
+    </form>
+  );
+}

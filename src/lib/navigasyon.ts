@@ -21,13 +21,13 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Atölye çeşitleri",
     yol: "/koordinator/atolyeler",
-    hazir: false,
+    hazir: true,
     paket: "P3",
   },
   {
     etiket: "Değerlendirme soruları",
     yol: "/koordinator/sorular",
-    hazir: false,
+    hazir: true,
     paket: "P3",
   },
   {

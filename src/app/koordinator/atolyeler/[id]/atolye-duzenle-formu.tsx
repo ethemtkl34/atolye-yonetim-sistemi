@@ -1,0 +1,65 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { Alan, Bildirim, Buton, CokSatirli, Girdi } from "@/components/ui";
+import { atolyeGuncelle, type EylemDurumu } from "../actions";
+
+function KaydetButonu() {
+  const { pending } = useFormStatus();
+  return (
+    <Buton type="submit" disabled={pending}>
+      {pending ? "Kaydediliyor…" : "Kaydet"}
+    </Buton>
+  );
+}
+
+export function AtolyeDuzenleFormu({
+  atolye,
+}: {
+  atolye: { id: string; name: string; description: string | null };
+}) {
+  const [acik, setAcik] = useState(false);
+  const [durum, eylem] = useActionState<EylemDurumu, FormData>(
+    atolyeGuncelle.bind(null, atolye.id),
+    {},
+  );
+
+  if (!acik) {
+    return (
+      <div className="space-y-2">
+        {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
+        <Buton tur="ikincil" onClick={() => setAcik(true)}>
+          Atölye bilgilerini düzenle
+        </Buton>
+      </div>
+    );
+  }
+
+  return (
+    <form action={eylem} className="space-y-4">
+      <Alan etiket="Atölye adı" hata={durum.alanHatalari?.name}>
+        <Girdi name="name" defaultValue={atolye.name} autoFocus required />
+      </Alan>
+
+      <Alan
+        etiket="Açıklama"
+        ipucu="İsteğe bağlı."
+        hata={durum.alanHatalari?.description}
+      >
+        <CokSatirli
+          name="description"
+          rows={2}
+          defaultValue={atolye.description ?? ""}
+        />
+      </Alan>
+
+      <div className="flex gap-2">
+        <KaydetButonu />
+        <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
+          Vazgeç
+        </Buton>
+      </div>
+    </form>
+  );
+}
