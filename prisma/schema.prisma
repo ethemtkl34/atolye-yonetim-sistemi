@@ -1,7 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Atölye Yönetim Sistemi — veri modeli
+//
+// Model ve alan adları İngilizce, enum değerleri ise doküman diliyle birebir
+// eşleşsin diye Türkçe. Her tasarım kararının karşılığı docs/PROJECT_SPEC.md
+// içindeki madde numarasıyla birlikte yazıldı.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +11,490 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enum'lar
+// ---------------------------------------------------------------------------
+
+/// §3 — Admin, eğitmen ve koordinatör tek bir tam yetkili rolde birleşir.
+enum Role {
+  KOORDINATOR
+  STAJYER
+}
+
+/// §4.3
+enum TermStatus {
+  TASLAK
+  KAYIT_ALIYOR
+  DEVAM_EDIYOR
+  TAMAMLANDI
+  ARSIVLENDI
+}
+
+/// §5.3
+enum ClubStatus {
+  TASLAK
+  KAYIT_ALIYOR
+  TAMAMLANDI
+  IPTAL_EDILDI
+  ARSIVLENDI
+}
+
+/// §2.3 — Programlar yalnızca hafta sonu yapılır.
+enum Day {
+  CUMARTESI
+  PAZAR
+}
+
+/// §2.3 — Atölyelerin dakika bazlı saati tutulmaz (§14), yalnızca yarım gün.
+enum TimeSlot {
+  OGLEDEN_ONCE
+  OGLEDEN_SONRA
+}
+
+enum GuardianType {
+  ANNE
+  BABA
+}
+
+enum EnrollmentStatus {
+  AKTIF
+  IPTAL
+}
+
+// ---------------------------------------------------------------------------
+// Kullanıcılar
+// ---------------------------------------------------------------------------
+
+/// Koordinatör ve stajyer aynı tabloda tutulur; ayrım `role` alanındadır.
+/// Stajyerin kendi hesabı olması gerekiyor çünkü puanlamayı kendisi giriyor.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  /// §8 — Stajyer ataması kayıt bazındadır, öğrenci profiline bağlı değildir.
+  assignedEnrollments Enrollment[] @relation("AtananStajyer")
+  enteredScores       Score[]      @relation("PuanlamayiGiren")
+  editedReports       Report[]     @relation("RaporuDuzenleyen")
+
+  @@index([role, active])
+}
+
+// ---------------------------------------------------------------------------
+// Atölye kataloğu ve değerlendirme soruları
+// ---------------------------------------------------------------------------
+
+/// §2.1 — Kurumun tekrar kullandığı ana atölye tanımı.
+model WorkshopType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  /// Pasife alınan atölye yeni programlarda seçilemez ama geçmişte kalır.
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions     Question[]
+  termWorkshops TermWorkshop[]
+  clubWorkshops ClubWorkshop[]
+  sessions      Session[]
+
+  @@index([active, sortOrder])
+}
+
+/// §9.1 — Her atölye çeşidinin kendine ait, bağımsız düzenlenebilen soru seti.
+model Question {
+  id             String       @id @default(cuid())
+  workshopTypeId String
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Cascade)
+  text           String
+  sortOrder      Int          @default(0)
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  answers ScoreAnswer[]
+
+  @@index([workshopTypeId, active, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Dönem
+// ---------------------------------------------------------------------------
+
+/// §2.2 — 10 eğitim haftasından oluşan ana program.
+model Term {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  status      TermStatus @default(TASLAK)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workshops TermWorkshop[]
+  weeks     TermWeek[]
+  groups    Group[]
+
+  @@index([status])
+}
+
+/// §13.3 — Aynı dönemin bütün grupları aynı 5 atölyeyi kullanır; bu yüzden
+/// atölye seçimi gruba değil döneme bağlıdır. "Tam 5 adet" kuralı uygulama
+/// katmanında doğrulanır (veritabanı satır sayısı kısıtlayamaz).
+model TermWorkshop {
+  id             String       @id @default(cuid())
+  termId         String
+  term           Term         @relation(fields: [termId], references: [id], onDelete: Cascade)
+  workshopTypeId String
+  /// Restrict: bir programda kullanılan atölye çeşidi silinemez.
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+  sortOrder      Int          @default(0)
+
+  @@unique([termId, workshopTypeId])
+  @@index([termId, sortOrder])
+}
+
+/// §2.2 — Eğitim yapılacak 10 tarih. Tatil haftaları seçilmediği için takvim
+/// 11–12 haftaya uzayabilir; bu yüzden tarihler tek tek tutulur, aralık değil.
+model TermWeek {
+  id         String   @id @default(cuid())
+  termId     String
+  term       Term     @relation(fields: [termId], references: [id], onDelete: Cascade)
+  weekNumber Int
+  date       DateTime @db.Date
+
+  sessions Session[]
+
+  @@unique([termId, weekNumber])
+  @@unique([termId, date])
+  @@index([termId, weekNumber])
+}
+
+// ---------------------------------------------------------------------------
+// Kulüp
+// ---------------------------------------------------------------------------
+
+/// §2.5 — Dönemden bağımsız, tek yarım günlük hazır program.
+model Club {
+  id          String     @id @default(cuid())
+  name        String
+  date        DateTime   @db.Date
+  description String?
+  status      ClubStatus @default(TASLAK)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workshops ClubWorkshop[]
+  groups    Group[]
+
+  @@index([status])
+}
+
+/// §13.6 — Bir kulüpte tam 3 atölye bulunur (uygulama katmanında doğrulanır).
+model ClubWorkshop {
+  id             String       @id @default(cuid())
+  clubId         String
+  club           Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  workshopTypeId String
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+  sortOrder      Int          @default(0)
+
+  @@unique([clubId, workshopTypeId])
+  @@index([clubId, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Grup
+// ---------------------------------------------------------------------------
+
+/// §2.3 — Bir döneme VEYA bir kulübe bağlı öğrenci topluluğu.
+///
+/// `termId` ve `clubId` alanlarından tam olarak biri dolu olur; bu kural
+/// migration içinde eklenen `Group_term_xor_club` CHECK kısıtıyla veritabanı
+/// seviyesinde zorlanır. Tek tablo kullanılmasının sebebi kayıt, oturum ve
+/// puanlama mantığının dönem ve kulüp için aynı kod yolundan yürümesi.
+model Group {
+  id     String  @id @default(cuid())
+  termId String?
+  term   Term?   @relation(fields: [termId], references: [id], onDelete: Cascade)
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  name     String
+  day      Day
+  timeSlot TimeSlot
+  capacity Int
+
+  /// §13.5 — Dönem başladıktan sonra açılan grup geçmiş haftaları telafi
+  /// etmez. 4. haftada açılan gruba yalnızca 4–10 haftaları için oturum
+  /// üretilir. Kulüp grupları için her zaman 1'dir.
+  startWeekNumber Int @default(1)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollments Enrollment[]
+  sessions    Session[]
+
+  @@index([termId])
+  @@index([clubId])
+  @@index([day, timeSlot])
+}
+
+// ---------------------------------------------------------------------------
+// Öğrenci
+// ---------------------------------------------------------------------------
+
+/// §6.1 — Öğrenci sisteme bir kez eklenir, birden fazla programa kaydolabilir.
+model Student {
+  id        String    @id @default(cuid())
+  firstName String
+  lastName  String
+  birthDate DateTime? @db.Date
+  school    String?
+  grade     String?
+  notes     String?
+
+  /// §6.2 — Türkçe karakter duyarsız arama için normalize edilmiş ad soyad.
+  /// `normalizeArama()` ile üretilir; "Şule Çınar" → "sule cinar".
+  searchName String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guardians   Guardian[]
+  healthInfo  HealthInfo?
+  enrollments Enrollment[]
+  reports     Report[]
+
+  @@index([searchName])
+  @@index([lastName, firstName])
+}
+
+/// §6.1 — Anne ve baba bilgileri. En az bir ebeveyn telefonu zorunludur;
+/// bu kural uygulama katmanında doğrulanır (iki satırı birden kapsadığı için
+/// tek satırlık bir veritabanı kısıtına sığmaz).
+model Guardian {
+  id        String       @id @default(cuid())
+  studentId String
+  student   Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type      GuardianType
+  fullName  String
+  phone     String?
+
+  /// §6.2 — Telefonla arama için yalnızca rakamlara indirgenmiş biçim.
+  searchPhone String?
+
+  @@unique([studentId, type])
+  @@index([searchPhone])
+}
+
+/// §6.1 — Sağlık ve özel durum bilgileri.
+///
+/// GİZLİLİK (§3.2): `internSafetyNote` dışındaki bütün alanlar stajyerden
+/// gizlidir. Bu, arayüzde saklamakla değil, stajyer rolündeki sorgularda bu
+/// alanların `select` listesine hiç alınmamasıyla sağlanır.
+model HealthInfo {
+  id        String  @id @default(cuid())
+  studentId String  @unique
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  allergies        String?
+  medications      String?
+  specialEducation String?
+  healthNotes      String?
+  emergencyInfo    String?
+
+  /// Stajyerin görebildiği TEK alan — kısa ve uygulanabilir güvenlik uyarısı.
+  internSafetyNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Kayıt
+// ---------------------------------------------------------------------------
+
+/// §2.6 — Öğrencinin bir dönem veya kulüp grubuna dahil edilmesi.
+/// Kayıt türü ayrı bir alan değildir; bağlı olduğu grubun döneme mi kulübe mi
+/// ait olduğundan türetilir.
+model Enrollment {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  /// §13.10 — Bir öğrenci aynı kayıt içinde yalnızca bir stajyere atanabilir.
+  /// SetNull: stajyer hesabı silinse de kayıt ve puanlama geçmişi korunur.
+  internId String?
+  intern   User?   @relation("AtananStajyer", fields: [internId], references: [id], onDelete: SetNull)
+
+  status    EnrollmentStatus @default(AKTIF)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  scores      Score[]
+  reportLinks ReportEnrollment[]
+
+  @@unique([studentId, groupId])
+  @@index([groupId, status])
+  @@index([internId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Oturum ve puanlama
+// ---------------------------------------------------------------------------
+
+/// §2.4 — Belirli bir eğitim gününde yapılan tek bir atölye.
+///
+/// Oturumlar grup açılırken fiziksel satır olarak üretilir (materyalize edilir):
+/// dönem grubu = 10 hafta × 5 atölye = 50 satır, kulüp grubu = 3 satır.
+/// Puanlama görevleri, eksik puanlama tespiti, katılım geçmişi ve raporlama
+/// bu tablodan tek bir sorguyla çıkar.
+model Session {
+  id             String       @id @default(cuid())
+  groupId        String
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  workshopTypeId String
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+
+  /// Kulüp oturumlarında boştur; kulübün tek tarihi vardır, hafta kavramı yok.
+  termWeekId String?
+  termWeek   TermWeek? @relation(fields: [termWeekId], references: [id], onDelete: Cascade)
+
+  date DateTime @db.Date
+
+  scores Score[]
+
+  @@unique([groupId, date, workshopTypeId])
+  @@index([groupId, date])
+  @@index([date])
+}
+
+/// §10 — Bir öğrencinin tek bir atölye oturumundaki değerlendirmesi.
+model Score {
+  id           String     @id @default(cuid())
+  sessionId    String
+  session      Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  /// §10.2 — Katılım her atölye için ayrı işaretlenir. `false` ise cevap
+  /// satırı yazılmaz ve oturum hiçbir ortalamaya dahil edilmez.
+  attended Boolean
+
+  scoredByUserId String?
+  scoredBy       User?   @relation("PuanlamayiGiren", fields: [scoredByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  /// §13.16 — Rapor güncelliği bu alandan türetilir: kapsamdaki puanların en
+  /// yeni `updatedAt` değeri raporun `generatedAt` değerinden sonraysa rapor
+  /// "Güncel değil" sayılır. Ayrı bir bayrak veya arka plan işi gerekmez.
+  updatedAt DateTime @updatedAt
+
+  answers ScoreAnswer[]
+
+  @@unique([sessionId, enrollmentId])
+  @@index([enrollmentId])
+  @@index([updatedAt])
+}
+
+/// §10.3 — Katıldı işaretli bir formda her soru için bir satır açılır.
+///
+/// İki durum kasten ayrılmıştır:
+///   satır yok                 → form eksik doldurulmuş
+///   satır var, `value` null   → "Değerlendirilemedi" (ortalamaya girmez)
+model ScoreAnswer {
+  id      String @id @default(cuid())
+  scoreId String
+  score   Score  @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+
+  /// §13.14 — Soru sonradan silinirse bu bağ kopar ama `questionTextSnapshot`
+  /// kalır; geçmiş değerlendirme o gün sorulan metinle görüntülenmeye devam
+  /// eder.
+  questionId String?
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+
+  /// Puanlama anındaki soru metni. Soru sonradan düzenlense bile değişmez.
+  questionTextSnapshot String
+
+  sortOrder Int @default(0)
+
+  /// §10.3 — 1–5 arası puan. `null` = Değerlendirilemedi.
+  value Int?
+
+  @@index([scoreId, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Rapor
+// ---------------------------------------------------------------------------
+
+/// §11 — Belirli bir anda üretilmiş öğrenci raporu.
+model Report {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  generatedAt DateTime @default(now())
+
+  /// Atölye bazlı sonuçlar ve genel değerlendirme metni. Rapor motorunun
+  /// analiz çıktısı ile üretilen metin birlikte saklanır; koordinatör metni
+  /// düzenlediğinde analiz kısmı bozulmaz.
+  bodyJson Json
+
+  editedByUserId String?
+  editedBy       User?     @relation("RaporuDuzenleyen", fields: [editedByUserId], references: [id], onDelete: SetNull)
+  editedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  enrollmentLinks ReportEnrollment[]
+  pdfs            ReportPdf[]
+
+  @@index([studentId, generatedAt])
+}
+
+/// §11.5 — Raporun hangi kayıtları kapsadığı. Bir rapor birden fazla dönem
+/// veya kulüp kaydını birlikte değerlendirebilir.
+model ReportEnrollment {
+  id           String     @id @default(cuid())
+  reportId     String
+  report       Report     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, enrollmentId])
+}
+
+/// §13.17 — Üretilmiş PDF'ler asla silinmez.
+///
+/// `onDelete: Restrict` bunu veritabanı seviyesinde zorlar: PDF'i olan bir
+/// rapor (dolayısıyla o öğrenci) silinemez. Öğrenciler zaten kalıcı olarak
+/// silinmemeli; silme ihtiyacı doğarsa arşivleme kullanılır.
+model ReportPdf {
+  id       String @id @default(cuid())
+  reportId String
+  report   Report @relation(fields: [reportId], references: [id], onDelete: Restrict)
+
+  fileUrl String
+
+  /// PDF üretildiği andaki rapor içeriğinin tam kopyası. Rapor sonradan
+  /// düzenlense bile PDF'in neye dayandığı geriye dönük görülebilir.
+  snapshotJson Json
+
+  createdAt DateTime @default(now())
+
+  @@index([reportId, createdAt])
 }

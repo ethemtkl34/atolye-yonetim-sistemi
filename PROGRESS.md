@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P1 — Prisma veri modeli ve seed
+**Şu an:** P2 — Kimlik doğrulama ve rol erişimi
 
 ---
 
@@ -12,8 +12,8 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | # | Paket | Durum | Bitti sayılma ölçütü |
 |---|---|---|---|
 | P0 | Proje iskeleti | ✅ Tamam | `npm run dev` çalışır, yerel Postgres ayakta |
-| P1 | Veri modeli ve seed | 🔨 Devam | 6 atölye + 60 soru veritabanında görünür |
-| P2 | Kimlik doğrulama ve rol erişimi | ⬜ Bekliyor | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
+| P1 | Veri modeli ve seed | ✅ Tamam | 6 atölye + 60 soru veritabanında görünür |
+| P2 | Kimlik doğrulama ve rol erişimi | 🔨 Devam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
 | P3 | Atölye çeşitleri ve sorular | ⬜ Bekliyor | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
 | P4 | Dönem, takvim ve gruplar | ⬜ Bekliyor | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
 | P5 | Öğrenci yönetimi | ⬜ Bekliyor | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
@@ -57,6 +57,43 @@ Yapılanlar:
 **Bilinen ve kabul edilen durum:** `npm audit` dev bağımlılıklarında (eslint,
 postcss zinciri) yüksek önemde uyarı veriyor. Bunlar üretim paketine girmiyor;
 düzeltmeleri eslint 10'a kırıcı geçiş gerektirdiği için P12'ye bırakıldı.
+
+### P1 — Veri modeli ve seed ✅
+
+18 tablo, 7 enum, ilk migration ve başlangıç verisi. Veritabanında doğrulandı:
+**6 atölye çeşidi, 60 değerlendirme sorusu, 3 kullanıcı hesabı.** Seed
+idempotent — ikinci çalıştırmada kopya üretmiyor ve kurumun düzenlediği
+soruları geri getirmiyor.
+
+Şemadaki kritik kararlar (gerekçeleriyle `prisma/schema.prisma` içinde yazılı):
+
+- **Oturumlar materyalize ediliyor.** Dönem grubu 50, kulüp grubu 3 `Session`
+  satırı alır. Puanlama görevleri, eksik puanlama ve katılım geçmişi tek
+  sorguyla çıkar.
+- **`Group.startWeekNumber`** — sonradan açılan grubun geçmiş haftaları telafi
+  etmemesi (§13.5) bu tek alanla çözülüyor.
+- **`ScoreAnswer.questionTextSnapshot`** — soru sonradan değişse veya silinse
+  bile geçmiş değerlendirme o günkü metni gösteriyor (§13.14).
+- **`value Int?`** — `null` "Değerlendirilemedi" demek; "satır yok" ise form
+  eksik demek. İki durum kasten ayrı (§10.3).
+- **Rapor güncelliği türetiliyor**, saklanmıyor — puan `updatedAt` ile rapor
+  `generatedAt` karşılaştırılıyor (§13.16). Trigger veya arka plan işi yok.
+- **`ReportPdf` → `onDelete: Restrict`** — eski PDF'lerin silinemezliği (§13.17)
+  veritabanı seviyesinde zorlanıyor.
+
+Prisma'nın ifade edemediği 5 kural migration'a elle CHECK kısıtı olarak
+eklendi ve veritabanında doğrulandı: grup dönem XOR kulüp, kontenjan > 0,
+hafta numarası 1–10, başlangıç haftası 1–10, puan 1–5 veya NULL.
+
+`src/lib/scoring.ts` — ortalama, kontenjan ve rapor güncelliği hesaplarının
+tek kaynağı. Saf fonksiyonlar, veritabanı bilmiyorlar. **23 test geçiyor**,
+aralarında `docs/examples/sample-scorecard.md` dosyasındaki 4,3 ortalamasının
+birebir üretildiği doğrulaması da var.
+
+**Sürüm sürprizi:** Prisma 7 artık driver adapter zorunlu kılıyor —
+`new PrismaClient()` tek başına bağlanmıyor, `@prisma/adapter-pg` üzerinden
+bağlantı adresi açıkça veriliyor. `src/lib/db.ts` ve `prisma/seed.ts` buna
+göre yazıldı.
 
 ---
 
