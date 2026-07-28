@@ -9,7 +9,7 @@ import {
   doldurulmusFormlar,
   kayitIlerlemeleri,
 } from "@/lib/puanlama-verisi";
-import { raporOzetleri } from "@/lib/rapor-verisi";
+import { pdfGecmisi, raporOzetleri } from "@/lib/rapor-verisi";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
@@ -62,11 +62,13 @@ export default async function OgrenciProfilSayfasi(
 
   // §6.3.7–8 — Katılım ve puanlama geçmişi. Filtreli tam geçmiş ekranı (§6.4)
   // P9'da geliyor; profilde en son kayıtlar ve kayıt bazlı ilerleme duruyor.
-  const [katilimGecmisi, puanlamaIlerlemeleri, raporlar] = await Promise.all([
-    doldurulmusFormlar({ studentId: id, enFazla: 30 }),
-    kayitIlerlemeleri({ studentId: id }),
-    raporOzetleri({ ogrenciId: id }),
-  ]);
+  const [katilimGecmisi, puanlamaIlerlemeleri, raporlar, pdfler] =
+    await Promise.all([
+      doldurulmusFormlar({ studentId: id, enFazla: 30 }),
+      kayitIlerlemeleri({ studentId: id }),
+      raporOzetleri({ ogrenciId: id }),
+      pdfGecmisi({ ogrenciId: id }),
+    ]);
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");
@@ -423,11 +425,53 @@ export default async function OgrenciProfilSayfasi(
         )}
       </div>
 
-      {/* 11. PDF rapor geçmişi — P10 */}
-      <BosDurum
-        baslik="PDF rapor geçmişi boş."
-        aciklama="PDF dışa aktarma ve rapor geçmişi P10’da bu profile eklenecek."
-      />
+      {/* 11. PDF rapor geçmişi */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-zinc-900">
+          PDF rapor geçmişi
+        </h2>
+
+        {pdfler.length === 0 ? (
+          <BosDurum
+            baslik="Henüz PDF oluşturulmamış."
+            aciklama="Bir raporu açıp “PDF oluştur” düğmesini kullanın. Üretilen PDF’ler burada kalıcı olarak saklanır."
+          />
+        ) : (
+          <Kart className="divide-y divide-zinc-100">
+            {pdfler.map((pdf) => (
+              <div
+                key={pdf.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm text-zinc-800">
+                    {tarihBicimle(pdf.olusturmaZamani)} tarihli PDF
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {tarihBicimle(pdf.raporUretimZamani)} raporundan üretildi
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/koordinator/raporlar/${pdf.raporId}`}
+                    className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline"
+                  >
+                    Raporu gör
+                  </Link>
+                  <a
+                    href={pdf.adres}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-marka-700 hover:underline"
+                  >
+                    PDF’i aç
+                  </a>
+                </div>
+              </div>
+            ))}
+          </Kart>
+        )}
+      </div>
     </div>
   );
 }

@@ -101,6 +101,45 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
 }
 
 /**
+ * §11.5 — Raporun o anki hâlinden PDF üretir.
+ *
+ * PDF ikili verisi saklanmaz; üretim anındaki rapor gövdesi `snapshotJson`
+ * içine kopyalanır ve belge indirilirken bu kopyadan çizilir. Rapor sonradan
+ * düzenlense bile eski PDF'in içeriği değişmez (§13.17).
+ */
+export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
+  await koordinatorZorunlu();
+
+  const rapor = await db.report.findUnique({
+    where: { id: raporId },
+    select: { id: true, studentId: true, bodyJson: true },
+  });
+
+  if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  const pdf = await db.reportPdf.create({
+    data: {
+      reportId: rapor.id,
+      // Adres kaydın kendisinden türetiliyor; nesne deposuna geçilirse
+      // yalnızca burası değişir.
+      fileUrl: "",
+      snapshotJson: rapor.bodyJson as unknown as object,
+    },
+    select: { id: true },
+  });
+
+  await db.reportPdf.update({
+    where: { id: pdf.id },
+    data: { fileUrl: `/api/rapor-pdf/${pdf.id}` },
+  });
+
+  revalidatePath(`/koordinator/raporlar/${raporId}`);
+  revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
+
+  return { basari: "PDF oluşturuldu ve rapor geçmişine eklendi." };
+}
+
+/**
  * §11.4 — Koordinatör otomatik üretilen metni düzenleyebilir.
  *
  * Yalnızca metin katmanı değişir; analiz çıktısı olduğu gibi korunur.

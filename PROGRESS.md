@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P10 — PDF ve rapor geçmişi
+**Şu an:** P11 — Dashboard ve arşiv
 
 ---
 
@@ -21,7 +21,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P7 | Puanlama | ✅ Tamam | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ✅ Tamam | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ✅ Tamam | Rapor üretilir, puan değişince "Güncel değil" olur |
-| P10 | PDF ve rapor geçmişi | ⬜ Bekliyor | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
+| P10 | PDF ve rapor geçmişi | ✅ Tamam | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
 | P11 | Dashboard ve arşiv | ⬜ Bekliyor | Dashboard sayıları listelerle birebir uyuşur |
 | P12 | Yayına alma | ⬜ Bekliyor | 16 kabul ölçütü gerçek ortamda doğrulanır |
 | P13 | AI rapor metni *(sonraya bırakıldı)* | ⬜ Bekliyor | Metin katmanı Claude API ile üretilir, şablon yedek kalır |
@@ -479,6 +479,49 @@ Kararlar:
   ilişkili olduğu program ve atölyelerden oluşuyor.
 
 Rapor motorunun 13 testi var; toplam **91 test** geçiyor.
+
+### P10 — PDF ve rapor geçmişi ✅
+
+Rapor PDF olarak dışa aktarılıyor; üretilen her PDF öğrencinin rapor
+geçmişinde kalıcı olarak duruyor.
+
+**Doğrulandı:**
+
+| Kontrol | Sonuç |
+|---|---|
+| Türkçe karakterler (gözle) | `Şule Çınar — Öğrenci Raporu`, `Değerlendirilen soru`, `Şule’nin` — hepsi doğru |
+| Gömülü font | `WGHZXQ+NotoSans-Regular` ve `KRTFYO+NotoSans-Bold` alt kümeleri PDF içinde |
+| Belge künyesi | Başlık ve yazar UTF-16 olarak doğru (`Ş` = U+015E) |
+| PDF üretildikten sonra rapor metni değiştirildi | PDF yeniden indirildi, **bayt bayt aynı** (24.966) — içerik değişmedi |
+| İkinci PDF üretimi | İki PDF de listede; eskisi silinmedi (§13.17) |
+| Oturumsuz erişim | `403` — belge yalnızca koordinatöre açık |
+
+Kararlar:
+
+- **PDF ikili verisi saklanmıyor.** `ReportPdf.snapshotJson` üretim anındaki
+  rapor gövdesinin tam kopyasını tutuyor ve belge her indirmede bu kopyadan
+  yeniden çiziliyor. Sonuç §13.17 ile birebir aynı: rapor sonradan
+  düzenlense bile eski PDF'in içeriği değişmiyor. Kazanç, dosya deposuna
+  bağımlılığın kalkması — sistem yerelde ve üretimde aynı şekilde çalışıyor.
+  P12'de nesne deposuna geçilmek istenirse yalnızca `fileUrl` değişir.
+- **Font depoya dahil edildi.** `public/fonts/NotoSans-{Regular,Bold}.ttf`
+  (SIL Open Font License). `@react-pdf/renderer` yalnızca standart PDF
+  fontlarıyla geliyor ve bunlarda `ş, ğ, ı, İ` glifleri yok — gömülü font
+  olmadan bu harfler PDF'ten düşerdi. Font çalışma anında indirilmiyor;
+  yayın ortamında ağ erişimine bağımlılık istenmedi.
+- **İndirme rotası Server Action değil**, `/api/rapor-pdf/[id]`. Bu yüzden
+  yetki kontrolü rotanın içinde elle yapılıyor; koordinatör olmayan istek
+  403 alıyor.
+- **Dosya adı normalize ediliyor** (`sule-cinar-rapor-2026-07-28.pdf`) —
+  bazı tarayıcı ve işletim sistemleri indirilen dosya adındaki Türkçe
+  karakterleri bozuyor.
+- **Türkçe kelimeler tirelenmiyor**: `Font.registerHyphenationCallback` ile
+  satır sonu bölmesi kapatıldı.
+
+**Bilinen sınır:** Görsel doğrulama PDF'in ilk sayfası üzerinden yapıldı
+(macOS `qlmanage` yalnızca ilk sayfayı üretiyor). İkinci sayfanın varlığı ve
+sayfa numarası altbilgisi belge yapısından doğrulandı, göz kontrolü
+yapılmadı.
 
 ---
 

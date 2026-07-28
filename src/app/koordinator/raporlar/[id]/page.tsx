@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
-import { raporDetayi } from "@/lib/rapor-verisi";
+import { pdfGecmisi, raporDetayi } from "@/lib/rapor-verisi";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { tarihBicimle } from "@/lib/tarih";
 import { RaporDuzenleyici } from "./rapor-duzenleyici";
@@ -19,7 +19,10 @@ export default async function RaporSayfasi(
   await koordinatorZorunlu();
   const { id } = await props.params;
 
-  const rapor = await raporDetayi(id);
+  const [rapor, pdfler] = await Promise.all([
+    raporDetayi(id),
+    pdfGecmisi({ raporId: id }),
+  ]);
   if (!rapor) notFound();
 
   const { ozet, govde } = rapor;
@@ -140,6 +143,39 @@ export default async function RaporSayfasi(
         metin={govde.metin}
         guncel={ozet.guncel}
       />
+
+      {/* §11.5 + §13.17 — Bu rapordan üretilmiş PDF'ler */}
+      {pdfler.length > 0 ? (
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-zinc-900">
+            Bu rapordan üretilen PDF’ler
+          </h2>
+          <Kart className="divide-y divide-zinc-100">
+            {pdfler.map((pdf) => (
+              <div
+                key={pdf.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+              >
+                <p className="text-sm text-zinc-700">
+                  {tarihBicimle(pdf.olusturmaZamani)} tarihinde oluşturuldu
+                </p>
+                <a
+                  href={pdf.adres}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-marka-700 hover:underline"
+                >
+                  PDF’i aç
+                </a>
+              </div>
+            ))}
+          </Kart>
+          <p className="text-xs text-zinc-500">
+            Üretilmiş PDF’ler silinmez; içerikleri üretildikleri andaki hâliyle
+            kalır.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

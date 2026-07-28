@@ -251,6 +251,45 @@ export async function raporOzetleri(kosul: {
   });
 }
 
+export type PdfKaydi = {
+  id: string;
+  adres: string;
+  olusturmaZamani: Date;
+  raporId: string;
+  raporUretimZamani: Date;
+};
+
+/**
+ * §13.17 — Üretilmiş PDF'ler asla silinmez; rapor yeniden üretilse de eski
+ * belgeler listede kalır. Sıralama en yeniden eskiye.
+ */
+export async function pdfGecmisi(kosul: {
+  raporId?: string;
+  ogrenciId?: string;
+}): Promise<PdfKaydi[]> {
+  const pdfler = await db.reportPdf.findMany({
+    where: {
+      ...(kosul.raporId ? { reportId: kosul.raporId } : {}),
+      ...(kosul.ogrenciId ? { report: { studentId: kosul.ogrenciId } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      fileUrl: true,
+      createdAt: true,
+      report: { select: { id: true, generatedAt: true } },
+    },
+  });
+
+  return pdfler.map((pdf) => ({
+    id: pdf.id,
+    adres: pdf.fileUrl,
+    olusturmaZamani: pdf.createdAt,
+    raporId: pdf.report.id,
+    raporUretimZamani: pdf.report.generatedAt,
+  }));
+}
+
 export type RaporDetayi = {
   ozet: RaporOzeti;
   govde: RaporGovdesi;

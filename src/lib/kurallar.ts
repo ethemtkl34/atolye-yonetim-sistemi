@@ -15,6 +15,12 @@ export const DONEM_ATOLYE_SAYISI = 5;
 /** §13.6 — Bir kulüp tek yarım gün sürer ve 3 atölye içerir. */
 export const KULUP_ATOLYE_SAYISI = 3;
 
+/**
+ * §11.5 — PDF raporda ve belge üst bilgisinde görünen kurum adı.
+ * Kurumun resmî yazımı P12'de (yayına alma) teyit edilecek.
+ */
+export const KURUM_ADI = "TÜZDER";
+
 /** §10.3 — Puanlama ölçeğinin alt ve üst sınırı. */
 export const EN_DUSUK_PUAN = 1;
 export const EN_YUKSEK_PUAN = 5;

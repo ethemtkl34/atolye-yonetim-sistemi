@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { Bildirim, Buton, CokSatirli, Kart } from "@/components/ui";
 import type { RaporMetni } from "@/lib/report-engine";
 import {
+  pdfOlustur,
   raporMetniDuzenle,
   raporYenidenUret,
   type EylemDurumu,
@@ -31,23 +32,41 @@ export function RaporDuzenleyici({
   );
   const [duzenleniyor, setDuzenleniyor] = useState(false);
   const [yenidenUretiliyor, basla] = useTransition();
-  const [uretimHatasi, setUretimHatasi] = useState<string | null>(null);
+  const [pdfUretiliyor, pdfBasla] = useTransition();
+  const [islemSonucu, setIslemSonucu] = useState<EylemDurumu | null>(null);
 
   if (!duzenleniyor) {
     return (
       <div className="space-y-4">
         {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
-        {uretimHatasi ? <Bildirim tur="hata">{uretimHatasi}</Bildirim> : null}
+        {islemSonucu?.hata ? (
+          <Bildirim tur="hata">{islemSonucu.hata}</Bildirim>
+        ) : null}
+        {islemSonucu?.basari ? (
+          <Bildirim tur="basari">{islemSonucu.basari}</Bildirim>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
-          <Buton onClick={() => setDuzenleniyor(true)}>Metni düzenle</Buton>
+          <Buton
+            disabled={pdfUretiliyor}
+            onClick={() =>
+              pdfBasla(async () => {
+                setIslemSonucu(await pdfOlustur(raporId));
+              })
+            }
+          >
+            {pdfUretiliyor ? "PDF hazırlanıyor…" : "PDF oluştur"}
+          </Buton>
+          <Buton tur="ikincil" onClick={() => setDuzenleniyor(true)}>
+            Metni düzenle
+          </Buton>
           <Buton
             tur={guncel ? "ikincil" : "birincil"}
             disabled={yenidenUretiliyor}
             onClick={() =>
               basla(async () => {
                 const sonuc = await raporYenidenUret(raporId);
-                if (sonuc?.hata) setUretimHatasi(sonuc.hata);
+                if (sonuc?.hata) setIslemSonucu(sonuc);
               })
             }
           >
