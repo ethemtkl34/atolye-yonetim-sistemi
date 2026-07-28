@@ -1,18 +1,58 @@
 @import "tailwindcss";
 
 /*
- * Sade kurumsal yönetim paneli teması.
- * Açık tema tek biçim olarak sabitlendi — puanlama ve rapor ekranlarının
- * her cihazda aynı görünmesi, koyu tema desteğinden daha önemli.
+ * TÜZDER kurumsal teması.
+ *
+ * Renkler kurumun kendi sitesinden (tuzder.org) alındı: sitenin CSS'inde
+ * ana renk `--e-global-color-primary: #A3185B` olarak tanımlı, turuncu
+ * #E94D1A ise çağrı düğmelerinde ve rozetlerde kullanılıyor. Logodaki yeşil
+ * ve turkuaz da ikincil vurgu olarak buraya alındı.
+ *
+ * Açık tema tek biçim olarak sabit — puanlama ve rapor ekranlarının her
+ * cihazda aynı görünmesi, koyu tema desteğinden daha önemli.
+ *
+ * Kontrast notu: küçük metinde beyaz üstüne yalnızca marka-600 (7,4:1) ve
+ * vurgu-700 (5,2:1) kullanılır. Turuncu vurgu-600 beyaz üstünde 3,8:1'de
+ * kaldığı için metin değil, yalnızca dolgu ve şerit olarak kullanılıyor.
  */
 @theme inline {
   --font-sans: var(--font-geist-sans);
 
-  /* Kurum ana rengi — bağlantı, birincil buton ve aktif menü öğesi. */
-  --color-marka-50: #eff6ff;
-  --color-marka-100: #dbeafe;
-  --color-marka-600: #2563eb;
-  --color-marka-700: #1d4ed8;
+  /* Ana kurum rengi (mürdüm) — bağlantı, birincil buton, aktif menü. */
+  --color-marka-50: #fdf2f7;
+  --color-marka-100: #fce7f1;
+  --color-marka-200: #f9cfe1;
+  --color-marka-300: #f2a6c6;
+  --color-marka-400: #e56fa2;
+  --color-marka-500: #c93b7b;
+  --color-marka-600: #a3185b;
+  --color-marka-700: #86134b;
+  --color-marka-800: #6e113f;
+  --color-marka-900: #5b1035;
+
+  /* Turuncu vurgu — dikkat isteyen sayı ve rozetler. */
+  --color-vurgu-50: #fef4ef;
+  --color-vurgu-100: #fde3d6;
+  --color-vurgu-200: #fbc7ae;
+  --color-vurgu-500: #f26a3d;
+  --color-vurgu-600: #e94d1a;
+  --color-vurgu-700: #c43d12;
+  --color-vurgu-800: #9c310e;
+
+  /* Logodan gelen ikincil renkler — kart ve grafik ayrımı için. */
+  --color-yaprak-500: #94b422;
+  --color-yaprak-700: #6d840f;
+  --color-deniz-500: #009cb3;
+  --color-deniz-700: #00707f;
+
+  /*
+   * Sayfa zemini: nötr gri yerine markadan hafifçe ısıtılmış yüzey.
+   * Kartlar beyaz kaldığı için derinlik bu iki tonun farkından geliyor;
+   * fark çok azaltılırsa ekran yeniden "upuzun beyaz" görünüyor.
+   */
+  --color-yuzey-50: #f6f0f3;
+  --color-yuzey-100: #efe6ea;
+  --color-yuzey-200: #e3d5db;
 }
 
 html {

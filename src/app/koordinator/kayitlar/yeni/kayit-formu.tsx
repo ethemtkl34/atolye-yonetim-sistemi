@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { Alan, Bildirim, Buton, Kart } from "@/components/ui";
+import { Alan, Bildirim, Buton, Kart, butonStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { kayitOlustur, type EylemDurumu } from "../actions";
 
@@ -33,7 +33,7 @@ export type StajyerSecenegi = {
 };
 
 const SECIM_STILI =
-  "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-zinc-50 disabled:text-zinc-400";
+  "w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-yuzey-50 disabled:text-zinc-400";
 
 function KaydetButonu({
   uyariVar,
@@ -188,13 +188,13 @@ export function KayitFormu({
             </Alan>
 
             {secilenGrup ? (
-              <div className="rounded-md bg-zinc-50 p-3">
+              <div className="rounded-md bg-yuzey-50 p-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-1.5 w-40 overflow-hidden rounded-full bg-zinc-200">
+                  <div className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200">
                     <div
                       className={cn(
                         "h-full",
-                        secilenGrup.dolu ? "bg-amber-500" : "bg-marka-600",
+                        secilenGrup.dolu ? "bg-vurgu-600" : "bg-marka-600",
                       )}
                       style={{
                         width: `${Math.min(100, (secilenGrup.doluluk / secilenGrup.kapasite) * 100)}%`,
@@ -212,7 +212,7 @@ export function KayitFormu({
                 </p>
 
                 {secilenGrup.baslangicHaftasi > 1 ? (
-                  <p className="mt-1 text-xs text-amber-700">
+                  <p className="mt-1 text-xs text-vurgu-700">
                     Bu grup dönem başladıktan sonra açıldı;{" "}
                     {secilenGrup.baslangicHaftasi}. haftadan itibaren katılıyor
                     ve önceki haftalar telafi edilmiyor.
@@ -263,9 +263,9 @@ export function KayitFormu({
       </Kart>
 
       {uyariVar ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
-          <p className="text-sm font-medium text-amber-900">Çakışma uyarısı</p>
-          <p className="mt-1 text-sm text-amber-800">{durum.uyari}</p>
+        <div className="rounded-md border border-vurgu-200 bg-vurgu-50 p-3">
+          <p className="text-sm font-medium text-vurgu-800">Çakışma uyarısı</p>
+          <p className="mt-1 text-sm text-vurgu-700">{durum.uyari}</p>
         </div>
       ) : null}
 
@@ -278,7 +278,7 @@ export function KayitFormu({
         />
         <Link
           href={`/koordinator/ogrenciler/${ogrenci.id}`}
-          className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          className={butonStili("ikincil")}
         >
           Vazgeç
         </Link>

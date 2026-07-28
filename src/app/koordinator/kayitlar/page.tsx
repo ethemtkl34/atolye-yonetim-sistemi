@@ -3,7 +3,7 @@ import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { KayitDurumButonu } from "./kayit-durum-butonu";
 
 export const metadata: Metadata = {
@@ -38,7 +38,7 @@ export default async function KayitlarSayfasi() {
         aksiyon={
           <Link
             href="/koordinator/ogrenciler"
-            className="inline-flex rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white hover:bg-marka-700"
+            className={butonStili()}
           >
             Öğrenci seç
           </Link>
@@ -116,7 +116,7 @@ export default async function KayitlarSayfasi() {
                           {!kayit.intern.active ? " (pasif hesap)" : ""}
                         </>
                       ) : (
-                        <span className="text-amber-700">Atanmamış</span>
+                        <span className="text-vurgu-700">Atanmamış</span>
                       )}
                     </p>
                   </div>

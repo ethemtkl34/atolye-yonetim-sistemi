@@ -60,7 +60,7 @@ export default async function SorularSayfasi() {
               </div>
 
               {atolye.questions.length === 0 ? (
-                <p className="mt-3 text-sm text-amber-700">
+                <p className="mt-3 text-sm text-vurgu-700">
                   Bu atölyenin aktif sorusu yok — puanlama yapılamaz.
                 </p>
               ) : (

@@ -41,7 +41,7 @@ export function GirisFormu({ devam }: { devam?: string }) {
           aria-describedby={
             durum.alanHatalari?.email ? "email-hata" : undefined
           }
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+          className="mt-1 w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
         />
         {durum.alanHatalari?.email ? (
           <p id="email-hata" className="mt-1 text-xs text-red-600">
@@ -66,7 +66,7 @@ export function GirisFormu({ devam }: { devam?: string }) {
           aria-describedby={
             durum.alanHatalari?.password ? "parola-hata" : undefined
           }
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+          className="mt-1 w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
         />
         {durum.alanHatalari?.password ? (
           <p id="parola-hata" className="mt-1 text-xs text-red-600">

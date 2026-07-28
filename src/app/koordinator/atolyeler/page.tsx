@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { AtolyeEkleFormu } from "./atolye-ekle-formu";
 import { DurumButonu } from "./durum-butonu";
 import { atolyeDurumDegistir } from "./actions";
@@ -85,7 +85,7 @@ export default async function AtolyelerSayfasi() {
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     href={`/koordinator/atolyeler/${atolye.id}`}
-                    className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                    className={butonStili("ikincil")}
                   >
                     Soruları yönet
                   </Link>

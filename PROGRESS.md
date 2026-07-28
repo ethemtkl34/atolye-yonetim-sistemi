@@ -595,6 +595,47 @@ ile uçtan uca temiz derleniyor — konsol geçmişi tek başına kanıt sayılm
 
 ---
 
+## Arayüz teması (kurumsal renkler)
+
+Panel Tailwind'in varsayılan mavisiyle ve her yeri beyaz duruyordu. Renkler
+kurumun kendi sitesinden alındı — **tuzder.org** CSS'inde ana renk
+`--e-global-color-primary: #A3185B` olarak tanımlı; turuncu **#E94D1A** sitede
+çağrı düğmelerinde geçiyor. İkisi de `globals.css` içinde ölçekli olarak
+tanımlandı (`marka-*`, `vurgu-*`), logodaki yeşil ve turkuaz da ileride
+kullanılmak üzere duruyor.
+
+| Renk | Kod | Nerede |
+|---|---|---|
+| Mürdüm (ana) | `#A3185B` | Sol menü, giriş ekranı, birincil buton, bağlantı, aktif süzgeç |
+| Turuncu (vurgu) | `#E94D1A` | "İşlem bekliyor" sayıları, ilerleme çubukları, uyarı rozetleri |
+| Yüzey | `#F6F0F3` | Sayfa zemini — kartlar beyaz kaldığı için derinlik bu farktan geliyor |
+
+Kararlar:
+
+- **Renk kabukta yoğun, içerikte seyrek.** Sol menü ve giriş ekranı tam
+  mürdüm; çalışma alanı açık kalıyor. Puanlama formları ve rapor metinleri
+  uzun süre okunuyor, zemini koyulaştırmak okumayı yorardı.
+- **Kontrast ölçüldü.** Beyaz üstünde küçük metinde yalnızca `marka-600`
+  (7,4:1) ve `vurgu-700` (5,2:1) kullanılıyor. Turuncu `vurgu-600` beyaz
+  üstünde 3,8:1'de kaldığı için metin değil, yalnızca dolgu ve şerit olarak
+  geçiyor.
+- **Sağlık uyarısı bilerek palete alınmadı.** Panelde turuncu artık "işlem
+  bekliyor" demek. Çocuğun alerjisini bildiren kutu sarı bırakıldı; bekleyen
+  bir formla aynı renge girseydi gözden kaçabilirdi.
+- **Buton sınıfları tekilleştirildi.** Aynı buton görünümü 15 yerde elle
+  yazılmıştı ve `<Link>` buton bileşeni kabul etmediği için renk değişince
+  bazıları geride kalıyordu. `butonStili()` yardımcısı eklendi.
+- **Mobilde menü eklendi.** Sol menü `md` altında gizliydi ve yerine bir şey
+  konmamıştı — dar ekranda panelde hiç gezinme yoktu. Menü artık üst şeride
+  yatay kayan bir şerit olarak iniyor. Stajyer formlarının telefondan
+  doldurulacağı düşünülürse bu bir görünüm değil, kullanılabilirlik eksiğiydi.
+
+Doğrulandı: koordinatör ve stajyer panelleri, giriş ekranı, puanlama formu,
+geçmiş tablosu ve mobil görünüm tarayıcıda gözden geçirildi; `npm run build`,
+tip kontrolü ve eslint temiz, 91 test geçiyor.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

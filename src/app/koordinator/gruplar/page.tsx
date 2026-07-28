@@ -148,13 +148,13 @@ export default async function GruplarSayfasi(
 
                 <div className="mt-3 flex items-center gap-3">
                   <div
-                    className="h-1.5 w-40 overflow-hidden rounded-full bg-zinc-100"
+                    className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200"
                     role="presentation"
                   >
                     <div
                       className={
                         kontenjan.dolu
-                          ? "h-full bg-amber-500"
+                          ? "h-full bg-vurgu-600"
                           : "h-full bg-marka-600"
                       }
                       style={{ width: `${kontenjan.yuzde}%` }}

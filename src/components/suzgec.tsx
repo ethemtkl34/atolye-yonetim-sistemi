@@ -59,7 +59,7 @@ export function SuzgecGrubu({
                 "rounded-md px-2.5 py-1 text-sm",
                 secili === secenek.deger
                   ? "bg-marka-50 font-medium text-marka-700"
-                  : "text-zinc-600 hover:bg-zinc-100",
+                  : "text-zinc-600 hover:bg-marka-50",
               )}
             >
               {secenek.etiket}

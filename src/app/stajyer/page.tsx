@@ -113,7 +113,7 @@ export default async function StajyerPaneli() {
         {sonFormlar.length === 0 ? (
           <BosDurum baslik="Henüz form doldurmadınız." />
         ) : (
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {sonFormlar.map((form) => (
               <div
                 key={`${form.kayitId}-${form.oturumId}`}

@@ -72,7 +72,7 @@ export function RaporFormu({
                 <label
                   className={cn(
                     "flex cursor-pointer items-start gap-2 rounded px-2 py-2 text-sm",
-                    secili ? "bg-marka-50" : "hover:bg-zinc-50",
+                    secili ? "bg-marka-50" : "hover:bg-marka-50",
                   )}
                 >
                   <input

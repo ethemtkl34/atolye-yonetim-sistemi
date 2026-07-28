@@ -13,6 +13,7 @@ import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import { raporOzetleri } from "@/lib/rapor-verisi";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -141,7 +142,7 @@ export default async function KoordinatorDashboard() {
         {dolanGruplar.length === 0 ? (
           <BosDurum baslik="Kontenjanı dolan grup yok." />
         ) : (
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {dolanGruplar.map((grup) => (
               <div
                 key={grup.id}
@@ -194,7 +195,7 @@ export default async function KoordinatorDashboard() {
             }
           />
         ) : (
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {eksikPuanlamalar.slice(0, 5).map((ilerleme) => (
               <div
                 key={ilerleme.kayit.id}
@@ -240,7 +241,7 @@ export default async function KoordinatorDashboard() {
         {sonRaporlar.length === 0 ? (
           <BosDurum baslik="Henüz rapor üretilmemiş." />
         ) : (
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {sonRaporlar.map((rapor) => (
               <div
                 key={rapor.id}
@@ -274,6 +275,14 @@ export default async function KoordinatorDashboard() {
   );
 }
 
+/**
+ * Özet kartı.
+ *
+ * Sol kenardaki renk şeridi kartın ne anlattığını uzaktan ayırt ettiriyor:
+ * mürdüm "durum bilgisi", turuncu ise "işlem bekliyor". Turuncu yalnızca
+ * şerit ve sayıda; küçük metin için beyaz üstünde kontrastı yetmediğinden
+ * başlıklar nötr kalıyor.
+ */
 function OzetKart({
   baslik,
   deger,
@@ -287,20 +296,32 @@ function OzetKart({
   yol: string;
   vurgu?: boolean;
 }) {
+  // Bekleyen iş yoksa turuncuya gerek yok: sıfır, uyarı değil iyi haber.
+  const dikkat = vurgu && deger > 0;
+
   return (
     <Link
       href={yol}
-      className={`rounded-lg border p-4 transition-colors ${
-        vurgu
-          ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
-          : "border-zinc-200 bg-white hover:bg-zinc-50"
-      }`}
+      className={cn(
+        "relative overflow-hidden rounded-lg border p-4 pl-5 shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors",
+        dikkat
+          ? "border-vurgu-200 bg-vurgu-50 hover:bg-vurgu-100"
+          : "border-yuzey-200 bg-white hover:bg-marka-50",
+      )}
     >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-0 left-0 w-1.5",
+          dikkat ? "bg-vurgu-600" : "bg-marka-600",
+        )}
+      />
       <p className="text-sm text-zinc-600">{baslik}</p>
       <p
-        className={`mt-1 text-2xl font-semibold ${
-          vurgu ? "text-amber-800" : "text-zinc-900"
-        }`}
+        className={cn(
+          "mt-1 text-2xl font-semibold tabular-nums",
+          dikkat ? "text-vurgu-800" : "text-marka-800",
+        )}
       >
         {deger}
       </p>

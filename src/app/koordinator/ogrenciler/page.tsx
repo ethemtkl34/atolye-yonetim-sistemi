@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
-import { BosDurum, Girdi, Kart, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Girdi, Kart, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { tarihBicimle } from "@/lib/tarih";
 
@@ -48,7 +48,7 @@ export default async function OgrencilerSayfasi(
         aksiyon={
           <Link
             href="/koordinator/ogrenciler/yeni"
-            className="inline-flex items-center justify-center rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-marka-700"
+            className={butonStili()}
           >
             Yeni öğrenci
           </Link>
@@ -69,7 +69,7 @@ export default async function OgrencilerSayfasi(
         />
         <button
           type="submit"
-          className="shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          className={butonStili("ikincil", "shrink-0")}
         >
           Ara
         </button>
@@ -106,7 +106,7 @@ export default async function OgrencilerSayfasi(
       ) : null}
 
       {ogrenciler.length === LISTE_SINIRI ? (
-        <p className="text-sm text-amber-700">
+        <p className="text-sm text-vurgu-700">
           İlk {LISTE_SINIRI} öğrenci gösteriliyor. Aramayı daraltarak listeyi
           küçültebilirsiniz.
         </p>

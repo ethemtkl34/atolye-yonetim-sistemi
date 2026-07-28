@@ -14,22 +14,25 @@ export default async function GirisSayfasi(
     typeof parametreler.devam === "string" ? parametreler.devam : undefined;
 
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
+    // Giriş ekranı panelin tek tam renkli yüzeyi: kullanıcı sisteme kurumun
+    // rengiyle karşılanıyor, çalışma ekranları ise okumayı zorlamamak için
+    // açık kalıyor.
+    <main className="flex flex-1 items-center justify-center bg-marka-800 p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-xl font-semibold text-zinc-900">
+          <h1 className="text-xl font-semibold text-white">
             Atölye Yönetim Sistemi
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-marka-200">
             Devam etmek için giriş yapın.
           </p>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-lg bg-white p-6 shadow-lg shadow-marka-900/20">
           <GirisFormu devam={devam} />
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-500">
+        <p className="mt-6 text-center text-xs text-marka-200">
           Hesabınız yoksa kurum koordinatörüyle iletişime geçin.
         </p>
       </div>

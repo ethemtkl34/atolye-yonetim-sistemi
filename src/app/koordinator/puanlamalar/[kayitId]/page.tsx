@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { GunListesi, IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";
 import { grupZamani } from "@/lib/tarih";
@@ -39,7 +39,7 @@ export default async function KoordinatorKayitPuanlamasi(
             aksiyon={
               <Link
                 href={`/koordinator/ogrenciler/${kayit.ogrenciId}`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                className={butonStili("ikincil")}
               >
                 Öğrenci profili
               </Link>

@@ -3,14 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import {
-  Alan,
-  Bildirim,
-  Buton,
-  CokSatirli,
-  Girdi,
-  Kart,
-} from "@/components/ui";
+import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, butonStili } from "@/components/ui";
 import type { EylemDurumu } from "./actions";
 
 export type OgrenciVarsayilanlari = {
@@ -237,7 +230,7 @@ export function OgrenciFormu({
         <KaydetButonu etiket={kaydetEtiketi} />
         <Link
           href={iptalYolu}
-          className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          className={butonStili("ikincil")}
         >
           Vazgeç
         </Link>

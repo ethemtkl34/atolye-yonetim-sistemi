@@ -5,7 +5,7 @@ import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
-import { BosDurum, SayfaBasligi } from "@/components/ui";
+import { BosDurum, SayfaBasligi, butonStili } from "@/components/ui";
 import {
   KayitFormu,
   type ProgramSecenegi,
@@ -43,7 +43,7 @@ export default async function YeniKayitSayfasi(
         />
         <Link
           href="/koordinator/ogrenciler"
-          className="inline-flex rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white hover:bg-marka-700"
+          className={butonStili()}
         >
           Öğrencilere git
         </Link>

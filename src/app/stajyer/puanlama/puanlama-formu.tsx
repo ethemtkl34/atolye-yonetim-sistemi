@@ -89,7 +89,7 @@ export function PuanlamaFormu({
       </div>
 
       {!form.puanlanabilir ? (
-        <p className="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+        <p className="mt-3 rounded-md bg-yuzey-50 px-3 py-2 text-sm text-zinc-600">
           Bu atölye henüz yapılmadı. Form, oturum günü geldiğinde açılır.
         </p>
       ) : (
@@ -112,7 +112,7 @@ export function PuanlamaFormu({
                     "cursor-pointer rounded-md border px-3 py-2 text-sm",
                     katilim === secenek.deger
                       ? "border-marka-600 bg-marka-50 font-medium text-marka-700"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
+                      : "border-yuzey-200 bg-white text-zinc-700 hover:bg-marka-50",
                   )}
                 >
                   <input
@@ -131,7 +131,7 @@ export function PuanlamaFormu({
           </fieldset>
 
           {katilim === "katilmadi" ? (
-            <p className="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+            <p className="rounded-md bg-yuzey-50 px-3 py-2 text-sm text-zinc-600">
               Katılmadı işaretlenen atölyede puanlama soruları doldurulmaz ve
               bu oturum hiçbir ortalamaya dahil edilmez.
             </p>
@@ -140,7 +140,7 @@ export function PuanlamaFormu({
           {katilim === "katildi" ? (
             <fieldset
               disabled={kilitli || bekliyor}
-              className="space-y-3 border-t border-zinc-100 pt-4"
+              className="space-y-3 border-t border-yuzey-100 pt-4"
             >
               <legend className="sr-only">Değerlendirme soruları</legend>
 
@@ -190,7 +190,7 @@ function SoruSatiri({
     <fieldset
       className={cn(
         "rounded-md border px-3 py-3",
-        eksik ? "border-red-300 bg-red-50" : "border-zinc-200",
+        eksik ? "border-red-300 bg-red-50" : "border-yuzey-200",
       )}
     >
       <legend className="px-1 text-sm text-zinc-800">
@@ -237,8 +237,8 @@ function SoruSatiri({
               />
               <span
                 className={cn(
-                  "inline-flex items-center rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700",
-                  "hover:bg-zinc-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
+                  "inline-flex items-center rounded-md border border-yuzey-200 bg-white px-3 py-1.5 text-sm text-zinc-700",
+                  "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
                 )}
               >

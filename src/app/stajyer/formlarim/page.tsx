@@ -34,7 +34,7 @@ export default async function FormlarimSayfasi() {
           aciklama="Bir atölye formunu kaydettiğinizde burada listelenir."
         />
       ) : (
-        <Kart className="divide-y divide-zinc-100">
+        <Kart className="divide-y divide-yuzey-100">
           {formlar.map((form) => (
             <div
               key={`${form.kayitId}-${form.oturumId}`}

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import {
   doldurulmusFormlar,
@@ -120,13 +120,13 @@ export default async function OgrenciProfilSayfasi(
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
-                  className="inline-flex items-center justify-center rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-marka-700"
+                  className={butonStili()}
                 >
                   Yeni kayıt
                 </Link>
                 <Link
                   href={`/koordinator/ogrenciler/${ogrenci.id}/duzenle`}
-                  className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                  className={butonStili("ikincil")}
                 >
                   Bilgileri düzenle
                 </Link>
@@ -258,7 +258,7 @@ export default async function OgrenciProfilSayfasi(
             {ogrenci.enrollments.map((kayit) => (
               <div
                 key={kayit.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-zinc-50 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-yuzey-50 px-3 py-2"
               >
                 <div>
                   <p className="text-sm font-medium text-zinc-800">
@@ -273,7 +273,7 @@ export default async function OgrenciProfilSayfasi(
                 </div>
                 <p className="text-sm text-zinc-700">
                   {kayit.intern?.name ?? (
-                    <span className="text-amber-700">Atanmamış</span>
+                    <span className="text-vurgu-700">Atanmamış</span>
                   )}
                   {kayit.intern && !kayit.intern.active
                     ? " (pasif hesap)"
@@ -298,7 +298,7 @@ export default async function OgrenciProfilSayfasi(
         ) : (
           <Kart className="overflow-x-auto">
             <table className="w-full min-w-[46rem] text-sm">
-              <thead className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+              <thead className="border-b border-yuzey-200 bg-yuzey-50 text-left text-xs font-medium text-marka-800">
                 <tr>
                   <th className="px-4 py-2 font-medium">Tarih</th>
                   <th className="px-4 py-2 font-medium">Program</th>
@@ -308,7 +308,7 @@ export default async function OgrenciProfilSayfasi(
                   <th className="px-4 py-2 font-medium">Stajyer</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-yuzey-100">
                 {katilimGecmisi.map((satir) => (
                   <tr key={`${satir.kayitId}-${satir.oturumId}`}>
                     <td className="px-4 py-2 whitespace-nowrap text-zinc-700">
@@ -448,7 +448,7 @@ export default async function OgrenciProfilSayfasi(
             aciklama="Bir raporu açıp “PDF oluştur” düğmesini kullanın. Üretilen PDF’ler burada kalıcı olarak saklanır."
           />
         ) : (
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {pdfler.map((pdf) => (
               <div
                 key={pdf.id}

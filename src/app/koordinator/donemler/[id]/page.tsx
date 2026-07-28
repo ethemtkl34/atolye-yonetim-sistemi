@@ -165,7 +165,7 @@ export default async function DonemDetaySayfasi(
               </p>
 
               {gecHafta ? (
-                <p className="mt-1 text-xs text-amber-700">
+                <p className="mt-1 text-xs text-vurgu-700">
                   Dönem başladıktan sonra açıldı: {grup.startWeekNumber}.
                   haftadan itibaren katılıyor, önceki {grup.startWeekNumber - 1}{" "}
                   hafta telafi edilmiyor.

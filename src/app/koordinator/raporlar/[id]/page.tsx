@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { pdfGecmisi, raporDetayi } from "@/lib/rapor-verisi";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { tarihBicimle } from "@/lib/tarih";
@@ -43,7 +43,7 @@ export default async function RaporSayfasi(
             aksiyon={
               <Link
                 href={`/koordinator/ogrenciler/${ozet.ogrenciId}`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                className={butonStili("ikincil")}
               >
                 Öğrenci profili
               </Link>
@@ -65,8 +65,8 @@ export default async function RaporSayfasi(
       </div>
 
       {!ozet.guncel ? (
-        <Kart className="bg-amber-50 p-3">
-          <p className="text-sm text-amber-900">
+        <Kart className="bg-vurgu-50 p-3">
+          <p className="text-sm text-vurgu-800">
             Bu rapor üretildikten sonra puanlarda değişiklik yapıldı. Aşağıdaki
             “Güncel puanlarla yeniden üret” düğmesiyle yeni bir rapor
             oluşturabilirsiniz; bu rapor geçmişte kalır.
@@ -150,7 +150,7 @@ export default async function RaporSayfasi(
           <h2 className="text-base font-semibold text-zinc-900">
             Bu rapordan üretilen PDF’ler
           </h2>
-          <Kart className="divide-y divide-zinc-100">
+          <Kart className="divide-y divide-yuzey-100">
             {pdfler.map((pdf) => (
               <div
                 key={pdf.id}

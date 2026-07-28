@@ -110,7 +110,7 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
             </div>
 
             {acikPanel === `ad-${stajyer.id}` ? (
-              <div className="mt-4 border-t border-zinc-100 pt-4">
+              <div className="mt-4 border-t border-yuzey-100 pt-4">
                 <AdDuzenleFormu
                   stajyer={stajyer}
                   kapat={() => setAcikPanel(null)}
@@ -119,7 +119,7 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
             ) : null}
 
             {acikPanel === `parola-${stajyer.id}` ? (
-              <div className="mt-4 border-t border-zinc-100 pt-4">
+              <div className="mt-4 border-t border-yuzey-100 pt-4">
                 <ParolaFormu
                   stajyerId={stajyer.id}
                   kapat={() => setAcikPanel(null)}

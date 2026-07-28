@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const SECIM_STILI =
-  "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100";
+  "w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100";
 
 /**
  * §6.4 — Öğrencinin bütün atölye geçmişi, filtrelerle.
@@ -229,7 +229,7 @@ export default async function OgrenciGecmisiSayfasi(
             {filtreliMi ? (
               <Link
                 href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                className={butonStili("ikincil")}
               >
                 Temizle
               </Link>
@@ -254,7 +254,7 @@ export default async function OgrenciGecmisiSayfasi(
       ) : (
         <Kart className="overflow-x-auto">
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+            <thead className="border-b border-yuzey-200 bg-yuzey-50 text-left text-xs font-medium text-marka-800">
               <tr>
                 <th className="px-4 py-2 font-medium">Tarih</th>
                 <th className="px-4 py-2 font-medium">Tür</th>
@@ -265,7 +265,7 @@ export default async function OgrenciGecmisiSayfasi(
                 <th className="px-4 py-2 font-medium">Stajyer</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-yuzey-100">
               {puanlamalar.map((puanlama) => {
                 const grup = puanlama.enrollment.group;
                 const ortalama = puanlamaOrtalamasi({

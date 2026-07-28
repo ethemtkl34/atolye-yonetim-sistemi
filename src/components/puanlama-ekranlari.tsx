@@ -32,7 +32,7 @@ export function IlerlemeCubugu({ ozet }: { ozet: GorevOzeti }) {
           {tamamlanan}/{ozet.toplam} form
         </span>
         {ozet.bekleyen > 0 ? (
-          <span className="font-medium text-amber-700">
+          <span className="font-medium text-vurgu-700">
             {ozet.bekleyen} bekliyor
           </span>
         ) : ozet.toplam > 0 ? (
@@ -41,9 +41,9 @@ export function IlerlemeCubugu({ ozet }: { ozet: GorevOzeti }) {
           <span>Yapılmış oturum yok</span>
         )}
       </div>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-yuzey-200">
         <div
-          className={ozet.bekleyen > 0 ? "h-full bg-amber-500" : "h-full bg-emerald-500"}
+          className={ozet.bekleyen > 0 ? "h-full bg-vurgu-600" : "h-full bg-emerald-500"}
           style={{ width: `${yuzde}%` }}
         />
       </div>
@@ -198,15 +198,18 @@ export function GunFormEkrani({
 }) {
   return (
     <div className="space-y-4">
+      {/* Sağlık uyarısı bilerek kurumsal turuncuya çekilmedi: panelde turuncu
+          "işlem bekliyor" demek. Çocuğun güvenliğiyle ilgili uyarı, bekleyen
+          bir formla aynı renge girerse gözden kaçabilir. */}
       {guvenlikUyarisiniGoster && kayit.guvenlikUyarisi ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
           <p className="text-xs font-medium text-amber-800">Güvenlik uyarısı</p>
           <p className="mt-1 text-sm text-amber-900">{kayit.guvenlikUyarisi}</p>
         </div>
       ) : null}
 
       {!kayit.aktif ? (
-        <div className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+        <div className="rounded-md bg-yuzey-100 px-3 py-2 text-sm text-zinc-700">
           Bu kayıt iptal edilmiş. Girilmiş puanlamalar korunur ama yeni
           puanlama yapılamaz.
         </div>

@@ -54,7 +54,7 @@ export default async function RaporlarSayfasi(
       </SuzgecCubugu>
 
       {raporlar.length === RAPOR_LISTE_SINIRI ? (
-        <p className="text-sm text-amber-700">
+        <p className="text-sm text-vurgu-700">
           En yeni {RAPOR_LISTE_SINIRI} rapor gösteriliyor. Daha eskileri
           öğrenci profilinden görebilirsiniz.
         </p>
