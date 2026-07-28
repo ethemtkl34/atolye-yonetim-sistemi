@@ -17,7 +17,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   { etiket: "Dashboard", yol: "/koordinator", hazir: true, paket: "P2" },
   { etiket: "Dönemler", yol: "/koordinator/donemler", hazir: true, paket: "P4" },
   { etiket: "Gruplar", yol: "/koordinator/gruplar", hazir: true, paket: "P4" },
-  { etiket: "Kulüpler", yol: "/koordinator/kulupler", hazir: false, paket: "P8" },
+  { etiket: "Kulüpler", yol: "/koordinator/kulupler", hazir: true, paket: "P8" },
   {
     etiket: "Atölye çeşitleri",
     yol: "/koordinator/atolyeler",

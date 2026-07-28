@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P8 — Kulüp yönetimi
+**Şu an:** P9 — Raporlama
 
 ---
 
@@ -19,7 +19,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P5 | Öğrenci yönetimi | ✅ Tamam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
 | P6 | Kayıt ve stajyer ataması | ✅ Tamam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ✅ Tamam | Kabul ölçütleri 1–12 uçtan uca çalışır |
-| P8 | Kulüp yönetimi | ⬜ Bekliyor | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
+| P8 | Kulüp yönetimi | ✅ Tamam | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ⬜ Bekliyor | Rapor üretilir, puan değişince "Güncel değil" olur |
 | P10 | PDF ve rapor geçmişi | ⬜ Bekliyor | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
 | P11 | Dashboard ve arşiv | ⬜ Bekliyor | Dashboard sayıları listelerle birebir uyuşur |
@@ -372,6 +372,61 @@ Kod yapısı: kurallar `src/lib/puanlama.ts` (saf, **19 yeni test**), sorgular
 **Veritabanında bırakılan örnek veri:** Şule Çınar'ın 1. Grup kaydı ve 25
 Temmuz gününün 3 formu (Bilim 4,2 · Astronomi 3,0 · Robotik katılmadı) duruyor.
 P9'daki rapor motorunu denemek için bilinçli olarak silinmedi.
+
+### P8 — Kulüp yönetimi ✅
+
+**Kulüpler** modülü devrede: kulüp oluşturma sihirbazı, kulüp detayı, kulübe
+grup ekleme ve durum geçişleri (§5). Kayıt akışı P6'daki kod yolundan
+yürüyor — kulüp için ayrı bir kayıt ekranı yazılmadı.
+
+**Tarayıcıda uçtan uca doğrulandı:**
+
+| Adım | Sonuç |
+|---|---|
+| "Yaz Bilim Kulübü" · 18 Temmuz 2026 · 3 atölye | Kulüp + 1. Grup + **3 oturum** oluştu |
+| 2. grup (öğleden sonra, kontenjan 8) | Aynı gün, 3 oturum daha |
+| Şule Çınar → kulüp 1. Grup → Mehmet Kaya | Çakışma uyarısı çıktı (dönem kaydıyla aynı gün/dilim), **onaylanıp devam edildi** |
+| Öğrenci profili | Dönem kaydı Ayşe'de, kulüp kaydı Mehmet'te (§8) |
+| Mehmet'in görev listesi | Yalnızca kulüp kaydı göründü, dönem kaydı görünmedi |
+| Stajyer 3 formu doldurdu | 5,0 · 3,0 · Katılmadı |
+
+#### Şartnamedeki belirsizlik ve verilen karar
+
+§5.1 kulübün tek bir tarihi olduğunu, §5.2 ise her kulüp grubunun "kendi gün
+ve zaman dilimiyle" tanımlandığını söylüyor. Kulübün tek tarihi varken grubun
+günü serbest seçilemez.
+
+**Karar:** Grubun günü kulüp tarihinden türetilir; formda sorulmaz. Kulüp
+grupları birbirinden **zaman dilimiyle** ayrışır (sabah/öğleden sonra).
+Seçilen tarihin hangi güne denk geldiği sihirbazda anında yazılır, hafta içi
+bir tarih seçilirse gönderim kilitlenir.
+
+#### Düzeltilen hata: uyarıdan sonra kayıt tamamlanamıyordu
+
+Kulüp kaydı çoğu zaman dönem kaydıyla aynı gün ve zaman dilimine denk
+geldiği için §7.4 uyarısı bu akışın normal bir parçası. Test sırasında
+uyarıdan sonra "Uyarıya rağmen kaydı oluştur" düğmesinin *"Grup seçin"* hatası
+verdiği görüldü.
+
+Sebep: React, form eylemi tamamlanınca formu sıfırlıyor ve bu sıfırlama
+`<select>` öğelerinin DOM değerini ilk seçeneğe düşürüyor. React'in kendi
+durumu bozulmuyordu — ekranda kontenjan bilgisi doğru görünüyordu — ama
+ikinci gönderimde alanlar boş gidiyordu. Yani §7.4'ün "koordinatör gerekli
+görürse devam edebilir" kuralı pratikte kırıktı.
+
+Çözüm iki adımlı: gönderilen değerler artık gizli alanlardan gidiyor (gizli
+alanın sıfırlanması aynı değere döndüğü için zararsız) ve sıfırlamadan sonra
+seçim kutuları durumdan geri yazılıyor. Bu, P6'dan kalan ve yalnızca uyarı
+yolunda ortaya çıkan bir hataydı; çakışmasız kayıtta hiç görünmüyordu.
+
+Diğer notlar:
+
+- **Grup şeması artık tek yerde** (`src/lib/formlar.ts`). Dönem ve kulüp aynı
+  şemayı kullanıyor; kulüp tarafı yalnızca `day` alanını çıkarıyor.
+- **Oturum üretimi P4'teki üreticiden**: `kulupOturumlariniUret` — kulüp
+  grubuna hafta kavramı taşınmıyor, `termWeekId` boş kalıyor.
+- **`gunundenGun()`** tarih yardımcısı eklendi (2 test): bir tarihin cumartesi
+  mi pazar mı olduğunu söyler, hafta içi için null döner.
 
 ---
 

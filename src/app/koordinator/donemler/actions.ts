@@ -16,6 +16,7 @@ import {
   mevcutHaftaNumarasi,
 } from "@/lib/session-generator";
 import { DONEM_ATOLYE_SAYISI, HAFTA_SAYISI } from "@/lib/kurallar";
+import { alanHatalari, GRUP_SEMASI } from "@/lib/formlar";
 
 /** §4 — Dönem ve grup işlemleri. */
 
@@ -25,22 +26,8 @@ export type EylemDurumu = {
   alanHatalari?: Record<string, string>;
 };
 
-const grupSemasi = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Grup adı gerekli")
-    .max(60, "Grup adı en fazla 60 karakter olabilir"),
-  day: z.enum(["CUMARTESI", "PAZAR"], { message: "Gün seçin" }),
-  timeSlot: z.enum(["OGLEDEN_ONCE", "OGLEDEN_SONRA"], {
-    message: "Zaman dilimi seçin",
-  }),
-  capacity: z.coerce
-    .number()
-    .int("Kontenjan tam sayı olmalı")
-    .min(1, "Kontenjan en az 1 olmalı")
-    .max(200, "Kontenjan en fazla 200 olabilir"),
-});
+/** Grup şeması dönem ve kulüpte ortak — tek kaynak `lib/formlar.ts`. */
+const grupSemasi = GRUP_SEMASI;
 
 const donemSemasi = z.object({
   name: z
@@ -55,15 +42,6 @@ const donemSemasi = z.object({
     .optional()
     .transform((d) => (d ? d : null)),
 });
-
-function alanHatalari(hata: z.ZodError): Record<string, string> {
-  const sonuc: Record<string, string> = {};
-  for (const sorun of hata.issues) {
-    const alan = sorun.path.join(".");
-    if (alan && !sonuc[alan]) sonuc[alan] = sorun.message;
-  }
-  return sonuc;
-}
 
 /**
  * Formdan gelen 10 tarihi doğrular ve hafta çapalarına çevirir.

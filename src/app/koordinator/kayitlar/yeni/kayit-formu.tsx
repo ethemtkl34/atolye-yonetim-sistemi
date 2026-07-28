@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Alan, Bildirim, Buton, Kart } from "@/components/ui";
@@ -93,9 +93,36 @@ export function KayitFormu({
   const uyariVar =
     Boolean(durum.uyari) && durum.uyariGroupId === grupId;
 
+  /**
+   * React, form eylemi tamamlanınca formu sıfırlıyor ve bu sıfırlama
+   * `<select>` öğelerinin DOM değerini ilk seçeneğe düşürüyor. React'in
+   * kendi durumu bozulmuyor ama ekranda seçim kaybolmuş gibi görünüyor ve —
+   * asıl sorun — bir sonraki gönderimde alanlar boş gidiyordu. §7.4'ün
+   * "uyarıya rağmen devam et" adımı tam da ikinci gönderim olduğu için bu
+   * akış kırılıyordu.
+   *
+   * İki önlem alınıyor:
+   *   1. Gönderilen veri gizli alanlardan gidiyor (`groupId`, `internId`).
+   *      Gizli alanın sıfırlanması aynı değere döndüğü için zararsız.
+   *   2. Sıfırlamadan sonra seçim kutuları durumdan geri yazılıyor; böylece
+   *      ekran ile gönderilecek veri aynı kalıyor.
+   */
+  const grupSecimi = useRef<HTMLSelectElement>(null);
+  const stajyerSecimi = useRef<HTMLSelectElement>(null);
+  const programSecimi = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (programSecimi.current) programSecimi.current.value = programId;
+    if (grupSecimi.current) grupSecimi.current.value = grupId;
+    if (stajyerSecimi.current) stajyerSecimi.current.value = stajyerId;
+  }, [durum, programId, grupId, stajyerId]);
+
   return (
     <form action={eylem} className="space-y-6">
       <input type="hidden" name="studentId" value={ogrenci.id} />
+      {/* Seçimler gizli alanlardan gider; yukarıdaki nota bakın. */}
+      <input type="hidden" name="groupId" value={grupId} />
+      <input type="hidden" name="internId" value={stajyerId} />
       {/* §7.4 — Uyarı gösterildikten sonraki gönderimde onay taşınır. */}
       {uyariVar ? <input type="hidden" name="onaylandi" value="1" /> : null}
 
@@ -118,6 +145,7 @@ export function KayitFormu({
           <>
             <Alan etiket="Program">
               <select
+                ref={programSecimi}
                 value={programId}
                 onChange={(e) => {
                   setProgramId(e.target.value);
@@ -136,7 +164,7 @@ export function KayitFormu({
 
             <Alan etiket="Grup" hata={durum.alanHatalari?.groupId}>
               <select
-                name="groupId"
+                ref={grupSecimi}
                 value={grupId}
                 onChange={(e) => setGrupId(e.target.value)}
                 disabled={!secilenProgram}
@@ -218,7 +246,7 @@ export function KayitFormu({
         ) : (
           <Alan etiket="Stajyer" hata={durum.alanHatalari?.internId}>
             <select
-              name="internId"
+              ref={stajyerSecimi}
               value={stajyerId}
               onChange={(e) => setStajyerId(e.target.value)}
               className={SECIM_STILI}

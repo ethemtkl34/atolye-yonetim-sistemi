@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   gunEkle,
+  gunundenGun,
   grupTarihi,
   grupZamani,
   haftaCapasi,
@@ -51,6 +52,18 @@ describe("haftaSonuMu", () => {
     expect(haftaSonuMu(tarihCozumle("2026-10-17")!)).toBe(true); // Cumartesi
     expect(haftaSonuMu(tarihCozumle("2026-10-18")!)).toBe(true); // Pazar
     expect(haftaSonuMu(tarihCozumle("2026-10-19")!)).toBe(false); // Pazartesi
+  });
+});
+
+describe("gunundenGun", () => {
+  it("cumartesi ve pazarı ayırt eder", () => {
+    // 1 Ağustos 2026 cumartesi, 2 Ağustos pazar.
+    expect(gunundenGun(new Date(Date.UTC(2026, 7, 1)))).toBe("CUMARTESI");
+    expect(gunundenGun(new Date(Date.UTC(2026, 7, 2)))).toBe("PAZAR");
+  });
+
+  it("hafta içi tarih için null döner", () => {
+    expect(gunundenGun(new Date(Date.UTC(2026, 7, 3)))).toBeNull();
   });
 });
 

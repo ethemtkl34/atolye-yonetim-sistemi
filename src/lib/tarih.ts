@@ -102,6 +102,19 @@ export function haftaSonuMu(tarih: Date): boolean {
 }
 
 /**
+ * Bir tarihin hangi hafta sonu gününe denk geldiğini söyler.
+ *
+ * Kulüpler tek bir tarihte yapıldığı için grubun günü seçilmez, tarihten
+ * türetilir (§5.1). Hafta içi bir tarih verilirse null döner.
+ */
+export function gunundenGun(tarih: Date): Day | null {
+  const gun = tarih.getUTCDay();
+  if (gun === 6) return "CUMARTESI";
+  if (gun === 0) return "PAZAR";
+  return null;
+}
+
+/**
  * Bir hafta sonu tarihini o haftanın CUMARTESİ'sine sabitler.
  *
  * Dönem haftaları tek bir "çapa" tarihle saklanır çünkü aynı dönemde hem
