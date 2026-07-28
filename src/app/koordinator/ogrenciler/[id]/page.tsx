@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, SayfaBasligi } from "@/components/ui";
-import { tarihBicimle } from "@/lib/tarih";
+import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -22,10 +22,8 @@ export async function generateMetadata(
 /**
  * §6.3 — Öğrenci profili.
  *
- * Şu an genel bilgiler, veliler ve sağlık bölümleri dolu. Kayıtlar, stajyer
- * atamaları, katılım ve puanlama geçmişi, raporlar ve PDF geçmişi sonraki
- * paketlerde bu sayfaya eklenecek; bölümler yerlerini şimdiden koruyor ki
- * profilin bütünü görünsün.
+ * Genel bilgiler, veliler, sağlık, kayıtlar ve kayıt bazlı stajyer atamaları
+ * dolu. Katılım, puanlama ve rapor bölümleri sonraki paketlerde eklenecek.
  */
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -38,6 +36,18 @@ export default async function OgrenciProfilSayfasi(
     include: {
       guardians: true,
       healthInfo: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          intern: { select: { name: true, active: true } },
+          group: {
+            include: {
+              term: { select: { name: true, status: true } },
+              club: { select: { name: true, status: true, date: true } },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -55,6 +65,17 @@ export default async function OgrenciProfilSayfasi(
     { etiket: "Acil durum", deger: saglik?.emergencyInfo },
   ].filter((satir) => satir.deger);
 
+  const aktifKayitlar = ogrenci.enrollments.filter(
+    (kayit) =>
+      kayit.status === "AKTIF" &&
+      (kayit.group.term?.status === "KAYIT_ALIYOR" ||
+        kayit.group.term?.status === "DEVAM_EDIYOR" ||
+        kayit.group.club?.status === "KAYIT_ALIYOR"),
+  );
+  const gecmisKayitlar = ogrenci.enrollments.filter(
+    (kayit) => !aktifKayitlar.includes(kayit),
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -68,12 +89,20 @@ export default async function OgrenciProfilSayfasi(
           <SayfaBasligi
             baslik={`${ogrenci.firstName} ${ogrenci.lastName}`}
             aksiyon={
-              <Link
-                href={`/koordinator/ogrenciler/${ogrenci.id}/duzenle`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-              >
-                Bilgileri düzenle
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
+                  className="inline-flex items-center justify-center rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-marka-700"
+                >
+                  Yeni kayıt
+                </Link>
+                <Link
+                  href={`/koordinator/ogrenciler/${ogrenci.id}/duzenle`}
+                  className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                >
+                  Bilgileri düzenle
+                </Link>
+              </div>
             }
           />
         </div>
@@ -167,16 +196,135 @@ export default async function OgrenciProfilSayfasi(
         ) : null}
       </Kart>
 
-      {/* 4–11. Sonraki paketlerde dolacak bölümler */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Kayıtlar ve geçmiş
-        </h2>
-        <BosDurum
-          baslik="Bu öğrencinin henüz kaydı yok."
-          aciklama="Dönem ve kulüp kayıtları, stajyer ataması, atölye katılım geçmişi, puanlamalar ve raporlar P6–P10 paketlerinde bu sayfada görünecek."
-        />
-      </div>
+      {/* 4. Aktif kayıtlar */}
+      <KayitBolumu
+        baslik="Aktif kayıtlar"
+        kayitlar={aktifKayitlar}
+        bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
+      />
+
+      {/* 5. Geçmiş kayıtlar */}
+      <KayitBolumu
+        baslik="Geçmiş kayıtlar"
+        kayitlar={gecmisKayitlar}
+        bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
+      />
+
+      {/* 6. Stajyer atamaları */}
+      <Kart className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-zinc-900">
+            Stajyer atamaları
+          </h2>
+          <Link
+            href="/koordinator/atamalar"
+            className="text-sm text-marka-700 hover:underline"
+          >
+            Atamaları yönet
+          </Link>
+        </div>
+        {ogrenci.enrollments.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">Henüz atama yok.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {ogrenci.enrollments.map((kayit) => (
+              <div
+                key={kayit.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-zinc-50 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-medium text-zinc-800">
+                    {kayit.group.term?.name ??
+                      kayit.group.club?.name ??
+                      "Program"}{" "}
+                    · {kayit.group.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {kayit.status === "AKTIF" ? "Aktif kayıt" : "İptal kayıt"}
+                  </p>
+                </div>
+                <p className="text-sm text-zinc-700">
+                  {kayit.intern?.name ?? (
+                    <span className="text-amber-700">Atanmamış</span>
+                  )}
+                  {kayit.intern && !kayit.intern.active
+                    ? " (pasif hesap)"
+                    : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Kart>
+
+      {/* 7–11. Sonraki paketlerde dolacak bölümler */}
+      <BosDurum
+        baslik="Atölye geçmişi ve raporlar henüz oluşmadı."
+        aciklama="Katılım ve puanlama P7’de; atölye/genel raporlar ve PDF geçmişi P9–P10’da bu profile eklenecek."
+      />
+    </div>
+  );
+}
+
+type ProfilKaydi = {
+  id: string;
+  status: "AKTIF" | "IPTAL";
+  createdAt: Date;
+  intern: { name: string; active: boolean } | null;
+  group: {
+    name: string;
+    day: "CUMARTESI" | "PAZAR";
+    timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
+    term: { name: string; status: string } | null;
+    club: { name: string; status: string; date: Date } | null;
+  };
+};
+
+function KayitBolumu({
+  baslik,
+  kayitlar,
+  bosAciklama,
+}: {
+  baslik: string;
+  kayitlar: ProfilKaydi[];
+  bosAciklama: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
+      {kayitlar.length === 0 ? (
+        <BosDurum baslik={bosAciklama} />
+      ) : (
+        <div className="space-y-2">
+          {kayitlar.map((kayit) => (
+            <Kart key={kayit.id} className="p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-zinc-900">
+                  {kayit.group.term?.name ??
+                    kayit.group.club?.name ??
+                    "Program bulunamadı"}
+                </span>
+                <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
+                <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
+                  {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
+                </Rozet>
+              </div>
+              <p className="mt-1 text-sm text-zinc-700">
+                {kayit.group.name} ·{" "}
+                {grupZamani(kayit.group.day, kayit.group.timeSlot)}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Kayıt tarihi {tarihBicimle(kayit.createdAt)}
+                {kayit.group.club
+                  ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
+                  : ""}
+                {" · "}
+                Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
+              </p>
+            </Kart>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

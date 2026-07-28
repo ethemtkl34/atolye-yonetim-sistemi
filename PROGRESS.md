@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P6 — Kayıt ve stajyer ataması
+**Şu an:** P7 — Puanlama
 
 ---
 
@@ -17,7 +17,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P3 | Atölye çeşitleri ve sorular | ✅ Tamam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
 | P4 | Dönem, takvim ve gruplar | ✅ Tamam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
 | P5 | Öğrenci yönetimi | ✅ Tamam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
-| P6 | Kayıt ve stajyer ataması | 🔨 Devam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
+| P6 | Kayıt ve stajyer ataması | ✅ Tamam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ⬜ Bekliyor | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ⬜ Bekliyor | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ⬜ Bekliyor | Rapor üretilir, puan değişince "Güncel değil" olur |
@@ -271,6 +271,51 @@ Kararlar:
   oraya teşhis yazma eğilimine kapılmasın diye.
 - **Profilde §6.3'ün 11 bölümü yerini koruyor**; 4–11 arası bölümler P6–P10'da
   dolacak, şimdilik ne geleceğini söyleyen bir boş durum var.
+
+### P6 — Kayıt ve stajyer ataması ✅
+
+Üç koordinatör modülü devreye girdi: **Öğrenci kayıtları**, **Stajyerler** ve
+**Stajyer atamaları**. Öğrenci profilinden dönem/kulüp kaydı başlatma, grup ve
+kontenjan görme, kayıt bazında stajyer seçme/değiştirme, kayıt iptali ve yeniden
+etkinleştirme çalışıyor.
+
+**Kabul ölçütü tarayıcıda ve veritabanında doğrulandı:**
+
+| Adım | Sonuç |
+|---|---|
+| Şule Çınar → 2026 Sonbahar → 1. Grup | Kayıt oluşturuldu |
+| Grup sayacı | **0/12 → 1/12** |
+| Öğrenci profili | Aktif kayıt ve Ayşe Yılmaz ataması göründü |
+| Atama yönetimi | Ayşe Yılmaz → Mehmet Kaya değiştirildi |
+| Test temizliği | Test kaydı silindi, sayaç yeniden **0/12** |
+
+Kararlar ve güvenlik önlemleri:
+
+- **Kontenjan sunucuda yeniden kontrol edilir.** Formdaki sayaç yalnızca bilgi
+  amaçlıdır; eski veya değiştirilmiş istemci verisiyle dolu gruba kayıt
+  açılamaz.
+- **Eşzamanlı son koltuk yarışı kapatıldı.** Aynı gruptaki kayıt oluşturma ve
+  yeniden etkinleştirme işlemleri PostgreSQL transaction advisory lock ile
+  sıraya alınır. Farklı gruplar birbirini bekletmez; aynı grubun iki isteği ise
+  kontenjanı aşamaz.
+- **Çakışma uyarısı engel değildir.** Aynı gün ve zaman dilimindeki başka
+  aktif kayıt koordinatöre gösterilir; yalnızca uyarının üretildiği grup için
+  ikinci gönderimde devam edilebilir. Uyarıdan sonra grup değiştirilirse eski
+  onay taşınmaz.
+- **Kayıt silinmez, iptal edilir.** Böylece gelecekte girilecek puanlama ve
+  katılım geçmişi korunur. İptal edilen kayıt kontenjandan düşer; yeniden
+  etkinleştirme sırasında kontenjan ve program durumu yeniden doğrulanır.
+- **Stajyer hesabı kullanıcı tablosundadır.** Koordinatör hesap açabilir,
+  ad/parola güncelleyebilir ve hesabı pasife alabilir. Sunucu eylemleri yalnızca
+  `STAJYER` rolündeki hesapları değiştirebilir; gönderilen kimlikle koordinatör
+  hesabı düzenlenemez.
+- **Öğrenci profili genişletildi.** Aktif kayıtlar, geçmiş kayıtlar ve kayıt
+  bazlı stajyer atamaları §6.3 sırasıyla görünür; P7–P10 bölümleri yerini korur.
+
+**Tarayıcının yakaladığı çalışma zamanı ayrıntısı:** PostgreSQL
+`pg_advisory_xact_lock` fonksiyonu `void` döndürür; Prisma bu sütunu doğrudan
+serileştiremedi. Kilit sonucu sorguda `text` tipine çevrilerek hem kilit
+davranışı korundu hem Prisma sürücü uyumu sağlandı.
 
 ---
 

@@ -39,19 +39,19 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Öğrenci kayıtları",
     yol: "/koordinator/kayitlar",
-    hazir: false,
+    hazir: true,
     paket: "P6",
   },
   {
     etiket: "Stajyerler",
     yol: "/koordinator/stajyerler",
-    hazir: false,
+    hazir: true,
     paket: "P6",
   },
   {
     etiket: "Stajyer atamaları",
     yol: "/koordinator/atamalar",
-    hazir: false,
+    hazir: true,
     paket: "P6",
   },
   {
