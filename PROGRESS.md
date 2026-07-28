@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P2 — Kimlik doğrulama ve rol erişimi
+**Şu an:** P3 — Atölye çeşitleri ve değerlendirme soruları
 
 ---
 
@@ -13,8 +13,8 @@ işaretlenir ve "Şu an" satırı güncellenir.
 |---|---|---|---|
 | P0 | Proje iskeleti | ✅ Tamam | `npm run dev` çalışır, yerel Postgres ayakta |
 | P1 | Veri modeli ve seed | ✅ Tamam | 6 atölye + 60 soru veritabanında görünür |
-| P2 | Kimlik doğrulama ve rol erişimi | 🔨 Devam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
-| P3 | Atölye çeşitleri ve sorular | ⬜ Bekliyor | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
+| P2 | Kimlik doğrulama ve rol erişimi | ✅ Tamam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
+| P3 | Atölye çeşitleri ve sorular | 🔨 Devam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
 | P4 | Dönem, takvim ve gruplar | ⬜ Bekliyor | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
 | P5 | Öğrenci yönetimi | ⬜ Bekliyor | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
 | P6 | Kayıt ve stajyer ataması | ⬜ Bekliyor | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
@@ -94,6 +94,53 @@ birebir üretildiği doğrulaması da var.
 `new PrismaClient()` tek başına bağlanmıyor, `@prisma/adapter-pg` üzerinden
 bağlantı adresi açıkça veriliyor. `src/lib/db.ts` ve `prisma/seed.ts` buna
 göre yazıldı.
+
+### P2 — Kimlik doğrulama ve rol erişimi ✅
+
+Auth.js v5 (Credentials + bcrypt), giriş/çıkış, iki panel kabuğu ve rol
+bazlı erişim. Üretim derlemesi (`npm run build`) temiz geçiyor.
+
+**Tarayıcıda uçtan uca doğrulandı:**
+
+| Senaryo | Sonuç |
+|---|---|
+| Oturumsuz `/koordinator` | → `/giris` |
+| Hatalı parola | "E-posta adresi veya parola hatalı." |
+| Koordinatör girişi | → Dashboard, gerçek veriler (6 atölye / 60 soru / 2 stajyer) |
+| Koordinatör `/stajyer` yazarsa | → `/koordinator` |
+| Stajyer girişi | → Görevlerim |
+| **Stajyer `/koordinator` yazarsa** | **→ `/stajyer` (engellendi)** |
+| Çıkış | → `/giris` |
+
+Yetki iki katmanlı kuruldu ve bu bilinçli bir tercih: Next.js dokümanı
+proxy'nin tam bir yetkilendirme çözümü olarak kullanılmamasını söylüyor.
+
+1. `src/proxy.ts` — iyimser ön kontrol, kullanıcıyı gereksiz sayfaya
+   götürmemek için. Tek başına güvenlik dayanağı değil.
+2. `src/lib/auth-guard.ts` — **asıl koruma.** Her sayfa ve her Server Action
+   `koordinatorZorunlu()` / `stajyerZorunlu()` çağırır. Yeni sayfa yazan
+   herkes buradan başlamalı.
+
+Diğer kararlar:
+
+- **Zamanlama sızıntısı kapatıldı.** Kullanıcı bulunamadığında da bcrypt
+  karşılaştırması sahte bir hash'e karşı yapılıyor; aksi halde cevap
+  süresinden hangi e-postaların kayıtlı olduğu anlaşılabilirdi.
+- **Pasif hesap** doğru parolayla bile giremiyor.
+- **Menüde 13 modülün tamamı görünüyor**, henüz yazılmamış olanlar tıklanamaz
+  ve yanında hangi pakette geleceği yazıyor. Amaç ürünün bütününü baştan
+  göstermek ve 404 vermemek.
+- Oturum süresi 12 saat (bir çalışma günü).
+
+**Sürüm sürprizi:** Auth.js tip genişletmesi `next-auth/jwt` yerine
+`@auth/core/jwt` hedeflemeli — `next-auth/jwt` arayüzü kendisi tanımlamıyor,
+yalnızca yeniden dışa aktarıyor ve yeniden dışa aktaran modülü genişletmek
+özgün arayüzle birleşmiyor.
+
+**Yapılmayan:** Planda P2'nin sonunda Vercel'e ilk yayın vardı. Yayın sizin
+Vercel ve Supabase hesabınıza bağlanmayı gerektirdiği için yapılmadı —
+hazır olduğunuzda söyleyin, P12'deki adımlarla birlikte kuralım. Uygulama
+derleme olarak yayına hazır.
 
 ---
 

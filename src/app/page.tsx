@@ -1,13 +1,17 @@
-export default function AnaSayfa() {
-  return (
-    <main className="flex flex-1 items-center justify-center p-8">
-      <div className="max-w-md text-center">
-        <h1 className="text-2xl font-semibold">Atölye Yönetim Sistemi</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Kurulum tamamlandı. Giriş ekranı ve modüller sonraki paketlerde
-          eklenecek.
-        </p>
-      </div>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { anaSayfaYolu } from "@/lib/auth-guard";
+
+/**
+ * Kök adres tek başına bir sayfa değil, yönlendirme noktası: kullanıcı
+ * rolüne ait panele, oturum yoksa giriş ekranına gider.
+ */
+export default async function AnaSayfa() {
+  const oturum = await auth();
+
+  if (!oturum?.user) {
+    redirect("/giris");
+  }
+
+  redirect(anaSayfaYolu(oturum.user.role));
 }
