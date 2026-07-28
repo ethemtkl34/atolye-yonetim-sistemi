@@ -80,6 +80,49 @@ export function turkceKarsilastir(a: string, b: string): number {
   return a.localeCompare(b, "tr-TR");
 }
 
+const KALIN_DUZ = new Set(["a", "ı"]);
+const INCE_DUZ = new Set(["e", "i"]);
+const KALIN_YUVARLAK = new Set(["o", "u"]);
+const INCE_YUVARLAK = new Set(["ö", "ü"]);
+const UNLULER = "aeıioöuüâîû";
+
+/**
+ * Özel ada tamlayan eki ekler: "Şule" → "Şule’nin", "Tuana" → "Tuana’nın".
+ *
+ * Rapor metinleri öğrencinin adıyla başlıyor ("Tuana’nın ... gözlemlenmiştir").
+ * Ek, son ünlünün kalınlık ve yuvarlaklığına göre seçilir; ad ünlüyle
+ * bitiyorsa araya kaynaştırma "n"si girer. Özel ad olduğu için ek kesme
+ * işaretiyle ayrılır.
+ *
+ * Son ünlü bulunamazsa (yabancı yazımlar) ince düz ek kullanılır — Türkçede
+ * en yaygın varsayılan budur.
+ */
+export function tamlayanEkiyle(ad: string): string {
+  const kucuk = ad.toLocaleLowerCase("tr-TR");
+  const sonUnlu = [...kucuk].reverse().find((harf) => UNLULER.includes(harf));
+
+  const ek = !sonUnlu
+    ? "in"
+    : KALIN_DUZ.has(sonUnlu)
+      ? "ın"
+      : INCE_DUZ.has(sonUnlu)
+        ? "in"
+        : KALIN_YUVARLAK.has(sonUnlu)
+          ? "un"
+          : INCE_YUVARLAK.has(sonUnlu)
+            ? "ün"
+            : sonUnlu === "â"
+              ? "ın"
+              : sonUnlu === "î"
+                ? "in"
+                : "un";
+
+  const sonHarf = kucuk.at(-1) ?? "";
+  const kaynastirma = UNLULER.includes(sonHarf) ? "n" : "";
+
+  return `${ad}’${kaynastirma}${ek}`;
+}
+
 /** Ad ve soyadı tek bir görüntülenebilir isme birleştirir. */
 export function tamAd(ad: string, soyad: string): string {
   return `${ad} ${soyad}`.trim();

@@ -9,6 +9,7 @@ import {
   doldurulmusFormlar,
   kayitIlerlemeleri,
 } from "@/lib/puanlama-verisi";
+import { raporOzetleri } from "@/lib/rapor-verisi";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
@@ -61,9 +62,10 @@ export default async function OgrenciProfilSayfasi(
 
   // §6.3.7–8 — Katılım ve puanlama geçmişi. Filtreli tam geçmiş ekranı (§6.4)
   // P9'da geliyor; profilde en son kayıtlar ve kayıt bazlı ilerleme duruyor.
-  const [katilimGecmisi, puanlamaIlerlemeleri] = await Promise.all([
+  const [katilimGecmisi, puanlamaIlerlemeleri, raporlar] = await Promise.all([
     doldurulmusFormlar({ studentId: id, enFazla: 30 }),
     kayitIlerlemeleri({ studentId: id }),
+    raporOzetleri({ ogrenciId: id }),
   ]);
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
@@ -329,8 +331,13 @@ export default async function OgrenciProfilSayfasi(
           </Kart>
         )}
         <p className="text-xs text-zinc-500">
-          En son güncellenen 30 form gösteriliyor. Filtreli tam geçmiş ekranı
-          (§6.4) P9’da eklenecek.
+          En son güncellenen 30 form gösteriliyor.{" "}
+          <Link
+            href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
+            className="text-marka-700 hover:underline"
+          >
+            Filtreli tam geçmiş →
+          </Link>
         </p>
       </div>
 
@@ -374,10 +381,52 @@ export default async function OgrenciProfilSayfasi(
         )}
       </div>
 
-      {/* 9–11. Sonraki paketlerde dolacak bölümler */}
+      {/* 9–10. Atölye bazlı ve genel raporlar */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-zinc-900">Raporlar</h2>
+          <Link
+            href={`/koordinator/raporlar/yeni?studentId=${ogrenci.id}`}
+            className="text-sm text-marka-700 hover:underline"
+          >
+            Yeni rapor oluştur
+          </Link>
+        </div>
+
+        {raporlar.length === 0 ? (
+          <BosDurum
+            baslik="Henüz rapor üretilmemiş."
+            aciklama="Rapor, mevcut puanlamalardan istenildiği anda üretilebilir."
+          />
+        ) : (
+          <div className="space-y-2">
+            {raporlar.map((rapor) => (
+              <Kart key={rapor.id} className="p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/koordinator/raporlar/${rapor.id}`}
+                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                  >
+                    {tarihBicimle(rapor.uretimZamani)} raporu
+                  </Link>
+                  <Rozet tur={rapor.guncel ? "olumlu" : "uyari"}>
+                    {rapor.guncel ? "Güncel" : "Güncel değil"}
+                  </Rozet>
+                  {rapor.duzenlemeZamani ? <Rozet>Elle düzenlendi</Rozet> : null}
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {rapor.kapsam.join(" · ")} · {rapor.atolyeSayisi} atölye
+                </p>
+              </Kart>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 11. PDF rapor geçmişi — P10 */}
       <BosDurum
-        baslik="Raporlar henüz oluşmadı."
-        aciklama="Atölye bazlı ve genel raporlar P9’da, PDF rapor geçmişi P10’da bu profile eklenecek."
+        baslik="PDF rapor geçmişi boş."
+        aciklama="PDF dışa aktarma ve rapor geçmişi P10’da bu profile eklenecek."
       />
     </div>
   );

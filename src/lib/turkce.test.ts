@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeArama, normalizeTelefon, turkceKarsilastir } from "./turkce";
+import {
+  normalizeArama,
+  normalizeTelefon,
+  tamlayanEkiyle,
+  turkceKarsilastir,
+} from "./turkce";
 
 describe("normalizeArama", () => {
   it("Türkçe büyük harfleri doğru küçültür", () => {
@@ -74,5 +79,19 @@ describe("turkceKarsilastir", () => {
       "Sule",
       "Şule",
     ]);
+  });
+});
+
+describe("tamlayanEkiyle", () => {
+  it("son ünlüye göre kalın/ince ek seçer", () => {
+    expect(tamlayanEkiyle("Tuana")).toBe("Tuana’nın");
+    expect(tamlayanEkiyle("Şule")).toBe("Şule’nin");
+    expect(tamlayanEkiyle("Bulut")).toBe("Bulut’un");
+    expect(tamlayanEkiyle("Ömür")).toBe("Ömür’ün");
+  });
+
+  it("ünsüzle biten adda kaynaştırma harfi kullanmaz", () => {
+    expect(tamlayanEkiyle("İpek")).toBe("İpek’in");
+    expect(tamlayanEkiyle("Çınar")).toBe("Çınar’ın");
   });
 });

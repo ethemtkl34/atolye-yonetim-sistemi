@@ -60,7 +60,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     hazir: true,
     paket: "P7",
   },
-  { etiket: "Raporlar", yol: "/koordinator/raporlar", hazir: false, paket: "P9" },
+  { etiket: "Raporlar", yol: "/koordinator/raporlar", hazir: true, paket: "P9" },
   { etiket: "Arşiv", yol: "/koordinator/arsiv", hazir: false, paket: "P11" },
 ];
 

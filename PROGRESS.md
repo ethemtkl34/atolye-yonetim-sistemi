@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P9 — Raporlama
+**Şu an:** P10 — PDF ve rapor geçmişi
 
 ---
 
@@ -20,7 +20,7 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P6 | Kayıt ve stajyer ataması | ✅ Tamam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ✅ Tamam | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ✅ Tamam | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
-| P9 | Raporlama | ⬜ Bekliyor | Rapor üretilir, puan değişince "Güncel değil" olur |
+| P9 | Raporlama | ✅ Tamam | Rapor üretilir, puan değişince "Güncel değil" olur |
 | P10 | PDF ve rapor geçmişi | ⬜ Bekliyor | PDF'te Türkçe karakterler doğru, eski PDF listede kalır |
 | P11 | Dashboard ve arşiv | ⬜ Bekliyor | Dashboard sayıları listelerle birebir uyuşur |
 | P12 | Yayına alma | ⬜ Bekliyor | 16 kabul ölçütü gerçek ortamda doğrulanır |
@@ -427,6 +427,58 @@ Diğer notlar:
   grubuna hafta kavramı taşınmıyor, `termWeekId` boş kalıyor.
 - **`gunundenGun()`** tarih yardımcısı eklendi (2 test): bir tarihin cumartesi
   mi pazar mı olduğunu söyler, hafta içi için null döner.
+
+### P9 — Raporlama (kural tabanlı) ✅
+
+**Raporlar** modülü ve §6.4'ün filtreli atölye geçmişi ekranı devrede. Rapor
+motoru planlandığı gibi iki katmanlı: analiz (JSON) + metin (şablon).
+
+**Tarayıcıda uçtan uca doğrulandı:**
+
+| Adım | Sonuç |
+|---|---|
+| Şule Çınar → dönem + kulüp kaydı seçili rapor üretimi | 3 atölye bölümü + genel değerlendirme |
+| Bilim Atölyesi (iki kayıttan birleşen 2 oturum) | Ortalama **4,6**, soru bazlı ortalamalar listelendi |
+| "Değerlendirilemedi" cevabı | Satır **—** göründü, ortalamaya girmedi, değerlendirilen soru sayısı 9 kaldı |
+| Katılmadığı oturumlar | Sayıldı ama ortalamaya girmedi, metinde olumsuz yargı yok |
+| Bir puan 4 → 2 yapıldı | Rapor listede anında **"Güncel değil"** |
+| Güncel puanlarla yeniden üret | Yeni rapor "Güncel" (4,6 → 4,5); **eski rapor listede kaldı** |
+| Metin düzenleme | Kaydedildi, "Elle düzenlendi · Düzenleyen: Kurum Koordinatörü" |
+| Geçmiş ekranı `katilim=katilmadi` | Yalnızca 2 katılmadı satırı (biri dönem, biri kulüp) |
+
+Kararlar:
+
+- **Analiz ve metin katmanları ayrı** (`src/lib/report-engine.ts`). Analiz
+  puanlardan hangi sonuçların çıkarılabileceğine karar verir ve yapılandırılmış
+  veri üretir; metin katmanı yalnızca kendisine verilen bulguları yazar.
+  P13'te Claude API bu ikinci katmanın yerine geçecek — analiz, veri modeli,
+  arayüz ve PDF hiç değişmeyecek. Rapor gövdesinde `metinKaynagi: "sablon"`
+  alanı bu geçişin izini tutuyor.
+- **§11.3 kod seviyesinde uygulanıyor.** Bir soru güçlü ya da desteklenecek
+  alan sayılmak için **en az iki kez** puanlanmış olmalı — tek düşük puandan
+  ağır yargı üretilmez. Üç oturumdan az katılımda metin "ön gözlem
+  niteliğindedir" diyerek ihtiyatlı yazılır. `Değerlendirilemedi` cevapları
+  hiçbir hesaba katılmaz. Puanlaması olmayan öğrenci için metin uydurulmaz.
+- **Metin tekrarı önleniyor** ama rastgelelik kullanılmıyor: cümle kalıpları
+  atölye sırasına göre dönüşümlü seçiliyor, böylece aynı veriden her zaman
+  aynı rapor çıkıyor (bir test bunu doğruluyor).
+- **Türkçe ek uyumu** `tamlayanEkiyle()` ile: "Şule’nin", "Tuana’nın",
+  "Bulut’un". Son ünlünün kalınlık/yuvarlaklığına bakılıyor, ünlüyle biten
+  adlarda kaynaştırma "n"si giriyor. 2 test.
+- **Yeniden üretim yeni satır açar**, mevcut raporu değiştirmez. §13.17 gereği
+  eski rapor ve ona bağlı PDF'ler yerinde kalmalı; "hangi PDF hangi rapordan
+  çıktı" sorusu her zaman cevaplanabiliyor.
+- **Düzenleme yalnızca metni değiştirir**, analiz çıktısı korunur. Böylece
+  koordinatör metni elle düzeltse bile raporun hangi puanlardan çıktığı
+  kaybolmuyor.
+- **Güncellik hâlâ türetiliyor** (§13.16): kapsamdaki kayıtların en yeni
+  `Score.updatedAt` değeri tek `groupBy` sorgusuyla okunup `raporGuncelMi()`
+  ile karşılaştırılıyor. Saklanan bayrak yok.
+- **Geçmiş ekranının filtreleri GET formu** — seçim adres satırında duruyor,
+  sonuç paylaşılabiliyor. Filtre seçenekleri yalnızca o öğrencinin gerçekten
+  ilişkili olduğu program ve atölyelerden oluşuyor.
+
+Rapor motorunun 13 testi var; toplam **91 test** geçiyor.
 
 ---
 
