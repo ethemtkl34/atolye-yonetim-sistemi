@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P4 — Dönem, takvim ve gruplar
+**Şu an:** P5 — Öğrenci yönetimi
 
 ---
 
@@ -15,8 +15,8 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P1 | Veri modeli ve seed | ✅ Tamam | 6 atölye + 60 soru veritabanında görünür |
 | P2 | Kimlik doğrulama ve rol erişimi | ✅ Tamam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
 | P3 | Atölye çeşitleri ve sorular | ✅ Tamam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
-| P4 | Dönem, takvim ve gruplar | 🔨 Devam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
-| P5 | Öğrenci yönetimi | ⬜ Bekliyor | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
+| P4 | Dönem, takvim ve gruplar | ✅ Tamam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
+| P5 | Öğrenci yönetimi | 🔨 Devam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
 | P6 | Kayıt ve stajyer ataması | ⬜ Bekliyor | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ⬜ Bekliyor | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ⬜ Bekliyor | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
@@ -174,6 +174,61 @@ geri alındı, başlangıç verisi orijinal halinde.)
 çağrısını zincirleme render sebebiyle reddetti. Panel kapatma mantığı React'in
 önerdiği "render sırasında durum ayarlama" biçimine çevrildi; panel kapanınca
 form zaten DOM'dan kalktığı için ayrıca temizlemeye de gerek kalmadı.
+
+### P4 — Dönem, takvim ve gruplar ✅
+
+Dönem sihirbazı, eğitim takvimi, grup ekleme ve oturum üretici. **Dönemler**
+ve **Gruplar** modülleri devreye girdi.
+
+**Kabul ölçütü veritabanında doğrulandı:**
+
+| Grup | Gün | Başlangıç haftası | Oturum |
+|---|---|---|---|
+| 1. Grup | Cumartesi | 1 | **50** |
+| 2. Grup (dönem başladıktan sonra açıldı) | Pazar | **4** | **35** |
+
+Pazar grubunun ilk oturumu 2 Ağustos (4. haftanın pazarı), sonuncusu 13 Eylül.
+Cumartesi grubunun bütün oturumları cumartesiye denk geliyor.
+
+#### Şartnamedeki belirsizlik ve verilen karar
+
+§2.2 dönemin "10 tarih"ten oluştuğunu, §2.3 ise grupların cumartesi **veya**
+pazar toplandığını söylüyor. Bu ikisi doğrudan çelişiyor: dönem tek bir tarih
+listesi tutarsa, cumartesi tarihine pazar grubu gelemez.
+
+**Karar:** Dönem 10 **hafta** tutar, 10 gün değil. Her hafta o hafta sonunun
+cumartesisiyle "çapalanır"; grubun gerçek toplanma tarihi kendi gününden
+türetilir — cumartesi grubu çapada, pazar grubu ertesi gün. Koordinatör
+takvimde cumartesiyi de pazarı da işaretlese aynı hafta kaydedilir. Arayüzde
+haftalar "1–2 Ağustos 2026" biçiminde, yani hafta sonu olarak gösteriliyor.
+
+Bu okuma §4.1'in kendi diliyle de uyumlu: orada "haftalar takvim üzerinden tek
+tek seçilebilmelidir" deniyor, "günler" değil.
+
+#### Diğer kararlar
+
+- **Başlangıç haftası koordinatöre sorulmuyor**, tarihten kesin olarak
+  türetiliyor. Elle girilseydi §13.5 kuralı yanlışlıkla delinebilirdi.
+  Bunun yerine sonuç açıkça yazılıyor — grup eklenmeden önce *"4. haftadan
+  başlar; geçmiş 3 hafta telafi edilmez ve 35 atölye oturumu oluşturulur"*,
+  eklendikten sonra da grup kartında kalıcı uyarı olarak.
+- **Haftalar ay ızgarası yerine hafta sonu listesi.** Kurum yalnızca hafta
+  sonu çalışıyor; seçim birimi hafta. Tatil haftalarını atlayarak 10 kutu
+  işaretlemek bu biçimde doğrudan yapılabiliyor.
+- **10 hafta / 5 atölye kotası arayüzde canlı sayaç**, dolunca fazlası
+  işaretlenemiyor ve gönder butonu kilitli kalıyor.
+- **Dönem, haftaları, atölyeleri, ilk grubu ve 50 oturumu tek transaction
+  içinde** yazılıyor; yarım kalmış dönem oluşamaz.
+- **Tarih işlemlerinin tamamı UTC** üzerinden. `@db.Date` alanları UTC gece
+  yarısı geliyor; yerel saatle işlem sunucunun bulunduğu yere göre bir gün
+  kaydırabilirdi. Ay adları da yerel ayara bırakılmadan sabitlendi.
+
+**Sürüm sürprizi:** `"use server"` işaretli dosya yalnızca async fonksiyon
+dışa aktarabiliyor. `HAFTA_SAYISI` gibi sabitler `actions.ts` içindeyken
+tip kontrolü ve lint temiz geçti ama **uygulama tarayıcıda derleme hatası
+verdi**. Sabitler `src/lib/kurallar.ts` dosyasına taşındı. Bu, tarayıcıda
+doğrulamanın neden gerekli olduğunun somut örneği — iki statik kontrol de
+kaçırmıştı.
 
 ---
 
