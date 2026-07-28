@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: tuzder-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tuzder
+      POSTGRES_PASSWORD: tuzder
+      POSTGRES_DB: tuzder
+    ports:
+      - "5433:5432"
+    volumes:
+      - tuzder-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tuzder -d tuzder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tuzder-db-data:

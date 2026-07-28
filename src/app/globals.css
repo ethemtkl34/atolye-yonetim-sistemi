@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/*
+ * Sade kurumsal yönetim paneli teması.
+ * Açık tema tek biçim olarak sabitlendi — puanlama ve rapor ekranlarının
+ * her cihazda aynı görünmesi, koyu tema desteğinden daha önemli.
+ */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+
+  /* Kurum ana rengi — bağlantı, birincil buton ve aktif menü öğesi. */
+  --color-marka-50: #eff6ff;
+  --color-marka-100: #dbeafe;
+  --color-marka-600: #2563eb;
+  --color-marka-700: #1d4ed8;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
