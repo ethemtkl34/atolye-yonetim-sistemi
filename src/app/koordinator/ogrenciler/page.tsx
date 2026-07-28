@@ -1,0 +1,128 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { ogrenciAra } from "@/lib/ogrenci-arama";
+import { BosDurum, Girdi, Kart, SayfaBasligi } from "@/components/ui";
+import { tarihBicimle } from "@/lib/tarih";
+
+export const metadata: Metadata = {
+  title: "Öğrenciler",
+};
+
+/**
+ * §6.2 — Öğrenci arama ve liste.
+ *
+ * Arama kutusu sıradan bir GET formu: sorgu adres satırında durur, sonuç
+ * sayfası paylaşılabilir ve geri tuşu beklendiği gibi çalışır. Bunun için
+ * istemci tarafında durum tutmaya gerek yok.
+ */
+export default async function OgrencilerSayfasi(
+  props: PageProps<"/koordinator/ogrenciler">,
+) {
+  await koordinatorZorunlu();
+
+  const parametreler = await props.searchParams;
+  const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";
+
+  const ogrenciler = await ogrenciAra(sorgu);
+
+  return (
+    <div className="space-y-6">
+      <SayfaBasligi
+        baslik="Öğrenciler"
+        aciklama="Öğrenciyi ad, soyad veya veli telefon numarasıyla arayabilirsiniz. Arama Türkçe karakterlere duyarsızdır."
+        aksiyon={
+          <Link
+            href="/koordinator/ogrenciler/yeni"
+            className="inline-flex items-center justify-center rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-marka-700"
+          >
+            Yeni öğrenci
+          </Link>
+        }
+      />
+
+      <form method="get" className="flex max-w-lg gap-2">
+        <Girdi
+          name="q"
+          type="search"
+          defaultValue={sorgu}
+          placeholder="Ad, soyad veya veli telefonu"
+          aria-label="Öğrenci ara"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+        >
+          Ara
+        </button>
+      </form>
+
+      {sorgu ? (
+        <p className="text-sm text-zinc-600">
+          <span className="font-medium">{ogrenciler.length}</span> sonuç ·{" "}
+          <Link href="/koordinator/ogrenciler" className="text-marka-700 hover:underline">
+            aramayı temizle
+          </Link>
+        </p>
+      ) : null}
+
+      {ogrenciler.length === 0 ? (
+        <BosDurum
+          baslik={
+            sorgu
+              ? `"${sorgu}" için sonuç bulunamadı.`
+              : "Henüz öğrenci kaydı yok."
+          }
+          aciklama={
+            sorgu
+              ? "Farklı bir yazım deneyin veya yeni öğrenci ekleyin."
+              : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."
+          }
+        />
+      ) : (
+        <div className="space-y-2">
+          {ogrenciler.map((ogrenci) => {
+            const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
+            const baba = ogrenci.guardians.find((v) => v.type === "BABA");
+
+            // §6.2 — Aynı isimli öğrencileri ayırt etmeye yarayan bilgiler.
+            const ayirtEdici = [
+              ogrenci.birthDate ? tarihBicimle(ogrenci.birthDate) : null,
+              ogrenci.school,
+              ogrenci.grade,
+            ].filter(Boolean);
+
+            return (
+              <Kart key={ogrenci.id} className="p-4">
+                <Link
+                  href={`/koordinator/ogrenciler/${ogrenci.id}`}
+                  className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                >
+                  {ogrenci.firstName} {ogrenci.lastName}
+                </Link>
+
+                {ayirtEdici.length > 0 ? (
+                  <p className="mt-1 text-sm text-zinc-600">
+                    {ayirtEdici.join(" · ")}
+                  </p>
+                ) : null}
+
+                <p className="mt-1 text-xs text-zinc-500">
+                  {anne ? `Anne: ${anne.fullName}${anne.phone ? ` (${anne.phone})` : ""}` : null}
+                  {anne && baba ? " · " : null}
+                  {baba ? `Baba: ${baba.fullName}${baba.phone ? ` (${baba.phone})` : ""}` : null}
+                </p>
+
+                <p className="mt-1 text-xs text-zinc-500">
+                  {ogrenci._count.enrollments === 0
+                    ? "Henüz kaydı yok"
+                    : `${ogrenci._count.enrollments} kayıt`}
+                </p>
+              </Kart>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

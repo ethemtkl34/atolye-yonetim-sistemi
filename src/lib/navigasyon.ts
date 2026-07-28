@@ -33,7 +33,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Öğrenciler",
     yol: "/koordinator/ogrenciler",
-    hazir: false,
+    hazir: true,
     paket: "P5",
   },
   {

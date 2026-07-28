@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P5 — Öğrenci yönetimi
+**Şu an:** P6 — Kayıt ve stajyer ataması
 
 ---
 
@@ -16,8 +16,8 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P2 | Kimlik doğrulama ve rol erişimi | ✅ Tamam | İki rolle giriş yapılır, stajyer koordinatör sayfasına giremez |
 | P3 | Atölye çeşitleri ve sorular | ✅ Tamam | Bir atölyenin soruları diğerinden bağımsız düzenlenir |
 | P4 | Dönem, takvim ve gruplar | ✅ Tamam | 10 haftalık dönem + 2 grup; 4. haftada açılan grup 35 oturum alır |
-| P5 | Öğrenci yönetimi | 🔨 Devam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
-| P6 | Kayıt ve stajyer ataması | ⬜ Bekliyor | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
+| P5 | Öğrenci yönetimi | ✅ Tamam | "sule" araması "Şule"yi bulur, telefonla arama çalışır |
+| P6 | Kayıt ve stajyer ataması | 🔨 Devam | Öğrenci gruba kaydedilir, kontenjan sayacı düşer |
 | P7 | Puanlama | ⬜ Bekliyor | Kabul ölçütleri 1–12 uçtan uca çalışır |
 | P8 | Kulüp yönetimi | ⬜ Bekliyor | 3 atölyelik kulüp açılır, stajyer 3 form doldurur |
 | P9 | Raporlama | ⬜ Bekliyor | Rapor üretilir, puan değişince "Güncel değil" olur |
@@ -229,6 +229,48 @@ tip kontrolü ve lint temiz geçti ama **uygulama tarayıcıda derleme hatası
 verdi**. Sabitler `src/lib/kurallar.ts` dosyasına taşındı. Bu, tarayıcıda
 doğrulamanın neden gerekli olduğunun somut örneği — iki statik kontrol de
 kaçırmıştı.
+
+### P5 — Öğrenci yönetimi ✅
+
+Öğrenci ekleme/düzenleme (öğrenci + anne/baba + sağlık), arama ve profil
+sayfası. **Öğrenciler** modülü devrede.
+
+**Kabul ölçütü doğrulandı** — 18 arama senaryosunun tamamı gerçek veritabanına
+karşı çalıştırıldı:
+
+| Yazım | Sonuç |
+|---|---|
+| `sule` · `SULE` · `Şule` · `ŞULE` | Şule Çınar |
+| `cinar` · `ÇINAR` | Şule Çınar |
+| `ipek` · `İPEK` · `İpek` | İpek Yıldız |
+| `yildiz` · `YILDIZ` | İpek Yıldız |
+| `0532` · `5321112233` · `0532 111 22 33` | Şule Çınar |
+| `+90 533 444 55 66` · `533444` | İpek Yıldız |
+| `zzz` | (sonuç yok) |
+
+**Bulunan ve düzeltilen hata:** Kısmi telefon araması `0532` ile sonuç
+vermiyordu. `normalizeTelefon` baştaki sıfırı yalnızca 11 haneli tam
+numaralarda atıyordu; koordinatörün numarayı hatırladığı kadar yazması
+tamamen doğal olduğu için sıfır artık uzunluğa bakılmaksızın atılıyor.
+Ülke kodu ise hâlâ yalnızca tam numara uzunluğunda atılıyor — kısa bir
+girdideki "90" numaranın ortasından bir kesit olabilir. Üç yeni test eklendi.
+
+Kararlar:
+
+- **Arama normalize edilmiş sütun üzerinden.** `Student.searchName` kaydederken
+  üretiliyor ("Şule Çınar" → "sule cinar"), sorgu anında sütunu dönüştürmek
+  indeksi devre dışı bırakırdı. Aynı yaklaşım veli telefonu için de geçerli.
+- **Tek arama kutusu**, hem isim hem telefon. Hangisi olduğu girdiden
+  anlaşılıyor; en az 3 rakam yoksa telefon araması hiç yapılmıyor.
+- **Arama sıradan bir GET formu** — sorgu adres satırında duruyor, sonuç
+  paylaşılabiliyor ve geri tuşu beklendiği gibi çalışıyor.
+- **"En az bir ebeveyn telefonu" kuralı** form seviyesinde; tek alana bakarak
+  doğrulanamıyor. Telefon girilip ad girilmemesi de engelleniyor.
+- **Sağlık bölümünde stajyer uyarısı görsel olarak ayrılmış** ve yanına
+  "Stajyerin göreceği TEK sağlık bilgisi budur" açıklaması konmuş; koordinatör
+  oraya teşhis yazma eğilimine kapılmasın diye.
+- **Profilde §6.3'ün 11 bölümü yerini koruyor**; 4–11 arası bölümler P6–P10'da
+  dolacak, şimdilik ne geleceğini söyleyen bir boş durum var.
 
 ---
 
