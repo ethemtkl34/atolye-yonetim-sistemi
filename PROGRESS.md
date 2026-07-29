@@ -636,9 +636,55 @@ tip kontrolü ve eslint temiz, 91 test geçiyor.
 
 ---
 
+## Günlük başlatma
+
+Bilgisayar yeniden başladıktan sonra tek adım yeter:
+
+```bash
+npm run baslat
+```
+
+Aynı işi `baslat.command` dosyasına Finder'dan çift tıklayarak da yapabilirsiniz.
+Betik Docker'ı açar, veritabanını hazır olana kadar bekler, uygulamayı başlatır
+ve sunucu cevap verir vermez tarayıcıyı açar. Her adım "zaten çalışıyorsa geç"
+mantığında; art arda çalıştırmak zarar vermez. Durdurmak için pencerede `Ctrl+C`.
+
+Sunucu zaten çalışıyorsa betik ona dokunmaz, yalnızca tarayıcıyı açar. Kapatıp
+baştan başlatmak için:
+
+```bash
+npm run baslat -- --yeniden
+```
+
+Bu ayrımın sebebi 3000 portunun çok yaygın olması. Betik portu tutan süreci
+körlemesine öldürmüyor; önce sayfanın imzasına bakıp uygulamanın gerçekten bu
+proje olduğunu doğruluyor, değilse ne olduğunu yazıp çekiliyor.
+
+**Yazarken çıkan iki tuzak** (ikisi de tarayıcıda değil, betiği çalıştırırken
+görüldü):
+
+- `lsof -ti:3000` yalnızca sunucuyu değil, **porta bağlı istemcileri de**
+  döndürüyor — listede açık duran tarayıcı da çıkıyordu. Bu listeyi kill etmek
+  kullanıcının tarayıcısını kapatırdı. Çözüm: `-sTCP:LISTEN`.
+- Sürecin çalışma dizinini proje klasörüyle karşılaştırma denendi ama `lsof`
+  yolu kaçış dizisiyle yazıyor (`TÜZDER` → `TU\xcc\x88ZDER`, klasör adındaki
+  Türkçe harf yüzünden) ve karşılaştırma hiçbir zaman tutmuyordu. Onun yerine
+  sayfanın kendi imzasına bakılıyor.
+
+Dört durum da çalıştırılarak doğrulandı: soğuk başlangıç, sunucu ayaktayken
+normal çalıştırma, `--yeniden` ile yeniden başlatma (eski sunucu kapandı,
+tarayıcı hayatta kaldı) ve 3000'i başka bir uygulamanın tuttuğu durum
+(`--yeniden` ile bile öldürülmedi).
+
+Giriş: `koordinator@tuzder.local` · `ayse@tuzder.local` · `mehmet@tuzder.local`,
+üçünün de parolası `Atolye2026!` (yalnızca geliştirme verisi).
+
+---
+
 ## Geliştirme komutları
 
 ```bash
+npm run baslat       # Docker + veritabanı + uygulama, tek adımda
 npm run db:up        # Yerel Postgres'i başlatır (Docker gerekir)
 npm run dev          # Uygulamayı http://localhost:3000 adresinde açar
 npm run db:migrate   # Şema değişikliğini veritabanına uygular
