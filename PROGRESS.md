@@ -681,6 +681,59 @@ Giriş: `koordinator@tuzder.local` · `ayse@tuzder.local` · `mehmet@tuzder.loca
 
 ---
 
+## Örnek veri
+
+```bash
+npm run db:ornek-veri
+```
+
+`prisma/ornek-veri.ts` — denemek için gerçekçi bir dönem üretir: 18 öğrenci,
+22 kayıt, 171 puanlama formu, 1670 cevap satırı, 3 stajyer. Başlangıç
+verisinden (`db:seed`) ayrı tutuldu: seed kurumun kurulumda gerçekten
+ihtiyaç duyduğu asgari veridir ve üretime de gider, bu dosya yalnızca
+denemeye yarar.
+
+Tekrar çalıştırılabilir: ürettiği öğrencileri adlarıyla tanıyıp siler ve
+yeniden yazar, elle eklenenlere dokunmaz.
+
+**Puanlar rastgele değil.** Her öğrencinin bir profili var ve puanlar bundan
+türetiliyor. İki sebebi var: rapor motorunun kuralları ancak belirli
+profillerle sınanabiliyor, ve tohumlu üretici kullanıldığı için betik her
+çalıştığında aynı veriyi üretiyor.
+
+| Öğrenci | Profil | Ne sınıyor |
+|---|---|---|
+| Ömer Şahin · Ayaz Demirtaş | Karma | Güçlü **ve** desteklenecek alanların ikisi birden çıkar |
+| Nehir Balcı | Az veri | §11.3 — "ön gözlem niteliğindedir" ibaresi |
+| Ada Türkmen | Gözlemlenemeyen | "Değerlendirilemedi" → raporda `—`, değerlendirilen soru 10 değil 9 |
+| Mert Yalçın | Devamsız | Katılmadığı oturum sayılır, ortalamaya girmez |
+| Yiğit Erdem | Eksik formlu | Dashboard "eksik puanlama" sayacı |
+| Bulut · Duru · Alp · İnci | Puanlanmamış | Pazar grubu 4. haftada başlıyor; gelecek oturumlar eksik sayılmaz |
+| Deniz · Masal · Çınar | Güçlü | Yüksek ortalama, güçlü yönler bölümü |
+| Elif Naz · Poyraz | Gelişmekte | Düşük ortalama, olumsuz yargıya kaymamalı |
+
+Veri üretirken düzeltilen üç şey — üçü de ancak üretilen rapor okununca
+görüldü, sayılar tek başına doğru görünüyordu:
+
+- **Dalgalanma payı dardı.** İlk sürümde bir öğrencinin 10 sorusunun 5
+  atölyedeki bütün puanları 4,0 çıkıyordu. Puanlar yuvarlandığı için sapma
+  payının en az ±0,8 olması gerekiyor; yoksa taban değerin kendisine
+  çakılıyor. Hiçbir stajyer böyle puanlamaz.
+- **"Değerlendirilemedi" raporda görünmüyordu.** Serpiştirilmiş boş cevaplar
+  yetmiyor: aynı soru başka bir oturumda puanlanınca ortalama yine çıkıyor.
+  `—` satırının görülebilmesi için sorunun o atölyedeki bütün oturumlarda
+  boş kalması gerekiyor.
+- **Devamsızlıklar üst üste binmişti.** Oturum sırası `gün × 5 + atölye`
+  olduğu için seçilen indeksler aynı atölyeye denk geldi ve öğrenci bütün
+  Robotik oturumlarını kaçırmış göründü. Farklı gün ve atölyelere yayıldı.
+
+**Rapor metni hakkında:** Şablon katmanı soru cümlelerini olduğu gibi metne
+gömüyor ("…atölye ve etkinliklere ilgi gösterir konularında güçlü…"). Anlam
+doğru ama dil kurumsal bir rapor için hantal. Bu, P13'te Claude API metin
+katmanıyla değiştirilecek olan katman; analiz, veri modeli ve PDF aynı kalacak.
+
+---
+
 ## Geliştirme komutları
 
 ```bash
@@ -688,7 +741,8 @@ npm run baslat       # Docker + veritabanı + uygulama, tek adımda
 npm run db:up        # Yerel Postgres'i başlatır (Docker gerekir)
 npm run dev          # Uygulamayı http://localhost:3000 adresinde açar
 npm run db:migrate   # Şema değişikliğini veritabanına uygular
-npm run db:seed      # Başlangıç verisini yükler
+npm run db:seed      # Başlangıç verisini yükler (atölyeler, sorular, hesaplar)
+npm run db:ornek-veri # Denemek için gerçekçi öğrenci ve puanlama verisi
 npm run db:studio    # Veritabanını tarayıcıda görüntüler
 npm run typecheck    # Tip kontrolü
 npm run test         # Testler
