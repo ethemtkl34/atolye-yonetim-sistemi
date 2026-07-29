@@ -84,17 +84,40 @@ DATABASE_URL="<neon-pooled-adresi>" npm run db:seed
 Bu 6 atölye, 60 soru ve 3 kullanıcı hesabı oluşturur. `db:seed` idempotenttir,
 yanlışlıkla iki kez çalıştırmak kopya üretmez.
 
-**`db:ornek-veri` üretimde çalıştırılmamalı** — o 18 uydurma öğrenci ekler.
+**Parola ekrana bir kez basılır — kaydedin.** Depo herkese açık olduğu için
+`seed.ts` içindeki sabit parola yalnızca yerel veritabanında kullanılır.
+Uzak bir adrese seed çalıştırıldığında betik rastgele bir parola üretip
+gösterir:
 
-## 5. İlk giriş ve parola değişimi
+```
+──────────────────────────────────────────────────────────────
+  Başlangıç hesaplarının parolası (rastgele üretildi):
 
-`https://<proje-adı>.vercel.app` adresine gidip
-`koordinator@tuzder.local` / `Atolye2026!` ile girin.
+      xK3n9-fQ2mRt7pLwZa4bVc
 
-Bu parola depoda açık yazıyor. Gerçek kullanıma geçmeden önce kurumun kendi
-hesapları açılmalı ve bu üç geliştirme hesabı pasife alınmalı. Koordinatör
-panelindeki **Stajyerler** ekranı stajyer hesaplarını yönetiyor; koordinatör
-hesabı için parola değişimi henüz arayüzde yok (bkz. Bilinen eksikler).
+  Bu parola bir daha gösterilmeyecek. Şimdi kaydedin ve ilk
+  girişten sonra kurumun kendi hesaplarını oluşturun.
+──────────────────────────────────────────────────────────────
+```
+
+Kendi parolanızı belirlemek isterseniz:
+
+```bash
+DATABASE_URL="<neon-pooled-adresi>" SEED_PASSWORD="secdiginiz-parola" npm run db:seed
+```
+
+**`db:ornek-veri` üretimde çalıştırılamaz** — 18 uydurma öğrenci ve 1670
+uydurma puan yazdığı için uzak veritabanı gördüğünde kendini durdurur.
+
+## 5. İlk giriş
+
+`https://<proje-adı>.vercel.app` adresine gidip `koordinator@tuzder.local`
+ve bir önceki adımda gösterilen parolayla girin.
+
+Gerçek kullanıma geçmeden önce kurumun kendi hesapları açılmalı ve bu üç
+başlangıç hesabı pasife alınmalı. Koordinatör panelindeki **Stajyerler**
+ekranı stajyer hesaplarını yönetiyor; koordinatör hesabı için parola değişimi
+henüz arayüzde yok (bkz. Bilinen eksikler).
 
 ## 6. Kendi alan adınız (isteğe bağlı)
 

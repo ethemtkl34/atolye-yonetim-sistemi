@@ -10,6 +10,7 @@
  * sorularını arayüzden bağımsız olarak düzenleyebilir.
  */
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -66,10 +67,34 @@ const BASLANGIC_SORULARI = [
 ];
 
 /**
- * Geliştirme hesapları. Üretime alırken (P12) bu hesaplar silinip kurumun
- * gerçek kullanıcıları oluşturulacak.
+ * Başlangıç hesaplarının parolası.
+ *
+ * Depo herkese açık olduğu için buradaki sabit parola yalnızca YEREL
+ * veritabanında kullanılabilir. Uzak bir veritabanına seed çalıştırılırsa
+ * (üretim) sabit parola kullanılmaz: `SEED_PASSWORD` verilmişse o, verilmemişse
+ * rastgele üretilen bir parola yazılır ve ekrana bir kez basılır.
+ *
+ * Aksi hâlde üretimdeki koordinatör hesabı, GitHub'dan okunabilen bir parolayla
+ * açılmış olurdu.
  */
-const GELISTIRME_SIFRESI = "Atolye2026!";
+const YEREL_SIFRE = "Atolye2026!";
+
+function yerelVeritabaniMi(): boolean {
+  const adres = process.env.DATABASE_URL ?? "";
+  return adres.includes("localhost") || adres.includes("127.0.0.1");
+}
+
+function parolaBelirle(): { sifre: string; kaynak: string } {
+  if (process.env.SEED_PASSWORD) {
+    return { sifre: process.env.SEED_PASSWORD, kaynak: "SEED_PASSWORD" };
+  }
+  if (yerelVeritabaniMi()) {
+    return { sifre: YEREL_SIFRE, kaynak: "yerel geliştirme parolası" };
+  }
+  // randomBytes: rastgeleliği tahmin edilebilir olmayan kaynaktan al.
+  const uretilen = randomBytes(18).toString("base64url");
+  return { sifre: uretilen, kaynak: "rastgele üretildi" };
+}
 
 const KULLANICILAR = [
   {
@@ -92,7 +117,8 @@ const KULLANICILAR = [
 async function main() {
   console.log("Başlangıç verisi yükleniyor...\n");
 
-  const passwordHash = await hash(GELISTIRME_SIFRESI, 12);
+  const { sifre, kaynak } = parolaBelirle();
+  const passwordHash = await hash(sifre, 12);
 
   for (const kullanici of KULLANICILAR) {
     await db.user.upsert({
@@ -139,9 +165,16 @@ async function main() {
       : "· Sorular zaten mevcut, dokunulmadı",
   );
 
-  console.log(
-    `\nGeliştirme girişi:\n  ${KULLANICILAR[0].email} / ${GELISTIRME_SIFRESI}`,
-  );
+  if (yerelVeritabaniMi() && !process.env.SEED_PASSWORD) {
+    console.log(`\nGeliştirme girişi:\n  ${KULLANICILAR[0].email} / ${sifre}`);
+  } else {
+    console.log("\n" + "─".repeat(62));
+    console.log("  Başlangıç hesaplarının parolası (%s):", kaynak);
+    console.log("\n      %s\n", sifre);
+    console.log("  Bu parola bir daha gösterilmeyecek. Şimdi kaydedin ve ilk");
+    console.log("  girişten sonra kurumun kendi hesaplarını oluşturun.");
+    console.log("─".repeat(62));
+  }
 }
 
 main()

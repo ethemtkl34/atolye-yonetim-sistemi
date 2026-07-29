@@ -402,6 +402,21 @@ function puanUret(
 // ---------------------------------------------------------------------------
 
 async function main() {
+  // Bu betik 18 uydurma öğrenci ve 1670 uydurma puan yazıyor. Üretim
+  // veritabanında çalıştırılması gerçek kayıtların arasına deneme verisi
+  // karıştırır ve geri almak zordur; uzak veritabanında baştan reddediliyor.
+  const adres = process.env.DATABASE_URL ?? "";
+  const yerel = adres.includes("localhost") || adres.includes("127.0.0.1");
+
+  if (!yerel && process.env.ORNEK_VERI_ONAY !== "evet") {
+    console.error(
+      "\nBu betik uydurma öğrenci verisi yazar ve yalnızca yerel veritabanı" +
+        "\niçindir. DATABASE_URL yerel bir adrese işaret etmiyor." +
+        "\n\nGerçekten devam etmek istiyorsanız: ORNEK_VERI_ONAY=evet\n",
+    );
+    process.exit(1);
+  }
+
   console.log("Örnek veri yükleniyor...\n");
 
   // --- Stajyer hesapları ---------------------------------------------------
