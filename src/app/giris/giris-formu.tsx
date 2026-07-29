@@ -29,12 +29,20 @@ export function GirisFormu({ devam }: { devam?: string }) {
           htmlFor="email"
           className="block text-sm font-medium text-zinc-700"
         >
-          E-posta
+          E-posta veya kullanıcı adı
         </label>
         <input
           id="email"
           name="email"
-          type="email"
+          /* `type="email"` değil: kurum kısa kullanıcı adıyla da giriyor
+             (örn. `admin`) ve tarayıcı e-posta doğrulaması bunu engelliyordu.
+             `autoCapitalize`/`spellCheck` kapalı — telefon klavyesi ilk harfi
+             büyütünce kullanıcı adı eşleşmesin diye. */
+          type="text"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoComplete="username"
           autoFocus
           aria-invalid={Boolean(durum.alanHatalari?.email)}

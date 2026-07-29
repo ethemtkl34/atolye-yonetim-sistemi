@@ -5,12 +5,15 @@ import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
 
-/** Giriş formunun doğrulama şeması. Hata metinleri kullanıcıya gösterilir. */
+/**
+ * Giriş formunun doğrulama şeması. Hata metinleri kullanıcıya gösterilir.
+ *
+ * Alan e-posta biçimini zorunlu kılmıyor: kurum kısa kullanıcı adlarıyla
+ * (örn. `admin`) girmek istedi. `User.email` sütunu tekil bir metin olduğu
+ * için ikisi de aynı sütunda tutulabiliyor.
+ */
 export const girisSemasi = z.object({
-  email: z
-    .string()
-    .min(1, "E-posta adresi gerekli")
-    .email("Geçerli bir e-posta adresi girin"),
+  email: z.string().trim().min(1, "E-posta veya kullanıcı adı gerekli"),
   password: z.string().min(1, "Parola gerekli"),
 });
 
@@ -37,8 +40,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, password } = cozumlenen.data;
 
+        // Kimlik yerelden bağımsız küçültülür. `toLocaleLowerCase("tr-TR")`
+        // kullanılıyordu ve bu bir hataydı: Türkçe yerelde "I" harfi noktasız
+        // "ı"ya dönüşüyor, yani "ADMIN" → "admın" olup hiçbir kayıtla
+        // eşleşmiyordu. Telefon klavyeleri ilk harfi büyütmeye eğilimli
+        // olduğu için bu, gerçek bir giriş engeli.
         const kullanici = await db.user.findUnique({
-          where: { email: email.toLocaleLowerCase("tr-TR") },
+          where: { email: email.toLowerCase() },
         });
 
         const parolaDogru = await compare(
