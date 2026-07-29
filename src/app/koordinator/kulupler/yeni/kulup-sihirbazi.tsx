@@ -73,7 +73,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
         </h2>
 
         <Alan etiket="Kulüp adı" hata={durum.alanHatalari?.name}>
-          <Girdi name="name" placeholder="Bilim Kulübü" required />
+          <Girdi name="name" placeholder="Örn. Bilim Kulübü" required />
         </Alan>
 
         <Alan
@@ -185,7 +185,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           <Alan etiket="Grup adı" hata={durum.alanHatalari?.["grup.name"]}>
             <Girdi
               name="grupAdi"
-              placeholder="Sabah Grubu"
+              placeholder="Örn. Sabah Grubu"
               defaultValue="1. Grup"
               required
             />
@@ -222,11 +222,21 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <KaydetButonu etkin={atolyeTamam && haftaSonu} />
-        <span className="text-sm text-zinc-500">
-          {atolyeTamam && haftaSonu
-            ? `${KULUP_ATOLYE_SAYISI} atölye oturumu oluşturulacak.`
-            : `Devam etmek için hafta sonuna denk gelen bir tarih ve ${KULUP_ATOLYE_SAYISI} atölye seçin.`}
-        </span>
+        {atolyeTamam && haftaSonu ? (
+          <span className="text-sm text-zinc-500">
+            {KULUP_ATOLYE_SAYISI} atölye oturumu oluşturulacak.
+          </span>
+        ) : (
+          /* Dönem sihirbazıyla aynı gerekçe: eksiğin ne olduğu sayıyla
+             yazılmazsa kilitli buton bozuk sanılıyor. */
+          <span className="text-sm font-medium text-vurgu-700">
+            {!haftaSonu ? "Hafta sonuna denk gelen bir tarih seçin" : null}
+            {!haftaSonu && !atolyeTamam ? " · " : null}
+            {!atolyeTamam
+              ? `${KULUP_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`
+              : null}
+          </span>
+        )}
       </div>
     </form>
   );

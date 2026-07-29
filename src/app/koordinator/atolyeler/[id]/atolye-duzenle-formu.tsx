@@ -38,6 +38,11 @@ export function AtolyeDuzenleFormu({
 
   return (
     <form action={eylem} className="space-y-4">
+      {/* Genel hata (alan bazlı olmayan) da gösterilmeli; yoksa eylem
+          başarısız olduğunda buton tıklanıyor ama hiçbir şey olmuyor gibi
+          görünüyor. */}
+      {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
+
       <Alan etiket="Atölye adı" hata={durum.alanHatalari?.name}>
         <Girdi name="name" defaultValue={atolye.name} autoFocus required />
       </Alan>

@@ -104,7 +104,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
         </h2>
 
         <Alan etiket="Dönem adı" hata={durum.alanHatalari?.name}>
-          <Girdi name="name" placeholder="2026 Sonbahar Dönemi" required />
+          <Girdi name="name" placeholder="Örn. 2026 Sonbahar Dönemi" required />
         </Alan>
 
         <Alan
@@ -258,7 +258,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           <Alan etiket="Grup adı" hata={durum.alanHatalari?.["grup.name"]}>
             <Girdi
               name="grupAdi"
-              placeholder="Cumartesi Sabah"
+              placeholder="Örn. Cumartesi Sabah"
               defaultValue="1. Grup"
               required
             />
@@ -315,9 +315,17 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
             {HAFTA_SAYISI * DONEM_ATOLYE_SAYISI} atölye oturumu oluşturulacak.
           </span>
         ) : (
-          <span className="text-sm text-zinc-500">
-            Devam etmek için {HAFTA_SAYISI} hafta ve {DONEM_ATOLYE_SAYISI}{" "}
-            atölye seçin.
+          /* Buton eksik seçimde kilitli. Genel bir ipucu ("10 hafta ve 5
+             atölye seçin") yetmiyordu: kullanıcı zaten seçtiğini sanıp butonu
+             bozuk sayıyor. Kaç tane eksik olduğu sayıyla yazılıyor. */
+          <span className="text-sm font-medium text-vurgu-700">
+            {!haftaTamam
+              ? `${HAFTA_SAYISI - secilenHaftalar.length} hafta daha seçin`
+              : null}
+            {!haftaTamam && !atolyeTamam ? " · " : null}
+            {!atolyeTamam
+              ? `${DONEM_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`
+              : null}
           </span>
         )}
       </div>

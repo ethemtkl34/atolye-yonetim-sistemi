@@ -100,7 +100,7 @@ export function OgrenciFormu({
             <Girdi
               name="grade"
               defaultValue={varsayilanlar.grade}
-              placeholder="3. sınıf"
+              placeholder="Örn. 3. sınıf"
             />
           </Alan>
         </div>
@@ -132,7 +132,7 @@ export function OgrenciFormu({
               name="anneTelefon"
               type="tel"
               inputMode="tel"
-              placeholder="0532 111 22 33"
+              placeholder="Örn. 0532 111 22 33"
               defaultValue={varsayilanlar.anneTelefon}
             />
           </Alan>
@@ -146,7 +146,7 @@ export function OgrenciFormu({
               name="babaTelefon"
               type="tel"
               inputMode="tel"
-              placeholder="0533 444 55 66"
+              placeholder="Örn. 0533 444 55 66"
               defaultValue={varsayilanlar.babaTelefon}
             />
           </Alan>

@@ -56,7 +56,7 @@ export function GrupEkleFormu({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Grup adı" hata={durum.alanHatalari?.name}>
-            <Girdi name="name" placeholder="2. Grup" autoFocus required />
+            <Girdi name="name" placeholder="Örn. 2. Grup" autoFocus required />
           </Alan>
 
           <Alan etiket="Kontenjan" hata={durum.alanHatalari?.capacity}>
