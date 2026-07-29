@@ -9,7 +9,7 @@ yoksa ilk derleme migration adımında durur.
 |---|---|---|
 | Uygulama | **Vercel** | Next.js'i yapan şirket; bu sürüm için ayar gerektirmiyor |
 | Veritabanı | **Neon** (Postgres) | Vercel'in önerdiği ve Vercel Postgres'in altında çalıştırdığı servis |
-| Adres | `*.vercel.app` | Ücretsiz ve anında gelir |
+| Adres | **panel.tuzder.org** | Kurumun alan adı zaten var; alt alan ek ücret istemez |
 
 **Bilinmesi gereken:** Vercel'in ücretsiz **Hobby** planı sözleşmesinde ticari
 kullanıma kapalıdır — plan "kişisel, ticari olmayan" kullanım için tanımlanmış.
@@ -55,7 +55,7 @@ alanlarını içeriyor, bunların yapısı bile dışarı açık durmamalı.
 |---|---|
 | `DATABASE_URL` | Neon'dan aldığınız **pooled** adres |
 | `AUTH_SECRET` | `openssl rand -base64 32` çıktısı (aşağıya bakın) |
-| `AUTH_URL` | `https://<proje-adı>.vercel.app` |
+| `AUTH_URL` | `https://panel.tuzder.org` |
 | `NEXT_PUBLIC_KURUM_ADI` | `TÜZDER` |
 
 Yeni bir `AUTH_SECRET` üretmek için:
@@ -111,25 +111,34 @@ uydurma puan yazdığı için uzak veritabanı gördüğünde kendini durdurur.
 
 ## 5. İlk giriş
 
-`https://<proje-adı>.vercel.app` adresine gidip `koordinator@tuzder.local`
-ve bir önceki adımda gösterilen parolayla girin.
+`https://panel.tuzder.org` adresine gidip `koordinator@tuzder.local` ve bir
+önceki adımda gösterilen parolayla girin. (Alan adı DNS'te yayılana kadar
+Vercel'in geçici `*.vercel.app` adresi de çalışır.)
 
 Gerçek kullanıma geçmeden önce kurumun kendi hesapları açılmalı ve bu üç
 başlangıç hesabı pasife alınmalı. Koordinatör panelindeki **Stajyerler**
 ekranı stajyer hesaplarını yönetiyor; koordinatör hesabı için parola değişimi
 henüz arayüzde yok (bkz. Bilinen eksikler).
 
-## 6. Kendi alan adınız (isteğe bağlı)
+## 6. Alan adı: panel.tuzder.org
 
-Kurumun **tuzder.org** alan adı zaten var; bir alt alan adı ek ücret
-istemez ve `vercel.app` adresinden çok daha kurumsal görünür:
+`atolye.tuzder.org` zaten kullanımda (kurumun tanıtım sayfası), bu yüzden
+iç sistem `panel.tuzder.org` adresine kuruluyor. Adresin boş olduğu DNS
+sorgusuyla doğrulandı.
 
-1. Vercel → proje → **Settings → Domains** → `atolye.tuzder.org` ekleyin.
-2. Vercel bir CNAME kaydı verir; bunu alan adı sağlayıcınızın DNS panelinde
-   tanımlayın.
-3. Sertifika kendiliğinden gelir.
-4. **`AUTH_URL`'i yeni adrese güncellemeyi unutmayın**, yoksa giriş sonrası
-   yönlendirme eski adrese gider.
+1. Vercel → proje → **Settings → Domains** → `panel.tuzder.org` ekleyin.
+2. Vercel bir CNAME kaydı verir (`cname.vercel-dns.com` benzeri).
+3. **tuzder.org Cloudflare'de barınıyor** (ad sunucuları `joan.ns.cloudflare.com`
+   ve `lloyd.ns.cloudflare.com`). Cloudflare DNS panelinde kaydı eklerken:
+   - Tür: `CNAME`, Ad: `panel`, Hedef: Vercel'in verdiği adres
+   - **Proxy durumu: DNS only (gri bulut).** Turuncu bulut açık kalırsa
+     Vercel alan adını doğrulayamaz ve sertifika üretemez. İsterseniz
+     çalıştıktan sonra proxy'yi açabilirsiniz; o durumda Cloudflare'de
+     SSL modu **Full (strict)** olmalı, aksi hâlde yönlendirme döngüsü olur.
+4. Sertifika Vercel tarafından kendiliğinden üretilir (birkaç dakika).
+5. `AUTH_URL` zaten `https://panel.tuzder.org` olarak girildiği için ek bir
+   şey gerekmez. Adres sonradan değişirse bu değişken de güncellenmeli;
+   yoksa giriş sonrası yönlendirme eski adrese gider.
 
 ---
 
