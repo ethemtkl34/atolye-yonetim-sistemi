@@ -3,7 +3,7 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P12 — Yayına alma
+**Şu an:** P12 — Yayına alma *(canlıda; alan adı DNS kaydı bekliyor)*
 
 ---
 
@@ -678,6 +678,56 @@ tarayıcı hayatta kaldı) ve 3000'i başka bir uygulamanın tuttuğu durum
 
 Giriş: `koordinator@tuzder.local` · `ayse@tuzder.local` · `mehmet@tuzder.local`,
 üçünün de parolası `Atolye2026!` (yalnızca geliştirme verisi).
+
+---
+
+## P12 — Yayına alma (canlıda)
+
+Uygulama **Vercel**'de, veritabanı **Neon**'da (Frankfurt, havuzlu bağlantı).
+Geçici adres `atolye-yonetim-sistemi-etoli.vercel.app`; kalıcı adres
+`panel.tuzder.org` Vercel'e tanıtıldı ama DNS kaydı henüz yazılmadı.
+Kod deposu: github.com/ethemtkl34/atolye-yonetim-sistemi (public).
+
+### Üretimde doğrulanan kabul ölçütleri
+
+| Test | Sonuç |
+|---|---|
+| Dashboard kartları ↔ veritabanı sayıları | 1 · 1 · 4 · 19 · 1 · 2 birebir |
+| §6.2 Türkçe duyarsız arama (9 yazım) | `sule`/`SULE`/`Şule`/`cinar`/`ipek`/`İPEK`/`0532` hepsi doğru |
+| §11 rapor üretimi (Server Action) | Ömer Şahin raporu üretildi, güçlü + desteklenecek alanlar çıktı |
+| §11.5 PDF | 2 sayfa, `NotoSans` gömülü, Türkçe karakterler gözle doğrulandı |
+| §13.16 rapor güncelliği | Puan değiştirildi → rapor anında "Güncel değil"e düştü |
+| §3.2 rol izolasyonu | Stajyer `/koordinator` → 307 `/stajyer` |
+| §3.2 gizlilik | Stajyerin gördüğü HTML'de veli telefonu ve sağlık detayı yok; yalnızca kısa güvenlik uyarısı var |
+| Oturumsuz erişim | `/koordinator` → 307, PDF indirme → 403 |
+
+### Yol boyunca çıkan dört sorun
+
+- **İlk derleme `datasource.url` hatasıyla durdu.** `DATABASE_URL` daha
+  girilmemişken deploy tetiklenmişti. Değişkenler girilip yeniden yayına
+  alınınca geçti.
+- **Vercel'in dağıtım koruması açıktı.** Site, Vercel hesabı olmayan hiç
+  kimseye açılmıyordu — yani kurum personeli giremezdi. `ssoProtection`
+  API'den kapatıldı.
+- **Yerel veritabanı üretime kopyalanınca `User` tablosu da gitti** ve üretim,
+  depoda açık yazan `Atolye2026!` parolasını devraldı. Depo public olduğu için
+  bu ciddi bir açıktı; dört hesabın parolası rastgele bir değerle yenilendi ve
+  eski parolanın artık çalışmadığı doğrulandı.
+- **`DROP SCHEMA public` sonrası `search_path` boş kaldı.** Tablolar
+  yerindeydi ama nitelendirilmemiş sorgular onları bulamıyordu. Prisma
+  şemayı zaten nitelediği için uygulama etkilenmedi; yine de rol düzeyinde
+  `search_path` geri yazıldı.
+
+### Kalan işler
+
+- `panel.tuzder.org` için Cloudflare'de CNAME kaydı (**gri bulut / DNS only**)
+- DNS yayılınca `AUTH_URL` bu adrese güncellenip yeniden yayına alınmalı
+  (şu an bilerek vercel.app adresinde; yoksa giriş sonrası çalışmayan adrese
+  yönlendirirdi)
+- Üretimdeki veri şu an **deneme verisi**. Kurum gerçekten kullanmaya
+  başlamadan önce temizlenmeli.
+- Koordinatör parolasının arayüzden değiştirilememesi (bkz. YAYINA-ALMA.md
+  "Bilinen eksikler")
 
 ---
 
