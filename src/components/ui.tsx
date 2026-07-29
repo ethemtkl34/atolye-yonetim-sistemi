@@ -116,9 +116,13 @@ export function Alan({
   children: React.ReactNode;
 }) {
   return (
+    // Sarmalayıcılar <div> değil <span className="block">: <label> yalnızca
+    // metin içeriği (phrasing content) alabiliyor, <div> geçersiz iç içe
+    // geçme oluşturuyordu. Tarayıcılar tolere ediyor ama erişilebilirlik
+    // ağacı bozuluyor. `block` sınıfıyla görünüm birebir aynı kalıyor.
     <label className="block">
       <span className="block text-sm font-medium text-zinc-700">{etiket}</span>
-      <div className="mt-1">{children}</div>
+      <span className="mt-1 block">{children}</span>
       {ipucu && !hata ? (
         <span className="mt-1 block text-xs text-zinc-500">{ipucu}</span>
       ) : null}
