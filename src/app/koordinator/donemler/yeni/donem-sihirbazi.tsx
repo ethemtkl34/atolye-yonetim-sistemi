@@ -33,10 +33,20 @@ function sonrakiCumartesi(tarih: Date): Date {
   return gunEkle(tarih, fark);
 }
 
-function KaydetButonu({ etkin }: { etkin: boolean }) {
+function KaydetButonu({
+  etkin,
+  engelSebebi,
+}: {
+  etkin: boolean;
+  engelSebebi?: string;
+}) {
   const { pending } = useFormStatus();
   return (
-    <Buton type="submit" disabled={pending || !etkin}>
+    <Buton
+      type="submit"
+      disabled={pending || !etkin}
+      engelSebebi={etkin ? undefined : engelSebebi}
+    >
       {pending ? "Oluşturuluyor…" : "Dönemi oluştur"}
     </Buton>
   );
@@ -90,6 +100,19 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
 
   const haftaTamam = secilenHaftalar.length === HAFTA_SAYISI;
   const atolyeTamam = secilenAtolyeler.length === DONEM_ATOLYE_SAYISI;
+
+  // Neyin eksik olduğu tek yerde hesaplanıyor: aynı metin hem butonun
+  // yanındaki uyarıda hem butonun üstüne gelince çıkan ipucunda kullanılıyor.
+  const eksikMetni = [
+    haftaTamam
+      ? null
+      : `${HAFTA_SAYISI - secilenHaftalar.length} hafta daha seçin`,
+    atolyeTamam
+      ? null
+      : `${DONEM_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   // Seçilen haftalar tarih sırasına konur; kullanıcı hangi sırayla
   // işaretlerse işaretlesin 1. hafta takvimdeki ilk hafta olmalı.
@@ -308,7 +331,10 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <KaydetButonu etkin={haftaTamam && atolyeTamam} />
+        <KaydetButonu
+          etkin={haftaTamam && atolyeTamam}
+          engelSebebi={eksikMetni}
+        />
         {haftaTamam && atolyeTamam ? (
           <span className="text-sm text-zinc-500">
             {HAFTA_SAYISI} hafta × {DONEM_ATOLYE_SAYISI} atölye ={" "}
@@ -319,13 +345,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
              atölye seçin") yetmiyordu: kullanıcı zaten seçtiğini sanıp butonu
              bozuk sayıyor. Kaç tane eksik olduğu sayıyla yazılıyor. */
           <span className="text-sm font-medium text-vurgu-700">
-            {!haftaTamam
-              ? `${HAFTA_SAYISI - secilenHaftalar.length} hafta daha seçin`
-              : null}
-            {!haftaTamam && !atolyeTamam ? " · " : null}
-            {!atolyeTamam
-              ? `${DONEM_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`
-              : null}
+            {eksikMetni}
           </span>
         )}
       </div>

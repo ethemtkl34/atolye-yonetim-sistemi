@@ -79,9 +79,29 @@ export function butonStili(tur: ButonTuru = "birincil", ekSinif?: string) {
 export function Buton({
   tur = "birincil",
   className,
+  engelSebebi,
   ...props
-}: React.ComponentProps<"button"> & { tur?: ButonTuru }) {
-  return <button className={butonStili(tur, className)} {...props} />;
+}: React.ComponentProps<"button"> & {
+  tur?: ButonTuru;
+  /**
+   * Buton neden kilitli — üzerine gelindiğinde ipucu olarak gösterilir.
+   *
+   * Devre dışı bir `<button>` fare olayı almadığı için `title` doğrudan
+   * butona konsa görünmez; bu yüzden saran `<span>` üzerine yazılıyor.
+   * Ekran okuyucular için de `aria-describedby` yerine görünür ipucu
+   * metniyle birlikte kullanılması gerekir (sihirbazlarda öyle yapılıyor).
+   */
+  engelSebebi?: string;
+}) {
+  const buton = <button className={butonStili(tur, className)} {...props} />;
+
+  if (!engelSebebi || !props.disabled) return buton;
+
+  return (
+    <span title={engelSebebi} className="inline-flex cursor-not-allowed">
+      {buton}
+    </span>
+  );
 }
 
 export function Alan({

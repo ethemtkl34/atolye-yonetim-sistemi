@@ -23,10 +23,20 @@ function sonrakiCumartesi(tarih: Date): Date {
   return gunEkle(tarih, (6 - gun + 7) % 7);
 }
 
-function KaydetButonu({ etkin }: { etkin: boolean }) {
+function KaydetButonu({
+  etkin,
+  engelSebebi,
+}: {
+  etkin: boolean;
+  engelSebebi?: string;
+}) {
   const { pending } = useFormStatus();
   return (
-    <Buton type="submit" disabled={pending || !etkin}>
+    <Buton
+      type="submit"
+      disabled={pending || !etkin}
+      engelSebebi={etkin ? undefined : engelSebebi}
+    >
       {pending ? "Oluşturuluyor…" : "Kulübü oluştur"}
     </Buton>
   );
@@ -55,6 +65,17 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
     ? [0, 6].includes(secilenTarih.getUTCDay())
     : false;
   const atolyeTamam = secilenAtolyeler.length === KULUP_ATOLYE_SAYISI;
+
+  // Dönem sihirbazıyla aynı biçim: eksik olan şey tek yerde hesaplanıp hem
+  // butonun yanında hem üstüne gelince çıkan ipucunda kullanılıyor.
+  const eksikMetni = [
+    haftaSonu ? null : "Hafta sonuna denk gelen bir tarih seçin",
+    atolyeTamam
+      ? null
+      : `${KULUP_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   function atolyeDegistir(id: string) {
     setSecilenAtolyeler((oncekiler) =>
@@ -221,7 +242,10 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <KaydetButonu etkin={atolyeTamam && haftaSonu} />
+        <KaydetButonu
+          etkin={atolyeTamam && haftaSonu}
+          engelSebebi={eksikMetni}
+        />
         {atolyeTamam && haftaSonu ? (
           <span className="text-sm text-zinc-500">
             {KULUP_ATOLYE_SAYISI} atölye oturumu oluşturulacak.
@@ -230,11 +254,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           /* Dönem sihirbazıyla aynı gerekçe: eksiğin ne olduğu sayıyla
              yazılmazsa kilitli buton bozuk sanılıyor. */
           <span className="text-sm font-medium text-vurgu-700">
-            {!haftaSonu ? "Hafta sonuna denk gelen bir tarih seçin" : null}
-            {!haftaSonu && !atolyeTamam ? " · " : null}
-            {!atolyeTamam
-              ? `${KULUP_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`
-              : null}
+            {eksikMetni}
           </span>
         )}
       </div>
