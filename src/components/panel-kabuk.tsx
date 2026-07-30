@@ -43,12 +43,20 @@ export function PanelKabuk({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-yuzey-200 bg-white px-6 py-3">
-          <div className="min-w-0">
+          {/* Ad, hesap sayfasına giden bağlantı: parola değiştirme buradan
+              bulunuyor. Menüye ayrı madde eklenmedi — 13 modülün arasına
+              karışmaması, kullanıcının kendi hesabına ait olması gerekiyor. */}
+          <Link
+            href="/hesabim"
+            className="min-w-0 rounded-md px-2 py-1 -mx-2 transition-colors hover:bg-marka-50"
+          >
             <p className="truncate text-sm font-medium text-zinc-900">
               {kullanici.name}
             </p>
-            <p className="text-xs text-zinc-500">{rolAdi(kullanici.role)}</p>
-          </div>
+            <p className="text-xs text-zinc-500">
+              {rolAdi(kullanici.role)} · Hesabım
+            </p>
+          </Link>
 
           <form action={cikisYap}>
             <button
