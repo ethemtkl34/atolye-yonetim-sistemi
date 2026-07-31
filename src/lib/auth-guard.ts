@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -20,6 +21,20 @@ export type OturumKullanicisi = {
 };
 
 /**
+ * Kullanıcı satırını okur — `cache()` ile istek başına TEK sorgu.
+ *
+ * Layout ve sayfa aynı istekte ayrı ayrı `girisZorunlu()` çağırır; sarmalama
+ * olmasaydı her gezinti aynı kullanıcıyı iki kez okurdu. Üretimde veritabanı
+ * uzak olduğu için bu doğrudan sayfa gecikmesine dönüşüyor.
+ */
+const kullaniciyiOku = cache(async (kullaniciId: string) =>
+  db.user.findUnique({
+    where: { id: kullaniciId },
+    select: { id: true, name: true, email: true, role: true, active: true },
+  }),
+);
+
+/**
  * Oturum açmış kullanıcıyı döner; yoksa giriş sayfasına yönlendirir.
  *
  * Oturum belirteci (JWT) 12 saat geçerli olduğu için hesabın hâlâ var ve
@@ -36,10 +51,7 @@ export async function girisZorunlu(): Promise<OturumKullanicisi> {
     redirect("/giris");
   }
 
-  const kullanici = await db.user.findUnique({
-    where: { id: oturum.user.id },
-    select: { id: true, name: true, email: true, role: true, active: true },
-  });
+  const kullanici = await kullaniciyiOku(oturum.user.id);
 
   if (!kullanici || !kullanici.active) {
     redirect("/hesap-pasif");
