@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { raporOzetleri, RAPOR_LISTE_SINIRI } from "@/lib/rapor-verisi";
 import { tarihBicimle } from "@/lib/tarih";
@@ -35,6 +35,11 @@ export default async function RaporlarSayfasi(
       <SayfaBasligi
         baslik="Raporlar"
         aciklama="Rapor istenildiği anda mevcut puanlardan üretilir. Puanlar sonradan değişirse rapor “Güncel değil” olarak işaretlenir; yeniden üretmek eski raporu ve PDF’lerini silmez."
+        aksiyon={
+          <Link href="/koordinator/raporlar/yeni" className={butonStili()}>
+            Yeni rapor
+          </Link>
+        }
       />
 
       <SuzgecCubugu>
@@ -70,7 +75,7 @@ export default async function RaporlarSayfasi(
           aciklama={
             suzgec === "eski"
               ? "Bütün raporlar üretildikleri günkü puanlarla uyumlu."
-              : "Rapor, öğrenci profilindeki “Rapor oluştur” düğmesiyle üretilir."
+              : "“Yeni rapor” düğmesiyle veya öğrenci profilinden rapor üretebilirsiniz."
           }
         />
       ) : (

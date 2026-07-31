@@ -43,8 +43,14 @@ export default async function ArsivSayfasi() {
             name: true,
             day: true,
             timeSlot: true,
+            // Diğer bütün ekranlar gibi yalnızca AKTIF kayıtlar sayılır;
+            // filtresiz sayım iptal edilmiş kayıtları da katıyor ve arşiv,
+            // programın kendi sayfasından daha yüksek bir sayı gösteriyordu.
             _count: {
-              select: { enrollments: true, sessions: true },
+              select: {
+                enrollments: { where: { status: "AKTIF" } },
+                sessions: true,
+              },
             },
           },
         },
@@ -62,7 +68,12 @@ export default async function ArsivSayfasi() {
             name: true,
             day: true,
             timeSlot: true,
-            _count: { select: { enrollments: true, sessions: true } },
+            _count: {
+              select: {
+                enrollments: { where: { status: "AKTIF" } },
+                sessions: true,
+              },
+            },
           },
         },
         _count: { select: { workshops: true } },

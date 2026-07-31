@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { ClubStatus } from "@/generated/prisma/enums";
-import { KULUP_DURUMLARI } from "@/lib/durumlar";
+import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import { kulupDurumDegistir } from "../actions";
 
 /**
@@ -38,11 +38,19 @@ export function DurumSecici({
           }}
           className="rounded-md border border-yuzey-200 px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60"
         >
-          {Object.entries(KULUP_DURUMLARI).map(([kod, { etiket }]) => (
-            <option key={kod} value={kod}>
-              {etiket}
-            </option>
-          ))}
+          {/* Yalnızca mevcut durum ve ondan geçilebilen durumlar listelenir;
+              sunucu da aynı kuralı uygular. */}
+          {Object.entries(KULUP_DURUMLARI)
+            .filter(
+              ([kod]) =>
+                kod === mevcutDurum ||
+                KULUP_DURUM_GECISLERI[mevcutDurum].includes(kod as ClubStatus),
+            )
+            .map(([kod, { etiket }]) => (
+              <option key={kod} value={kod}>
+                {etiket}
+              </option>
+            ))}
         </select>
       </label>
       {hata ? (

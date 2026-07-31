@@ -68,6 +68,13 @@ export type SoruOrtalamasi = {
   ortalama: number | null;
   /** Bu soruya kaç oturumda gerçek puan verildi (Değerlendirilemedi hariç). */
   puanlananOturumSayisi: number;
+  /**
+   * Geçerli puanların toplamı. Rapor motoru atölyeler arası birleşimlerde
+   * ortalamaların ortalamasını değil, bu toplamlar üzerinden ağırlıklı
+   * ortalamayı kullanır — az cevaplanmış bir soru çok cevaplanmışla eşit
+   * ağırlık taşımamalı (aşağıdaki genel ortalama kuralıyla aynı ilke).
+   */
+  puanToplami: number;
   sortOrder: number;
 };
 
@@ -116,13 +123,17 @@ export function atolyeOzetiHesapla(
   }
 
   const soruOrtalamalari: SoruOrtalamasi[] = [...soruGruplari.entries()]
-    .map(([anahtar, grup]) => ({
-      anahtar,
-      soruMetni: grup.metin,
-      ortalama: ortalama(grup.degerler),
-      puanlananOturumSayisi: grup.degerler.filter((d) => d !== null).length,
-      sortOrder: grup.sortOrder,
-    }))
+    .map(([anahtar, grup]) => {
+      const gecerli = grup.degerler.filter((d): d is number => d !== null);
+      return {
+        anahtar,
+        soruMetni: grup.metin,
+        ortalama: ortalama(grup.degerler),
+        puanlananOturumSayisi: gecerli.length,
+        puanToplami: gecerli.reduce((a, b) => a + b, 0),
+        sortOrder: grup.sortOrder,
+      };
+    })
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // Genel ortalama bütün geçerli puanlar üzerinden alınır; soru ortalamalarının

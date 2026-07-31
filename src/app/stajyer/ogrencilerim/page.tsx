@@ -18,9 +18,12 @@ export const metadata: Metadata = {
 export default async function OgrencilerimSayfasi() {
   const kullanici = await stajyerZorunlu();
 
+  // Görevlerim ekranıyla aynı kapsam: arşivlenmiş veya tamamlanmış programın
+  // kayıtları listelenmez.
   const ilerlemeler = await kayitIlerlemeleri({
     internId: kullanici.id,
     yalnizcaAktif: true,
+    yalnizcaAktifProgram: true,
   });
 
   return (

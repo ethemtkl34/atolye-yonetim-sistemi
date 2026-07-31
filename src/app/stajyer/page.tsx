@@ -26,7 +26,14 @@ export default async function StajyerPaneli() {
   const kullanici = await stajyerZorunlu();
 
   const [ilerlemeler, sonFormlar] = await Promise.all([
-    kayitIlerlemeleri({ internId: kullanici.id, yalnizcaAktif: true }),
+    // Koordinatör dashboard'uyla aynı kapsam: arşivlenmiş veya tamamlanmış
+    // programın formları görev sayılmaz. Aksi hâlde koordinatör "eksik yok"
+    // görürken stajyer aynı formları doldurmaya devam edebiliyordu.
+    kayitIlerlemeleri({
+      internId: kullanici.id,
+      yalnizcaAktif: true,
+      yalnizcaAktifProgram: true,
+    }),
     doldurulmusFormlar({ internId: kullanici.id, enFazla: 5 }),
   ]);
 
@@ -75,7 +82,7 @@ export default async function StajyerPaneli() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
-                          href={`/stajyer/puanlama/${satir.kayitId}/${gun.tarihAnahtari}`}
+                          href={`/stajyer/puanlama/${satir.kayitId}/${gun.tarihAnahtari}?geri=gorevler`}
                           className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
                         >
                           {satir.ogrenciAdi}
@@ -136,7 +143,7 @@ export default async function StajyerPaneli() {
                     <Rozet tur="pasif">Katılmadı</Rozet>
                   )}
                   <Link
-                    href={`/stajyer/puanlama/${form.kayitId}/${form.tarihAnahtari}`}
+                    href={`/stajyer/puanlama/${form.kayitId}/${form.tarihAnahtari}?geri=gorevler`}
                     className="text-sm text-marka-700 hover:underline"
                   >
                     Düzenle

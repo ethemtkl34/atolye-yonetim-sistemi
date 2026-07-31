@@ -1,6 +1,5 @@
 import {
   atolyeOzetiHesapla,
-  ortalama,
   type AtolyeOzeti,
   type PuanlamaGirdisi,
   type SoruOrtalamasi,
@@ -155,10 +154,14 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
 
   // Genel değerlendirme bütün atölyelerin soru ortalamalarını birlikte
   // değerlendirir: aynı soru farklı atölyelerde de sorulduğu için metin
-  // adına göre birleştirilir.
+  // adına göre birleştirilir. Birleşim ağırlıklıdır — scoring.ts'teki genel
+  // ortalama kuralıyla aynı ilke: bir atölyede 1, diğerinde 9 kez puanlanmış
+  // bir soru için iki ortalamanın eşit ağırlıkla ortalanması, tek gözlemi
+  // 9 gözlemle aynı güçte sayar ve yanlış bir "güçlü/desteklenecek alan"
+  // yargısı üretebilirdi.
   const soruHavuzu = new Map<
     string,
-    { toplamlar: number[]; gozlem: number }
+    { puanToplami: number; gozlem: number }
   >();
 
   for (const atolye of atolyeler) {
@@ -166,11 +169,11 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
       if (soru.ortalama === null) continue;
       const mevcut = soruHavuzu.get(soru.soruMetni);
       if (mevcut) {
-        mevcut.toplamlar.push(soru.ortalama);
+        mevcut.puanToplami += soru.puanToplami;
         mevcut.gozlem += soru.puanlananOturumSayisi;
       } else {
         soruHavuzu.set(soru.soruMetni, {
-          toplamlar: [soru.ortalama],
+          puanToplami: soru.puanToplami,
           gozlem: soru.puanlananOturumSayisi,
         });
       }
@@ -181,8 +184,9 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
     ([soruMetni, veri], sira) => ({
       anahtar: soruMetni,
       soruMetni,
-      ortalama: ortalama(veri.toplamlar),
+      ortalama: veri.gozlem > 0 ? veri.puanToplami / veri.gozlem : null,
       puanlananOturumSayisi: veri.gozlem,
+      puanToplami: veri.puanToplami,
       sortOrder: sira,
     }),
   );
@@ -198,6 +202,18 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
     0,
   );
 
+  // Genel ortalama da atölye ortalamalarının ortalaması değil, bütün geçerli
+  // puanların ağırlıklı ortalamasıdır; az puanlanmış bir atölye çok
+  // puanlanmışla eşit ağırlık taşımaz.
+  const genelPuanToplami = genelSorular.reduce(
+    (toplam, soru) => toplam + soru.puanToplami,
+    0,
+  );
+  const genelGozlemSayisi = genelSorular.reduce(
+    (toplam, soru) => toplam + soru.puanlananOturumSayisi,
+    0,
+  );
+
   return {
     ogrenciAdi: girdi.ogrenciAdi,
     ogrenciIlkAdi: girdi.ogrenciIlkAdi,
@@ -206,11 +222,8 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
     genel: {
       katildigiOturumSayisi: katildigi,
       katilmadigiOturumSayisi: katilmadigi,
-      genelOrtalama: ortalama(
-        atolyeler.flatMap((a) =>
-          a.genelOrtalama === null ? [] : [a.genelOrtalama],
-        ),
-      ),
+      genelOrtalama:
+        genelGozlemSayisi > 0 ? genelPuanToplami / genelGozlemSayisi : null,
       guclu: genelAlanlar.guclu,
       desteklenecek: genelAlanlar.desteklenecek,
       ihtiyatli: katildigi < IHTIYATLI_OTURUM_SINIRI,

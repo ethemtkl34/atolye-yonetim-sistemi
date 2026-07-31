@@ -27,9 +27,10 @@ export const proxy = auth((istek) => {
   if (!girisYapmis) {
     if (koordinatorAlani || stajyerAlani) {
       // Giriş sonrası kullanıcının gitmek istediği sayfaya dönebilmesi için
-      // hedef adres sorgu parametresinde taşınır.
+      // hedef adres sorgu parametresinde taşınır. Sorgu dizesi de dahil:
+      // süzgeçli bir listede oturum düşerse kullanıcı aynı süzgece dönmeli.
       const girisAdresi = new URL("/giris", nextUrl);
-      girisAdresi.searchParams.set("devam", nextUrl.pathname);
+      girisAdresi.searchParams.set("devam", nextUrl.pathname + nextUrl.search);
       return NextResponse.redirect(girisAdresi);
     }
     return NextResponse.next();

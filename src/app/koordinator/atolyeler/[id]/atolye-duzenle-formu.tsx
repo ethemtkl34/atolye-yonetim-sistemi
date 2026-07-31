@@ -24,6 +24,15 @@ export function AtolyeDuzenleFormu({
     atolyeGuncelle.bind(null, atolye.id),
     {},
   );
+  const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
+
+  // Güncelleme başarılı olunca form kapanır ve başarı bildirimi görünür
+  // (atolye-ekle-formu ile aynı desen). Bu olmadan bildirim yalnızca kapalı
+  // dalda çizildiği için kullanıcı "Vazgeç"e basmadıkça hiç görünmüyordu.
+  if (durum.basari !== gorulenBasari) {
+    setGorulenBasari(durum.basari);
+    if (durum.basari) setAcik(false);
+  }
 
   if (!acik) {
     return (
@@ -44,7 +53,12 @@ export function AtolyeDuzenleFormu({
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
       <Alan etiket="Atölye adı" hata={durum.alanHatalari?.name}>
-        <Girdi name="name" defaultValue={atolye.name} autoFocus required />
+        <Girdi
+          name="name"
+          defaultValue={durum.degerler?.name ?? atolye.name}
+          autoFocus
+          required
+        />
       </Alan>
 
       <Alan
@@ -55,7 +69,7 @@ export function AtolyeDuzenleFormu({
         <CokSatirli
           name="description"
           rows={2}
-          defaultValue={atolye.description ?? ""}
+          defaultValue={durum.degerler?.description ?? atolye.description ?? ""}
         />
       </Alan>
 

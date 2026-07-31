@@ -22,6 +22,7 @@ export default async function StajyerGunPuanlamasi(
 ) {
   const kullanici = await stajyerZorunlu();
   const { kayitId, tarih } = await props.params;
+  const parametreler = await props.searchParams;
 
   const veri = await kayitPuanlamasi(kayitId);
   if (!veri || veri.kayit.stajyerId !== kullanici.id) notFound();
@@ -29,14 +30,25 @@ export default async function StajyerGunPuanlamasi(
   const gun = veri.gunler.find((aday) => aday.tarihAnahtari === tarih);
   if (!gun) notFound();
 
+  // Görevlerim'den gelen stajyer Görevlerim'e döner; kayıt sayfasından gelen
+  // kayıt sayfasına. Tek sabit bağlantı ana akışta (görev listesi → form →
+  // geri) kullanıcıyı hiç gelmediği bir ekrana götürüyordu.
+  const gorevlerden = parametreler.geri === "gorevler";
+  const geriBaglantisi = gorevlerden
+    ? { href: "/stajyer", etiket: "← Görevlerim" }
+    : {
+        href: `/stajyer/puanlama/${kayitId}`,
+        etiket: `← ${veri.kayit.ogrenciAdi} · puanlama günleri`,
+      };
+
   return (
     <div className="space-y-6">
       <div>
         <Link
-          href={`/stajyer/puanlama/${kayitId}`}
+          href={geriBaglantisi.href}
           className="text-sm text-zinc-500 hover:text-zinc-900"
         >
-          ← {veri.kayit.ogrenciAdi} · puanlama günleri
+          {geriBaglantisi.etiket}
         </Link>
         <div className="mt-2">
           <SayfaBasligi

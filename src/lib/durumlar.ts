@@ -40,6 +40,31 @@ export const AKTIF_DONEM_DURUMLARI: TermStatus[] = [
 export const AKTIF_KULUP_DURUMLARI: ClubStatus[] = ["KAYIT_ALIYOR"];
 
 /**
+ * İzin verilen durum geçişleri.
+ *
+ * Her durumdan her duruma geçilebilseydi arşivden çıkan bir program tek
+ * hamlede yeniden kayıt almaya başlayabilir ("Arşivlendi" → "Kayıt alıyor")
+ * veya tamamlanmış bir dönem taslağa dönebilirdi. Geri alma yolları bilerek
+ * korunuyor (arşivden çıkma, erken kapatmayı geri alma) ama kapalı bir
+ * programı yeniden açmak en az iki bilinçli adım gerektiriyor.
+ */
+export const DONEM_DURUM_GECISLERI: Record<TermStatus, TermStatus[]> = {
+  TASLAK: ["KAYIT_ALIYOR", "ARSIVLENDI"],
+  KAYIT_ALIYOR: ["TASLAK", "DEVAM_EDIYOR", "TAMAMLANDI", "ARSIVLENDI"],
+  DEVAM_EDIYOR: ["KAYIT_ALIYOR", "TAMAMLANDI", "ARSIVLENDI"],
+  TAMAMLANDI: ["DEVAM_EDIYOR", "ARSIVLENDI"],
+  ARSIVLENDI: ["TAMAMLANDI"],
+};
+
+export const KULUP_DURUM_GECISLERI: Record<ClubStatus, ClubStatus[]> = {
+  TASLAK: ["KAYIT_ALIYOR", "IPTAL_EDILDI", "ARSIVLENDI"],
+  KAYIT_ALIYOR: ["TASLAK", "TAMAMLANDI", "IPTAL_EDILDI", "ARSIVLENDI"],
+  TAMAMLANDI: ["KAYIT_ALIYOR", "ARSIVLENDI"],
+  IPTAL_EDILDI: ["KAYIT_ALIYOR", "ARSIVLENDI"],
+  ARSIVLENDI: ["TAMAMLANDI", "IPTAL_EDILDI"],
+};
+
+/**
  * Dashboard kartlarıyla liste ekranlarının paylaştığı sorgu koşulları.
  *
  * P11'in kabul ölçütü "dashboard sayıları listelerle birebir uyuşur". Bunu

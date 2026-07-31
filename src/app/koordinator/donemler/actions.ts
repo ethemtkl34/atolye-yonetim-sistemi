@@ -16,7 +16,8 @@ import {
   mevcutHaftaNumarasi,
 } from "@/lib/session-generator";
 import { DONEM_ATOLYE_SAYISI, HAFTA_SAYISI } from "@/lib/kurallar";
-import { alanHatalari, GRUP_SEMASI } from "@/lib/formlar";
+import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
+import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
 
 /** §4 — Dönem ve grup işlemleri. */
 
@@ -24,7 +25,21 @@ export type EylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
+  degerler?: Record<string, string>;
 };
+
+/** Dönem sihirbazının metin/seçim alanları (hafta ve atölye seçimi hariç). */
+const DONEM_FORM_ALANLARI = [
+  "name",
+  "description",
+  "grupAdi",
+  "grupGunu",
+  "grupZamanDilimi",
+  "grupKontenjani",
+] as const;
+
+const GRUP_FORM_ALANLARI = ["name", "day", "timeSlot", "capacity"] as const;
 
 /** Grup şeması dönem ve kulüpte ortak — tek kaynak `lib/formlar.ts`. */
 const grupSemasi = GRUP_SEMASI;
@@ -135,6 +150,8 @@ export async function donemOlustur(
     capacity: formVerisi.get("grupKontenjani"),
   });
 
+  const girilenler = formDegerleri(formVerisi, DONEM_FORM_ALANLARI);
+
   const hatalar: Record<string, string> = {};
   if (!donem.success) Object.assign(hatalar, alanHatalari(donem.error));
   if (!grup.success) {
@@ -142,18 +159,24 @@ export async function donemOlustur(
       hatalar[`grup.${alan}`] = mesaj;
     }
   }
-  if (Object.keys(hatalar).length > 0) return { alanHatalari: hatalar };
+  if (Object.keys(hatalar).length > 0) {
+    return { alanHatalari: hatalar, degerler: girilenler };
+  }
   if (!donem.success || !grup.success) return { hata: "Form doğrulanamadı." };
 
   const haftaSonucu = haftalariDogrula(
     formVerisi.getAll("tarihler").map(String).filter(Boolean),
   );
-  if ("hata" in haftaSonucu) return { hata: haftaSonucu.hata };
+  if ("hata" in haftaSonucu) {
+    return { hata: haftaSonucu.hata, degerler: girilenler };
+  }
 
   const atolyeSonucu = await atolyeleriDogrula(
     formVerisi.getAll("atolyeler").map(String).filter(Boolean),
   );
-  if ("hata" in atolyeSonucu) return { hata: atolyeSonucu.hata };
+  if ("hata" in atolyeSonucu) {
+    return { hata: atolyeSonucu.hata, degerler: girilenler };
+  }
 
   // Dönem, haftaları, atölyeleri, ilk grubu ve grubun 50 oturumu tek işlemde
   // yazılır. Araya bir hata girerse yarım kalmış bir dönem oluşmamalı.
@@ -231,6 +254,20 @@ export async function donemDurumDegistir(
     return { hata: "Geçersiz dönem durumu." };
   }
 
+  const donem = await db.term.findUnique({
+    where: { id: donemId },
+    select: { status: true },
+  });
+  if (!donem) return { hata: "Dönem bulunamadı." };
+  if (donem.status === yeniDurum) return { basari: "Dönem zaten bu durumda." };
+
+  // Her durumdan her duruma geçilemez; izinli geçişler tek kaynaktan okunur.
+  if (!DONEM_DURUM_GECISLERI[donem.status].includes(yeniDurum)) {
+    return {
+      hata: `"${DONEM_DURUMLARI[donem.status].etiket}" durumundan "${DONEM_DURUMLARI[yeniDurum].etiket}" durumuna doğrudan geçilemez.`,
+    };
+  }
+
   await db.term.update({
     where: { id: donemId },
     data: { status: yeniDurum },
@@ -271,7 +308,10 @@ export async function grupEkle(
   });
 
   if (!grup.success) {
-    return { alanHatalari: alanHatalari(grup.error) };
+    return {
+      alanHatalari: alanHatalari(grup.error),
+      degerler: formDegerleri(formVerisi, GRUP_FORM_ALANLARI),
+    };
   }
 
   const donem = await db.term.findUnique({
@@ -284,7 +324,21 @@ export async function grupEkle(
 
   if (!donem) return { hata: "Dönem bulunamadı." };
 
-  const baslangicHaftasi = mevcutHaftaNumarasi(donem.weeks, bugun());
+  // Tamamlanmış veya arşivlenmiş döneme grup açılamaz — açılsaydı hiçbir
+  // kayıt alamayacak, listelerde de görünmeyecek bir grup oluşurdu.
+  if (donem.status === "TAMAMLANDI" || donem.status === "ARSIVLENDI") {
+    return {
+      hata: `Bu dönem "${DONEM_DURUMLARI[donem.status].etiket}" durumunda; yeni grup eklenemez.`,
+    };
+  }
+
+  // Hafta, grubun gerçek toplanma gününe göre hesaplanır: pazar günü açılan
+  // bir pazar grubunun o haftaki oturumu henüz yapılmamıştır.
+  const baslangicHaftasi = mevcutHaftaNumarasi(
+    donem.weeks,
+    bugun(),
+    grup.data.day,
+  );
 
   if (baslangicHaftasi === null) {
     return {

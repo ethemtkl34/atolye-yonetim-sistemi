@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tarihCozumle } from "@/lib/tarih";
 
 /**
  * §6.1 — Öğrenci kayıt formunun doğrulama şeması.
@@ -38,6 +39,12 @@ export const ogrenciSemasi = z
       z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir doğum tarihi girin")
+        // Biçimi doğru ama var olmayan tarihler (31 Şubat gibi) burada
+        // yakalanır. Yakalanmasaydı kayıt "başarılı" görünür, tarih ise
+        // sessizce boş yazılırdı.
+        .refine((deger) => tarihCozumle(deger) !== null, {
+          message: "Geçerli bir doğum tarihi girin",
+        })
         .nullable(),
     ),
     school: isteğeBagliMetin(120, "Okul"),
@@ -82,28 +89,29 @@ export const ogrenciSemasi = z
 
 export type OgrenciGirdisi = z.infer<typeof ogrenciSemasi>;
 
+/** Formun bütün alan adları — okuma ve hata durumunda geri döndürme için. */
+export const OGRENCI_FORM_ALANLARI = [
+  "firstName",
+  "lastName",
+  "birthDate",
+  "school",
+  "grade",
+  "notes",
+  "anneAdi",
+  "anneTelefon",
+  "babaAdi",
+  "babaTelefon",
+  "alerji",
+  "ilac",
+  "ozelEgitim",
+  "saglikNotu",
+  "acilDurum",
+  "stajyerUyarisi",
+] as const;
+
 /** FormData'yı şemanın beklediği düz nesneye çevirir. */
 export function formdanOku(formVerisi: FormData): Record<string, unknown> {
-  const alanlar = [
-    "firstName",
-    "lastName",
-    "birthDate",
-    "school",
-    "grade",
-    "notes",
-    "anneAdi",
-    "anneTelefon",
-    "babaAdi",
-    "babaTelefon",
-    "alerji",
-    "ilac",
-    "ozelEgitim",
-    "saglikNotu",
-    "acilDurum",
-    "stajyerUyarisi",
-  ] as const;
-
   return Object.fromEntries(
-    alanlar.map((alan) => [alan, formVerisi.get(alan)]),
+    OGRENCI_FORM_ALANLARI.map((alan) => [alan, formVerisi.get(alan)]),
   );
 }

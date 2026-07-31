@@ -35,8 +35,37 @@ export default async function GruplarSayfasi(
   const durum = parametreler.durum === "dolu" ? "dolu" : "tumu";
 
   const gruplar = await db.group.findMany({
-    where: kapsam === "aktif" ? AKTIF_GRUP_KOSULU : {},
-    orderBy: [{ active: "desc" }, { createdAt: "desc" }],
+    // "Tümü" de arşivlenmiş programların gruplarını göstermez — Dönemler ve
+    // Kulüpler listeleriyle aynı sözleşme: arşivlenen her şeyin tek adresi
+    // Arşiv ekranıdır. Aksi hâlde arşivdeki bir dönemin grupları burada
+    // görünüp aktif listede olmayan bir programa bağlantı veriyordu.
+    where:
+      kapsam === "aktif"
+        ? AKTIF_GRUP_KOSULU
+        : {
+            AND: [
+              {
+                OR: [
+                  { termId: null },
+                  { term: { status: { not: "ARSIVLENDI" } } },
+                ],
+              },
+              {
+                OR: [
+                  { clubId: null },
+                  { club: { status: { not: "ARSIVLENDI" } } },
+                ],
+              },
+            ],
+          },
+    // Program ve grup adına göre sıralanır; oluşturulma tarihi "2. Grup"u
+    // "1. Grup"un üstüne taşıyordu.
+    orderBy: [
+      { active: "desc" },
+      { term: { name: "asc" } },
+      { club: { name: "asc" } },
+      { name: "asc" },
+    ],
     include: {
       term: { select: { id: true, name: true } },
       club: { select: { id: true, name: true } },

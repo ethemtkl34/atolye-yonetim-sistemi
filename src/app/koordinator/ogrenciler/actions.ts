@@ -7,12 +7,20 @@ import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { tarihCozumle } from "@/lib/tarih";
-import { formdanOku, ogrenciSemasi, type OgrenciGirdisi } from "./sema";
+import { formDegerleri } from "@/lib/formlar";
+import {
+  OGRENCI_FORM_ALANLARI,
+  formdanOku,
+  ogrenciSemasi,
+  type OgrenciGirdisi,
+} from "./sema";
 
 export type EylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
+  degerler?: Record<string, string>;
 };
 
 function alanHatalari(hata: ZodError): Record<string, string> {
@@ -91,7 +99,10 @@ export async function ogrenciEkle(
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {
-    return { alanHatalari: alanHatalari(cozumlenen.error) };
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+    };
   }
 
   const veri = cozumlenen.data;
@@ -117,7 +128,10 @@ export async function ogrenciGuncelle(
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {
-    return { alanHatalari: alanHatalari(cozumlenen.error) };
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+    };
   }
 
   const veri = cozumlenen.data;

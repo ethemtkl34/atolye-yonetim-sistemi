@@ -58,6 +58,12 @@ export function OgrenciFormu({
   );
   const h = durum.alanHatalari;
 
+  // React 19 form eylemi bitince kontrolsüz alanları sıfırlar — doğrulama
+  // hatasında da. Eylem girilen değerleri geri döndürür; burada varsayılanların
+  // önüne konur ki 16 alanlık formda kullanıcının yazdıkları kaybolmasın.
+  const deger = (alan: keyof OgrenciVarsayilanlari) =>
+    durum.degerler?.[alan] ?? varsayilanlar[alan];
+
   return (
     <form action={formEylemi} className="space-y-6">
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
@@ -70,7 +76,7 @@ export function OgrenciFormu({
           <Alan etiket="Ad" hata={h?.firstName}>
             <Girdi
               name="firstName"
-              defaultValue={varsayilanlar.firstName}
+              defaultValue={deger("firstName")}
               autoFocus
               required
             />
@@ -79,7 +85,7 @@ export function OgrenciFormu({
           <Alan etiket="Soyad" hata={h?.lastName}>
             <Girdi
               name="lastName"
-              defaultValue={varsayilanlar.lastName}
+              defaultValue={deger("lastName")}
               required
             />
           </Alan>
@@ -88,25 +94,25 @@ export function OgrenciFormu({
             <Girdi
               name="birthDate"
               type="date"
-              defaultValue={varsayilanlar.birthDate}
+              defaultValue={deger("birthDate")}
             />
           </Alan>
 
           <Alan etiket="Okul" ipucu="İsteğe bağlı." hata={h?.school}>
-            <Girdi name="school" defaultValue={varsayilanlar.school} />
+            <Girdi name="school" defaultValue={deger("school")} />
           </Alan>
 
           <Alan etiket="Sınıf" ipucu="İsteğe bağlı." hata={h?.grade}>
             <Girdi
               name="grade"
-              defaultValue={varsayilanlar.grade}
+              defaultValue={deger("grade")}
               placeholder="Örn. 3. sınıf"
             />
           </Alan>
         </div>
 
         <Alan etiket="Genel notlar" ipucu="İsteğe bağlı." hata={h?.notes}>
-          <CokSatirli name="notes" rows={2} defaultValue={varsayilanlar.notes} />
+          <CokSatirli name="notes" rows={2} defaultValue={deger("notes")} />
         </Alan>
       </Kart>
 
@@ -124,7 +130,7 @@ export function OgrenciFormu({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Anne ad soyad" hata={h?.anneAdi}>
-            <Girdi name="anneAdi" defaultValue={varsayilanlar.anneAdi} />
+            <Girdi name="anneAdi" defaultValue={deger("anneAdi")} />
           </Alan>
 
           <Alan etiket="Anne telefon" hata={h?.anneTelefon}>
@@ -133,12 +139,12 @@ export function OgrenciFormu({
               type="tel"
               inputMode="tel"
               placeholder="Örn. 0532 111 22 33"
-              defaultValue={varsayilanlar.anneTelefon}
+              defaultValue={deger("anneTelefon")}
             />
           </Alan>
 
           <Alan etiket="Baba ad soyad" hata={h?.babaAdi}>
-            <Girdi name="babaAdi" defaultValue={varsayilanlar.babaAdi} />
+            <Girdi name="babaAdi" defaultValue={deger("babaAdi")} />
           </Alan>
 
           <Alan etiket="Baba telefon" hata={h?.babaTelefon}>
@@ -147,7 +153,7 @@ export function OgrenciFormu({
               type="tel"
               inputMode="tel"
               placeholder="Örn. 0533 444 55 66"
-              defaultValue={varsayilanlar.babaTelefon}
+              defaultValue={deger("babaTelefon")}
             />
           </Alan>
         </div>
@@ -167,11 +173,11 @@ export function OgrenciFormu({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Alerji bilgisi" hata={h?.alerji}>
-            <CokSatirli name="alerji" rows={2} defaultValue={varsayilanlar.alerji} />
+            <CokSatirli name="alerji" rows={2} defaultValue={deger("alerji")} />
           </Alan>
 
           <Alan etiket="Düzenli kullanılan ilaç" hata={h?.ilac}>
-            <CokSatirli name="ilac" rows={2} defaultValue={varsayilanlar.ilac} />
+            <CokSatirli name="ilac" rows={2} defaultValue={deger("ilac")} />
           </Alan>
 
           <Alan
@@ -181,7 +187,7 @@ export function OgrenciFormu({
             <CokSatirli
               name="ozelEgitim"
               rows={2}
-              defaultValue={varsayilanlar.ozelEgitim}
+              defaultValue={deger("ozelEgitim")}
             />
           </Alan>
 
@@ -192,7 +198,7 @@ export function OgrenciFormu({
             <CokSatirli
               name="saglikNotu"
               rows={2}
-              defaultValue={varsayilanlar.saglikNotu}
+              defaultValue={deger("saglikNotu")}
             />
           </Alan>
         </div>
@@ -204,7 +210,7 @@ export function OgrenciFormu({
           <CokSatirli
             name="acilDurum"
             rows={2}
-            defaultValue={varsayilanlar.acilDurum}
+            defaultValue={deger("acilDurum")}
           />
         </Alan>
 
@@ -218,7 +224,7 @@ export function OgrenciFormu({
               name="stajyerUyarisi"
               rows={2}
               placeholder="Fındık alerjisi bulunmaktadır. Gıda içeren etkinlik öncesinde koordinatörle iletişime geçiniz."
-              defaultValue={varsayilanlar.stajyerUyarisi}
+              defaultValue={deger("stajyerUyarisi")}
             />
           </Alan>
         </div>

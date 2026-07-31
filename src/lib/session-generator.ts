@@ -91,6 +91,12 @@ export function kulupOturumlariniUret({
  * Dönem başladıktan sonra açılan bir grubun hangi haftadan başlayacağını
  * belirler: bugünden itibaren yapılacak ilk eğitim haftası.
  *
+ * `grupGunu` verilirse hafta, çapa (cumartesi) yerine grubun gerçek toplanma
+ * tarihine göre değerlendirilir. Bu fark pazar gruplarında önemli: pazar günü
+ * açılan bir pazar grubunun o haftaki oturumu henüz yapılmamıştır; çapaya
+ * bakılsaydı (cumartesi < bugün) hafta geçmiş sayılır ve grup 5 oturumunu
+ * sessizce kaybederdi.
+ *
  * Dönem henüz başlamadıysa 1 döner (grup baştan katılır). Dönemin bütün
  * haftaları geçmişse null döner — böyle bir gruba üretilecek oturum yoktur ve
  * koordinatöre bu durum söylenmelidir.
@@ -98,9 +104,13 @@ export function kulupOturumlariniUret({
 export function mevcutHaftaNumarasi(
   haftalar: readonly HaftaGirdisi[],
   bugun: Date,
+  grupGunu?: Day,
 ): number | null {
   const gelecekHaftalar = haftalar
-    .filter((hafta) => hafta.date.getTime() >= bugun.getTime())
+    .filter((hafta) => {
+      const toplanma = grupGunu ? grupTarihi(hafta.date, grupGunu) : hafta.date;
+      return toplanma.getTime() >= bugun.getTime();
+    })
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
   const ilk = gelecekHaftalar[0];

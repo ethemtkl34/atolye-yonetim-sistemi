@@ -41,12 +41,18 @@ export async function raporOlustur(
     return { hata: "Seçilen kayıtlardan biri bu öğrenciye ait değil." };
   }
 
+  // Üretim zamanı puanlar okunmadan ÖNCE alınır. Varsayılan now() kullanılsa
+  // puan okuma ile kayıt arasındaki aralıkta değişen bir puan raporda yokken
+  // rapor yine "Güncel" görünürdü (§13.16 karşılaştırması generatedAt ile
+  // yapılıyor).
+  const uretimZamani = new Date();
   const govde = await raporGovdesiUret(ogrenciId, kayitIdleri);
   if (!govde) return { hata: "Öğrenci bulunamadı." };
 
   const rapor = await db.report.create({
     data: {
       studentId: ogrenciId,
+      generatedAt: uretimZamani,
       bodyJson: govde as unknown as object,
       enrollmentLinks: {
         create: kayitIdleri.map((kayitId) => ({ enrollmentId: kayitId })),
@@ -81,12 +87,15 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   if (!eski) return { hata: "Rapor bulunamadı." };
 
   const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollmentId);
+  // Zaman damgası puanlar okunmadan önce — raporOlustur'daki açıklamaya bakın.
+  const uretimZamani = new Date();
   const govde = await raporGovdesiUret(eski.studentId, kayitIdleri);
   if (!govde) return { hata: "Rapor verisi hazırlanamadı." };
 
   const yeni = await db.report.create({
     data: {
       studentId: eski.studentId,
+      generatedAt: uretimZamani,
       bodyJson: govde as unknown as object,
       enrollmentLinks: {
         create: kayitIdleri.map((kayitId) => ({ enrollmentId: kayitId })),
@@ -117,20 +126,25 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
 
   if (!rapor) return { hata: "Rapor bulunamadı." };
 
-  const pdf = await db.reportPdf.create({
-    data: {
-      reportId: rapor.id,
-      // Adres kaydın kendisinden türetiliyor; nesne deposuna geçilirse
-      // yalnızca burası değişir.
-      fileUrl: "",
-      snapshotJson: rapor.bodyJson as unknown as object,
-    },
-    select: { id: true },
-  });
+  // İki adım tek transaction'da: satır oluşturma ile adresin yazılması
+  // arasında bir hata olursa, silinemeyen (onDelete: Restrict) ama adressiz
+  // bir PDF kaydı kalıcı olarak ortada kalırdı.
+  await db.$transaction(async (tx) => {
+    const pdf = await tx.reportPdf.create({
+      data: {
+        reportId: rapor.id,
+        // Adres kaydın kendisinden türetiliyor; nesne deposuna geçilirse
+        // yalnızca burası değişir.
+        fileUrl: "",
+        snapshotJson: rapor.bodyJson as unknown as object,
+      },
+      select: { id: true },
+    });
 
-  await db.reportPdf.update({
-    where: { id: pdf.id },
-    data: { fileUrl: `/api/rapor-pdf/${pdf.id}` },
+    await tx.reportPdf.update({
+      where: { id: pdf.id },
+      data: { fileUrl: `/api/rapor-pdf/${pdf.id}` },
+    });
   });
 
   revalidatePath(`/koordinator/raporlar/${raporId}`);

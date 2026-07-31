@@ -343,15 +343,17 @@ export default async function OgrenciProfilSayfasi(
             </table>
           </Kart>
         )}
-        <p className="text-xs text-zinc-500">
-          En son güncellenen 30 form gösteriliyor.{" "}
-          <Link
-            href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-            className="text-marka-700 hover:underline"
-          >
-            Filtreli tam geçmiş →
-          </Link>
-        </p>
+        {katilimGecmisi.length > 0 ? (
+          <p className="text-xs text-zinc-500">
+            En son güncellenen 30 form gösteriliyor.{" "}
+            <Link
+              href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
+              className="text-marka-700 hover:underline"
+            >
+              Filtreli tam geçmiş →
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {/* 8. Puanlama geçmişi */}

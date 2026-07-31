@@ -80,16 +80,22 @@ export default async function AtamalarSayfasi() {
           baslik="Atanacak aktif kayıt yok."
           aciklama="Yeni öğrenci kaydı oluşturulduğunda sorumlu stajyer burada görünür."
         />
-      ) : stajyerSecenekleri.length === 0 ? (
-        <BosDurum
-          baslik="Aktif stajyer yok."
-          aciklama="Atamaları yönetebilmek için önce bir stajyer hesabını aktifleştirin."
-        />
       ) : (
-        <AtamaYonetimi
-          atamalar={atamalar}
-          stajyerler={stajyerSecenekleri}
-        />
+        <>
+          {/* Aktif stajyer yoksa liste yine de gösterilir: hangi kayıtların
+              sahipsiz kaldığını görmek tam da bu ekranın işi. Yalnızca atama
+              yapma imkânı kilitlenir. */}
+          {stajyerSecenekleri.length === 0 ? (
+            <BosDurum
+              baslik="Aktif stajyer yok."
+              aciklama="Atama yapabilmek için önce bir stajyer hesabını aktifleştirin. Mevcut atamalar aşağıda görünmeye devam eder."
+            />
+          ) : null}
+          <AtamaYonetimi
+            atamalar={atamalar}
+            stajyerler={stajyerSecenekleri}
+          />
+        </>
       )}
     </div>
   );

@@ -23,9 +23,12 @@ function KaydetButonu() {
 export function GrupEkleFormu({
   kulupId,
   bilgi,
+  engelSebebi,
 }: {
   kulupId: string;
   bilgi: string;
+  /** Doluysa buton kilitlenir — eylemin kesin reddedeceği durumlar için. */
+  engelSebebi?: string;
 }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     kulupGrupEkle.bind(null, kulupId),
@@ -44,7 +47,16 @@ export function GrupEkleFormu({
     return (
       <div className="space-y-3">
         {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
-        <Buton onClick={() => setAcik(true)}>Yeni grup ekle</Buton>
+        <Buton
+          onClick={() => setAcik(true)}
+          disabled={Boolean(engelSebebi)}
+          engelSebebi={engelSebebi}
+        >
+          Yeni grup ekle
+        </Buton>
+        {engelSebebi ? (
+          <p className="text-sm text-zinc-500">{engelSebebi}</p>
+        ) : null}
       </div>
     );
   }
@@ -56,7 +68,13 @@ export function GrupEkleFormu({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Grup adı" hata={durum.alanHatalari?.name}>
-            <Girdi name="name" placeholder="Örn. 2. Grup" autoFocus required />
+            <Girdi
+              name="name"
+              placeholder="Örn. 2. Grup"
+              defaultValue={durum.degerler?.name}
+              autoFocus
+              required
+            />
           </Alan>
 
           <Alan etiket="Kontenjan" hata={durum.alanHatalari?.capacity}>
@@ -65,7 +83,7 @@ export function GrupEkleFormu({
               type="number"
               min={1}
               max={200}
-              defaultValue={12}
+              defaultValue={durum.degerler?.capacity ?? 12}
               required
             />
           </Alan>
@@ -73,7 +91,7 @@ export function GrupEkleFormu({
           <Alan etiket="Zaman dilimi" hata={durum.alanHatalari?.timeSlot}>
             <select
               name="timeSlot"
-              defaultValue="OGLEDEN_SONRA"
+              defaultValue={durum.degerler?.timeSlot ?? "OGLEDEN_SONRA"}
               className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
             >
               <option value="OGLEDEN_ONCE">Öğleden önce</option>

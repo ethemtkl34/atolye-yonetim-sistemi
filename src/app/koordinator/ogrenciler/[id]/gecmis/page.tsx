@@ -53,27 +53,38 @@ export default async function OgrenciGecmisiSayfasi(
     where: {
       enrollment: {
         studentId: id,
-        ...(program
+        // Program ve tür koşulları aynı `group` anahtarına yazılamaz — nesne
+        // literalinde sonraki anahtar öncekini ezer ve program filtresi
+        // sessizce kaybolurdu. İkisi AND altında birleştiriliyor.
+        ...(program || tur === "donem" || tur === "kulup"
           ? {
               group: {
-                OR: [{ termId: program }, { clubId: program }],
+                AND: [
+                  ...(program
+                    ? [{ OR: [{ termId: program }, { clubId: program }] }]
+                    : []),
+                  ...(tur === "donem" ? [{ termId: { not: null } }] : []),
+                  ...(tur === "kulup" ? [{ clubId: { not: null } }] : []),
+                ],
               },
             }
           : {}),
-        ...(tur === "donem" ? { group: { termId: { not: null } } } : {}),
-        ...(tur === "kulup" ? { group: { clubId: { not: null } } } : {}),
       },
-      ...(atolye ? { session: { workshopTypeId: atolye } } : {}),
       ...(katilim === "katildi" ? { attended: true } : {}),
       ...(katilim === "katilmadi" ? { attended: false } : {}),
-      ...(baslangicTarihi || bitisTarihi
+      // Atölye ve tarih koşulları da aynı sebepten tek `session` nesnesinde.
+      ...(atolye || baslangicTarihi || bitisTarihi
         ? {
             session: {
               ...(atolye ? { workshopTypeId: atolye } : {}),
-              date: {
-                ...(baslangicTarihi ? { gte: baslangicTarihi } : {}),
-                ...(bitisTarihi ? { lte: bitisTarihi } : {}),
-              },
+              ...(baslangicTarihi || bitisTarihi
+                ? {
+                    date: {
+                      ...(baslangicTarihi ? { gte: baslangicTarihi } : {}),
+                      ...(bitisTarihi ? { lte: bitisTarihi } : {}),
+                    },
+                  }
+                : {}),
             },
           }
         : {}),
@@ -312,9 +323,11 @@ export default async function OgrenciGecmisiSayfasi(
         </Kart>
       )}
 
-      <p className="text-xs text-zinc-500">
-        {puanlamalar.length} kayıt listeleniyor.
-      </p>
+      {puanlamalar.length > 0 ? (
+        <p className="text-xs text-zinc-500">
+          {puanlamalar.length} kayıt listeleniyor.
+        </p>
+      ) : null}
     </div>
   );
 }

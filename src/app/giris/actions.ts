@@ -7,6 +7,12 @@ import { girisSemasi } from "@/auth";
 export type GirisDurumu = {
   hata?: string;
   alanHatalari?: { email?: string; password?: string };
+  /**
+   * Başarısız denemede e-posta korunur; React 19 formu sıfırladığı için
+   * kullanıcı aynı adresi baştan yazmak zorunda kalıyordu. Parola güvenlik
+   * gereği hiçbir zaman geri gönderilmez.
+   */
+  email?: string;
 };
 
 /**
@@ -24,6 +30,8 @@ export async function girisYap(
     password: formVerisi.get("password"),
   });
 
+  const girilenEmail = String(formVerisi.get("email") ?? "");
+
   if (!cozumlenen.success) {
     const alanlar = cozumlenen.error.flatten().fieldErrors;
     return {
@@ -31,6 +39,7 @@ export async function girisYap(
         email: alanlar.email?.[0],
         password: alanlar.password?.[0],
       },
+      email: girilenEmail,
     };
   }
 
@@ -50,7 +59,7 @@ export async function girisYap(
     return {};
   } catch (hata) {
     if (hata instanceof AuthError) {
-      return { hata: "E-posta adresi veya parola hatalı." };
+      return { hata: "E-posta adresi veya parola hatalı.", email: girilenEmail };
     }
     throw hata;
   }

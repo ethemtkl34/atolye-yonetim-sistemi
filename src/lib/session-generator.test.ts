@@ -145,4 +145,22 @@ describe("mevcutHaftaNumarasi", () => {
     const bugun = tarihCozumle("2027-01-01")!;
     expect(mevcutHaftaNumarasi(HAFTALAR, bugun)).toBeNull();
   });
+
+  it("pazar günü açılan pazar grubu o haftayı kaybetmez", () => {
+    // 2. haftanın pazarı (25 Ekim): pazar grubunun o haftaki oturumu henüz
+    // yapılmadı — grup 2. haftadan başlamalı. Çapaya (cumartesiye) bakılsaydı
+    // hafta geçmiş sayılır ve 5 oturum sessizce kaybolurdu.
+    const bugun = tarihCozumle("2026-10-25")!;
+    expect(mevcutHaftaNumarasi(HAFTALAR, bugun, "PAZAR")).toBe(2);
+    // Cumartesi grubu için aynı gün gerçekten geçmiştir; 3. hafta doğru.
+    expect(mevcutHaftaNumarasi(HAFTALAR, bugun, "CUMARTESI")).toBe(3);
+  });
+
+  it("son haftanın pazarında pazar grubu hâlâ açılabilir", () => {
+    // 10. haftanın pazarı: cumartesi grubuna oturum kalmadı (null), pazar
+    // grubu o günkü 5 oturumu alabilir.
+    const bugun = tarihCozumle("2026-12-20")!;
+    expect(mevcutHaftaNumarasi(HAFTALAR, bugun, "CUMARTESI")).toBeNull();
+    expect(mevcutHaftaNumarasi(HAFTALAR, bugun, "PAZAR")).toBe(10);
+  });
 });

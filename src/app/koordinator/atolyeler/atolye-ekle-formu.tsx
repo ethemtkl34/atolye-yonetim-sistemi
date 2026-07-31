@@ -43,7 +43,7 @@ export function AtolyeEkleFormu() {
     <Kart className="p-4">
       <form action={eylem} className="space-y-4">
         <Alan etiket="Atölye adı" hata={durum.alanHatalari?.name}>
-          <Girdi name="name" autoFocus required />
+          <Girdi name="name" defaultValue={durum.degerler?.name} autoFocus required />
         </Alan>
 
         <Alan
@@ -51,7 +51,11 @@ export function AtolyeEkleFormu() {
           ipucu="İsteğe bağlı."
           hata={durum.alanHatalari?.description}
         >
-          <CokSatirli name="description" rows={2} />
+          <CokSatirli
+            name="description"
+            rows={2}
+            defaultValue={durum.degerler?.description}
+          />
         </Alan>
 
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}

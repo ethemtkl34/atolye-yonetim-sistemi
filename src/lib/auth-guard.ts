@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { db } from "@/lib/db";
 import type { Role } from "@/generated/prisma/enums";
 
 /**
@@ -18,7 +19,16 @@ export type OturumKullanicisi = {
   role: Role;
 };
 
-/** Oturum açmış kullanıcıyı döner; yoksa giriş sayfasına yönlendirir. */
+/**
+ * Oturum açmış kullanıcıyı döner; yoksa giriş sayfasına yönlendirir.
+ *
+ * Oturum belirteci (JWT) 12 saat geçerli olduğu için hesabın hâlâ var ve
+ * aktif olduğu her istekte veritabanından doğrulanır. Aksi hâlde pasife
+ * alınan bir stajyer, elindeki belirteçle mesai sonuna kadar çalışmaya devam
+ * edebilirdi. Pasif hesap `/giris`'e değil `/hesap-pasif`'e gider: proxy,
+ * oturum çerezi duran kullanıcıyı `/giris`'ten kendi paneline geri yollar ve
+ * bu bir yönlendirme döngüsü oluştururdu.
+ */
 export async function girisZorunlu(): Promise<OturumKullanicisi> {
   const oturum = await auth();
 
@@ -26,11 +36,22 @@ export async function girisZorunlu(): Promise<OturumKullanicisi> {
     redirect("/giris");
   }
 
+  const kullanici = await db.user.findUnique({
+    where: { id: oturum.user.id },
+    select: { id: true, name: true, email: true, role: true, active: true },
+  });
+
+  if (!kullanici || !kullanici.active) {
+    redirect("/hesap-pasif");
+  }
+
+  // Ad ve rol belirteçten değil veritabanından okunur; koordinatörün yaptığı
+  // ad/rol değişikliği yeni girişi beklemeden geçerli olur.
   return {
-    id: oturum.user.id,
-    name: oturum.user.name ?? "",
-    email: oturum.user.email ?? "",
-    role: oturum.user.role,
+    id: kullanici.id,
+    name: kullanici.name,
+    email: kullanici.email,
+    role: kullanici.role,
   };
 }
 

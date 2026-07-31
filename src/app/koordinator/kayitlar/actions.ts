@@ -28,6 +28,19 @@ const kayitSemasi = z.object({
   internId: z.string().min(1, "Sorumlu stajyer seçin"),
 });
 
+/**
+ * "Kayıt almıyor" hatasını çıkmaza dönüştürmeden açıklar. Devam eden döneme
+ * grup eklenebilir (§13.5) ama kayıt ancak dönem "Kayıt alıyor" durumundayken
+ * açılır; koordinatöre bir sonraki adım söylenmezse bu bir çıkmaz gibi
+ * görünüyordu.
+ */
+function kayitKapaliMesaji(term: { status: string } | null): string {
+  if (term?.status === "DEVAM_EDIYOR") {
+    return 'Dönem devam ediyor ancak yeni kayıt kapalı. Kayıt almak için dönem sayfasından durumu "Kayıt alıyor" yapın.';
+  }
+  return "Bu program şu anda kayıt almıyor.";
+}
+
 export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
@@ -69,7 +82,7 @@ export async function kayitOlustur(
     grup.term?.status !== "KAYIT_ALIYOR" &&
     grup.club?.status !== "KAYIT_ALIYOR"
   ) {
-    return { hata: "Bu program şu anda kayıt almıyor." };
+    return { hata: kayitKapaliMesaji(grup.term) };
   }
 
   // Aynı öğrenci aynı gruba iki kez kaydedilemez.
@@ -200,7 +213,7 @@ export async function kayitOlustur(
       guncelGrup.term?.status !== "KAYIT_ALIYOR" &&
       guncelGrup.club?.status !== "KAYIT_ALIYOR"
     ) {
-      return { hata: "Bu program şu anda kayıt almıyor." };
+      return { hata: kayitKapaliMesaji(guncelGrup.term) };
     }
     if (mevcutKayit) {
       return {
@@ -329,7 +342,7 @@ export async function kayitDurumDegistir(
         kayit.group.club?.status !== "KAYIT_ALIYOR"
       ) {
         return {
-          hata: "Program şu anda kayıt almıyor; kayıt yeniden etkinleştirilemez.",
+          hata: `${kayitKapaliMesaji(kayit.group.term)} Kayıt yeniden etkinleştirilemez.`,
         };
       }
 

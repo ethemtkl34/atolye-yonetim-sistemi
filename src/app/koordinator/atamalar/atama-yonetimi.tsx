@@ -38,11 +38,17 @@ export function AtamaYonetimi({
   const [bekleyenId, setBekleyenId] = useState<string | null>(null);
   const [, basla] = useTransition();
 
+  // Atama yapılabilmesi için en az bir aktif stajyer gerekir; yoksa satırlar
+  // salt okunur kalır (sayfa üstünde açıklaması var).
+  const atamaMumkun = stajyerler.length > 0;
+
   function guncelle(kayitId: string, formVerisi: FormData) {
     setBekleyenId(kayitId);
     basla(async () => {
       const sonuc = await kayitStajyerDegistir(kayitId, formVerisi);
-      setDurum((mevcut) => ({ ...mevcut, [kayitId]: sonuc }));
+      // Yalnızca son işlemin bildirimi tutulur; satır satır biriken eski
+      // "güncellendi" mesajları hangi işlemin taze olduğunu belirsizleştiriyordu.
+      setDurum({ [kayitId]: sonuc });
       setBekleyenId(null);
     });
   }
@@ -82,6 +88,7 @@ export function AtamaYonetimi({
                   defaultValue={atama.stajyerId ?? ""}
                   aria-label={`${atama.ogrenciAdi} için sorumlu stajyer`}
                   className={SECIM_STILI}
+                  disabled={!atamaMumkun}
                   required
                 >
                   <option value="">Stajyer seçin…</option>
@@ -91,7 +98,10 @@ export function AtamaYonetimi({
                     </option>
                   ))}
                 </select>
-                <Buton type="submit" disabled={bekleyenId === atama.id}>
+                <Buton
+                  type="submit"
+                  disabled={!atamaMumkun || bekleyenId === atama.id}
+                >
                   {bekleyenId === atama.id ? "Kaydediliyor…" : "Ata"}
                 </Buton>
               </div>

@@ -38,6 +38,7 @@ export default async function KoordinatorDashboard() {
     aktifOgrenciSayisi,
     ilerlemeler,
     raporlar,
+    toplamRaporSayisi,
   ] = await Promise.all([
     db.term.count({ where: AKTIF_DONEM_KOSULU }),
     db.club.count({ where: AKTIF_KULUP_KOSULU }),
@@ -59,6 +60,9 @@ export default async function KoordinatorDashboard() {
     db.student.count({ where: AKTIF_OGRENCI_KOSULU }),
     kayitIlerlemeleri({ yalnizcaAktif: true, yalnizcaAktifProgram: true }),
     raporOzetleri({}),
+    // "Toplam rapor" listeden değil count'tan: raporOzetleri en yeni 200
+    // satırla sınırlı, kart ise gerçek toplamı söylemeli.
+    db.report.count(),
   ]);
 
   const dolanGruplar = aktifGruplar.filter(
@@ -129,7 +133,7 @@ export default async function KoordinatorDashboard() {
         />
         <OzetKart
           baslik="Toplam rapor"
-          deger={raporlar.length}
+          deger={toplamRaporSayisi}
           yol="/koordinator/raporlar?suzgec=tumu"
         />
       </div>

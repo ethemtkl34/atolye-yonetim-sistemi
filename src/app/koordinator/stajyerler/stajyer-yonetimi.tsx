@@ -43,7 +43,7 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
 
   return (
     <div className="space-y-4">
-      {mesaj?.basari ? <Bildirim tur="bilgi">{mesaj.basari}</Bildirim> : null}
+      {mesaj?.basari ? <Bildirim tur="basari">{mesaj.basari}</Bildirim> : null}
       {mesaj?.hata ? <Bildirim tur="hata">{mesaj.hata}</Bildirim> : null}
 
       <StajyerEkleFormu />
@@ -160,11 +160,21 @@ function StajyerEkleFormu() {
       <form action={eylem} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Ad soyad" hata={durum.alanHatalari?.name}>
-            <Girdi name="name" autoFocus required />
+            <Girdi
+              name="name"
+              defaultValue={durum.degerler?.name}
+              autoFocus
+              required
+            />
           </Alan>
 
           <Alan etiket="E-posta" hata={durum.alanHatalari?.email}>
-            <Girdi name="email" type="email" required />
+            <Girdi
+              name="email"
+              type="email"
+              defaultValue={durum.degerler?.email}
+              required
+            />
           </Alan>
         </div>
 
@@ -236,7 +246,7 @@ function ParolaFormu({
         ipucu="En az 8 karakter."
         hata={durum.alanHatalari?.password}
       >
-        <Girdi name="password" type="text" autoFocus />
+        <Girdi name="password" type="text" autoFocus required minLength={8} />
       </Alan>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       <div className="flex gap-2">

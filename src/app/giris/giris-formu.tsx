@@ -45,6 +45,7 @@ export function GirisFormu({ devam }: { devam?: string }) {
           spellCheck={false}
           autoComplete="username"
           autoFocus
+          defaultValue={durum.email}
           aria-invalid={Boolean(durum.alanHatalari?.email)}
           aria-describedby={
             durum.alanHatalari?.email ? "email-hata" : undefined

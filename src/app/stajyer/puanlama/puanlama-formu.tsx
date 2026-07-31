@@ -161,8 +161,13 @@ export function PuanlamaFormu({
           ) : null}
 
           {kilitli ? (
+            // Bu dala tek yoldan düşülür: kayıt iptal edilmiştir (puanlanabilir
+            // olmayan form yukarıda erken döner, çağıran taraflar
+            // `duzenlenebilir`i kayıt durumundan türetir). Metin sebebi
+            // söylemeli; "yetkiniz yok" demek yanlış yönlendiriyordu.
             <p className="text-xs text-zinc-500">
-              Bu formu düzenleme yetkiniz yok.
+              Bu kayıt iptal edildiği için form salt okunur. Girilmiş puanlar
+              korunuyor.
             </p>
           ) : (
             <Buton type="submit" disabled={bekliyor}>

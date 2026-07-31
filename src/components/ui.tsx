@@ -38,12 +38,13 @@ export function SayfaBasligi({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        {/* Başlığın altındaki kısa mürdüm çizgi, uzun listelerde sayfanın
-            nerede başladığını renkle işaretliyor. */}
-        <h1 className="text-lg font-semibold text-zinc-900">{baslik}</h1>
-        <span className="mt-1.5 block h-0.5 w-10 rounded-full bg-marka-600" />
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
+          {baslik}
+        </h1>
         {aciklama ? (
-          <p className="mt-2 max-w-2xl text-sm text-zinc-600">{aciklama}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-600">
+            {aciklama}
+          </p>
         ) : null}
       </div>
       {aksiyon}
@@ -63,7 +64,7 @@ const BUTON_STILLERI: Record<ButonTuru, string> = {
 };
 
 const BUTON_TEMELI =
-  "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600";
 
 /**
  * Buton görünümünün sınıf dizisi.

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { TermStatus } from "@/generated/prisma/enums";
-import { DONEM_DURUMLARI } from "@/lib/durumlar";
+import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
 import { donemDurumDegistir } from "../actions";
 
 /**
@@ -40,11 +40,20 @@ export function DurumSecici({
           }}
           className="rounded-md border border-yuzey-200 px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60"
         >
-          {Object.entries(DONEM_DURUMLARI).map(([kod, { etiket }]) => (
-            <option key={kod} value={kod}>
-              {etiket}
-            </option>
-          ))}
+          {/* Yalnızca mevcut durum ve ondan geçilebilen durumlar listelenir;
+              sunucu da aynı kuralı uygular, burada saklamak kullanıcıyı
+              baştan yanlış seçimden korur. */}
+          {Object.entries(DONEM_DURUMLARI)
+            .filter(
+              ([kod]) =>
+                kod === mevcutDurum ||
+                DONEM_DURUM_GECISLERI[mevcutDurum].includes(kod as TermStatus),
+            )
+            .map(([kod, { etiket }]) => (
+              <option key={kod} value={kod}>
+                {etiket}
+              </option>
+            ))}
         </select>
       </label>
       {hata ? (

@@ -68,11 +68,15 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
 
   // Dönem sihirbazıyla aynı biçim: eksik olan şey tek yerde hesaplanıp hem
   // butonun yanında hem üstüne gelince çıkan ipucunda kullanılıyor.
+  const atolyeYetersiz = atolyeler.length < KULUP_ATOLYE_SAYISI;
+
   const eksikMetni = [
     haftaSonu ? null : "Hafta sonuna denk gelen bir tarih seçin",
     atolyeTamam
       ? null
-      : `${KULUP_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
+      : atolyeYetersiz
+        ? "Önce yeterli sayıda aktif atölye çeşidi ekleyin"
+        : `${KULUP_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -94,7 +98,12 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
         </h2>
 
         <Alan etiket="Kulüp adı" hata={durum.alanHatalari?.name}>
-          <Girdi name="name" placeholder="Örn. Bilim Kulübü" required />
+          <Girdi
+            name="name"
+            placeholder="Örn. Bilim Kulübü"
+            defaultValue={durum.degerler?.name}
+            required
+          />
         </Alan>
 
         <Alan
@@ -131,7 +140,11 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           ipucu="İsteğe bağlı."
           hata={durum.alanHatalari?.description}
         >
-          <CokSatirli name="description" rows={2} />
+          <CokSatirli
+            name="description"
+            rows={2}
+            defaultValue={durum.degerler?.description}
+          />
         </Alan>
       </Kart>
 
@@ -207,7 +220,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
             <Girdi
               name="grupAdi"
               placeholder="Örn. Sabah Grubu"
-              defaultValue="1. Grup"
+              defaultValue={durum.degerler?.grupAdi ?? "1. Grup"}
               required
             />
           </Alan>
@@ -218,7 +231,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
               type="number"
               min={1}
               max={200}
-              defaultValue={12}
+              defaultValue={durum.degerler?.grupKontenjani ?? 12}
               required
             />
           </Alan>
@@ -229,7 +242,7 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           >
             <select
               name="grupZamanDilimi"
-              defaultValue="OGLEDEN_ONCE"
+              defaultValue={durum.degerler?.grupZamanDilimi ?? "OGLEDEN_ONCE"}
               className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
             >
               <option value="OGLEDEN_ONCE">Öğleden önce</option>

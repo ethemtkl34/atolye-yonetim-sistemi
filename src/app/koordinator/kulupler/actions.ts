@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { alanHatalari, GRUP_SEMASI } from "@/lib/formlar";
+import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { kulupOturumlariniUret } from "@/lib/session-generator";
 import { gunundenGun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
+import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import type { ClubStatus } from "@/generated/prisma/enums";
 
 /** §5 — Kulüp programı, kulüp grupları ve durum geçişleri. */
@@ -17,7 +18,21 @@ export type EylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
+  degerler?: Record<string, string>;
 };
+
+/** Kulüp sihirbazının metin/seçim alanları (atölye seçimi hariç). */
+const KULUP_FORM_ALANLARI = [
+  "name",
+  "description",
+  "date",
+  "grupAdi",
+  "grupZamanDilimi",
+  "grupKontenjani",
+] as const;
+
+const KULUP_GRUP_FORM_ALANLARI = ["name", "timeSlot", "capacity"] as const;
 
 const kulupSemasi = z.object({
   name: z
@@ -106,6 +121,8 @@ export async function kulupOlustur(
     capacity: formVerisi.get("grupKontenjani"),
   });
 
+  const girilenler = formDegerleri(formVerisi, KULUP_FORM_ALANLARI);
+
   const hatalar: Record<string, string> = {};
   if (!kulup.success) Object.assign(hatalar, alanHatalari(kulup.error));
   if (!grup.success) {
@@ -113,16 +130,22 @@ export async function kulupOlustur(
       hatalar[`grup.${alan}`] = mesaj;
     }
   }
-  if (Object.keys(hatalar).length > 0) return { alanHatalari: hatalar };
+  if (Object.keys(hatalar).length > 0) {
+    return { alanHatalari: hatalar, degerler: girilenler };
+  }
   if (!kulup.success || !grup.success) return { hata: "Form doğrulanamadı." };
 
   const tarihSonucu = kulupTarihiniDogrula(String(formVerisi.get("date") ?? ""));
-  if ("hata" in tarihSonucu) return { hata: tarihSonucu.hata };
+  if ("hata" in tarihSonucu) {
+    return { hata: tarihSonucu.hata, degerler: girilenler };
+  }
 
   const atolyeSonucu = await atolyeleriDogrula(
     formVerisi.getAll("atolyeler").map(String).filter(Boolean),
   );
-  if ("hata" in atolyeSonucu) return { hata: atolyeSonucu.hata };
+  if ("hata" in atolyeSonucu) {
+    return { hata: atolyeSonucu.hata, degerler: girilenler };
+  }
 
   const gun = gunundenGun(tarihSonucu.tarih);
   if (!gun) return { hata: "Kulüp tarihi hafta sonuna denk gelmeli." };
@@ -195,6 +218,20 @@ export async function kulupDurumDegistir(
     return { hata: "Geçersiz kulüp durumu." };
   }
 
+  const kulup = await db.club.findUnique({
+    where: { id: kulupId },
+    select: { status: true },
+  });
+  if (!kulup) return { hata: "Kulüp bulunamadı." };
+  if (kulup.status === yeniDurum) return { basari: "Kulüp zaten bu durumda." };
+
+  // Her durumdan her duruma geçilemez; izinli geçişler tek kaynaktan okunur.
+  if (!KULUP_DURUM_GECISLERI[kulup.status].includes(yeniDurum)) {
+    return {
+      hata: `"${KULUP_DURUMLARI[kulup.status].etiket}" durumundan "${KULUP_DURUMLARI[yeniDurum].etiket}" durumuna doğrudan geçilemez.`,
+    };
+  }
+
   await db.club.update({
     where: { id: kulupId },
     data: { status: yeniDurum },
@@ -232,7 +269,12 @@ export async function kulupGrupEkle(
     capacity: formVerisi.get("capacity"),
   });
 
-  if (!grup.success) return { alanHatalari: alanHatalari(grup.error) };
+  if (!grup.success) {
+    return {
+      alanHatalari: alanHatalari(grup.error),
+      degerler: formDegerleri(formVerisi, KULUP_GRUP_FORM_ALANLARI),
+    };
+  }
 
   const kulup = await db.club.findUnique({
     where: { id: kulupId },
@@ -240,6 +282,14 @@ export async function kulupGrupEkle(
   });
 
   if (!kulup) return { hata: "Kulüp bulunamadı." };
+
+  // Kapanmış (tamamlanmış, iptal edilmiş veya arşivlenmiş) kulübe grup
+  // açılamaz — açılsaydı hiçbir kayıt alamayacak bir grup oluşurdu.
+  if (kulup.status !== "TASLAK" && kulup.status !== "KAYIT_ALIYOR") {
+    return {
+      hata: `Bu kulüp "${KULUP_DURUMLARI[kulup.status].etiket}" durumunda; yeni grup eklenemez.`,
+    };
+  }
 
   const gun = gunundenGun(kulup.date);
   if (!gun) {

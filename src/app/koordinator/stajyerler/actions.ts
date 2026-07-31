@@ -5,6 +5,7 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { formDegerleri } from "@/lib/formlar";
 
 /**
  * §3.2 ve §8 — Stajyer hesaplarının yönetimi.
@@ -18,6 +19,8 @@ export type EylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
+  degerler?: Record<string, string>;
 };
 
 const stajyerSemasi = z.object({
@@ -59,16 +62,25 @@ export async function stajyerEkle(
   });
 
   if (!cozumlenen.success) {
-    return { alanHatalari: alanHatalari(cozumlenen.error) };
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      // Parola bilerek geri gönderilmiyor.
+      degerler: formDegerleri(formVerisi, ["name", "email"]),
+    };
   }
 
-  // Giriş sırasında e-posta Türkçe küçük harfe çevrilerek aranıyor;
-  // kayıt da aynı biçimde yapılmalı ki eşleşsin.
-  const email = cozumlenen.data.email.toLocaleLowerCase("tr-TR");
+  // Giriş sırasında e-posta yerelden bağımsız küçültülerek aranıyor
+  // (auth.ts'teki açıklamaya bakın: Türkçe yerelde "I" noktasız "ı"ya
+  // dönüşüyor ve kayıt ile giriş birbirini bulamıyordu). Kayıt da aynı
+  // biçimde yapılmalı ki eşleşsin.
+  const email = cozumlenen.data.email.toLowerCase();
 
   const mevcut = await db.user.findUnique({ where: { email } });
   if (mevcut) {
-    return { alanHatalari: { email: "Bu e-posta zaten kullanılıyor." } };
+    return {
+      alanHatalari: { email: "Bu e-posta zaten kullanılıyor." },
+      degerler: formDegerleri(formVerisi, ["name", "email"]),
+    };
   }
 
   await db.user.create({

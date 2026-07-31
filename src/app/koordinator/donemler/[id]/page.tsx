@@ -8,6 +8,7 @@ import { DONEM_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { bugun, grupZamani, haftaSonuBicimle } from "@/lib/tarih";
 import { mevcutHaftaNumarasi } from "@/lib/session-generator";
+import { GrupDurumButonu } from "@/components/grup-durum-butonu";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 
@@ -53,14 +54,25 @@ export default async function DonemDetaySayfasi(
   if (!donem) notFound();
 
   const durum = DONEM_DURUMLARI[donem.status];
+  // Sayfadaki tahmin cumartesi çapasına göre; pazar grubu seçilirse gerçek
+  // başlangıç haftası eylemde grubun gününe göre yeniden hesaplanır.
   const baslangicHaftasi = mevcutHaftaNumarasi(donem.weeks, bugun());
 
+  // Eylemin kesin reddedeceği durumlarda buton en baştan kilitlenir ve sebep
+  // ipucu olarak gösterilir; kullanıcıya formu doldurtup sonra reddetmek
+  // güven kaybettirir.
+  const grupEklemeEngeli =
+    donem.status === "TAMAMLANDI" || donem.status === "ARSIVLENDI"
+      ? `Bu dönem "${durum.etiket}" durumunda; yeni grup eklenemez.`
+      : baslangicHaftasi === null
+        ? "Bu dönemin bütün eğitim haftaları geçmiş; yeni grup açılsa da hiç oturumu olmaz."
+        : null;
+
   const grupEklemeBilgisi =
-    baslangicHaftasi === null
-      ? "Bu dönemin bütün eğitim haftaları geçmiş."
-      : baslangicHaftasi === 1
-        ? `Dönem henüz başlamadı; yeni grup ${donem.weeks.length} haftanın tamamına katılır ve ${donem.weeks.length * donem.workshops.length} atölye oturumu oluşturulur.`
-        : `Dönem devam ediyor. Yeni grup ${baslangicHaftasi}. haftadan başlar; geçmiş ${baslangicHaftasi - 1} hafta telafi edilmez ve ${(donem.weeks.length - baslangicHaftasi + 1) * donem.workshops.length} atölye oturumu oluşturulur.`;
+    grupEklemeEngeli ??
+    (baslangicHaftasi === 1
+      ? `Dönem henüz başlamadı; yeni grup ${donem.weeks.length} haftanın tamamına katılır ve ${donem.weeks.length * donem.workshops.length} atölye oturumu oluşturulur.`
+      : `Dönem devam ediyor. Yeni grup ${baslangicHaftasi}. haftadan başlar; geçmiş ${(baslangicHaftasi ?? 1) - 1} hafta telafi edilmez ve ${(donem.weeks.length - (baslangicHaftasi ?? 1) + 1) * donem.workshops.length} atölye oturumu oluşturulur.`);
 
   return (
     <div className="space-y-6">
@@ -82,9 +94,8 @@ export default async function DonemDetaySayfasi(
           />
         </div>
 
-        <div className="mt-2">
-          <Rozet tur={durum.rozet}>{durum.etiket}</Rozet>
-        </div>
+        {/* Durum yalnızca sağdaki seçicide gösterilir; başlığın altında ikinci
+            bir rozet aynı bilgiyi tekrarlıyordu. */}
       </div>
 
       {/* --- Atölyeler --- */}
@@ -125,7 +136,8 @@ export default async function DonemDetaySayfasi(
                 key={hafta.id}
                 className={`flex gap-2 text-sm ${gecti ? "text-zinc-400" : "text-zinc-700"}`}
               >
-                <span className="w-14 shrink-0 tabular-nums text-zinc-400">
+                {/* w-16 + nowrap: "10. hafta" iki satıra kırılmasın. */}
+                <span className="w-16 shrink-0 whitespace-nowrap tabular-nums text-zinc-400">
                   {hafta.weekNumber}. hafta
                 </span>
                 <span>{haftaSonuBicimle(hafta.date)}</span>
@@ -139,6 +151,13 @@ export default async function DonemDetaySayfasi(
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-zinc-900">Gruplar</h2>
 
+        {donem.groups.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+            Bu dönemde henüz grup yok. Öğrenci kaydı alabilmek için bir grup
+            ekleyin.
+          </p>
+        ) : null}
+
         {donem.groups.map((grup) => {
           const kontenjan = kontenjanDurumu(
             grup.capacity,
@@ -148,15 +167,22 @@ export default async function DonemDetaySayfasi(
 
           return (
             <Kart key={grup.id} className="p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-900">{grup.name}</span>
-                <span className="text-sm text-zinc-600">
-                  {grupZamani(grup.day, grup.timeSlot)}
-                </span>
-                {kontenjan.dolu ? (
-                  <Rozet tur="uyari">Kontenjan dolu</Rozet>
-                ) : null}
-                {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-zinc-900">{grup.name}</span>
+                  <span className="text-sm text-zinc-600">
+                    {grupZamani(grup.day, grup.timeSlot)}
+                  </span>
+                  {kontenjan.dolu ? (
+                    <Rozet tur="uyari">Kontenjan dolu</Rozet>
+                  ) : null}
+                  {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
+                </div>
+                <GrupDurumButonu
+                  grupId={grup.id}
+                  aktif={grup.active}
+                  tur="donem"
+                />
               </div>
 
               <p className="mt-2 text-sm text-zinc-600">
@@ -175,7 +201,11 @@ export default async function DonemDetaySayfasi(
           );
         })}
 
-        <GrupEkleFormu donemId={donem.id} bilgi={grupEklemeBilgisi} />
+        <GrupEkleFormu
+          donemId={donem.id}
+          bilgi={grupEklemeBilgisi}
+          engelSebebi={grupEklemeEngeli ?? undefined}
+        />
       </div>
     </div>
   );

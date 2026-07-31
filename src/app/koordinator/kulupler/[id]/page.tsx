@@ -8,6 +8,7 @@ import { KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihGunleBicimle } from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
+import { GrupDurumButonu } from "@/components/grup-durum-butonu";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 
@@ -107,6 +108,13 @@ export default async function KulupDetaySayfasi(
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-zinc-900">Gruplar</h2>
 
+        {kulup.groups.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+            Bu kulüpte henüz grup yok. Öğrenci kaydı alabilmek için bir grup
+            ekleyin.
+          </p>
+        ) : null}
+
         {kulup.groups.map((grup) => {
           const kontenjan = kontenjanDurumu(
             grup.capacity,
@@ -115,15 +123,22 @@ export default async function KulupDetaySayfasi(
 
           return (
             <Kart key={grup.id} className="p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-900">{grup.name}</span>
-                <span className="text-sm text-zinc-600">
-                  {grupZamani(grup.day, grup.timeSlot)}
-                </span>
-                {kontenjan.dolu ? (
-                  <Rozet tur="uyari">Kontenjan dolu</Rozet>
-                ) : null}
-                {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-zinc-900">{grup.name}</span>
+                  <span className="text-sm text-zinc-600">
+                    {grupZamani(grup.day, grup.timeSlot)}
+                  </span>
+                  {kontenjan.dolu ? (
+                    <Rozet tur="uyari">Kontenjan dolu</Rozet>
+                  ) : null}
+                  {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
+                </div>
+                <GrupDurumButonu
+                  grupId={grup.id}
+                  aktif={grup.active}
+                  tur="kulup"
+                />
               </div>
 
               <p className="mt-2 text-sm text-zinc-600">
@@ -137,6 +152,11 @@ export default async function KulupDetaySayfasi(
         <GrupEkleFormu
           kulupId={kulup.id}
           bilgi={`Yeni grup ${tarihGunleBicimle(kulup.date)} günü toplanır ve aynı ${KULUP_ATOLYE_SAYISI} atölyeyi kullanır. Gruplar zaman dilimiyle ayrışır.`}
+          engelSebebi={
+            kulup.status !== "TASLAK" && kulup.status !== "KAYIT_ALIYOR"
+              ? `Bu kulüp "${durum.etiket}" durumunda; yeni grup eklenemez.`
+              : undefined
+          }
         />
       </div>
     </div>

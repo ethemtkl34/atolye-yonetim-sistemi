@@ -731,6 +731,89 @@ Kod deposu: github.com/ethemtkl34/atolye-yonetim-sistemi (public).
 
 ---
 
+## Bakım — sistem analizi ve düzeltme turu (31 Temmuz 2026)
+
+Bütün kod tabanı mantık hataları için tarandı; bulunan sorunlar düzeltildi ve
+arayüz profesyonelleştirildi. `npm run build`, tip kontrolü ve eslint temiz;
+**93 test** geçiyor (2 yeni). Öne çıkan düzeltmeler:
+
+**Güvenlik / yetki:**
+- Pasife alınan hesap artık ANINDA kilitleniyor: `girisZorunlu()` her istekte
+  hesabın var ve aktif olduğunu veritabanından doğruluyor. Önceden 12 saatlik
+  oturum belirteci pasif stajyeri mesai sonuna kadar içeride tutuyordu. Pasif
+  hesap `/hesap-pasif` sayfasına düşer (proxy döngüsüne girmemek için `/giris`
+  değil).
+- Stajyer e-postası kayıtta `toLocaleLowerCase("tr-TR")` ile küçültülüyordu,
+  girişte ise `toLowerCase()` ile aranıyordu — büyük "I" içeren e-posta
+  (`IREM@...`) hiç giriş yapamıyordu. İki taraf eşitlendi.
+
+**Mantık:**
+- Pazar günü açılan pazar grubu o haftanın 5 oturumunu kaybediyordu
+  (`mevcutHaftaNumarasi` cumartesi çapasıyla karşılaştırıyordu). Hafta artık
+  grubun gerçek toplanma gününe göre hesaplanıyor; 2 yeni test.
+- Dönem/kulüp durum geçişleri artık kurallı (`DONEM_DURUM_GECISLERI` /
+  `KULUP_DURUM_GECISLERI`): "Arşivlendi → Kayıt alıyor" gibi tek hamlelik
+  sessiz yeniden açılışlar kapandı; geri alma yolları korunuyor. Durum
+  seçicileri yalnızca izinli geçişleri listeler.
+- Tamamlanmış/arşivlenmiş programa grup eklenemez (eylem + arayüzde kilitli
+  buton ve sebep). "Bu program kayıt almıyor" hatası artık çözüm yolunu da
+  söylüyor.
+- Rapor motoru atölyeler arası birleşimlerde ortalamaların ortalamasını
+  alıyordu; `puanToplami` ile ağırlıklı ortalamaya geçildi (scoring.ts'teki
+  genel ortalama kuralıyla aynı ilke).
+- Öğrenci geçmiş filtresinde Program + Kayıt türü birlikte seçilince nesne
+  literalinde son `group` anahtarı öncekini ezdiği için program filtresi
+  sessizce kayboluyordu; koşullar AND altında birleştirildi.
+- Stajyer görev listeleri koordinatör dashboard'uyla aynı kapsamı okuyor
+  (`yalnizcaAktifProgram`): arşivlenen programın formları iki tarafta da
+  görünmez.
+- Grup aç/kapa eylemleri (P4'ten beri vardı, hiç çağrılmıyordu) arayüze
+  bağlandı: dönem ve kulüp detayındaki grup kartlarında "Kayda kapat / aç".
+- Rapor `generatedAt` damgası puanlar okunmadan önce alınıyor; PDF satırı tek
+  transaction'da yazılıyor (adressiz kalıcı satır kalamaz); arşiv sayaçları
+  yalnızca AKTIF kayıtları sayıyor; dashboard "Toplam rapor" 200 satırlık
+  liste sınırından bağımsız gerçek `count()`.
+- Geçersiz doğum tarihi (31 Şubat) artık alan hatası veriyor; önceden form
+  "başarılı" görünüp tarihi sessizce boş yazıyordu.
+
+**Formlar (React 19 sıfırlama sorunu):**
+- Doğrulama hatasında formların içi boşalıyordu (React 19, eylem bitince
+  kontrolsüz alanları sıfırlıyor). Eylemler artık girilen değerleri
+  `degerler` olarak geri döndürüyor, formlar bunları `defaultValue` yapıyor —
+  öğrenci formu (16 alan), sihirbazlar, grup ekleme, atölye ve stajyer
+  formları, giriş ekranındaki e-posta.
+- Dönem sihirbazında liste başlangıcı değişince pencere dışında kalan hafta
+  seçimleri temizleniyor; önceden görünmez seçimler "10/10" sayacını doldurup
+  formu kilitliyordu.
+- Rapor metni düzenleyici ve atölye düzenleme formu başarıda kapanıp bildirim
+  gösteriyor; önceden başarı mesajı hiç görünmüyordu.
+
+**Gezinme / tutarlılık:**
+- Raporlar sayfasına "Yeni rapor" düğmesi; `/koordinator/raporlar/yeni`
+  öğrenci seçilmeden gelindiğinde kayıtlı öğrencileri listeliyor (çıkmaz
+  kalktı).
+- Hesabım sayfası panel kabuğunun içinde (menüsüz ara sayfa değil).
+- Stajyerin gün formu, Görevlerim'den gelindiyse Görevlerim'e dönüyor
+  (`?geri=gorevler`).
+- Gruplar "Tümü" görünümü arşivlenmiş programların gruplarını göstermiyor
+  (Dönemler/Kulüpler ile aynı sözleşme) ve gruplar program + ada göre
+  sıralanıyor ("2. Grup" artık "1. Grup"un üstünde çıkmıyor).
+- Oturum düşünce `devam` parametresi sorgu dizesini de taşıyor; süzgeçli
+  ekrana dönülüyor.
+- Atamalar ekranı aktif stajyer yokken listeyi gizlemiyor; satırlar salt
+  okunur kalıyor.
+
+**Tasarım:**
+- Yan menü bölümlere ayrıldı (Programlar / Atölyeler / Kişiler /
+  Değerlendirme) ve her maddeye çizgi ikon eklendi; 13 maddelik düz yığın
+  taranabilir hale geldi.
+- Menü ve üst şerit yapışkan; üst şeritte ad-soyad baş harfli avatar.
+- İçerik alanı `max-w-6xl` ile ortalanıyor; sayfa başlıkları büyütüldü,
+  butonlara odak halkası eklendi. "10. hafta" satır kırılması giderildi;
+  dönem detayındaki mükerrer durum rozeti kaldırıldı.
+
+---
+
 ## Örnek veri
 
 ```bash

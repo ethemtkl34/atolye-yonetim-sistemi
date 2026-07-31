@@ -18,9 +18,7 @@ export const metadata: Metadata = {
 
 /** §7 — Öğrenci profilinden başlayan dönem/kulüp kayıt sihirbazı. */
 export default async function YeniKayitSayfasi(
-  props: {
-    searchParams: Promise<Record<string, string | string[] | undefined>>;
-  },
+  props: PageProps<"/koordinator/kayitlar/yeni">,
 ) {
   await koordinatorZorunlu();
 

@@ -90,6 +90,28 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
     );
   }
 
+  /**
+   * Liste başlangıcı değişince pencere dışında kalan seçimler bırakılır.
+   * Bırakılmasaydı görünmeyen haftalar seçili (ve gizli girdiyle gönderilir)
+   * kalıyordu: sayaç "10/10" derken ekranda tek işaretli kutu olmayabiliyor,
+   * kalan kutular da kota dolu diye kilitleniyordu — kullanıcı düzeltemezdi.
+   */
+  function baslangiciDegistir(deger: string) {
+    setBaslangic(deger);
+    const tarih = tarihCozumle(deger);
+    if (!tarih) return;
+
+    const ilkCumartesi = sonrakiCumartesi(tarih);
+    const gorunurler = new Set(
+      Array.from({ length: GOSTERILEN_HAFTA_SAYISI }, (_, i) =>
+        tarihMetni(gunEkle(ilkCumartesi, i * 7)),
+      ),
+    );
+    setSecilenHaftalar((oncekiler) =>
+      oncekiler.filter((hafta) => gorunurler.has(hafta)),
+    );
+  }
+
   function atolyeDegistir(id: string) {
     setSecilenAtolyeler((oncekiler) =>
       oncekiler.includes(id)
@@ -103,13 +125,19 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
 
   // Neyin eksik olduğu tek yerde hesaplanıyor: aynı metin hem butonun
   // yanındaki uyarıda hem butonun üstüne gelince çıkan ipucunda kullanılıyor.
+  // Yeterli aktif atölye çeşidi yoksa "N atölye daha seçin" demek yanıltıcı
+  // olur: liste hiç çizilmiyor, kullanıcının seçebileceği bir şey yok.
+  const atolyeYetersiz = atolyeler.length < DONEM_ATOLYE_SAYISI;
+
   const eksikMetni = [
     haftaTamam
       ? null
       : `${HAFTA_SAYISI - secilenHaftalar.length} hafta daha seçin`,
     atolyeTamam
       ? null
-      : `${DONEM_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
+      : atolyeYetersiz
+        ? "Önce yeterli sayıda aktif atölye çeşidi ekleyin"
+        : `${DONEM_ATOLYE_SAYISI - secilenAtolyeler.length} atölye daha seçin`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -127,7 +155,12 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
         </h2>
 
         <Alan etiket="Dönem adı" hata={durum.alanHatalari?.name}>
-          <Girdi name="name" placeholder="Örn. 2026 Sonbahar Dönemi" required />
+          <Girdi
+            name="name"
+            placeholder="Örn. 2026 Sonbahar Dönemi"
+            defaultValue={durum.degerler?.name}
+            required
+          />
         </Alan>
 
         <Alan
@@ -135,7 +168,11 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           ipucu="İsteğe bağlı."
           hata={durum.alanHatalari?.description}
         >
-          <CokSatirli name="description" rows={2} />
+          <CokSatirli
+            name="description"
+            rows={2}
+            defaultValue={durum.degerler?.description}
+          />
         </Alan>
       </Kart>
 
@@ -165,7 +202,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           <Girdi
             type="date"
             value={baslangic}
-            onChange={(e) => setBaslangic(e.target.value)}
+            onChange={(e) => baslangiciDegistir(e.target.value)}
             className="max-w-xs"
           />
         </Alan>
@@ -282,7 +319,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
             <Girdi
               name="grupAdi"
               placeholder="Örn. Cumartesi Sabah"
-              defaultValue="1. Grup"
+              defaultValue={durum.degerler?.grupAdi ?? "1. Grup"}
               required
             />
           </Alan>
@@ -296,7 +333,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
               type="number"
               min={1}
               max={200}
-              defaultValue={12}
+              defaultValue={durum.degerler?.grupKontenjani ?? 12}
               required
             />
           </Alan>
@@ -304,7 +341,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           <Alan etiket="Gün" hata={durum.alanHatalari?.["grup.day"]}>
             <select
               name="grupGunu"
-              defaultValue="CUMARTESI"
+              defaultValue={durum.degerler?.grupGunu ?? "CUMARTESI"}
               className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
             >
               <option value="CUMARTESI">Cumartesi</option>
@@ -318,7 +355,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
           >
             <select
               name="grupZamanDilimi"
-              defaultValue="OGLEDEN_ONCE"
+              defaultValue={durum.degerler?.grupZamanDilimi ?? "OGLEDEN_ONCE"}
               className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
             >
               <option value="OGLEDEN_ONCE">Öğleden önce</option>

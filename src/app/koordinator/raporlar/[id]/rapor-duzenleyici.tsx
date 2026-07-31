@@ -34,6 +34,17 @@ export function RaporDuzenleyici({
   const [yenidenUretiliyor, basla] = useTransition();
   const [pdfUretiliyor, pdfBasla] = useTransition();
   const [islemSonucu, setIslemSonucu] = useState<EylemDurumu | null>(null);
+  const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
+
+  // Kaydetme başarılı olunca düzenleyici kapanır ve başarı bildirimi görünür.
+  // Effect yerine render sırasında yapılıyor (atolye-ekle-formu ile aynı
+  // desen). Bu satır olmadan başarı mesajı yalnızca kapalı dalda çizildiği
+  // için hiç görünmüyordu; koordinatör uzun bir düzenlemeyi kaydediyor ve
+  // hiçbir geri bildirim almıyordu.
+  if (durum.basari !== gorulenBasari) {
+    setGorulenBasari(durum.basari);
+    if (durum.basari) setDuzenleniyor(false);
+  }
 
   if (!duzenleniyor) {
     return (

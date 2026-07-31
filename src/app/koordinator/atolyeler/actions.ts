@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { formDegerleri } from "@/lib/formlar";
 
 /**
  * Atölye çeşitleri ve değerlendirme sorularının işlemleri (§2.1, §9.2).
@@ -17,6 +18,8 @@ export type EylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
+  degerler?: Record<string, string>;
 };
 
 const atolyeSemasi = z.object({
@@ -66,7 +69,10 @@ export async function atolyeEkle(
   });
 
   if (!cozumlenen.success) {
-    return { alanHatalari: alanHatalari(cozumlenen.error) };
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      degerler: formDegerleri(formVerisi, ["name", "description"]),
+    };
   }
 
   const ayniAdVar = await db.workshopType.findUnique({
@@ -74,7 +80,10 @@ export async function atolyeEkle(
   });
 
   if (ayniAdVar) {
-    return { alanHatalari: { name: "Bu adda bir atölye zaten var." } };
+    return {
+      alanHatalari: { name: "Bu adda bir atölye zaten var." },
+      degerler: formDegerleri(formVerisi, ["name", "description"]),
+    };
   }
 
   // Yeni atölye listenin sonuna eklenir.
@@ -106,7 +115,10 @@ export async function atolyeGuncelle(
   });
 
   if (!cozumlenen.success) {
-    return { alanHatalari: alanHatalari(cozumlenen.error) };
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      degerler: formDegerleri(formVerisi, ["name", "description"]),
+    };
   }
 
   const ayniAdVar = await db.workshopType.findFirst({
@@ -114,7 +126,10 @@ export async function atolyeGuncelle(
   });
 
   if (ayniAdVar) {
-    return { alanHatalari: { name: "Bu adda başka bir atölye var." } };
+    return {
+      alanHatalari: { name: "Bu adda başka bir atölye var." },
+      degerler: formDegerleri(formVerisi, ["name", "description"]),
+    };
   }
 
   await db.workshopType.update({
