@@ -5,7 +5,8 @@ import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_DONEM_KOSULU, DONEM_DURUMLARI } from "@/lib/durumlar";
-import { haftaSonuBicimle } from "@/lib/tarih";
+import { bugun, haftaSonuBicimle } from "@/lib/tarih";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Dönemler",
@@ -19,6 +20,11 @@ const TEMEL_YOL = "/koordinator/donemler";
  * Arşivlenmiş dönemler burada değil, Arşiv ekranında durur; iki liste
  * birbirinin tamamlayıcısıdır. "Aktif" süzgeci dashboard kartıyla aynı
  * koşulu (`AKTIF_DONEM_KOSULU`) okur.
+ *
+ * Kartlar dönem detayına açılan tek büyük tıklama hedefidir: koordinatörün
+ * bu listedeki tek işi bir dönemi açmak, bu yüzden kart içinde ikinci bir
+ * bağlantı veya buton yok. Özet satırları (takvim ilerlemesi, doluluk,
+ * kadro) detaya girmeden "hangi dönem ne durumda" sorusuna cevap verir.
  */
 export default async function DonemlerSayfasi(
   props: PageProps<"/koordinator/donemler">,
@@ -37,11 +43,26 @@ export default async function DonemlerSayfasi(
       orderBy: { createdAt: "desc" },
       include: {
         weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
+        interns: {
+          orderBy: { user: { name: "asc" } },
+          select: { userId: true, user: { select: { name: true } } },
+        },
+        // Öğrenci sayısı grupların aktif kayıtlarından toplanır; dönemle
+        // kayıt arasında doğrudan bir bağ yok (kayıt gruba bağlı).
+        groups: {
+          select: {
+            _count: {
+              select: { enrollments: { where: { status: "AKTIF" } } },
+            },
+          },
+        },
         _count: { select: { groups: true, workshops: true } },
       },
     }),
     db.term.count({ where: { status: "ARSIVLENDI" } }),
   ]);
+
+  const simdi = bugun().getTime();
 
   return (
     <div className="space-y-6">
@@ -93,41 +114,110 @@ export default async function DonemlerSayfasi(
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           {donemler.map((donem) => {
             const durum = DONEM_DURUMLARI[donem.status];
             const ilkHafta = donem.weeks.at(0);
             const sonHafta = donem.weeks.at(-1);
 
+            const islenenHafta = donem.weeks.filter(
+              (hafta) => hafta.date.getTime() < simdi,
+            ).length;
+            const toplamHafta = donem.weeks.length;
+            const tamamlandi = toplamHafta > 0 && islenenHafta === toplamHafta;
+
+            const ogrenciSayisi = donem.groups.reduce(
+              (toplam, grup) => toplam + grup._count.enrollments,
+              0,
+            );
+
+            const kadro = donem.interns.map((satir) => ({
+              id: satir.userId,
+              ad: satir.user.name,
+            }));
+
             return (
-              <Kart key={donem.id} className="p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/koordinator/donemler/${donem.id}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
-                  >
-                    {donem.name}
-                  </Link>
-                  <Rozet tur={durum.rozet}>{durum.etiket}</Rozet>
-                </div>
+              <Link
+                key={donem.id}
+                href={`/koordinator/donemler/${donem.id}`}
+                className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+              >
+                <Kart className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-marka-300 hover:bg-marka-50/40">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex-1 font-medium text-zinc-900">
+                      {donem.name}
+                    </span>
+                    <Rozet tur={durum.rozet}>{durum.etiket}</Rozet>
+                  </div>
 
-                {donem.description ? (
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {donem.description}
+                  {donem.description ? (
+                    <p className="line-clamp-2 text-sm text-zinc-600">
+                      {donem.description}
+                    </p>
+                  ) : null}
+
+                  <p className="text-sm text-zinc-600">
+                    {ilkHafta && sonHafta
+                      ? `${haftaSonuBicimle(ilkHafta.date)} → ${haftaSonuBicimle(sonHafta.date)}`
+                      : "Takvim tanımlı değil"}
                   </p>
-                ) : null}
 
-                <p className="mt-2 text-xs text-zinc-500">
-                  {ilkHafta && sonHafta
-                    ? `${haftaSonuBicimle(ilkHafta.date)} → ${haftaSonuBicimle(sonHafta.date)}`
-                    : "Takvim tanımlı değil"}
-                </p>
+                  {/* Takvim ilerlemesi — kaç eğitim haftası geride kaldı. */}
+                  {toplamHafta > 0 ? (
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-zinc-500">
+                        <span>
+                          {islenenHafta === 0
+                            ? "Henüz başlamadı"
+                            : `${islenenHafta}/${toplamHafta} hafta işlendi`}
+                        </span>
+                        {tamamlandi ? (
+                          <span className="font-medium text-emerald-700">
+                            Takvim bitti
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-yuzey-200">
+                        <div
+                          className={cn(
+                            "h-full",
+                            tamamlandi ? "bg-emerald-500" : "bg-marka-600",
+                          )}
+                          style={{
+                            width: `${(islenenHafta / toplamHafta) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
 
-                <p className="mt-1 text-xs text-zinc-500">
-                  {donem.weeks.length} eğitim haftası ·{" "}
-                  {donem._count.workshops} atölye · {donem._count.groups} grup
-                </p>
-              </Kart>
+                  {/* Özet sayılar — kart altına yapışır ki iki sütunlu
+                      ızgarada kısa kartlarla uzunlar aynı hizada bitsin. */}
+                  <div className="mt-auto space-y-2 border-t border-yuzey-200 pt-3">
+                    <p className="text-sm text-zinc-700">
+                      {donem._count.groups} grup · {ogrenciSayisi} öğrenci ·{" "}
+                      {donem._count.workshops} atölye
+                    </p>
+
+                    {kadro.length > 0 ? (
+                      <p className="flex flex-wrap items-center gap-1.5">
+                        {kadro.map((stajyer) => (
+                          <span
+                            key={stajyer.id}
+                            className="inline-flex items-center rounded bg-yuzey-100 px-2 py-0.5 text-xs text-zinc-700"
+                          >
+                            {stajyer.ad}
+                          </span>
+                        ))}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-zinc-400">
+                        Stajyer kadrosu tanımlı değil
+                      </p>
+                    )}
+                  </div>
+                </Kart>
+              </Link>
             );
           })}
         </div>
