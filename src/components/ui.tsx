@@ -30,14 +30,23 @@ export function SayfaBasligi({
   baslik,
   aciklama,
   aksiyon,
+  ustBilgi,
 }: {
   baslik: string;
   aciklama?: string;
   aksiyon?: React.ReactNode;
+  /**
+   * Başlığın ÜSTÜNDE duran küçük bağlam etiketi. Şubeli yapıda ortak
+   * ekranları (atölye kataloğu, dönem, kulüp) işaretlemek için kullanılıyor:
+   * o ekranlarda yapılan değişiklik iki şubeyi birden etkiliyor ve bunun
+   * başlığı okumadan ÖNCE görünmesi gerekiyor.
+   */
+  ustBilgi?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
+        {ustBilgi ? <div className="mb-1.5">{ustBilgi}</div> : null}
         <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
           {baslik}
         </h1>

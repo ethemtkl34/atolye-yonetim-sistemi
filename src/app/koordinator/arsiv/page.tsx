@@ -28,7 +28,8 @@ export const metadata: Metadata = {
  * listeleri meşgul etmemesi.
  */
 export default async function ArsivSayfasi() {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const [donemler, kulupler] = await Promise.all([
     db.term.findMany({
@@ -37,6 +38,7 @@ export default async function ArsivSayfasi() {
       include: {
         weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
         groups: {
+          where: { branchId: subeId },
           orderBy: { createdAt: "asc" },
           select: {
             id: true,
@@ -62,6 +64,7 @@ export default async function ArsivSayfasi() {
       orderBy: { date: "desc" },
       include: {
         groups: {
+          where: { branchId: subeId },
           orderBy: { createdAt: "asc" },
           select: {
             id: true,

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { cikisYap } from "@/app/cikis/actions";
-import { rolAdi, type OturumKullanicisi } from "@/lib/auth-guard";
+import { rolAdi, type SubeliKullanici } from "@/lib/auth-guard";
 import type { MenuOgesi } from "@/lib/navigasyon";
+import { SubeGostergesi } from "./sube-gostergesi";
 import { YanMenu } from "./yan-menu";
 
 /** Ad soyaddan avatar baş harfleri: "Kurum Koordinatörü" → "KK". */
@@ -24,6 +25,11 @@ function basHarfler(ad: string): string {
  *
  * Menü ve üst şerit yapışkan (sticky): uzun listelerde aşağı inildiğinde
  * gezinme ve çıkış her an erişilebilir kalır.
+ *
+ * Üst şeritte üç şey var ve sırası bilinçli: KİM (hesap), NEREDE (şube),
+ * ÇIKIŞ. Şube göstergesi sabit — sistem iki şubede kullanılıyor ve ekranlar
+ * birbirine benziyor; hangi şubede olduğunu söyleyen kalıcı bir işaret
+ * olmadan yanlış şubede iş yapmak sessizce mümkün olurdu.
  */
 export function PanelKabuk({
   kullanici,
@@ -31,7 +37,7 @@ export function PanelKabuk({
   baslik,
   children,
 }: {
-  kullanici: OturumKullanicisi;
+  kullanici: SubeliKullanici;
   menu: readonly MenuOgesi[];
   baslik: string;
   children: React.ReactNode;
@@ -54,7 +60,7 @@ export function PanelKabuk({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-yuzey-200 bg-white/95 px-6 py-2.5 backdrop-blur">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-yuzey-200 bg-white/95 px-4 py-2.5 backdrop-blur sm:px-6">
           {/* Ad, hesap sayfasına giden bağlantı: parola değiştirme buradan
               bulunuyor. Menüye ayrı madde eklenmedi — 13 modülün arasına
               karışmaması, kullanıcının kendi hesabına ait olması gerekiyor. */}
@@ -68,24 +74,36 @@ export function PanelKabuk({
             >
               {basHarfler(kullanici.name)}
             </span>
-            <span className="min-w-0">
+            {/* Dar ekranda yalnızca avatar kalıyor: üst şeritte üç şeye birden
+                yer yok ve NEREDE olduğunu bilmek KİM olduğunu bilmekten daha
+                kritik — kullanıcı zaten kendi hesabıyla girmiş. Ad, hesap
+                sayfasında tam hâliyle duruyor. */}
+            <span className="hidden min-w-0 sm:block">
               <span className="block truncate text-sm font-medium text-zinc-900">
                 {kullanici.name}
               </span>
-              <span className="block text-xs text-zinc-500">
+              <span className="block whitespace-nowrap text-xs text-zinc-500">
                 {rolAdi(kullanici.role)} · Hesabım
               </span>
             </span>
           </Link>
 
-          <form action={cikisYap}>
-            <button
-              type="submit"
-              className="rounded-md border border-marka-200 px-3 py-1.5 text-sm font-medium text-marka-700 transition-colors hover:bg-marka-50"
-            >
-              Çıkış
-            </button>
-          </form>
+          <div className="flex shrink-0 items-center gap-3">
+            <SubeGostergesi
+              aktifSubeId={kullanici.aktifSubeId}
+              subeler={kullanici.secilebilirSubeler}
+              degistirebilir={kullanici.subeDegistirebilir}
+            />
+
+            <form action={cikisYap}>
+              <button
+                type="submit"
+                className="rounded-md border border-marka-200 px-3 py-1.5 text-sm font-medium text-marka-700 transition-colors hover:bg-marka-50"
+              >
+                Çıkış
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* Dar ekranda sol menü gizli; menü buraya yatay şerit olarak iniyor.

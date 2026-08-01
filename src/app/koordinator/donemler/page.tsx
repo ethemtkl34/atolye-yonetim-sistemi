@@ -29,7 +29,8 @@ const TEMEL_YOL = "/koordinator/donemler";
 export default async function DonemlerSayfasi(
   props: PageProps<"/koordinator/donemler">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
@@ -43,20 +44,30 @@ export default async function DonemlerSayfasi(
       orderBy: { createdAt: "desc" },
       include: {
         weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
+        // Dönemin KENDİSİ ortak ama kadrosu ve grupları şubeye ait. Bu üç
+        // süzgeç olmadan kart "8 grup, 28 öğrenci" yazar ve diğer şubenin
+        // stajyer adlarını sıralardı — dashboard'la da çelişirdi.
         interns: {
+          where: { user: { branchId: subeId } },
           orderBy: { user: { name: "asc" } },
           select: { userId: true, user: { select: { name: true } } },
         },
         // Öğrenci sayısı grupların aktif kayıtlarından toplanır; dönemle
         // kayıt arasında doğrudan bir bağ yok (kayıt gruba bağlı).
         groups: {
+          where: { branchId: subeId },
           select: {
             _count: {
               select: { enrollments: { where: { status: "AKTIF" } } },
             },
           },
         },
-        _count: { select: { groups: true, workshops: true } },
+        _count: {
+          select: {
+            groups: { where: { branchId: subeId } },
+            workshops: true,
+          },
+        },
       },
     }),
     db.term.count({ where: { status: "ARSIVLENDI" } }),
@@ -68,7 +79,8 @@ export default async function DonemlerSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Dönemler"
-        aciklama="Her dönem 10 eğitim haftasından ve 5 atölyeden oluşur. Kontenjan dolduğunda aynı döneme yeni grup eklenebilir."
+        aciklama="Her dönem 10 eğitim haftasından ve 5 atölyeden oluşur. Dönemin takvimi ve atölyeleri iki şubede ortaktır; gruplar, kadro ve öğrenci sayıları yalnızca sizin şubenizindir."
+        ustBilgi={<Rozet tur="notr">Takvim bütün şubelerde ortak</Rozet>}
         aksiyon={
           <Link
             href="/koordinator/donemler/yeni"

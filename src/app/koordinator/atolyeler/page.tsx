@@ -32,7 +32,8 @@ export default async function AtolyelerSayfasi() {
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Atölye çeşitleri"
-        aciklama="Dönem ve kulüp programlarında kullanılan atölye tanımları. Her atölyenin kendi değerlendirme soru seti vardır."
+        aciklama="Dönem ve kulüp programlarında kullanılan atölye tanımları. Her atölyenin kendi değerlendirme soru seti vardır. Katalog iki şubede ortaktır: burada yaptığınız değişikliği diğer şube de görür."
+        ustBilgi={<Rozet tur="notr">Bütün şubelerde ortak</Rozet>}
       />
 
       <AtolyeEkleFormu />

@@ -33,7 +33,8 @@ export default async function SorularSayfasi() {
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Değerlendirme soruları"
-        aciklama="Her atölyenin kendi soru seti vardır ve bağımsız düzenlenir. Bir sorunun metnini değiştirmek geçmiş değerlendirmeleri etkilemez; onlar puanlama anındaki metni saklar."
+        aciklama="Her atölyenin kendi soru seti vardır ve bağımsız düzenlenir. Setler iki şubede ortaktır. Bir sorunun metnini değiştirmek geçmiş değerlendirmeleri etkilemez; onlar puanlama anındaki metni saklar."
+        ustBilgi={<Rozet tur="notr">Bütün şubelerde ortak</Rozet>}
       />
 
       {atolyeler.length === 0 ? (

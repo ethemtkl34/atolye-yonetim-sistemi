@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { girisZorunlu, rolAdi } from "@/lib/auth-guard";
+import { rolAdi, subeliOturum } from "@/lib/auth-guard";
 import { Kart, SayfaBasligi } from "@/components/ui";
 import { PanelKabuk } from "@/components/panel-kabuk";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
  * gelen kullanıcı menüsüz, bağlamsız bir ara sayfaya düşmüş gibi oluyordu.
  */
 export default async function HesabimSayfasi() {
-  const kullanici = await girisZorunlu();
+  const kullanici = await subeliOturum();
 
   return (
     <PanelKabuk
@@ -42,6 +42,16 @@ export default async function HesabimSayfasi() {
               <dt className="text-sm text-zinc-500">Rol</dt>
               <dd className="mt-0.5 text-sm text-zinc-800">
                 {rolAdi(kullanici.role)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-zinc-500">Şube</dt>
+              <dd className="mt-0.5 text-sm text-zinc-800">
+                {/* Yöneticinin şubesi yok; burada yazan, o an ÇALIŞTIĞI
+                    şubedir. İkisi karışmasın diye ifade ayrı. */}
+                {kullanici.role === "ADMIN"
+                  ? `Bütün şubeler (şu an ${kullanici.aktifSubeAdi})`
+                  : kullanici.aktifSubeAdi}
               </dd>
             </div>
             <div className="sm:col-span-2">

@@ -23,7 +23,7 @@ const TEMEL_YOL = "/koordinator/kulupler";
 export default async function KuluplerSayfasi(
   props: PageProps<"/koordinator/kulupler">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
@@ -40,7 +40,9 @@ export default async function KuluplerSayfasi(
         orderBy: { sortOrder: "asc" },
         include: { workshopType: { select: { name: true } } },
       },
+      // Kulüp ortak, grupları şubeye ait: doluluk kendi şubesinin.
       groups: {
+        where: { branchId: kullanici.aktifSubeId },
         select: {
           capacity: true,
           active: true,
@@ -56,7 +58,8 @@ export default async function KuluplerSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Kulüpler"
-        aciklama="Kulüp, dönemden bağımsız tek yarım günlük hazır programdır: 3 atölye, kendi grubu ve kontenjanı. Kulüp öğrencileri dönem gruplarına dahil edilmez."
+        aciklama="Kulüp, dönemden bağımsız tek yarım günlük hazır programdır: 3 atölye, kendi grubu ve kontenjanı. Kulübün tanımı iki şubede ortaktır; gruplar ve kayıtlar yalnızca sizin şubenizindir. Kulüp öğrencileri dönem gruplarına dahil edilmez."
+        ustBilgi={<Rozet tur="notr">Tanım bütün şubelerde ortak</Rozet>}
         aksiyon={
           <Link
             href="/koordinator/kulupler/yeni"
