@@ -135,9 +135,13 @@ async function atolyeleriDogrula(
  * da açılabilmeli. Dolu geldiğinde ise her satırın gerçekten aktif bir
  * stajyer hesabı olduğu doğrulanır; pasif hesap kadroya alınırsa kayıt
  * ekranında hiç listelenmeyen bir "hayalet" stajyer oluşurdu.
+ *
+ * Şube de burada doğrulanır: dönem iki şubede ortak olduğu için form başka
+ * şubenin stajyer id'siyle gönderilebilir.
  */
 async function stajyerleriDogrula(
   stajyerIdleri: string[],
+  subeId: string,
 ): Promise<{ hata: string } | { idler: string[] }> {
   if (stajyerIdleri.length === 0) return { idler: [] };
 
@@ -146,7 +150,12 @@ async function stajyerleriDogrula(
   }
 
   const bulunan = await db.user.count({
-    where: { id: { in: stajyerIdleri }, role: "STAJYER", active: true },
+    where: {
+      id: { in: stajyerIdleri },
+      role: "STAJYER",
+      active: true,
+      branchId: subeId,
+    },
   });
 
   if (bulunan !== stajyerIdleri.length) {
@@ -210,6 +219,7 @@ export async function donemOlustur(
 
   const stajyerSonucu = await stajyerleriDogrula(
     formVerisi.getAll("stajyerler").map(String).filter(Boolean),
+    kullanici.aktifSubeId,
   );
   if ("hata" in stajyerSonucu) {
     return { hata: stajyerSonucu.hata, degerler: girilenler };
@@ -444,17 +454,24 @@ export async function donemStajyerleriniGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const secilenIdler = formVerisi.getAll("stajyerler").map(String).filter(Boolean);
   if (new Set(secilenIdler).size !== secilenIdler.length) {
     return { hata: "Aynı stajyer birden fazla kez seçilmiş." };
   }
 
+  // Kadro iki şubenin stajyerlerini birlikte tutuyor (dönem ortak). Bu ekran
+  // yalnızca KENDİ şubesinin kadrosunu yönetir; diğer şubenin satırları ne
+  // okunur ne de silinir.
   const donem = await db.term.findUnique({
     where: { id: donemId },
     select: {
-      interns: { select: { userId: true, user: { select: { name: true } } } },
+      interns: {
+        where: { user: { branchId: subeId } },
+        select: { userId: true, user: { select: { name: true } } },
+      },
     },
   });
   if (!donem) return { hata: "Dönem bulunamadı." };
@@ -465,6 +482,7 @@ export async function donemStajyerleriniGuncelle(
   const mevcutIdler = new Set(donem.interns.map((kadro) => kadro.userId));
   const stajyerSonucu = await stajyerleriDogrula(
     secilenIdler.filter((id) => !mevcutIdler.has(id)),
+    subeId,
   );
   if ("hata" in stajyerSonucu) return { hata: stajyerSonucu.hata };
 
@@ -480,7 +498,7 @@ export async function donemStajyerleriniGuncelle(
       where: {
         status: "AKTIF",
         internId: { in: cikarilanlar.map((kadro) => kadro.userId) },
-        group: { termId: donemId },
+        group: { termId: donemId, branchId: subeId },
       },
       _count: true,
     });
@@ -501,8 +519,16 @@ export async function donemStajyerleriniGuncelle(
   }
 
   await db.$transaction(async (tx) => {
+    // `user: { branchId }` OLMADAN bu satır diğer şubenin bütün kadrosunu
+    // silerdi: form yalnızca kendi şubesinin stajyerlerini gönderiyor, geri
+    // kalan herkes "seçilmemiş" sayılırdı. Dönemi ortaklaştıran karar bu
+    // süzgeci zorunlu kılıyor.
     await tx.termIntern.deleteMany({
-      where: { termId: donemId, userId: { notIn: secilenIdler } },
+      where: {
+        termId: donemId,
+        userId: { notIn: secilenIdler },
+        user: { branchId: subeId },
+      },
     });
     if (secilenIdler.length > 0) {
       await tx.termIntern.createMany({
@@ -531,10 +557,10 @@ export async function donemStajyerleriniGuncelle(
 export async function grupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
-  const grup = await db.group.findUnique({
-    where: { id: grupId },
+  const grup = await db.group.findFirst({
+    where: { id: grupId, branchId: kullanici.aktifSubeId },
     select: { active: true, name: true, termId: true },
   });
 

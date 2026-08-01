@@ -20,7 +20,8 @@ export const metadata: Metadata = {
 export default async function YeniKayitSayfasi(
   props: PageProps<"/koordinator/kayitlar/yeni">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
   const studentId =
@@ -50,18 +51,25 @@ export default async function YeniKayitSayfasi(
   }
 
   const [ogrenci, donemler, kulupler, stajyerler] = await Promise.all([
-    db.student.findUnique({
-      where: { id: studentId },
+    db.student.findFirst({
+      where: { id: studentId, branchId: subeId },
       select: { id: true, firstName: true, lastName: true },
     }),
+    // Dönem ve kulübün kendisi ortak — süzülmüyor. Süzülen, içlerindeki
+    // gruplar ve kadro: her şube kendi gruplarına kayıt alır, kendi
+    // stajyerlerini görür.
     db.term.findMany({
       where: { status: "KAYIT_ALIYOR" },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
-        interns: { select: { userId: true } },
+        interns: {
+          where: { user: { branchId: subeId } },
+          select: { userId: true },
+        },
         groups: {
+          where: { branchId: subeId },
           orderBy: { createdAt: "asc" },
           select: {
             id: true,
@@ -89,6 +97,7 @@ export default async function YeniKayitSayfasi(
         name: true,
         date: true,
         groups: {
+          where: { branchId: subeId },
           orderBy: { createdAt: "asc" },
           select: {
             id: true,
@@ -109,7 +118,7 @@ export default async function YeniKayitSayfasi(
       },
     }),
     db.user.findMany({
-      where: { role: "STAJYER", active: true },
+      where: { role: "STAJYER", active: true, branchId: subeId },
       orderBy: { name: "asc" },
       select: {
         id: true,

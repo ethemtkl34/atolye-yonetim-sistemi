@@ -331,10 +331,10 @@ export async function kulupGrupEkle(
 export async function kulupGrupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
-  const grup = await db.group.findUnique({
-    where: { id: grupId },
+  const grup = await db.group.findFirst({
+    where: { id: grupId, branchId: kullanici.aktifSubeId },
     select: { active: true, name: true, clubId: true },
   });
 

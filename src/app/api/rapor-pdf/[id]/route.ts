@@ -16,21 +16,51 @@ import { normalizeArama } from "@/lib/turkce";
  * veriyor. Dosya deposu bağımlılığı olmadığı için sistem yerelde de üretimde
  * de aynı şekilde çalışıyor; P12'de nesne deposuna geçilmek istenirse
  * yalnızca `fileUrl` değişir.
+ *
+ * YETKİ: Bu rota bir Server Action değil, sayfa da değil — `auth-guard.ts`
+ * fonksiyonları burada kullanılamaz (onlar yönlendirme yapar, indirme
+ * isteğinde 403 gerekir). Bu yüzden kontrol elle yapılıyor ve iki katmanlı:
+ * rol veritabanından okunuyor (belirteç 12 saat bayat kalabilir) ve belgenin
+ * şubesi doğrulanıyor. Önceden yalnızca belirteçteki role bakılıyordu; id
+ * tahmin edilebilirse başka şubenin raporu indirilebilirdi.
  */
 export async function GET(
   _istek: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Rota bir Server Action değil; yetki burada elle kontrol edilir.
   const oturum = await auth();
-  if (oturum?.user?.role !== "KOORDINATOR") {
+  if (!oturum?.user?.id) {
+    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
+  }
+
+  const kullanici = await db.user.findUnique({
+    where: { id: oturum.user.id },
+    select: { role: true, active: true, branchId: true },
+  });
+
+  if (
+    !kullanici?.active ||
+    (kullanici.role !== "KOORDINATOR" && kullanici.role !== "ADMIN")
+  ) {
+    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
+  }
+
+  // Yönetici iki şubeyi de görüyor, onun için şube kısıtı yok. Koordinatörün
+  // şubesi ise zorunlu: veritabanı CHECK'i null bırakmıyor, yine de null
+  // gelirse belge verilmez — "süzgeç yok" hâline düşmek sızıntı olurdu.
+  if (kullanici.role !== "ADMIN" && !kullanici.branchId) {
     return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
   }
 
   const { id } = await params;
 
-  const pdf = await db.reportPdf.findUnique({
-    where: { id },
+  const pdf = await db.reportPdf.findFirst({
+    where: {
+      id,
+      ...(kullanici.branchId
+        ? { report: { student: { branchId: kullanici.branchId } } }
+        : {}),
+    },
     select: {
       createdAt: true,
       snapshotJson: true,

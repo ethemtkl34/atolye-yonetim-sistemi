@@ -11,9 +11,10 @@ import { AtamaPaneli, type AtanabilirKayit } from "./atama-paneli";
 export async function generateMetadata(
   props: PageProps<"/koordinator/stajyerler/[id]">,
 ): Promise<Metadata> {
+  const kullanici = await yonetimZorunlu();
   const { id } = await props.params;
-  const stajyer = await db.user.findUnique({
-    where: { id },
+  const stajyer = await db.user.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { name: true },
   });
   return { title: stajyer?.name ?? "Stajyer" };
@@ -33,7 +34,8 @@ export async function generateMetadata(
 export default async function StajyerDetaySayfasi(
   props: PageProps<"/koordinator/stajyerler/[id]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
   const parametreler = await props.searchParams;
 
@@ -46,8 +48,8 @@ export default async function StajyerDetaySayfasi(
   const kulupSecili = secilenTur === "kulup" && secilenId;
 
   const [stajyer, donemler, kulupler] = await Promise.all([
-    db.user.findUnique({
-      where: { id },
+    db.user.findFirst({
+      where: { id, branchId: subeId },
       select: {
         id: true,
         name: true,
@@ -70,7 +72,10 @@ export default async function StajyerDetaySayfasi(
       select: {
         id: true,
         name: true,
-        interns: { select: { userId: true } },
+        interns: {
+          where: { user: { branchId: subeId } },
+          select: { userId: true },
+        },
       },
     }),
     db.club.findMany({
@@ -96,8 +101,8 @@ export default async function StajyerDetaySayfasi(
           where: {
             status: "AKTIF",
             group: secilenDonem
-              ? { termId: secilenDonem.id }
-              : { clubId: secilenKulup!.id },
+              ? { termId: secilenDonem.id, branchId: subeId }
+              : { clubId: secilenKulup!.id, branchId: subeId },
           },
           orderBy: { student: { searchName: "asc" } },
           select: {

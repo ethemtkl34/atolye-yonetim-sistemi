@@ -27,9 +27,10 @@ export async function generateMetadata(
 export default async function KulupDetaySayfasi(
   props: PageProps<"/koordinator/kulupler/[id]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
   const { id } = await props.params;
 
+  // Kulübün kendisi ortak; her şube kendi gruplarını açar.
   const kulup = await db.club.findUnique({
     where: { id },
     include: {
@@ -38,6 +39,7 @@ export default async function KulupDetaySayfasi(
         include: { workshopType: { select: { name: true } } },
       },
       groups: {
+        where: { branchId: kullanici.aktifSubeId },
         orderBy: { createdAt: "asc" },
         include: {
           _count: {

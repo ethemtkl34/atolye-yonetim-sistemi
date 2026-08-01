@@ -24,9 +24,13 @@ import { grupZamani, tarihBicimle } from "@/lib/tarih";
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ): Promise<Metadata> {
+  // Sekme başlığı da şubeye kapalı: başka şubenin öğrenci id'si yapıştırılınca
+  // sayfa 404 verirken başlıkta çocuğun adının görünmesi sızıntıdır.
+  // `yonetimZorunlu` istek başına önbellekli, ek sorgu maliyeti yok.
+  const kullanici = await yonetimZorunlu();
   const { id } = await props.params;
-  const ogrenci = await db.student.findUnique({
-    where: { id },
+  const ogrenci = await db.student.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { firstName: true, lastName: true },
   });
   return {
@@ -43,7 +47,8 @@ export async function generateMetadata(
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
@@ -52,8 +57,8 @@ export default async function OgrenciProfilSayfasi(
   const acilisRaporu =
     typeof parametreler.rapor === "string" ? parametreler.rapor : undefined;
 
-  const ogrenci = await db.student.findUnique({
-    where: { id },
+  const ogrenci = await db.student.findFirst({
+    where: { id, branchId: subeId },
     include: {
       guardians: true,
       healthInfo: true,
@@ -68,7 +73,13 @@ export default async function OgrenciProfilSayfasi(
                   name: true,
                   status: true,
                   // Dönem kadrosu: atama seçenekleri buna göre süzülür.
-                  interns: { select: { userId: true } },
+                  // Dönem iki şubede ortak olduğu için kadro da iki şubenin
+                  // stajyerlerini birlikte tutuyor; kendi şubemizinkiler
+                  // ayıklanmazsa diğer şubenin stajyeri atanabilir hâle gelir.
+                  interns: {
+                    where: { user: { branchId: subeId } },
+                    select: { userId: true },
+                  },
                 },
               },
               club: { select: { name: true, status: true, date: true } },
@@ -93,20 +104,25 @@ export default async function OgrenciProfilSayfasi(
     toplamFormSayisi,
     katildigiFormSayisi,
   ] = await Promise.all([
-    kayitIlerlemeleri({ studentId: id }),
-    raporOzetleri({ ogrenciId: id }),
-    pdfGecmisi({ ogrenciId: id }),
+    kayitIlerlemeleri({ subeId, studentId: id }),
+    raporOzetleri({ subeId, ogrenciId: id }),
+    pdfGecmisi({ subeId, ogrenciId: id }),
     // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
     // pencere açılmasa da peşinen okunuyor.
-    raporKapsamSecenekleri(id),
+    raporKapsamSecenekleri(id, subeId),
     db.user.findMany({
-      where: { role: "STAJYER", active: true },
+      where: { role: "STAJYER", active: true, branchId: subeId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-    db.score.count({ where: { enrollment: { studentId: id } } }),
     db.score.count({
-      where: { enrollment: { studentId: id }, attended: true },
+      where: { enrollment: { studentId: id, group: { branchId: subeId } } },
+    }),
+    db.score.count({
+      where: {
+        enrollment: { studentId: id, group: { branchId: subeId } },
+        attended: true,
+      },
     }),
   ]);
 

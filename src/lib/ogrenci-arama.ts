@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { AKTIF_OGRENCI_KOSULU } from "./durumlar";
+import { aktifOgrenciKosulu } from "./durumlar";
 import { normalizeArama, normalizeTelefon } from "./turkce";
 
 /**
@@ -16,6 +16,11 @@ import { normalizeArama, normalizeTelefon } from "./turkce";
 export type AramaSonucu = Awaited<ReturnType<typeof ogrenciAra>>[number];
 
 export type AramaSecenekleri = {
+  /**
+   * Zorunlu. Öğrenci arama sistemdeki tek öğrenci giriş kapısı; şube burada
+   * unutulursa bütün ekranlar sızdırır. Bu yüzden varsayılanı yok.
+   */
+  subeId: string;
   enFazla?: number;
   /**
    * "aktif" seçilirse yalnızca aktif bir programda aktif kaydı olan öğrenciler
@@ -24,11 +29,8 @@ export type AramaSecenekleri = {
   kapsam?: "tumu" | "aktif";
 };
 
-export async function ogrenciAra(
-  sorgu: string,
-  secenekler: AramaSecenekleri = {},
-) {
-  const { enFazla = 50, kapsam = "tumu" } = secenekler;
+export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
+  const { subeId, enFazla = 50, kapsam = "tumu" } = secenekler;
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
   const telefonAnahtari = normalizeTelefon(temizSorgu);
@@ -57,7 +59,7 @@ export async function ogrenciAra(
   return db.student.findMany({
     where: {
       ...aramaKosulu,
-      ...(kapsam === "aktif" ? AKTIF_OGRENCI_KOSULU : {}),
+      ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
     },
     // §6.2 — Aynı isimli öğrencileri ayırt edebilmek için doğum tarihi,
     // okul ve sınıf sonuçlarda gösterilir.

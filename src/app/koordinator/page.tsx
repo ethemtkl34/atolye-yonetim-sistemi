@@ -5,10 +5,10 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import {
   AKTIF_DONEM_KOSULU,
-  AKTIF_GRUP_KOSULU,
   AKTIF_KULUP_KOSULU,
-  AKTIF_OGRENCI_KOSULU,
-  ATANMAMIS_KAYIT_KOSULU,
+  aktifGrupKosulu,
+  aktifOgrenciKosulu,
+  atanmamisKayitKosulu,
 } from "@/lib/durumlar";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import { raporOzetleri } from "@/lib/rapor-verisi";
@@ -48,9 +48,14 @@ export const metadata: Metadata = {
  * Değişmeyen sözleşme: her sayı, tıklanınca açılan listenin kendi sorgusuyla
  * aynı koşuldan üretilir. Koşullar `lib/durumlar.ts` içinde tek yerde tanımlı;
  * kartta yazan sayı ile listenin uzunluğu birebir aynı kalır.
+ *
+ * Sözleşme şubeli yapıda da geçerli: bütün sayılar AKTİF ŞUBE içindir.
+ * "Aktif dönem" ve "aktif kulüp" bunun istisnası — program tanımı iki şubede
+ * ortak, sayı ikisinde de aynı görünür.
  */
 export default async function KoordinatorDashboard() {
   const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const bugunkuTarih = bugun();
 
@@ -68,7 +73,7 @@ export default async function KoordinatorDashboard() {
     db.term.count({ where: AKTIF_DONEM_KOSULU }),
     db.club.count({ where: AKTIF_KULUP_KOSULU }),
     db.group.findMany({
-      where: AKTIF_GRUP_KOSULU,
+      where: aktifGrupKosulu(subeId),
       select: {
         id: true,
         name: true,
@@ -82,18 +87,22 @@ export default async function KoordinatorDashboard() {
     }),
     // §12.1 — "Toplam aktif öğrenci": aktif programlarda kaydı olan farklı
     // öğrenci sayısı. Aynı öğrencinin iki kaydı varsa bir kez sayılır.
-    db.student.count({ where: AKTIF_OGRENCI_KOSULU }),
-    db.enrollment.count({ where: ATANMAMIS_KAYIT_KOSULU }),
-    kayitIlerlemeleri({ yalnizcaAktif: true, yalnizcaAktifProgram: true }),
-    raporOzetleri({}),
+    db.student.count({ where: aktifOgrenciKosulu(subeId) }),
+    db.enrollment.count({ where: atanmamisKayitKosulu(subeId) }),
+    kayitIlerlemeleri({
+      subeId,
+      yalnizcaAktif: true,
+      yalnizcaAktifProgram: true,
+    }),
+    raporOzetleri({ subeId }),
     // "Toplam rapor" listeden değil count'tan: raporOzetleri en yeni 200
     // satırla sınırlı, kart ise gerçek toplamı söylemeli.
-    db.report.count(),
+    db.report.count({ where: { student: { branchId: subeId } } }),
     // Yaklaşan oturumlar grup ve gün bazında toplanır: bir grubun bir günde
     // 5 (dönem) veya 3 (kulüp) atölyesi var, satır satır çekmeye gerek yok.
     db.session.groupBy({
       by: ["date", "groupId"],
-      where: { date: { gte: bugunkuTarih }, group: AKTIF_GRUP_KOSULU },
+      where: { date: { gte: bugunkuTarih }, group: aktifGrupKosulu(subeId) },
       orderBy: [{ date: "asc" }],
       _count: { _all: true },
       take: 60,

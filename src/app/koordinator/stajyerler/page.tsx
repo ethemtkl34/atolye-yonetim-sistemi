@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 /** §8 — Stajyer listesi ve yük dağılımı. */
 export default async function StajyerlerSayfasi() {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const stajyerler = await db.user.findMany({
-    where: { role: "STAJYER" },
+    where: { role: "STAJYER", branchId: kullanici.aktifSubeId },
     orderBy: [{ active: "desc" }, { name: "asc" }],
     select: {
       id: true,

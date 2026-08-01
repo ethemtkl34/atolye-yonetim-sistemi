@@ -15,6 +15,10 @@ import {
  * §13.16 — Güncellik saklanmaz, türetilir: kapsamdaki puanların en yeni
  * `updatedAt` değeri raporun `generatedAt` değerinden sonraysa rapor "Güncel
  * değil" görünür. Ayrı bir bayrak veya arka plan işi yok.
+ *
+ * ŞUBE: Raporun şubesi öğrenciden türer (`report.student.branchId`). Her
+ * fonksiyon `subeId`'yi zorunlu alır; başka şubenin rapor id'si yapıştırılırsa
+ * sorgu boş döner.
  */
 
 export type KapsamKaydi = {
@@ -29,9 +33,10 @@ export type KapsamKaydi = {
 /** Rapor kapsamına alınabilecek kayıtlar ve her birinde kaç form dolu. */
 export async function raporKapsamSecenekleri(
   ogrenciId: string,
+  subeId: string,
 ): Promise<KapsamKaydi[]> {
   const kayitlar = await db.enrollment.findMany({
-    where: { studentId: ogrenciId },
+    where: { studentId: ogrenciId, group: { branchId: subeId } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -66,16 +71,21 @@ export async function raporKapsamSecenekleri(
 export async function raporGirdisiHazirla(
   ogrenciId: string,
   kayitIdleri: readonly string[],
+  subeId: string,
 ): Promise<RaporGirdisi | null> {
-  const ogrenci = await db.student.findUnique({
-    where: { id: ogrenciId },
+  const ogrenci = await db.student.findFirst({
+    where: { id: ogrenciId, branchId: subeId },
     select: { firstName: true, lastName: true },
   });
 
   if (!ogrenci) return null;
 
   const kayitlar = await db.enrollment.findMany({
-    where: { id: { in: [...kayitIdleri] }, studentId: ogrenciId },
+    where: {
+      id: { in: [...kayitIdleri] },
+      studentId: ogrenciId,
+      group: { branchId: subeId },
+    },
     select: {
       group: {
         select: {
@@ -174,11 +184,15 @@ export const RAPOR_LISTE_SINIRI = 200;
  * `raporGuncelMi` karşılaştırmayı yapan tek yerdir (`scoring.ts`).
  */
 export async function raporOzetleri(kosul: {
+  subeId: string;
   ogrenciId?: string;
   enFazla?: number;
 }): Promise<RaporOzeti[]> {
   const raporlar = await db.report.findMany({
-    where: kosul.ogrenciId ? { studentId: kosul.ogrenciId } : {},
+    where: {
+      student: { branchId: kosul.subeId },
+      ...(kosul.ogrenciId ? { studentId: kosul.ogrenciId } : {}),
+    },
     orderBy: { generatedAt: "desc" },
     take: kosul.enFazla ?? RAPOR_LISTE_SINIRI,
     select: {
@@ -270,13 +284,19 @@ export type PdfKaydi = {
  * belgeler listede kalır. Sıralama en yeniden eskiye.
  */
 export async function pdfGecmisi(kosul: {
+  subeId: string;
   raporId?: string;
   ogrenciId?: string;
 }): Promise<PdfKaydi[]> {
   const pdfler = await db.reportPdf.findMany({
     where: {
+      report: {
+        student: {
+          branchId: kosul.subeId,
+          ...(kosul.ogrenciId ? { id: kosul.ogrenciId } : {}),
+        },
+      },
       ...(kosul.raporId ? { reportId: kosul.raporId } : {}),
-      ...(kosul.ogrenciId ? { report: { studentId: kosul.ogrenciId } } : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -301,26 +321,24 @@ export type RaporDetayi = {
   govde: RaporGovdesi;
 };
 
-export async function raporDetayi(raporId: string): Promise<RaporDetayi | null> {
-  const rapor = await db.report.findUnique({
-    where: { id: raporId },
-    select: { id: true, studentId: true },
+export async function raporDetayi(
+  raporId: string,
+  subeId: string,
+): Promise<RaporDetayi | null> {
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: subeId } },
+    select: { id: true, studentId: true, bodyJson: true },
   });
 
   if (!rapor) return null;
 
-  const ozetler = await raporOzetleri({ ogrenciId: rapor.studentId });
+  const ozetler = await raporOzetleri({ subeId, ogrenciId: rapor.studentId });
   const ozet = ozetler.find((aday) => aday.id === raporId);
   if (!ozet) return null;
 
-  const govde = await db.report.findUnique({
-    where: { id: raporId },
-    select: { bodyJson: true },
-  });
-
   return {
     ozet,
-    govde: govde!.bodyJson as unknown as RaporGovdesi,
+    govde: rapor.bodyJson as unknown as RaporGovdesi,
   };
 }
 
@@ -328,7 +346,8 @@ export async function raporDetayi(raporId: string): Promise<RaporDetayi | null> 
 export async function raporGovdesiUret(
   ogrenciId: string,
   kayitIdleri: readonly string[],
+  subeId: string,
 ): Promise<RaporGovdesi | null> {
-  const girdi = await raporGirdisiHazirla(ogrenciId, kayitIdleri);
+  const girdi = await raporGirdisiHazirla(ogrenciId, kayitIdleri, subeId);
   return girdi ? raporUret(girdi) : null;
 }

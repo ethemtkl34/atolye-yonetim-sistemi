@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default async function FormlarimSayfasi() {
   const kullanici = await stajyerZorunlu();
   const formlar = await doldurulmusFormlar({
+    subeId: kullanici.aktifSubeId,
     internId: kullanici.id,
     enFazla: 100,
   });

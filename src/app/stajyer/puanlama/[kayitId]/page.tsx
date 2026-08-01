@@ -23,7 +23,7 @@ export default async function StajyerKayitGunleri(
   const kullanici = await stajyerZorunlu();
   const { kayitId } = await props.params;
 
-  const veri = await kayitPuanlamasi(kayitId);
+  const veri = await kayitPuanlamasi(kayitId, kullanici.aktifSubeId);
   if (!veri || veri.kayit.stajyerId !== kullanici.id) notFound();
 
   const { kayit, gunler, ozet } = veri;

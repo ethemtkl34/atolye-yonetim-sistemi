@@ -20,6 +20,10 @@ import type { RaporGovdesi } from "@/lib/report-engine";
  * pencerede yönetildiği için hiçbiri yönlendirme yapmıyor; bunun yerine
  * oluşan raporun kimliğini döndürüyorlar ve pencere kendini o rapora
  * güncelliyor. Kullanıcı böylece öğrencinin sayfasından hiç çıkmıyor.
+ *
+ * ŞUBE: Rapor id'leri istemciden geliyor, hepsi doğrulanmalı. Bütün okumalar
+ * `student.branchId` üzerinden aktif şubeye kilitli; başka şubenin rapor id'si
+ * gönderilirse eylem "bulunamadı" der.
  */
 
 export type EylemDurumu = {
@@ -38,7 +42,8 @@ export async function raporOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const kayitIdleri = formVerisi.getAll("kayitlar").map(String).filter(Boolean);
 
@@ -46,9 +51,14 @@ export async function raporOlustur(
     return { hata: "Raporun kapsayacağı en az bir kayıt seçin." };
   }
 
-  // Seçilen kayıtların gerçekten bu öğrenciye ait olduğu sunucuda doğrulanır.
+  // Seçilen kayıtların gerçekten bu öğrenciye ve bu şubeye ait olduğu
+  // sunucuda doğrulanır.
   const gecerliKayitlar = await db.enrollment.findMany({
-    where: { id: { in: kayitIdleri }, studentId: ogrenciId },
+    where: {
+      id: { in: kayitIdleri },
+      studentId: ogrenciId,
+      group: { branchId: subeId },
+    },
     select: { id: true },
   });
 
@@ -61,7 +71,7 @@ export async function raporOlustur(
   // rapor yine "Güncel" görünürdü (§13.16 karşılaştırması generatedAt ile
   // yapılıyor).
   const uretimZamani = new Date();
-  const govde = await raporGovdesiUret(ogrenciId, kayitIdleri);
+  const govde = await raporGovdesiUret(ogrenciId, kayitIdleri, subeId);
   if (!govde) return { hata: "Öğrenci bulunamadı." };
 
   const rapor = await db.report.create({
@@ -89,10 +99,11 @@ export async function raporOlustur(
  * cevaplanabilir.
  */
 export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
-  const eski = await db.report.findUnique({
-    where: { id: raporId },
+  const eski = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: subeId } },
     select: {
       studentId: true,
       enrollmentLinks: { select: { enrollmentId: true } },
@@ -104,7 +115,7 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollmentId);
   // Zaman damgası puanlar okunmadan önce — raporOlustur'daki açıklamaya bakın.
   const uretimZamani = new Date();
-  const govde = await raporGovdesiUret(eski.studentId, kayitIdleri);
+  const govde = await raporGovdesiUret(eski.studentId, kayitIdleri, subeId);
   if (!govde) return { hata: "Rapor verisi hazırlanamadı." };
 
   const yeni = await db.report.create({
@@ -135,10 +146,10 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
  * düzenlense bile eski PDF'in içeriği değişmez (§13.17).
  */
 export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
-  const rapor = await db.report.findUnique({
-    where: { id: raporId },
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
     select: { id: true, studentId: true, bodyJson: true },
   });
 
@@ -184,8 +195,8 @@ export async function raporMetniDuzenle(
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu();
 
-  const rapor = await db.report.findUnique({
-    where: { id: raporId },
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
     select: { bodyJson: true, studentId: true },
   });
 
@@ -246,11 +257,12 @@ export type RaporPenceresiVerisi = {
 export async function raporPenceresiVerisi(
   raporId: string,
 ): Promise<RaporPenceresiVerisi | null> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const [detay, pdfler] = await Promise.all([
-    raporDetayi(raporId),
-    pdfGecmisi({ raporId }),
+    raporDetayi(raporId, subeId),
+    pdfGecmisi({ subeId, raporId }),
   ]);
 
   if (!detay) return null;

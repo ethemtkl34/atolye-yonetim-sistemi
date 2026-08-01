@@ -20,10 +20,10 @@ export const metadata: Metadata = {
 export default async function KoordinatorGunPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]/[tarih]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
   const { kayitId, tarih } = await props.params;
 
-  const veri = await kayitPuanlamasi(kayitId);
+  const veri = await kayitPuanlamasi(kayitId, kullanici.aktifSubeId);
   if (!veri) notFound();
 
   const gun = veri.gunler.find((aday) => aday.tarihAnahtari === tarih);

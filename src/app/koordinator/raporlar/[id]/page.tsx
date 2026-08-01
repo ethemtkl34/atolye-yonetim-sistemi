@@ -13,11 +13,11 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 export default async function EskiRaporAdresi(
   props: PageProps<"/koordinator/raporlar/[id]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
   const { id } = await props.params;
 
-  const rapor = await db.report.findUnique({
-    where: { id },
+  const rapor = await db.report.findFirst({
+    where: { id, student: { branchId: kullanici.aktifSubeId } },
     select: { studentId: true },
   });
 

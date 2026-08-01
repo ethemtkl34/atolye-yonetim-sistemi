@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { girisZorunlu } from "@/lib/auth-guard";
+import { subeliOturum } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import {
   cevapCozumle,
@@ -34,15 +34,19 @@ export async function puanlamaKaydet(
   _oncekiDurum: PuanlamaEylemDurumu,
   formVerisi: FormData,
 ): Promise<PuanlamaEylemDurumu> {
-  const kullanici = await girisZorunlu();
+  const kullanici = await subeliOturum();
+  const subeId = kullanici.aktifSubeId;
 
   const oturumId = String(formVerisi.get("oturumId") ?? "");
   const kayitId = String(formVerisi.get("kayitId") ?? "");
   if (!oturumId || !kayitId) return { hata: "Form eksik gönderildi." };
 
+  // Kayıt ve oturum ikisi de şubeye kapalı okunuyor. Stajyer için altta
+  // ayrıca "bana atanmış mı" kontrolü var; koordinatör içinse şube süzgeci
+  // tek koruma — bu satır olmadan başka şubenin kaydına puan yazılabilirdi.
   const [kayit, oturum] = await Promise.all([
-    db.enrollment.findUnique({
-      where: { id: kayitId },
+    db.enrollment.findFirst({
+      where: { id: kayitId, group: { branchId: subeId } },
       select: {
         id: true,
         status: true,
@@ -51,8 +55,8 @@ export async function puanlamaKaydet(
         studentId: true,
       },
     }),
-    db.session.findUnique({
-      where: { id: oturumId },
+    db.session.findFirst({
+      where: { id: oturumId, group: { branchId: subeId } },
       select: {
         id: true,
         groupId: true,

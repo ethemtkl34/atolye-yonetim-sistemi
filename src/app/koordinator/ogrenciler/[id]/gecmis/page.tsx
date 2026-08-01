@@ -24,7 +24,8 @@ const SECIM_STILI =
 export default async function OgrenciGecmisiSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/gecmis">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
   const parametreler = await props.searchParams;
 
@@ -43,8 +44,8 @@ export default async function OgrenciGecmisiSayfasi(
   const baslangicTarihi = baslangic ? tarihCozumle(baslangic) : null;
   const bitisTarihi = bitis ? tarihCozumle(bitis) : null;
 
-  const ogrenci = await db.student.findUnique({
-    where: { id },
+  const ogrenci = await db.student.findFirst({
+    where: { id, branchId: subeId },
     select: { id: true, firstName: true, lastName: true },
   });
   if (!ogrenci) notFound();
@@ -53,6 +54,7 @@ export default async function OgrenciGecmisiSayfasi(
     where: {
       enrollment: {
         studentId: id,
+        group: { branchId: subeId },
         // Program ve tür koşulları aynı `group` anahtarına yazılamaz — nesne
         // literalinde sonraki anahtar öncekini ezer ve program filtresi
         // sessizce kaybolurdu. İkisi AND altında birleştiriliyor.
@@ -127,7 +129,7 @@ export default async function OgrenciGecmisiSayfasi(
   // programlar ve atölyelerden oluşur; boş sonuç veren seçenek gösterilmez.
   const [kayitlar, atolyeler] = await Promise.all([
     db.enrollment.findMany({
-      where: { studentId: id },
+      where: { studentId: id, group: { branchId: subeId } },
       select: {
         group: {
           select: {
@@ -138,7 +140,17 @@ export default async function OgrenciGecmisiSayfasi(
       },
     }),
     db.workshopType.findMany({
-      where: { sessions: { some: { scores: { some: { enrollment: { studentId: id } } } } } },
+      where: {
+        sessions: {
+          some: {
+            scores: {
+              some: {
+                enrollment: { studentId: id, group: { branchId: subeId } },
+              },
+            },
+          },
+        },
+      },
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),

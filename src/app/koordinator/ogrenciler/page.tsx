@@ -29,13 +29,14 @@ const LISTE_SINIRI = 200;
 export default async function OgrencilerSayfasi(
   props: PageProps<"/koordinator/ogrenciler">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
 
   const ogrenciler = await ogrenciAra(sorgu, {
+    subeId: kullanici.aktifSubeId,
     kapsam,
     enFazla: LISTE_SINIRI,
   });

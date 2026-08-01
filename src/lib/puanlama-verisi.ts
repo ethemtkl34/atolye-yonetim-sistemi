@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { AKTIF_GRUP_KOSULU } from "./durumlar";
+import { aktifGrupKosulu } from "./durumlar";
 import { bugun, tarihMetni } from "./tarih";
 import { puanlamaOrtalamasi } from "./scoring";
 import {
@@ -24,6 +24,11 @@ import type { Day, TimeSlot } from "@/generated/prisma/enums";
  * GİZLİLİK (§3.2): Stajyerin gördüğü hiçbir yolda veli telefonu veya sağlık
  * detayı `select` listesine alınmaz. Stajyere açık tek sağlık alanı
  * `HealthInfo.internSafetyNote`.
+ *
+ * ŞUBE: Buradaki her fonksiyon `subeId`'yi ZORUNLU alır. Opsiyonel olsaydı
+ * mevcut çağrılar sessizce derlenir ve şube süzgeci olmadan çalışırdı; zorunlu
+ * olunca derleyici her çağrı yerini tek tek saydırıyor. Kayıt/puanlama şubesi
+ * her zaman grup üzerinden türer (`enrollment.group.branchId`).
  */
 
 export type OturumFormu = {
@@ -76,12 +81,17 @@ export type KayitPuanlamasi = {
 /**
  * Bir kaydın bütün puanlama tablosu: grubun oturumları günlere bölünmüş,
  * her oturumun formu ve durumu hesaplanmış olarak.
+ *
+ * `findUnique` yerine `findFirst`: Prisma'da `findUnique` yalnızca unique
+ * alanlarla süzülür, şube koşulu eklenemez. Başka şubenin kayıt id'si
+ * yapıştırılırsa sorgu boş döner, çağıran taraf `notFound()` gösterir.
  */
 export async function kayitPuanlamasi(
   kayitId: string,
+  subeId: string,
 ): Promise<KayitPuanlamasi | null> {
-  const kayit = await db.enrollment.findUnique({
-    where: { id: kayitId },
+  const kayit = await db.enrollment.findFirst({
+    where: { id: kayitId, group: { branchId: subeId } },
     select: {
       id: true,
       status: true,
@@ -284,6 +294,8 @@ export type KayitIlerlemesi = {
  * kayıt için ayrı sorgu atmasın diye oturumlar ve puanlamalar toplu çekilir.
  */
 export async function kayitIlerlemeleri(kosul: {
+  /** Zorunlu — liste hiçbir zaman şubeler arası olmamalı. */
+  subeId: string;
   internId?: string;
   yalnizcaAktif?: boolean;
   /**
@@ -299,7 +311,9 @@ export async function kayitIlerlemeleri(kosul: {
       ...(kosul.internId ? { internId: kosul.internId } : {}),
       ...(kosul.studentId ? { studentId: kosul.studentId } : {}),
       ...(kosul.yalnizcaAktif ? { status: "AKTIF" } : {}),
-      ...(kosul.yalnizcaAktifProgram ? { group: AKTIF_GRUP_KOSULU } : {}),
+      group: kosul.yalnizcaAktifProgram
+        ? aktifGrupKosulu(kosul.subeId)
+        : { branchId: kosul.subeId },
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -444,6 +458,8 @@ export type DoldurulmusForm = {
  * aynı liste stajyer süzgeci olmadan kullanılır.
  */
 export async function doldurulmusFormlar(kosul: {
+  /** Zorunlu — geçmiş formlar da şube dışına çıkmamalı. */
+  subeId: string;
   internId?: string;
   studentId?: string;
   enFazla?: number;
@@ -451,6 +467,7 @@ export async function doldurulmusFormlar(kosul: {
   const puanlamalar = await db.score.findMany({
     where: {
       enrollment: {
+        group: { branchId: kosul.subeId },
         ...(kosul.internId ? { internId: kosul.internId } : {}),
         ...(kosul.studentId ? { studentId: kosul.studentId } : {}),
       },

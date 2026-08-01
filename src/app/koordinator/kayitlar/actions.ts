@@ -45,7 +45,8 @@ export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = kayitSemasi.safeParse({
     studentId: formVerisi.get("studentId"),
@@ -65,14 +66,22 @@ export async function kayitOlustur(
   const { studentId, groupId, internId } = cozumlenen.data;
   const onaylandi = formVerisi.get("onaylandi") === "1";
 
-  const grup = await db.group.findUnique({
-    where: { id: groupId },
+  // Grup, öğrenci ve stajyerin ÜÇÜ de aynı şubeden olmalı. Grup şubeye
+  // kilitlenince kayıt da o şubeye ait olur (kaydın şubesi gruptan türüyor);
+  // öğrenci ve stajyer ayrıca kontrol edilmezse başka şubenin öğrencisi bu
+  // şubenin grubuna kaydedilip iki şube birbirine karışırdı.
+  const grup = await db.group.findFirst({
+    where: { id: groupId, branchId: subeId },
     include: {
       term: {
         select: {
           name: true,
           status: true,
-          interns: { select: { userId: true } },
+          // Dönem ortak; kadro iki şubenin stajyerlerini birlikte tutuyor.
+          interns: {
+            where: { user: { branchId: subeId } },
+            select: { userId: true },
+          },
         },
       },
       club: { select: { name: true, status: true } },
@@ -132,7 +141,7 @@ export async function kayitOlustur(
       where: {
         studentId,
         status: "AKTIF",
-        group: { day: grup.day, timeSlot: grup.timeSlot },
+        group: { day: grup.day, timeSlot: grup.timeSlot, branchId: subeId },
       },
       include: {
         group: {
@@ -160,8 +169,8 @@ export async function kayitOlustur(
     }
   }
 
-  const stajyer = await db.user.findUnique({
-    where: { id: internId },
+  const stajyer = await db.user.findFirst({
+    where: { id: internId, branchId: subeId },
     select: { role: true, active: true },
   });
 
@@ -202,14 +211,17 @@ export async function kayitOlustur(
 
     const [guncelGrup, ogrenci, guncelStajyer, mevcutKayit] =
       await Promise.all([
-        tx.group.findUnique({
-          where: { id: groupId },
+        tx.group.findFirst({
+          where: { id: groupId, branchId: subeId },
           include: {
             term: {
               select: {
                 name: true,
                 status: true,
-                interns: { select: { userId: true } },
+                interns: {
+                  where: { user: { branchId: subeId } },
+                  select: { userId: true },
+                },
               },
             },
             club: { select: { status: true } },
@@ -218,12 +230,12 @@ export async function kayitOlustur(
             },
           },
         }),
-        tx.student.findUnique({
-          where: { id: studentId },
+        tx.student.findFirst({
+          where: { id: studentId, branchId: subeId },
           select: { id: true },
         }),
-        tx.user.findUnique({
-          where: { id: internId },
+        tx.user.findFirst({
+          where: { id: internId, branchId: subeId },
           select: { role: true, active: true },
         }),
         tx.enrollment.findUnique({
@@ -308,12 +320,13 @@ export async function kayitStajyerDegistir(
   kayitId: string,
   internId: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   if (!internId) return { hata: "Stajyer seçin." };
 
-  const stajyer = await db.user.findUnique({
-    where: { id: internId },
+  const stajyer = await db.user.findFirst({
+    where: { id: internId, branchId: subeId },
     select: { role: true, active: true, name: true },
   });
 
@@ -322,7 +335,7 @@ export async function kayitStajyerDegistir(
   }
 
   const kayit = await db.enrollment.findFirst({
-    where: { id: kayitId, status: "AKTIF" },
+    where: { id: kayitId, status: "AKTIF", group: { branchId: subeId } },
     select: {
       studentId: true,
       group: {
@@ -330,7 +343,10 @@ export async function kayitStajyerDegistir(
           term: {
             select: {
               name: true,
-              interns: { select: { userId: true } },
+              interns: {
+                where: { user: { branchId: subeId } },
+                select: { userId: true },
+              },
             },
           },
         },
@@ -372,10 +388,11 @@ export async function kayitStajyerDegistir(
 export async function kayitDurumDegistir(
   kayitId: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
-  const hedef = await db.enrollment.findUnique({
-    where: { id: kayitId },
+  const hedef = await db.enrollment.findFirst({
+    where: { id: kayitId, group: { branchId: subeId } },
     select: { groupId: true },
   });
   if (!hedef) return { hata: "Kayıt bulunamadı." };
@@ -386,8 +403,8 @@ export async function kayitDurumDegistir(
         AS "kilit"
     `;
 
-    const kayit = await tx.enrollment.findUnique({
-      where: { id: kayitId },
+    const kayit = await tx.enrollment.findFirst({
+      where: { id: kayitId, group: { branchId: subeId } },
       include: {
         group: {
           include: {

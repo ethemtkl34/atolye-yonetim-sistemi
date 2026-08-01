@@ -21,6 +21,7 @@ export default async function OgrencilerimSayfasi() {
   // Görevlerim ekranıyla aynı kapsam: arşivlenmiş veya tamamlanmış programın
   // kayıtları listelenmez.
   const ilerlemeler = await kayitIlerlemeleri({
+    subeId: kullanici.aktifSubeId,
     internId: kullanici.id,
     yalnizcaAktif: true,
     yalnizcaAktifProgram: true,

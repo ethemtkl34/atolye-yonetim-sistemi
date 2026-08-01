@@ -27,9 +27,12 @@ export async function generateMetadata(
 export default async function DonemDetaySayfasi(
   props: PageProps<"/koordinator/donemler/[id]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
+  // Dönemin kendisi ortak (iki şube aynı takvimi kullanır); şubeye ait olan
+  // gruplar ve kadro burada süzülüyor.
   const [donem, aktifStajyerler, donemKayitSayilari] = await Promise.all([
     db.term.findUnique({
       where: { id },
@@ -40,11 +43,13 @@ export default async function DonemDetaySayfasi(
           include: { workshopType: { select: { name: true } } },
         },
         interns: {
+          where: { user: { branchId: subeId } },
           include: {
             user: { select: { id: true, name: true, active: true } },
           },
         },
         groups: {
+          where: { branchId: subeId },
           orderBy: { createdAt: "asc" },
           include: {
             _count: {
@@ -58,7 +63,7 @@ export default async function DonemDetaySayfasi(
       },
     }),
     db.user.findMany({
-      where: { role: "STAJYER", active: true },
+      where: { role: "STAJYER", active: true, branchId: subeId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
@@ -66,7 +71,11 @@ export default async function DonemDetaySayfasi(
     // engelinin sebebi arayüzde de görünsün diye burada okunur.
     db.enrollment.groupBy({
       by: ["internId"],
-      where: { status: "AKTIF", internId: { not: null }, group: { termId: id } },
+      where: {
+        status: "AKTIF",
+        internId: { not: null },
+        group: { termId: id, branchId: subeId },
+      },
       _count: true,
     }),
   ]);

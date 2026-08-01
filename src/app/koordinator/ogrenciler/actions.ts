@@ -125,7 +125,7 @@ export async function ogrenciGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {
@@ -138,11 +138,18 @@ export async function ogrenciGuncelle(
   const veri = cozumlenen.data;
   const veliler = veliSatirlari(veri);
 
-  await db.$transaction(async (tx) => {
-    await tx.student.update({
-      where: { id: ogrenciId },
+  // Şube kontrolü güncellemenin KENDİ where'inde ve transaction'ın İÇİNDE:
+  // `updateMany` + sayı kontrolü deseni, ayrı bir "önce oku sonra yaz"
+  // adımının bıraktığı yarış koşulunu bırakmıyor. Sıfır satır güncellendiyse
+  // öğrenci ya yok ya da başka şubenin — o hâlde veli ve sağlık satırlarına
+  // da dokunulmadan işlem geri alınır.
+  const bulundu = await db.$transaction(async (tx) => {
+    const sonuc = await tx.student.updateMany({
+      where: { id: ogrenciId, branchId: kullanici.aktifSubeId },
       data: ogrenciAlanlari(veri),
     });
+
+    if (sonuc.count === 0) return false;
 
     // Veliler silinip yeniden yazılıyor: iki satırlık bir liste için tek tek
     // fark hesaplamaktan hem daha kısa hem daha az hata açık.
@@ -158,7 +165,11 @@ export async function ogrenciGuncelle(
       update: saglikAlanlari(veri),
       create: { studentId: ogrenciId, ...saglikAlanlari(veri) },
     });
+
+    return true;
   });
+
+  if (!bulundu) return { hata: "Öğrenci bulunamadı." };
 
   revalidatePath("/koordinator/ogrenciler");
   revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);

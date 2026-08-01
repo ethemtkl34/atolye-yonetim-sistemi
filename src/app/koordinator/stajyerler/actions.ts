@@ -53,7 +53,7 @@ export async function stajyerEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const cozumlenen = stajyerSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -89,6 +89,9 @@ export async function stajyerEkle(
       email,
       passwordHash: await hash(cozumlenen.data.password, 12),
       role: "STAJYER",
+      // Yeni stajyer her zaman ekleyenin şubesine yazılır; form şube alanı
+      // içermiyor ve içermemeli (`lib/sube.ts`).
+      branchId: kullanici.aktifSubeId,
     },
   });
 
@@ -103,7 +106,7 @@ export async function stajyerAdiGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const ad = String(formVerisi.get("name") ?? "").trim();
   if (ad.length < 2) {
@@ -113,8 +116,11 @@ export async function stajyerAdiGuncelle(
     return { alanHatalari: { name: "Ad soyad en fazla 120 karakter olabilir" } };
   }
 
+  // `role: "STAJYER"` predicate'i bu eylemi zaten koordinatör hesaplarından
+  // koruyordu; `branchId` eklenince aynı desen şubeler arası sızıntıyı da
+  // kapatıyor.
   const sonuc = await db.user.updateMany({
-    where: { id: stajyerId, role: "STAJYER" },
+    where: { id: stajyerId, role: "STAJYER", branchId: kullanici.aktifSubeId },
     data: { name: ad },
   });
   if (sonuc.count === 0) return { hata: "Stajyer bulunamadı." };
@@ -137,8 +143,8 @@ export async function stajyerDurumDegistir(
     return { hata: "Kendi hesabınızı pasife alamazsınız." };
   }
 
-  const stajyer = await db.user.findUnique({
-    where: { id: stajyerId },
+  const stajyer = await db.user.findFirst({
+    where: { id: stajyerId, branchId: koordinator.aktifSubeId },
     select: { active: true, name: true, role: true },
   });
 
@@ -173,12 +179,14 @@ export async function stajyerKadroDurumuDegistir(
   donemId: string,
   stajyerId: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
+  // Dönem ortak olduğu için süzülmez; stajyer ve kayıtlar şubeye kapalı.
   const [donem, stajyer, mevcutKadro] = await Promise.all([
     db.term.findUnique({ where: { id: donemId }, select: { name: true } }),
-    db.user.findUnique({
-      where: { id: stajyerId },
+    db.user.findFirst({
+      where: { id: stajyerId, branchId: subeId },
       select: { role: true, active: true, name: true },
     }),
     db.termIntern.findUnique({
@@ -199,7 +207,7 @@ export async function stajyerKadroDurumuDegistir(
       where: {
         status: "AKTIF",
         internId: stajyerId,
-        group: { termId: donemId },
+        group: { termId: donemId, branchId: subeId },
       },
     });
 
@@ -234,7 +242,7 @@ export async function stajyerParolaSifirla(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const parola = String(formVerisi.get("password") ?? "");
   if (parola.length < 8) {
@@ -245,7 +253,7 @@ export async function stajyerParolaSifirla(
   }
 
   const sonuc = await db.user.updateMany({
-    where: { id: stajyerId, role: "STAJYER" },
+    where: { id: stajyerId, role: "STAJYER", branchId: kullanici.aktifSubeId },
     data: { passwordHash: await hash(parola, 12) },
   });
   if (sonuc.count === 0) return { hata: "Stajyer bulunamadı." };

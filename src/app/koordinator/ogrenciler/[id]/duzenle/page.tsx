@@ -14,11 +14,11 @@ export const metadata: Metadata = {
 export default async function OgrenciDuzenleSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/duzenle">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
   const { id } = await props.params;
 
-  const ogrenci = await db.student.findUnique({
-    where: { id },
+  const ogrenci = await db.student.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     include: { guardians: true, healthInfo: true },
   });
 

@@ -154,6 +154,17 @@ async function subeBaglamiEkle(
 }
 
 /**
+ * Rol ayrımı yapmadan şube bağlamı çözer.
+ *
+ * Hem stajyerin hem koordinatörün kullandığı ortak eylemler için (puanlama
+ * kaydetme gibi): orada rol kontrolü zaten eylemin kendi içinde yapılıyor,
+ * eksik olan tek şey şubeydi.
+ */
+export async function subeliOturum(): Promise<SubeliKullanici> {
+  return subeBaglamiEkle(await girisZorunlu());
+}
+
+/**
  * Koordinatör panelinin kapısı: koordinatör VEYA yönetici.
  *
  * Yönetici aynı paneli kullanıyor — üst şeritten şube seçip o şubede

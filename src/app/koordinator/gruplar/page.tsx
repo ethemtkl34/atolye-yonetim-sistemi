@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
-import { AKTIF_GRUP_KOSULU } from "@/lib/durumlar";
+import { aktifGrupKosulu } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani } from "@/lib/tarih";
 
@@ -22,13 +22,14 @@ const TEMEL_YOL = "/koordinator/gruplar";
  *
  * Süzgeçler dashboard kartlarının karşılığıdır: "Aktif grup" kartı
  * `?kapsam=aktif`, "Kontenjanı dolan grup" kartı `?kapsam=aktif&durum=dolu`
- * adresine gider. Aktiflik koşulu `AKTIF_GRUP_KOSULU` ile paylaşıldığı için
+ * adresine gider. Aktiflik koşulu `aktifGrupKosulu()` ile paylaşıldığı için
  * karttaki sayı ile buradaki liste uzunluğu her zaman aynıdır.
  */
 export default async function GruplarSayfasi(
   props: PageProps<"/koordinator/gruplar">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
@@ -41,8 +42,9 @@ export default async function GruplarSayfasi(
     // görünüp aktif listede olmayan bir programa bağlantı veriyordu.
     where:
       kapsam === "aktif"
-        ? AKTIF_GRUP_KOSULU
+        ? aktifGrupKosulu(subeId)
         : {
+            branchId: subeId,
             AND: [
               {
                 OR: [

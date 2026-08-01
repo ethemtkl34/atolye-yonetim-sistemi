@@ -15,10 +15,12 @@ export const metadata: Metadata = {
 export default async function KoordinatorKayitPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
   const { kayitId } = await props.params;
 
-  const veri = await kayitPuanlamasi(kayitId);
+  // Sahiplik kontrolü sorgunun içinde: başka şubenin kayıt id'si adres
+  // satırına yapıştırılırsa `kayitPuanlamasi` null döner ve sayfa 404 olur.
+  const veri = await kayitPuanlamasi(kayitId, kullanici.aktifSubeId);
   if (!veri) notFound();
 
   const { kayit, gunler, ozet } = veri;

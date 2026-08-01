@@ -30,11 +30,16 @@ export default async function StajyerPaneli() {
     // programın formları görev sayılmaz. Aksi hâlde koordinatör "eksik yok"
     // görürken stajyer aynı formları doldurmaya devam edebiliyordu.
     kayitIlerlemeleri({
+      subeId: kullanici.aktifSubeId,
       internId: kullanici.id,
       yalnizcaAktif: true,
       yalnizcaAktifProgram: true,
     }),
-    doldurulmusFormlar({ internId: kullanici.id, enFazla: 5 }),
+    doldurulmusFormlar({
+      subeId: kullanici.aktifSubeId,
+      internId: kullanici.id,
+      enFazla: 5,
+    }),
   ]);
 
   const gunler = bekleyenGunleriGrupla(ilerlemeler);

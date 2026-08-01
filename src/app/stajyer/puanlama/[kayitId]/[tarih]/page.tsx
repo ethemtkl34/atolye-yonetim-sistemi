@@ -24,7 +24,7 @@ export default async function StajyerGunPuanlamasi(
   const { kayitId, tarih } = await props.params;
   const parametreler = await props.searchParams;
 
-  const veri = await kayitPuanlamasi(kayitId);
+  const veri = await kayitPuanlamasi(kayitId, kullanici.aktifSubeId);
   if (!veri || veri.kayit.stajyerId !== kullanici.id) notFound();
 
   const gun = veri.gunler.find((aday) => aday.tarihAnahtari === tarih);

@@ -21,7 +21,7 @@ const TEMEL_YOL = "/koordinator/puanlamalar";
 export default async function PuanlamalarSayfasi(
   props: PageProps<"/koordinator/puanlamalar">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const suzgec = parametreler.suzgec === "tumu" ? "tumu" : "eksik";
@@ -31,6 +31,7 @@ export default async function PuanlamalarSayfasi(
   // hem programın aktif olması gerekir. Arşivlenmiş bir programın bekleyen
   // formları "Tümü" kapsamında görünmeye devam eder.
   const ilerlemeler = await kayitIlerlemeleri({
+    subeId: kullanici.aktifSubeId,
     yalnizcaAktif: kapsam === "aktif",
     yalnizcaAktifProgram: kapsam === "aktif",
   });

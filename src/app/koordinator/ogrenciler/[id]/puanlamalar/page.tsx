@@ -22,16 +22,17 @@ export const metadata: Metadata = {
 export default async function OgrenciPuanlamalariSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/puanlamalar">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
-  const ogrenci = await db.student.findUnique({
-    where: { id },
+  const ogrenci = await db.student.findFirst({
+    where: { id, branchId: subeId },
     select: { id: true, firstName: true, lastName: true },
   });
   if (!ogrenci) notFound();
 
-  const ilerlemeler = await kayitIlerlemeleri({ studentId: id });
+  const ilerlemeler = await kayitIlerlemeleri({ subeId, studentId: id });
 
   return (
     <div className="space-y-6">

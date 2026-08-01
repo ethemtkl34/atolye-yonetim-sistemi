@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
-import { ATANMAMIS_KAYIT_KOSULU } from "@/lib/durumlar";
+import { atanmamisKayitKosulu } from "@/lib/durumlar";
 import { KayitDurumButonu } from "./kayit-durum-butonu";
 
 export const metadata: Metadata = {
@@ -18,13 +18,14 @@ const TEMEL_YOL = "/koordinator/kayitlar";
  * §7 — Dönem ve kulüp kayıtlarının tek operasyon listesi.
  *
  * "Stajyeri atanmamış" süzgeci dashboard kartının karşılığıdır: kart ile
- * liste aynı koşulu (`ATANMAMIS_KAYIT_KOSULU`) okur, böylece karttaki sayı
+ * liste aynı koşulu (`atanmamisKayitKosulu()`) okur, böylece karttaki sayı
  * ile listenin uzunluğu ayrışmaz.
  */
 export default async function KayitlarSayfasi(
   props: PageProps<"/koordinator/kayitlar">,
 ) {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
   const suzgec =
@@ -32,7 +33,10 @@ export default async function KayitlarSayfasi(
 
   const [kayitlar, atanmamisSayisi] = await Promise.all([
     db.enrollment.findMany({
-    where: suzgec === "atanmamis" ? ATANMAMIS_KAYIT_KOSULU : {},
+    where:
+      suzgec === "atanmamis"
+        ? atanmamisKayitKosulu(subeId)
+        : { group: { branchId: subeId } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       student: {
@@ -47,7 +51,7 @@ export default async function KayitlarSayfasi(
       },
     },
     }),
-    db.enrollment.count({ where: ATANMAMIS_KAYIT_KOSULU }),
+    db.enrollment.count({ where: atanmamisKayitKosulu(subeId) }),
   ]);
 
   return (

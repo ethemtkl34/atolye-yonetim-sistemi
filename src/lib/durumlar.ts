@@ -70,7 +70,13 @@ export const KULUP_DURUM_GECISLERI: Record<ClubStatus, ClubStatus[]> = {
  * P11'in kabul ölçütü "dashboard sayıları listelerle birebir uyuşur". Bunu
  * ancak iki ekran gerçekten aynı koşulu okursa garanti edebiliriz; koşulu iki
  * yere ayrı ayrı yazmak, sonradan biri değişince sessizce ayrışır. Bu yüzden
- * kart da liste de aşağıdaki nesneleri kullanır.
+ * kart da liste de aşağıdaki koşulları kullanır — artık AKTİF ŞUBE içinde.
+ *
+ * Dönem ve kulüp ORTAK olduğu için onların koşulları sabit kaldı; şubeye ait
+ * olan grup, öğrenci ve kayıt koşulları ise şube kimliği alan fonksiyonlara
+ * dönüştü. Sabit bırakılsalardı şube süzgeci çağrı yerlerinde tek tek elle
+ * yazılırdı ve biri unutulduğunda sessizce sızıntı olurdu; fonksiyon olunca
+ * şube vermeden çağrılamıyorlar.
  */
 export const AKTIF_DONEM_KOSULU = {
   status: { in: AKTIF_DONEM_DURUMLARI },
@@ -80,33 +86,45 @@ export const AKTIF_KULUP_KOSULU = {
   status: { in: AKTIF_KULUP_DURUMLARI },
 } satisfies Prisma.ClubWhereInput;
 
-/** Açık ve aktif bir programa bağlı gruplar. */
-export const AKTIF_GRUP_KOSULU = {
-  active: true,
-  OR: [{ term: AKTIF_DONEM_KOSULU }, { club: AKTIF_KULUP_KOSULU }],
-} satisfies Prisma.GroupWhereInput;
+/** Şubenin açık ve aktif bir programa bağlı grupları. */
+export function aktifGrupKosulu(subeId: string): Prisma.GroupWhereInput {
+  return {
+    branchId: subeId,
+    active: true,
+    OR: [{ term: AKTIF_DONEM_KOSULU }, { club: AKTIF_KULUP_KOSULU }],
+  };
+}
 
 /**
  * §12.1 "Toplam aktif öğrenci" — aktif bir programda aktif kaydı olan öğrenci.
  * Aynı öğrencinin iki kaydı varsa bir kez sayılır.
  */
-export const AKTIF_OGRENCI_KOSULU = {
-  enrollments: { some: { status: "AKTIF", group: AKTIF_GRUP_KOSULU } },
-} satisfies Prisma.StudentWhereInput;
+export function aktifOgrenciKosulu(subeId: string): Prisma.StudentWhereInput {
+  return {
+    branchId: subeId,
+    enrollments: {
+      some: { status: "AKTIF", group: aktifGrupKosulu(subeId) },
+    },
+  };
+}
 
 /**
  * Sorumlu stajyeri olmayan, aktif programdaki aktif kayıt.
  *
  * Bu kaydın formlarını dolduracak kimse yok: stajyer görev listeleri
  * `internId` üzerinden çalışır, atanmamış kayıt hiçbir stajyerin ekranında
- * görünmez. Dashboard kartı ile Atamalar ekranının "Atanmamış" süzgeci aynı
+ * görünmez. Dashboard kartı ile kayıtlar ekranının "Atanmamış" süzgeci aynı
  * koşulu okur.
  */
-export const ATANMAMIS_KAYIT_KOSULU = {
-  status: "AKTIF",
-  internId: null,
-  group: AKTIF_GRUP_KOSULU,
-} satisfies Prisma.EnrollmentWhereInput;
+export function atanmamisKayitKosulu(
+  subeId: string,
+): Prisma.EnrollmentWhereInput {
+  return {
+    status: "AKTIF",
+    internId: null,
+    group: aktifGrupKosulu(subeId),
+  };
+}
 
 /**
  * §12.2 — Arşiv, arşivlenmiş programların tek adresi. Dönem ve kulüp
