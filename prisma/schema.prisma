@@ -83,6 +83,7 @@ model User {
   assignedEnrollments Enrollment[] @relation("AtananStajyer")
   enteredScores       Score[]      @relation("PuanlamayiGiren")
   editedReports       Report[]     @relation("RaporuDuzenleyen")
+  termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   @@index([role, active])
 }
@@ -142,8 +143,28 @@ model Term {
   workshops TermWorkshop[]
   weeks     TermWeek[]
   groups    Group[]
+  interns   TermIntern[]
 
   @@index([status])
+}
+
+/// Dönemin stajyer kadrosu. Her dönemin kendi stajyerleri vardır; bu dönemin
+/// kayıtlarında sorumlu stajyer (`Enrollment.internId`) bu kadrodan seçilir.
+/// Kadro boşsa kısıt uygulanmaz — stajyer ataması olmayan eski dönemler bütün
+/// aktif stajyerlerle çalışmaya devam eder.
+model TermIntern {
+  id     String @id @default(cuid())
+  termId String
+  term   Term   @relation(fields: [termId], references: [id], onDelete: Cascade)
+  userId String
+  /// Cascade değil: stajyer hesabı silinirse kadro satırı da düşer ama bu
+  /// zaten Enrollment.internId'deki SetNull ile aynı senaryonun devamıdır.
+  user   User   @relation("DonemStajyeri", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([termId, userId])
+  @@index([userId])
 }
 
 /// §13.3 — Aynı dönemin bütün grupları aynı 5 atölyeyi kullanır; bu yüzden

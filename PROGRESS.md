@@ -814,6 +814,46 @@ arayüz profesyonelleştirildi. `npm run build`, tip kontrolü ve eslint temiz;
 
 ---
 
+## Revize — dönem stajyer kadrosu ve dönem kartları (1 Ağustos 2026)
+
+**Dönem stajyer kadrosu.** Her dönemin kendi stajyerleri var: yeni `TermIntern`
+tablosu (dönem ↔ stajyer, migration `20260801104033_donem_stajyerleri`).
+Kayıt bazlı sorumluluk (`Enrollment.internId`) değişmedi; kadro yalnızca bu
+dönemin kayıtlarında KİMİN seçilebileceğini sınırlar.
+
+- **Kadro boşsa kısıt yok.** Eski dönemler ve kadro tanımlamak istemeyen
+  kullanıcılar için bütün aktif stajyerler seçilebilir kalıyor; özellik
+  kimseyi zorlamıyor.
+- Kadro dönem sihirbazında (isteğe bağlı adım) ve dönem detayındaki
+  "Stajyer kadrosu" kartından yönetiliyor.
+- Kayıt formu, Atamalar satırları ve `kayitStajyerDegistir`/`kayitOlustur`
+  eylemleri kadroyu hem arayüzde süzüyor hem sunucuda doğruluyor (arayüz
+  süzgeci tek başına güvence değil).
+- **Bu dönemde aktif kaydı olan stajyer kadrodan çıkarılamaz** — çıkarılsaydı
+  kayıtlar "görevli olmayan" stajyerin üzerinde kalırdı. Kutu kilitli ve
+  sebep üzerine gelince yazıyor; eylem de aynı kuralı uyguluyor.
+- Kadroda dururken pasife alınan hesap kadroda TUTULABİLİR (Pasif rozetiyle
+  görünür) ama kadroya yeni pasif hesap eklenemez.
+- Kadro kartında React 19 form sıfırlama tuzağı yine çıktı (eylem bitince
+  kutular görsel olarak boşalıyordu); kayıt formundaki çözümle aynı şekilde
+  DOM eylem sonrası durumdan geri yazılıyor.
+
+**Dönemler listesi kartları yenilendi.** Kartın tamamı tıklanabilir tek hedef;
+içinde durum rozeti, tarih aralığı, hafta ilerleme çubuğu ("3/10 hafta
+işlendi"), grup · öğrenci · atölye sayıları ve kadro rozetleri var. Liste
+geniş ekranda iki sütun.
+
+Doğrulama: tip kontrolü ve eslint temiz, 93 test geçiyor; kadro kaydetme,
+kayıt formu süzmesi, Atamalar satır süzmesi (dönem satırı 2 seçenek, kulüp
+satırı 3) ve sihirbaz adımı tarayıcıda uçtan uca denendi.
+
+> **Yayına alma notu:** Bu iş migration içeriyor. `vercel-build` zaten
+> `prisma migrate deploy && next build` çalıştırdığı için push sonrası Vercel
+> derlemesi tabloyu Neon'a kendisi ekler; migration yalnızca tablo eklediği
+> için mevcut koda da zararsız.
+
+---
+
 ## Örnek veri
 
 ```bash

@@ -23,6 +23,12 @@ import { donemOlustur, type EylemDurumu } from "../actions";
 
 export type AtolyeSecenegi = { id: string; name: string };
 
+export type StajyerSecenegi = {
+  id: string;
+  name: string;
+  aktifOgrenciSayisi: number;
+};
+
 /** Takvimde kaç hafta sonu gösterilsin — 6 aya yakın bir aralık. */
 const GOSTERILEN_HAFTA_SAYISI = 26;
 
@@ -60,7 +66,13 @@ function KaydetButonu({
  * göstermek tatil haftalarını atlayarak 10 hafta işaretlemeyi doğrudan
  * yapılabilir kılıyor; ay ızgarasında hafta içi günler gereksiz gürültü olurdu.
  */
-export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
+export function DonemSihirbazi({
+  atolyeler,
+  stajyerler,
+}: {
+  atolyeler: AtolyeSecenegi[];
+  stajyerler: StajyerSecenegi[];
+}) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     donemOlustur,
     {},
@@ -71,6 +83,7 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
   );
   const [secilenHaftalar, setSecilenHaftalar] = useState<string[]>([]);
   const [secilenAtolyeler, setSecilenAtolyeler] = useState<string[]>([]);
+  const [secilenStajyerler, setSecilenStajyerler] = useState<string[]>([]);
 
   const haftaSonlari = useMemo(() => {
     const baslangicTarihi = tarihCozumle(baslangic);
@@ -116,6 +129,14 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
     setSecilenAtolyeler((oncekiler) =>
       oncekiler.includes(id)
         ? oncekiler.filter((a) => a !== id)
+        : [...oncekiler, id],
+    );
+  }
+
+  function stajyerDegistir(id: string) {
+    setSecilenStajyerler((oncekiler) =>
+      oncekiler.includes(id)
+        ? oncekiler.filter((s) => s !== id)
         : [...oncekiler, id],
     );
   }
@@ -298,6 +319,62 @@ export function DonemSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
                       className="size-4"
                     />
                     {atolye.name}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Kart>
+
+      {/* --- Stajyerler --- */}
+      <Kart className="space-y-4 p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-zinc-900">Stajyerler</h2>
+          <span className="text-sm font-medium text-zinc-500">
+            {secilenStajyerler.length} stajyer seçildi
+          </span>
+        </div>
+
+        <p className="text-sm text-zinc-600">
+          Bu dönemde görev alacak stajyerler. Öğrenci kaydı açılırken sorumlu
+          stajyer bu kadrodan seçilir. İsteğe bağlıdır ve dönem sayfasından
+          sonradan değiştirilebilir; kadro boş bırakılırsa bütün aktif
+          stajyerler seçilebilir kalır.
+        </p>
+
+        {stajyerler.length === 0 ? (
+          <Bildirim tur="bilgi">
+            Aktif stajyer yok. Dönemi stajyersiz oluşturabilir, stajyer
+            ekledikten sonra dönem sayfasından kadroyu belirleyebilirsiniz.
+          </Bildirim>
+        ) : (
+          <ul className="space-y-1">
+            {stajyerler.map((stajyer) => {
+              const secili = secilenStajyerler.includes(stajyer.id);
+
+              return (
+                <li key={stajyer.id}>
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm",
+                      secili
+                        ? "bg-marka-50 text-marka-700"
+                        : "text-zinc-700 hover:bg-marka-50",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      name="stajyerler"
+                      value={stajyer.id}
+                      checked={secili}
+                      onChange={() => stajyerDegistir(stajyer.id)}
+                      className="size-4"
+                    />
+                    <span className="flex-1">{stajyer.name}</span>
+                    <span className="text-xs text-zinc-500">
+                      {stajyer.aktifOgrenciSayisi} aktif öğrenci
+                    </span>
                   </label>
                 </li>
               );

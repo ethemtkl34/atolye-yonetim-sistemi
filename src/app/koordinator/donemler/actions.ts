@@ -128,6 +128,36 @@ async function atolyeleriDogrula(
   return { idler: atolyeIdleri };
 }
 
+/**
+ * Dönem kadrosuna seçilen stajyerleri doğrular.
+ *
+ * Kadro isteğe bağlıdır (boş liste geçerli): dönem stajyerler belli olmadan
+ * da açılabilmeli. Dolu geldiğinde ise her satırın gerçekten aktif bir
+ * stajyer hesabı olduğu doğrulanır; pasif hesap kadroya alınırsa kayıt
+ * ekranında hiç listelenmeyen bir "hayalet" stajyer oluşurdu.
+ */
+async function stajyerleriDogrula(
+  stajyerIdleri: string[],
+): Promise<{ hata: string } | { idler: string[] }> {
+  if (stajyerIdleri.length === 0) return { idler: [] };
+
+  if (new Set(stajyerIdleri).size !== stajyerIdleri.length) {
+    return { hata: "Aynı stajyer birden fazla kez seçilmiş." };
+  }
+
+  const bulunan = await db.user.count({
+    where: { id: { in: stajyerIdleri }, role: "STAJYER", active: true },
+  });
+
+  if (bulunan !== stajyerIdleri.length) {
+    return {
+      hata: "Seçilen stajyerlerden biri artık mevcut değil veya pasife alınmış.",
+    };
+  }
+
+  return { idler: stajyerIdleri };
+}
+
 // ---------------------------------------------------------------------------
 // Dönem oluşturma
 // ---------------------------------------------------------------------------
@@ -178,6 +208,13 @@ export async function donemOlustur(
     return { hata: atolyeSonucu.hata, degerler: girilenler };
   }
 
+  const stajyerSonucu = await stajyerleriDogrula(
+    formVerisi.getAll("stajyerler").map(String).filter(Boolean),
+  );
+  if ("hata" in stajyerSonucu) {
+    return { hata: stajyerSonucu.hata, degerler: girilenler };
+  }
+
   // Dönem, haftaları, atölyeleri, ilk grubu ve grubun 50 oturumu tek işlemde
   // yazılır. Araya bir hata girerse yarım kalmış bir dönem oluşmamalı.
   const yeniDonem = await db.$transaction(async (tx) => {
@@ -197,6 +234,9 @@ export async function donemOlustur(
             weekNumber: sira + 1,
             date: tarih,
           })),
+        },
+        interns: {
+          create: stajyerSonucu.idler.map((userId) => ({ userId })),
         },
       },
       include: { weeks: true },
@@ -382,6 +422,107 @@ export async function grupEkle(
       atlananHafta > 0
         ? `"${grup.data.name}" eklendi. Dönem başladığı için grup ${baslangicHaftasi}. haftadan devam ediyor; ilk ${atlananHafta} hafta telafi edilmiyor. ${oturumlar.length} atölye oturumu oluşturuldu.`
         : `"${grup.data.name}" eklendi. ${oturumlar.length} atölye oturumu oluşturuldu.`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Dönem stajyer kadrosu
+// ---------------------------------------------------------------------------
+
+/**
+ * Dönemin stajyer kadrosunu formdaki seçimle eşitler.
+ *
+ * Kadrodan çıkarma korumalı: bu dönemin gruplarında hâlâ aktif kaydı olan
+ * bir stajyer listeden çıkarılamaz. Çıkarılabilseydi o kayıtlar görünürde
+ * "görevli olmayan" bir stajyerin üzerinde kalır, Atamalar ekranı da yeni
+ * stajyeri kadro süzgeci yüzünden seçtirmezdi. Önce kayıtlar devredilmeli.
+ */
+export async function donemStajyerleriniGuncelle(
+  donemId: string,
+  _oncekiDurum: EylemDurumu,
+  formVerisi: FormData,
+): Promise<EylemDurumu> {
+  await koordinatorZorunlu();
+
+  const secilenIdler = formVerisi.getAll("stajyerler").map(String).filter(Boolean);
+  if (new Set(secilenIdler).size !== secilenIdler.length) {
+    return { hata: "Aynı stajyer birden fazla kez seçilmiş." };
+  }
+
+  const donem = await db.term.findUnique({
+    where: { id: donemId },
+    select: {
+      interns: { select: { userId: true, user: { select: { name: true } } } },
+    },
+  });
+  if (!donem) return { hata: "Dönem bulunamadı." };
+
+  // Aktiflik şartı yalnızca yeni eklenenlere uygulanır: kadroda dururken
+  // pasife alınmış bir stajyer, kadroda TUTULABİLMELİ (geçmişi oradadır) ama
+  // kadroya yeni pasif hesap alınamamalı.
+  const mevcutIdler = new Set(donem.interns.map((kadro) => kadro.userId));
+  const stajyerSonucu = await stajyerleriDogrula(
+    secilenIdler.filter((id) => !mevcutIdler.has(id)),
+  );
+  if ("hata" in stajyerSonucu) return { hata: stajyerSonucu.hata };
+
+  const yeniIdler = new Set(secilenIdler);
+  const cikarilanlar = donem.interns.filter(
+    (kadro) => !yeniIdler.has(kadro.userId),
+  );
+
+  if (cikarilanlar.length > 0) {
+    // Çıkarılmak istenen stajyerlerin bu dönemdeki aktif kayıt sayıları.
+    const aktifKayitlar = await db.enrollment.groupBy({
+      by: ["internId"],
+      where: {
+        status: "AKTIF",
+        internId: { in: cikarilanlar.map((kadro) => kadro.userId) },
+        group: { termId: donemId },
+      },
+      _count: true,
+    });
+
+    if (aktifKayitlar.length > 0) {
+      const adlar = aktifKayitlar
+        .map((satir) => {
+          const kadro = cikarilanlar.find(
+            (aday) => aday.userId === satir.internId,
+          );
+          return `${kadro?.user.name ?? "Stajyer"} (${satir._count} aktif kayıt)`;
+        })
+        .join(", ");
+      return {
+        hata: `Bu dönemde aktif kaydı olan stajyer kadrodan çıkarılamaz: ${adlar}. Önce Atamalar ekranından kayıtları başka stajyere devredin.`,
+      };
+    }
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.termIntern.deleteMany({
+      where: { termId: donemId, userId: { notIn: secilenIdler } },
+    });
+    if (secilenIdler.length > 0) {
+      await tx.termIntern.createMany({
+        data: secilenIdler.map((userId) => ({
+          termId: donemId,
+          userId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+  });
+
+  revalidatePath(`/koordinator/donemler/${donemId}`);
+  revalidatePath("/koordinator/donemler");
+  revalidatePath("/koordinator/atamalar");
+  revalidatePath("/koordinator/kayitlar/yeni");
+
+  return {
+    basari:
+      secilenIdler.length === 0
+        ? "Kadro boşaltıldı. Bu dönemin kayıtlarında bütün aktif stajyerler seçilebilir."
+        : `Dönem kadrosu güncellendi: ${secilenIdler.length} stajyer.`,
   };
 }
 

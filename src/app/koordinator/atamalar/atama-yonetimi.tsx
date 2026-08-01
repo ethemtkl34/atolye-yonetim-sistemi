@@ -16,6 +16,8 @@ export type AtamaSatiri = {
   grup: string;
   stajyerId: string | null;
   stajyerAdi: string | null;
+  /** Dönemin stajyer kadrosu; `null` = kısıt yok. */
+  izinliStajyerIdleri: string[] | null;
 };
 
 export type AtamaStajyeri = {
@@ -55,7 +57,18 @@ export function AtamaYonetimi({
 
   return (
     <div className="space-y-3">
-      {atamalar.map((atama) => (
+      {atamalar.map((atama) => {
+        // Kadro tanımlı satırlarda seçenekler kadroya indirgenir. Mevcut
+        // stajyer kadro dışında kalmışsa (kadro sonradan daraltılmış olabilir)
+        // görünümü "Şu an:" satırı taşır; seçenek olarak sunulmaz.
+        const secenekler = atama.izinliStajyerIdleri
+          ? stajyerler.filter((stajyer) =>
+              atama.izinliStajyerIdleri!.includes(stajyer.id),
+            )
+          : stajyerler;
+        const satirdaAtamaMumkun = atamaMumkun && secenekler.length > 0;
+
+        return (
         <Kart key={atama.id} className="p-4">
           <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
             <div>
@@ -88,11 +101,15 @@ export function AtamaYonetimi({
                   defaultValue={atama.stajyerId ?? ""}
                   aria-label={`${atama.ogrenciAdi} için sorumlu stajyer`}
                   className={SECIM_STILI}
-                  disabled={!atamaMumkun}
+                  disabled={!satirdaAtamaMumkun}
                   required
                 >
-                  <option value="">Stajyer seçin…</option>
-                  {stajyerler.map((stajyer) => (
+                  <option value="">
+                    {satirdaAtamaMumkun || !atamaMumkun
+                      ? "Stajyer seçin…"
+                      : "Dönem kadrosunda aktif stajyer yok"}
+                  </option>
+                  {secenekler.map((stajyer) => (
                     <option key={stajyer.id} value={stajyer.id}>
                       {stajyer.ad} — {stajyer.aktifOgrenciSayisi} aktif öğrenci
                     </option>
@@ -100,11 +117,22 @@ export function AtamaYonetimi({
                 </select>
                 <Buton
                   type="submit"
-                  disabled={!atamaMumkun || bekleyenId === atama.id}
+                  disabled={!satirdaAtamaMumkun || bekleyenId === atama.id}
+                  engelSebebi={
+                    satirdaAtamaMumkun
+                      ? undefined
+                      : "Bu dönemin kadrosunda aktif stajyer yok. Dönem sayfasından kadroya stajyer ekleyin."
+                  }
                 >
                   {bekleyenId === atama.id ? "Kaydediliyor…" : "Ata"}
                 </Buton>
               </div>
+              {atama.izinliStajyerIdleri ? (
+                <p className="text-xs text-zinc-500">
+                  Dönem kadrosu tanımlı; yalnızca kadrodaki stajyerler
+                  listeleniyor.
+                </p>
+              ) : null}
               {durum[atama.id]?.basari ? (
                 <Bildirim tur="basari">
                   {durum[atama.id].basari}
@@ -116,7 +144,8 @@ export function AtamaYonetimi({
             </form>
           </div>
         </Kart>
-      ))}
+        );
+      })}
     </div>
   );
 }

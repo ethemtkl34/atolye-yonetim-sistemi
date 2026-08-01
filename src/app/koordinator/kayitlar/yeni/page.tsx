@@ -60,6 +60,7 @@ export default async function YeniKayitSayfasi(
       select: {
         id: true,
         name: true,
+        interns: { select: { userId: true } },
         groups: {
           orderBy: { createdAt: "asc" },
           select: {
@@ -161,12 +162,19 @@ export default async function YeniKayitSayfasi(
       ad: donem.name,
       tur: "Dönem" as const,
       gruplar: gruplariDonustur(donem.groups),
+      // Kadro tanımlıysa sorumlu stajyer yalnızca kadrodan seçilir; boş
+      // kadro (null) kısıt uygulamaz — eski dönemler eskisi gibi çalışır.
+      stajyerIdleri:
+        donem.interns.length > 0
+          ? donem.interns.map((kadro) => kadro.userId)
+          : null,
     })),
     ...kulupler.map((kulup) => ({
       id: kulup.id,
       ad: `${kulup.name} · ${tarihBicimle(kulup.date)}`,
       tur: "Kulüp" as const,
       gruplar: gruplariDonustur(kulup.groups),
+      stajyerIdleri: null,
     })),
   ];
 

@@ -68,7 +68,13 @@ export async function kayitOlustur(
   const grup = await db.group.findUnique({
     where: { id: groupId },
     include: {
-      term: { select: { name: true, status: true } },
+      term: {
+        select: {
+          name: true,
+          status: true,
+          interns: { select: { userId: true } },
+        },
+      },
       club: { select: { name: true, status: true } },
       _count: { select: { enrollments: { where: { status: "AKTIF" } } } },
     },
@@ -164,6 +170,22 @@ export async function kayitOlustur(
   }
 
   /**
+   * Dönemin stajyer kadrosu tanımlıysa sorumlu stajyer kadrodan olmalı.
+   * Kadro boşsa kısıt yok; kulüp kayıtlarında da kadro kavramı yok.
+   */
+  if (
+    grup.term &&
+    grup.term.interns.length > 0 &&
+    !grup.term.interns.some((kadro) => kadro.userId === internId)
+  ) {
+    return {
+      alanHatalari: {
+        internId: `Bu stajyer "${grup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
+      },
+    };
+  }
+
+  /**
    * Kontenjan kontrolü ile kayıt ekleme aynı kritik bölümde yapılır.
    *
    * İki koordinatör son boş yere aynı anda öğrenci eklerse, yalnızca
@@ -183,7 +205,13 @@ export async function kayitOlustur(
         tx.group.findUnique({
           where: { id: groupId },
           include: {
-            term: { select: { status: true } },
+            term: {
+              select: {
+                name: true,
+                status: true,
+                interns: { select: { userId: true } },
+              },
+            },
             club: { select: { status: true } },
             _count: {
               select: { enrollments: { where: { status: "AKTIF" } } },
@@ -229,6 +257,17 @@ export async function kayitOlustur(
       !guncelStajyer.active
     ) {
       return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
+    }
+    if (
+      guncelGrup.term &&
+      guncelGrup.term.interns.length > 0 &&
+      !guncelGrup.term.interns.some((kadro) => kadro.userId === internId)
+    ) {
+      return {
+        alanHatalari: {
+          internId: `Bu stajyer "${guncelGrup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
+        },
+      };
     }
 
     const guncelKontenjan = kontenjanDurumu(
@@ -281,9 +320,34 @@ export async function kayitStajyerDegistir(
 
   const kayit = await db.enrollment.findFirst({
     where: { id: kayitId, status: "AKTIF" },
-    select: { studentId: true },
+    select: {
+      studentId: true,
+      group: {
+        select: {
+          term: {
+            select: {
+              name: true,
+              interns: { select: { userId: true } },
+            },
+          },
+        },
+      },
+    },
   });
   if (!kayit) return { hata: "Aktif kayıt bulunamadı." };
+
+  // Kayıt bir döneme aitse ve dönemin kadrosu tanımlıysa, yeni sorumlu
+  // stajyer de kadrodan olmalı (kayıt oluşturmadaki kuralla aynı).
+  const donemKadrosu = kayit.group.term;
+  if (
+    donemKadrosu &&
+    donemKadrosu.interns.length > 0 &&
+    !donemKadrosu.interns.some((satir) => satir.userId === internId)
+  ) {
+    return {
+      hata: `${stajyer.name} "${donemKadrosu.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
+    };
+  }
 
   await db.enrollment.update({
     where: { id: kayitId },

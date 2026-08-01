@@ -11,11 +11,24 @@ export const metadata: Metadata = {
 export default async function YeniDonemSayfasi() {
   await koordinatorZorunlu();
 
-  const atolyeler = await db.workshopType.findMany({
-    where: { active: true },
-    orderBy: { sortOrder: "asc" },
-    select: { id: true, name: true },
-  });
+  const [atolyeler, stajyerler] = await Promise.all([
+    db.workshopType.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
+    db.user.findMany({
+      where: { role: "STAJYER", active: true },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: { assignedEnrollments: { where: { status: "AKTIF" } } },
+        },
+      },
+    }),
+  ]);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -31,7 +44,14 @@ export default async function YeniDonemSayfasi() {
         </h1>
       </div>
 
-      <DonemSihirbazi atolyeler={atolyeler} />
+      <DonemSihirbazi
+        atolyeler={atolyeler}
+        stajyerler={stajyerler.map((stajyer) => ({
+          id: stajyer.id,
+          name: stajyer.name,
+          aktifOgrenciSayisi: stajyer._count.assignedEnrollments,
+        }))}
+      />
     </div>
   );
 }

@@ -24,6 +24,8 @@ export type ProgramSecenegi = {
   ad: string;
   tur: "Dönem" | "Kulüp";
   gruplar: GrupSecenegi[];
+  /** Dönemin stajyer kadrosu; `null` = kısıt yok (kulüpler ve kadrosuz dönemler). */
+  stajyerIdleri: string[] | null;
 };
 
 export type StajyerSecenegi = {
@@ -89,6 +91,19 @@ export function KayitFormu({
     [secilenProgram, grupId],
   );
 
+  /**
+   * Dönemin kadrosu varsa liste ona indirgenir. Kadrodaki pasif hesaplar
+   * `stajyerler` içinde zaten yok (sayfa yalnızca aktifleri getiriyor), bu
+   * yüzden kesişim boş kalabilir — o durum aşağıda ayrıca açıklanıyor.
+   */
+  const uygunStajyerler = useMemo(() => {
+    const kadro = secilenProgram?.stajyerIdleri;
+    if (!kadro) return stajyerler;
+    return stajyerler.filter((stajyer) => kadro.includes(stajyer.id));
+  }, [secilenProgram, stajyerler]);
+
+  const kadroSuzuyor = Boolean(secilenProgram?.stajyerIdleri);
+
   // Uyarıdan sonra grup değiştirilirse önceki gruba verilmiş onay taşınmaz.
   const uyariVar =
     Boolean(durum.uyari) && durum.uyariGroupId === grupId;
@@ -148,8 +163,20 @@ export function KayitFormu({
                 ref={programSecimi}
                 value={programId}
                 onChange={(e) => {
-                  setProgramId(e.target.value);
+                  const yeniId = e.target.value;
+                  setProgramId(yeniId);
                   setGrupId("");
+                  // Yeni programın kadrosu seçili stajyeri kapsamıyorsa seçim
+                  // taşınmaz; taşınsaydı gizli alandan kadro dışı bir stajyer
+                  // gidip sunucuda reddedilirdi.
+                  const yeniProgram = programlar.find((p) => p.id === yeniId);
+                  if (
+                    yeniProgram?.stajyerIdleri &&
+                    stajyerId &&
+                    !yeniProgram.stajyerIdleri.includes(stajyerId)
+                  ) {
+                    setStajyerId("");
+                  }
                 }}
                 className={SECIM_STILI}
               >
@@ -232,6 +259,9 @@ export function KayitFormu({
           <p className="mt-1 text-sm text-zinc-600">
             Bu kayıt boyunca öğrenciyi bu stajyer puanlar. Öğrencinin başka
             kayıtlarında farklı bir stajyer görevli olabilir.
+            {kadroSuzuyor
+              ? " Seçilen dönemin stajyer kadrosu tanımlı; yalnızca kadrodaki stajyerler listeleniyor."
+              : ""}
           </p>
         </div>
 
@@ -243,6 +273,12 @@ export function KayitFormu({
             </Link>
             .
           </Bildirim>
+        ) : uygunStajyerler.length === 0 ? (
+          <Bildirim tur="hata">
+            Bu dönemin kadrosunda aktif stajyer kalmamış. Dönem sayfasındaki
+            &quot;Stajyer kadrosu&quot; bölümünden kadroya aktif bir stajyer
+            ekleyin.
+          </Bildirim>
         ) : (
           <Alan etiket="Stajyer" hata={durum.alanHatalari?.internId}>
             <select
@@ -252,7 +288,7 @@ export function KayitFormu({
               className={SECIM_STILI}
             >
               <option value="">Seçin…</option>
-              {stajyerler.map((stajyer) => (
+              {uygunStajyerler.map((stajyer) => (
                 <option key={stajyer.id} value={stajyer.id}>
                   {stajyer.ad} — {stajyer.aktifOgrenciSayisi} aktif öğrenci
                 </option>

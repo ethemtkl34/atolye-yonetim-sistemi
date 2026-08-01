@@ -11,6 +11,7 @@ import { mevcutHaftaNumarasi } from "@/lib/session-generator";
 import { GrupDurumButonu } from "@/components/grup-durum-butonu";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
+import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]">,
@@ -29,29 +30,75 @@ export default async function DonemDetaySayfasi(
   await koordinatorZorunlu();
   const { id } = await props.params;
 
-  const donem = await db.term.findUnique({
-    where: { id },
-    include: {
-      weeks: { orderBy: { weekNumber: "asc" } },
-      workshops: {
-        orderBy: { sortOrder: "asc" },
-        include: { workshopType: { select: { name: true } } },
-      },
-      groups: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          _count: {
-            select: {
-              sessions: true,
-              enrollments: { where: { status: "AKTIF" } },
+  const [donem, aktifStajyerler, donemKayitSayilari] = await Promise.all([
+    db.term.findUnique({
+      where: { id },
+      include: {
+        weeks: { orderBy: { weekNumber: "asc" } },
+        workshops: {
+          orderBy: { sortOrder: "asc" },
+          include: { workshopType: { select: { name: true } } },
+        },
+        interns: {
+          include: {
+            user: { select: { id: true, name: true, active: true } },
+          },
+        },
+        groups: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            _count: {
+              select: {
+                sessions: true,
+                enrollments: { where: { status: "AKTIF" } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    db.user.findMany({
+      where: { role: "STAJYER", active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    // Stajyer başına bu dönemdeki aktif kayıt sayısı — kadrodan çıkarma
+    // engelinin sebebi arayüzde de görünsün diye burada okunur.
+    db.enrollment.groupBy({
+      by: ["internId"],
+      where: { status: "AKTIF", internId: { not: null }, group: { termId: id } },
+      _count: true,
+    }),
+  ]);
 
   if (!donem) notFound();
+
+  const kadroIdleri = new Set(donem.interns.map((kadro) => kadro.user.id));
+  const kayitSayilari = new Map(
+    donemKayitSayilari.map((satir) => [satir.internId, satir._count]),
+  );
+
+  // Liste aktif stajyerlerin tamamı + kadroda kalmış pasif hesaplar. Pasif
+  // hesap listeden gizlenseydi kadroda görünmez ama kayıtlarda seçilebilir
+  // kalırdı; burada "Pasif" rozetiyle açıkça gösteriliyor.
+  const kadroListesi: KadroStajyeri[] = [
+    ...aktifStajyerler.map((stajyer) => ({
+      id: stajyer.id,
+      ad: stajyer.name,
+      aktif: true,
+      buDonemdekiKayitSayisi: kayitSayilari.get(stajyer.id) ?? 0,
+      kadroda: kadroIdleri.has(stajyer.id),
+    })),
+    ...donem.interns
+      .filter((kadro) => !kadro.user.active)
+      .map((kadro) => ({
+        id: kadro.user.id,
+        ad: kadro.user.name,
+        aktif: false,
+        buDonemdekiKayitSayisi: kayitSayilari.get(kadro.user.id) ?? 0,
+        kadroda: true,
+      })),
+  ];
 
   const durum = DONEM_DURUMLARI[donem.status];
   // Sayfadaki tahmin cumartesi çapasına göre; pazar grubu seçilirse gerçek
@@ -146,6 +193,9 @@ export default async function DonemDetaySayfasi(
           })}
         </ol>
       </Kart>
+
+      {/* --- Stajyer kadrosu --- */}
+      <StajyerYonetimi donemId={donem.id} stajyerler={kadroListesi} />
 
       {/* --- Gruplar --- */}
       <div className="space-y-3">
