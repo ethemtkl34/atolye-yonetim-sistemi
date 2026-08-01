@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { subeDegistir } from "@/app/sube/actions";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +27,30 @@ export function SubeGostergesi({
 }) {
   const [bekliyor, gecisBaslat] = useTransition();
 
-  const aktifSube = subeler.find((sube) => sube.id === aktifSubeId);
+  /**
+   * Gösterilen şube: sunucudan gelen değer değil, kullanıcının SEÇTİĞİ değer.
+   *
+   * Seçici doğrudan `aktifSubeId`'ye bağlıyken kullanıcının seçimi anında geri
+   * alınıyordu: React denetimli `<select>`'i eski değere yazıyor, yeni değer
+   * ancak sunucu turu bitince (çerez yazılıp bütün panel tazelenince)
+   * geliyordu. Yerelde 300 ms, uzak veritabanında saniyeler. O aralıkta kutu
+   * "seçimi kabul etmemiş" gibi görünüyor ve kullanıcı haklı olarak
+   * "çalışmıyor" diyor.
+   *
+   * `useOptimistic` seçimi hemen gösteriyor; sunucu cevabı gelince değer
+   * kendiliğinden gerçek duruma dönüyor. Eylem başarısız olursa (şube
+   * bulunamadı) eski şubeye geri düşüyor — yani iyimserlik yalan söylemiyor.
+   */
+  const [gosterilenSubeId, iyimserSec] = useOptimistic(aktifSubeId);
+
+  const aktifSube = subeler.find((sube) => sube.id === gosterilenSubeId);
   // Şerit rengi şubenin listedeki sırasından: yönetici şube değiştirdiğinde
   // renk de değişiyor, yani "başka şubedeyim" bilgisi metni okumadan önce
   // geliyor. İki şube için iki ton yetiyor; üçüncü şube eklenirse sıraya
   // devam eder.
   const sira = Math.max(
     0,
-    subeler.findIndex((sube) => sube.id === aktifSubeId),
+    subeler.findIndex((sube) => sube.id === gosterilenSubeId),
   );
   const seritRengi = ["bg-marka-600", "bg-vurgu-600", "bg-emerald-600"][
     sira % 3
@@ -64,7 +80,7 @@ export function SubeGostergesi({
       <span aria-hidden className={cn("h-5 w-1 rounded-full", seritRengi)} />
       <label className="min-w-0">
         <span className="block text-[0.6875rem] leading-tight text-zinc-500">
-          Çalışılan şube
+          {bekliyor ? "Şube değişiyor…" : "Çalışılan şube"}
         </span>
         {/*
           Sıradan bir <select>: değiştirildiği anda eylem çalışıyor, ayrıca
@@ -73,12 +89,18 @@ export function SubeGostergesi({
         */}
         <select
           aria-label="Çalışılan şube"
-          value={aktifSubeId}
-          disabled={bekliyor}
+          value={gosterilenSubeId}
+          // `disabled` YOK: seçiciyi devre dışı bırakmak odağı kaybettiriyor
+          // ve klavyeyle gezinen kullanıcıyı şeridin başına atıyordu. Bekleme
+          // yalnızca etiketten ve soluklaşmadan okunuyor.
           onChange={(olay) => {
             const secilen = olay.target.value;
-            gecisBaslat(() => {
-              void subeDegistir(secilen);
+            // Geçiş callback'i ASENKRON: `void` ile söz atılırsa React geçişi
+            // hemen bitmiş sayıyor, bekleme göstergesi hiç görünmüyor ve
+            // iyimser değer sunucu cevabından önce geri alınıyordu.
+            gecisBaslat(async () => {
+              iyimserSec(secilen);
+              await subeDegistir(secilen);
             });
           }}
           className="-ml-1 max-w-[11rem] cursor-pointer truncate rounded bg-transparent py-0 pl-1 pr-6 text-sm font-medium leading-tight text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:max-w-none"
