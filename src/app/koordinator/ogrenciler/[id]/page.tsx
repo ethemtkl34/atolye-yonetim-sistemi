@@ -11,6 +11,7 @@ import {
   raporOzetleri,
 } from "@/lib/rapor-verisi";
 import { RaporBolumu } from "./rapor-bolumu";
+import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
 import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
@@ -62,7 +63,14 @@ export default async function OgrenciProfilSayfasi(
           intern: { select: { name: true, active: true } },
           group: {
             include: {
-              term: { select: { name: true, status: true } },
+              term: {
+                select: {
+                  name: true,
+                  status: true,
+                  // Dönem kadrosu: atama seçenekleri buna göre süzülür.
+                  interns: { select: { userId: true } },
+                },
+              },
               club: { select: { name: true, status: true, date: true } },
             },
           },
@@ -81,6 +89,7 @@ export default async function OgrenciProfilSayfasi(
     raporlar,
     pdfler,
     kapsamKayitlari,
+    aktifStajyerler,
     toplamFormSayisi,
     katildigiFormSayisi,
   ] = await Promise.all([
@@ -90,6 +99,11 @@ export default async function OgrenciProfilSayfasi(
     // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
     // pencere açılmasa da peşinen okunuyor.
     raporKapsamSecenekleri(id),
+    db.user.findMany({
+      where: { role: "STAJYER", active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
     db.score.count({ where: { enrollment: { studentId: id } } }),
     db.score.count({
       where: { enrollment: { studentId: id }, attended: true },
@@ -100,6 +114,40 @@ export default async function OgrenciProfilSayfasi(
     (toplam, ilerleme) => toplam + ilerleme.ozet.bekleyen,
     0,
   );
+
+  /**
+   * §8 — Atama satırları. Dönem kadrosu tanımlıysa seçenekler kadroyla
+   * sınırlanır; sunucu eylemi de aynı kuralı uyguladığı için burada
+   * gösterilmeyen bir stajyer zaten atanamaz.
+   */
+  const atamaKayitlari: AtamaKaydi[] = ogrenci.enrollments.map((kayit) => {
+    const kadro = kayit.group.term?.interns ?? [];
+    const kadroluMu = kadro.length > 0;
+    const secenekler = kadroluMu
+      ? aktifStajyerler.filter((stajyer) =>
+          kadro.some((satir) => satir.userId === stajyer.id),
+        )
+      : aktifStajyerler;
+
+    return {
+      kayitId: kayit.id,
+      programAdi:
+        kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
+      grupAdi: kayit.group.name,
+      aktif: kayit.status === "AKTIF",
+      stajyerId: kayit.internId,
+      stajyerAdi: kayit.intern?.name ?? null,
+      stajyerPasif: Boolean(kayit.intern && !kayit.intern.active),
+      secenekler: secenekler.map((stajyer) => ({
+        id: stajyer.id,
+        ad: stajyer.name,
+      })),
+      kadroUyarisi:
+        kadroluMu && secenekler.length === 0
+          ? `"${kayit.group.term?.name}" döneminin kadrosunda aktif stajyer yok. Stajyerin sayfasından bu döneme ekleyin.`
+          : null,
+    };
+  });
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");
@@ -266,52 +314,8 @@ export default async function OgrenciProfilSayfasi(
         bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
       />
 
-      {/* 6. Stajyer atamaları */}
-      <Kart className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Stajyer atamaları
-          </h2>
-          <Link
-            href="/koordinator/atamalar"
-            className="text-sm text-marka-700 hover:underline"
-          >
-            Atamaları yönet
-          </Link>
-        </div>
-        {ogrenci.enrollments.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">Henüz atama yok.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {ogrenci.enrollments.map((kayit) => (
-              <div
-                key={kayit.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-yuzey-50 px-3 py-2"
-              >
-                <div>
-                  <p className="text-sm font-medium text-zinc-800">
-                    {kayit.group.term?.name ??
-                      kayit.group.club?.name ??
-                      "Program"}{" "}
-                    · {kayit.group.name}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {kayit.status === "AKTIF" ? "Aktif kayıt" : "İptal kayıt"}
-                  </p>
-                </div>
-                <p className="text-sm text-zinc-700">
-                  {kayit.intern?.name ?? (
-                    <span className="text-vurgu-700">Atanmamış</span>
-                  )}
-                  {kayit.intern && !kayit.intern.active
-                    ? " (pasif hesap)"
-                    : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </Kart>
+      {/* 6. Stajyer atamaları — atama doğrudan burada yapılır. */}
+      <StajyerAtamalari kayitlar={atamaKayitlari} />
 
       {/* 7–8. Katılım ve puanlama geçmişi — listeler kendi sayfalarında,
           profilde yalnızca özet sayıları taşıyan bağlantı kartları durur. */}

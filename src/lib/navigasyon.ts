@@ -90,14 +90,11 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Kişiler",
     simge: "rozet",
   },
-  {
-    etiket: "Stajyer atamaları",
-    yol: "/koordinator/atamalar",
-    hazir: true,
-    paket: "P6",
-    bolum: "Kişiler",
-    simge: "atama",
-  },
+  // Ayrı bir "Stajyer atamaları" ekranı yok: atama, stajyerin kendi
+  // sayfasında (program seç → öğrencileri ata) ve öğrenci profilinde
+  // (kaydın sorumlusunu seç) yapılıyor. Bütün kayıtları tek listede gösteren
+  // eski ekran hangi stajyerin hangi dönemde ne kadar yükü olduğunu
+  // söylemiyordu.
   {
     etiket: "Puanlamalar",
     yol: "/koordinator/puanlamalar",

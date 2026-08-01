@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import {
   Alan,
   Bildirim,
@@ -9,6 +10,7 @@ import {
   Girdi,
   Kart,
   Rozet,
+  butonStili,
 } from "@/components/ui";
 import {
   stajyerAdiGuncelle,
@@ -54,9 +56,12 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-zinc-900">
+                  <Link
+                    href={`/koordinator/stajyerler/${stajyer.id}`}
+                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                  >
                     {stajyer.name}
-                  </span>
+                  </Link>
                   {stajyer.active ? null : <Rozet tur="pasif">Pasif</Rozet>}
                 </div>
                 <p className="mt-0.5 text-sm text-zinc-600">{stajyer.email}</p>
@@ -68,7 +73,13 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
                 </p>
               </div>
 
-              <div className="flex shrink-0 flex-wrap gap-1">
+              <div className="flex shrink-0 flex-wrap items-center gap-1">
+                <Link
+                  href={`/koordinator/stajyerler/${stajyer.id}`}
+                  className={butonStili("ikincil")}
+                >
+                  Öğrenci ata
+                </Link>
                 <Buton
                   tur="sade"
                   disabled={bekliyor}

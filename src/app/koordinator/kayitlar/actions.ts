@@ -290,7 +290,6 @@ export async function kayitOlustur(
 
   revalidatePath("/koordinator/kayitlar");
   revalidatePath("/koordinator/gruplar");
-  revalidatePath("/koordinator/atamalar");
   revalidatePath("/koordinator/stajyerler");
   revalidatePath(`/koordinator/ogrenciler/${studentId}`);
   redirect(`/koordinator/ogrenciler/${studentId}`);
@@ -299,14 +298,18 @@ export async function kayitOlustur(
 /**
  * §8 — Kayıt bazında stajyer değiştirme. Aynı öğrenci farklı kayıtlarda
  * farklı stajyerlere atanabilir; bir kayıt içinde ise yalnızca bir stajyere.
+ *
+ * Atama iki ekrandan da yapılabiliyor — öğrenci profilinde "bu kaydın
+ * sorumlusu kim", stajyer sayfasında "bu stajyere hangi öğrenciler" — ve
+ * ikisi de bu tek eylemi çağırıyor. Kural (özellikle dönem kadrosu kontrolü)
+ * böylece tek yerde duruyor.
  */
 export async function kayitStajyerDegistir(
   kayitId: string,
-  formVerisi: FormData,
+  internId: string,
 ): Promise<EylemDurumu> {
   await koordinatorZorunlu();
 
-  const internId = String(formVerisi.get("internId") ?? "");
   if (!internId) return { hata: "Stajyer seçin." };
 
   const stajyer = await db.user.findUnique({
@@ -355,9 +358,10 @@ export async function kayitStajyerDegistir(
   });
 
   revalidatePath("/koordinator/kayitlar");
-  revalidatePath("/koordinator/atamalar");
   revalidatePath("/koordinator/stajyerler");
+  revalidatePath(`/koordinator/stajyerler/${internId}`);
   revalidatePath(`/koordinator/ogrenciler/${kayit.studentId}`);
+  revalidatePath("/koordinator");
   return { basari: `Sorumlu stajyer ${stajyer.name} olarak güncellendi.` };
 }
 
@@ -437,7 +441,6 @@ export async function kayitDurumDegistir(
 
   revalidatePath("/koordinator/kayitlar");
   revalidatePath("/koordinator/gruplar");
-  revalidatePath("/koordinator/atamalar");
   revalidatePath("/koordinator/stajyerler");
   revalidatePath(`/koordinator/ogrenciler/${sonuc.studentId}`);
 

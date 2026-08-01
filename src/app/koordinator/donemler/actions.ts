@@ -515,7 +515,7 @@ export async function donemStajyerleriniGuncelle(
 
   revalidatePath(`/koordinator/donemler/${donemId}`);
   revalidatePath("/koordinator/donemler");
-  revalidatePath("/koordinator/atamalar");
+  revalidatePath("/koordinator/stajyerler");
   revalidatePath("/koordinator/kayitlar/yeni");
 
   return {

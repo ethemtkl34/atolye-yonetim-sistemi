@@ -4,17 +4,35 @@ import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { ATANMAMIS_KAYIT_KOSULU } from "@/lib/durumlar";
 import { KayitDurumButonu } from "./kayit-durum-butonu";
 
 export const metadata: Metadata = {
   title: "Öğrenci kayıtları",
 };
 
-/** §7 — Dönem ve kulüp kayıtlarının tek operasyon listesi. */
-export default async function KayitlarSayfasi() {
+const TEMEL_YOL = "/koordinator/kayitlar";
+
+/**
+ * §7 — Dönem ve kulüp kayıtlarının tek operasyon listesi.
+ *
+ * "Stajyeri atanmamış" süzgeci dashboard kartının karşılığıdır: kart ile
+ * liste aynı koşulu (`ATANMAMIS_KAYIT_KOSULU`) okur, böylece karttaki sayı
+ * ile listenin uzunluğu ayrışmaz.
+ */
+export default async function KayitlarSayfasi(
+  props: PageProps<"/koordinator/kayitlar">,
+) {
   await koordinatorZorunlu();
 
-  const kayitlar = await db.enrollment.findMany({
+  const parametreler = await props.searchParams;
+  const suzgec =
+    parametreler.suzgec === "atanmamis" ? "atanmamis" : "tumu";
+
+  const [kayitlar, atanmamisSayisi] = await Promise.all([
+    db.enrollment.findMany({
+    where: suzgec === "atanmamis" ? ATANMAMIS_KAYIT_KOSULU : {},
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       student: {
@@ -28,7 +46,9 @@ export default async function KayitlarSayfasi() {
         },
       },
     },
-  });
+    }),
+    db.enrollment.count({ where: ATANMAMIS_KAYIT_KOSULU }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -45,10 +65,34 @@ export default async function KayitlarSayfasi() {
         }
       />
 
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Süzgeç"
+          temelYol={TEMEL_YOL}
+          anahtar="suzgec"
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            {
+              deger: "atanmamis",
+              etiket: `Stajyeri atanmamış (${atanmamisSayisi})`,
+            },
+          ]}
+          secili={suzgec}
+        />
+      </SuzgecCubugu>
+
       {kayitlar.length === 0 ? (
         <BosDurum
-          baslik="Henüz öğrenci kaydı yok."
-          aciklama="Bir öğrenci profilini açıp dönem veya kulüp kaydı oluşturun."
+          baslik={
+            suzgec === "atanmamis"
+              ? "Stajyeri atanmamış kayıt yok."
+              : "Henüz öğrenci kaydı yok."
+          }
+          aciklama={
+            suzgec === "atanmamis"
+              ? "Aktif programlardaki bütün kayıtların sorumlusu var."
+              : "Bir öğrenci profilini açıp dönem veya kulüp kaydı oluşturun."
+          }
         />
       ) : (
         <div className="space-y-3">

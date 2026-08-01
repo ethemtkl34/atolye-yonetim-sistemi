@@ -160,6 +160,74 @@ export async function stajyerDurumDegistir(
   };
 }
 
+/**
+ * §8 — Stajyeri bir dönemin kadrosuna alır ya da kadrodan çıkarır.
+ *
+ * Aynı işi dönem sayfasındaki kadro formu da yapıyor (`donemStajyerleriniGuncelle`),
+ * ama o form bütün kadroyu birden yazar. Burada stajyer merkezli tek bir
+ * geçiş var: koordinatör stajyerin sayfasında "bu dönemde çalışacak" deyip
+ * hemen öğrenci atamasına geçebiliyor. Kurallar iki tarafta da aynı:
+ * pasif hesap kadroya alınamaz, dönemde aktif kaydı olan kadrodan çıkarılamaz.
+ */
+export async function stajyerKadroDurumuDegistir(
+  donemId: string,
+  stajyerId: string,
+): Promise<EylemDurumu> {
+  await koordinatorZorunlu();
+
+  const [donem, stajyer, mevcutKadro] = await Promise.all([
+    db.term.findUnique({ where: { id: donemId }, select: { name: true } }),
+    db.user.findUnique({
+      where: { id: stajyerId },
+      select: { role: true, active: true, name: true },
+    }),
+    db.termIntern.findUnique({
+      where: { termId_userId: { termId: donemId, userId: stajyerId } },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!donem) return { hata: "Dönem bulunamadı." };
+  if (!stajyer || stajyer.role !== "STAJYER") {
+    return { hata: "Stajyer bulunamadı." };
+  }
+
+  if (mevcutKadro) {
+    // Çıkarma: bu dönemde aktif kaydı varsa engellenir, yoksa o kayıtların
+    // sorumlusu kadro dışında kalırdı.
+    const aktifKayitSayisi = await db.enrollment.count({
+      where: {
+        status: "AKTIF",
+        internId: stajyerId,
+        group: { termId: donemId },
+      },
+    });
+
+    if (aktifKayitSayisi > 0) {
+      return {
+        hata: `${stajyer.name} bu dönemde ${aktifKayitSayisi} aktif kayıttan sorumlu; kadrodan çıkarılamaz. Önce bu kayıtları başka stajyere devredin.`,
+      };
+    }
+
+    await db.termIntern.delete({ where: { id: mevcutKadro.id } });
+  } else {
+    if (!stajyer.active) {
+      return { hata: "Pasif hesap dönem kadrosuna eklenemez." };
+    }
+    await db.termIntern.create({ data: { termId: donemId, userId: stajyerId } });
+  }
+
+  revalidatePath(`/koordinator/stajyerler/${stajyerId}`);
+  revalidatePath(`/koordinator/donemler/${donemId}`);
+  revalidatePath("/koordinator/kayitlar/yeni");
+
+  return {
+    basari: mevcutKadro
+      ? `${stajyer.name} "${donem.name}" kadrosundan çıkarıldı.`
+      : `${stajyer.name} "${donem.name}" kadrosuna eklendi.`,
+  };
+}
+
 /** Parola sıfırlama — stajyer parolasını unuttuğunda koordinatör yeniler. */
 export async function stajyerParolaSifirla(
   stajyerId: string,

@@ -175,7 +175,7 @@ export default async function KoordinatorDashboard() {
                 ? "Bu kayıtların formlarını kimse dolduramaz."
                 : "Aktif kayıtların hepsinin sorumlusu var."
             }
-            yol="/koordinator/atamalar?suzgec=atanmamis"
+            yol="/koordinator/kayitlar?suzgec=atanmamis"
           />
           <IsKarti
             baslik="Kontenjanı dolan grup"
