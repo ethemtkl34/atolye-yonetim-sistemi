@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { ATANMAMIS_KAYIT_KOSULU } from "@/lib/durumlar";
 import {
   AtamaYonetimi,
   type AtamaSatiri,
@@ -12,13 +14,27 @@ export const metadata: Metadata = {
   title: "Stajyer atamaları",
 };
 
-/** §8 — Aktif kayıt bazında stajyer atamaları ve yük dağılımı. */
-export default async function AtamalarSayfasi() {
+const TEMEL_YOL = "/koordinator/atamalar";
+
+/**
+ * §8 — Aktif kayıt bazında stajyer atamaları ve yük dağılımı.
+ *
+ * "Atanmamış" süzgeci dashboarddaki aynı adlı kartla birebir aynı koşulu
+ * (`ATANMAMIS_KAYIT_KOSULU`) okur: kartta yazan sayı ile buradaki liste
+ * uzunluğu ayrışamaz.
+ */
+export default async function AtamalarSayfasi(
+  props: PageProps<"/koordinator/atamalar">,
+) {
   await koordinatorZorunlu();
 
-  const [kayitlar, stajyerler] = await Promise.all([
+  const parametreler = await props.searchParams;
+  const suzgec =
+    parametreler.suzgec === "atanmamis" ? "atanmamis" : "tumu";
+
+  const [kayitlar, stajyerler, atanmamisSayisi] = await Promise.all([
     db.enrollment.findMany({
-      where: { status: "AKTIF" },
+      where: suzgec === "atanmamis" ? ATANMAMIS_KAYIT_KOSULU : { status: "AKTIF" },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -30,7 +46,12 @@ export default async function AtamalarSayfasi() {
         group: {
           select: {
             name: true,
-            term: { select: { name: true } },
+            term: {
+              select: {
+                name: true,
+                interns: { select: { userId: true } },
+              },
+            },
             club: { select: { name: true } },
           },
         },
@@ -49,6 +70,7 @@ export default async function AtamalarSayfasi() {
         },
       },
     }),
+    db.enrollment.count({ where: ATANMAMIS_KAYIT_KOSULU }),
   ]);
 
   const atamalar: AtamaSatiri[] = kayitlar.map((kayit) => ({
@@ -60,6 +82,12 @@ export default async function AtamalarSayfasi() {
     grup: kayit.group.name,
     stajyerId: kayit.internId,
     stajyerAdi: kayit.intern?.name ?? null,
+    // Dönemin kadrosu tanımlıysa bu satırda yalnızca kadro listelenir;
+    // null = kısıt yok (kulüpler ve kadrosuz dönemler).
+    izinliStajyerIdleri:
+      kayit.group.term && kayit.group.term.interns.length > 0
+        ? kayit.group.term.interns.map((satir) => satir.userId)
+        : null,
   }));
 
   const stajyerSecenekleri: AtamaStajyeri[] = stajyerler.map((stajyer) => ({
@@ -75,10 +103,34 @@ export default async function AtamalarSayfasi() {
         aciklama="Atama öğrenci profiline değil, ilgili dönem veya kulüp kaydına bağlıdır. Sayılar bilgi amaçlıdır; sabit bir üst sınır yoktur."
       />
 
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kayıtlar"
+          temelYol={TEMEL_YOL}
+          anahtar="suzgec"
+          secenekler={[
+            { deger: "tumu", etiket: "Bütün aktif kayıtlar" },
+            {
+              deger: "atanmamis",
+              etiket: `Stajyeri atanmamış (${atanmamisSayisi})`,
+            },
+          ]}
+          secili={suzgec}
+        />
+      </SuzgecCubugu>
+
       {atamalar.length === 0 ? (
         <BosDurum
-          baslik="Atanacak aktif kayıt yok."
-          aciklama="Yeni öğrenci kaydı oluşturulduğunda sorumlu stajyer burada görünür."
+          baslik={
+            suzgec === "atanmamis"
+              ? "Stajyeri atanmamış kayıt yok."
+              : "Atanacak aktif kayıt yok."
+          }
+          aciklama={
+            suzgec === "atanmamis"
+              ? "Aktif programlardaki bütün kayıtların sorumlusu belli."
+              : "Yeni öğrenci kaydı oluşturulduğunda sorumlu stajyer burada görünür."
+          }
         />
       ) : (
         <>

@@ -95,6 +95,20 @@ export const AKTIF_OGRENCI_KOSULU = {
 } satisfies Prisma.StudentWhereInput;
 
 /**
+ * Sorumlu stajyeri olmayan, aktif programdaki aktif kayıt.
+ *
+ * Bu kaydın formlarını dolduracak kimse yok: stajyer görev listeleri
+ * `internId` üzerinden çalışır, atanmamış kayıt hiçbir stajyerin ekranında
+ * görünmez. Dashboard kartı ile Atamalar ekranının "Atanmamış" süzgeci aynı
+ * koşulu okur.
+ */
+export const ATANMAMIS_KAYIT_KOSULU = {
+  status: "AKTIF",
+  internId: null,
+  group: AKTIF_GRUP_KOSULU,
+} satisfies Prisma.EnrollmentWhereInput;
+
+/**
  * §12.2 — Arşiv, arşivlenmiş programların tek adresi. Dönem ve kulüp
  * listeleri tam olarak bu koşulun dışında kalanları gösterir; böylece her
  * program tam olarak bir listede görünür, hiçbiri iki yerde çıkmaz.
