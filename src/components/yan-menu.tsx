@@ -82,6 +82,16 @@ const SIMGE_YOLLARI: Record<string, React.ReactNode> = {
       <path d="M18 7v6M15 10h6" />
     </>
   ),
+  // Kullanıcı yönetimi: kişi + anahtar. "Kişiler" bölümündeki diğer
+  // maddelerden ayrışsın diye anahtar eklendi — burası hesap ve rol ekranı.
+  anahtar: (
+    <>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.8 20c.7-3.1 3.2-5 6.2-5c.7 0 1.4.1 2 .3" />
+      <circle cx="17.5" cy="13.5" r="2.5" />
+      <path d="M19.3 15.3L22 18v2.5h-2.5" />
+    </>
+  ),
   puan: (
     <path d="M12 4l2.2 4.6 5 .7-3.6 3.6.8 5-4.4-2.3-4.4 2.3.8-5L4.8 9.3l5-.7L12 4zM12 4v11.6" />
   ),

@@ -100,6 +100,18 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Kişiler",
     simge: "rozet",
   },
+  // Yalnızca yöneticide. Koordinatörün Stajyerler ekranı yerinde duruyor ve
+  // kendi şubesiyle sınırlı; burası bütün şubelerin hesaplarına bakan, rol ve
+  // şube değiştirebilen ekran.
+  {
+    etiket: "Kullanıcılar",
+    yol: "/koordinator/kullanicilar",
+    hazir: true,
+    paket: "P14",
+    bolum: "Kişiler",
+    simge: "anahtar",
+    roller: ["ADMIN"],
+  },
   // Ayrı bir "Stajyer atamaları" ekranı yok: atama, stajyerin kendi
   // sayfasında (program seç → öğrencileri ata) ve öğrenci profilinde
   // (kaydın sorumlusunu seç) yapılıyor. Bütün kayıtları tek listede gösteren
