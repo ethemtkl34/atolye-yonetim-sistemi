@@ -4,11 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
-import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
-import {
-  doldurulmusFormlar,
-  kayitIlerlemeleri,
-} from "@/lib/puanlama-verisi";
+import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import { pdfGecmisi, raporOzetleri } from "@/lib/rapor-verisi";
 import {
   AKTIF_DONEM_DURUMLARI,
@@ -17,8 +13,7 @@ import {
   KULUP_DURUMLARI,
 } from "@/lib/durumlar";
 import type { ClubStatus, TermStatus } from "@/generated/prisma/enums";
-import { ortalamaBicimle } from "@/lib/scoring";
-import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
+import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -67,15 +62,29 @@ export default async function OgrenciProfilSayfasi(
 
   if (!ogrenci) notFound();
 
-  // §6.3.7–8 — Katılım ve puanlama geçmişi. Filtreli tam geçmiş ekranı (§6.4)
-  // P9'da geliyor; profilde en son kayıtlar ve kayıt bazlı ilerleme duruyor.
-  const [katilimGecmisi, puanlamaIlerlemeleri, raporlar, pdfler] =
-    await Promise.all([
-      doldurulmusFormlar({ studentId: id, enFazla: 30 }),
-      kayitIlerlemeleri({ studentId: id }),
-      raporOzetleri({ ogrenciId: id }),
-      pdfGecmisi({ ogrenciId: id }),
-    ]);
+  // §6.3.7–8 — Katılım ve puanlama geçmişi profilde liste olarak değil,
+  // kendi sayfalarına götüren özet kartları olarak durur; ekran kalabalığı
+  // bu iki uzun listeden geliyordu. Burada yalnızca özet sayılar okunur.
+  const [
+    puanlamaIlerlemeleri,
+    raporlar,
+    pdfler,
+    toplamFormSayisi,
+    katildigiFormSayisi,
+  ] = await Promise.all([
+    kayitIlerlemeleri({ studentId: id }),
+    raporOzetleri({ ogrenciId: id }),
+    pdfGecmisi({ ogrenciId: id }),
+    db.score.count({ where: { enrollment: { studentId: id } } }),
+    db.score.count({
+      where: { enrollment: { studentId: id }, attended: true },
+    }),
+  ]);
+
+  const bekleyenFormSayisi = puanlamaIlerlemeleri.reduce(
+    (toplam, ilerleme) => toplam + ilerleme.ozet.bekleyen,
+    0,
+  );
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");
@@ -114,23 +123,19 @@ export default async function OgrenciProfilSayfasi(
           ← Öğrenciler
         </Link>
         <div className="mt-2">
+          {/* Başlıkta tek eylem duruyor; "Yeni kayıt" buradan kaldırılıp
+              ait olduğu yere, Aktif kayıtlar bölümünün köşesine taşındı —
+              sayfa açılır açılmaz kayıt butonuyla karşılaşılması ekranı
+              kalabalıklaştırıyordu. */}
           <SayfaBasligi
             baslik={`${ogrenci.firstName} ${ogrenci.lastName}`}
             aksiyon={
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
-                  className={butonStili()}
-                >
-                  Yeni kayıt
-                </Link>
-                <Link
-                  href={`/koordinator/ogrenciler/${ogrenci.id}/duzenle`}
-                  className={butonStili("ikincil")}
-                >
-                  Bilgileri düzenle
-                </Link>
-              </div>
+              <Link
+                href={`/koordinator/ogrenciler/${ogrenci.id}/duzenle`}
+                className={butonStili("ikincil")}
+              >
+                Bilgileri düzenle
+              </Link>
             }
           />
         </div>
@@ -229,6 +234,14 @@ export default async function OgrenciProfilSayfasi(
         baslik="Aktif kayıtlar"
         kayitlar={aktifKayitlar}
         bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
+        aksiyon={
+          <Link
+            href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
+            className="text-sm text-marka-700 hover:underline"
+          >
+            + Yeni kayıt
+          </Link>
+        }
       />
 
       {/* 5. Geçmiş kayıtlar */}
@@ -285,115 +298,35 @@ export default async function OgrenciProfilSayfasi(
         )}
       </Kart>
 
-      {/* 7. Atölye katılım geçmişi */}
+      {/* 7–8. Katılım ve puanlama geçmişi — listeler kendi sayfalarında,
+          profilde yalnızca özet sayıları taşıyan bağlantı kartları durur. */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Atölye katılım geçmişi
-        </h2>
-        {katilimGecmisi.length === 0 ? (
-          <BosDurum
-            baslik="Henüz doldurulmuş atölye formu yok."
-            aciklama="Stajyer bir atölye formunu kaydettiğinde katılım ve puan burada görünür."
+        <h2 className="text-base font-semibold text-zinc-900">Geçmiş</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <GecmisKarti
+            baslik="Atölye katılım geçmişi"
+            ozet={
+              toplamFormSayisi === 0
+                ? "Henüz doldurulmuş form yok"
+                : `${toplamFormSayisi} form · ${katildigiFormSayisi} katıldı · ${toplamFormSayisi - katildigiFormSayisi} katılmadı`
+            }
+            href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
           />
-        ) : (
-          <Kart className="overflow-x-auto">
-            <table className="w-full min-w-[46rem] text-sm">
-              <thead className="border-b border-yuzey-200 bg-yuzey-50 text-left text-xs font-medium text-marka-800">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Tarih</th>
-                  <th className="px-4 py-2 font-medium">Program</th>
-                  <th className="px-4 py-2 font-medium">Atölye</th>
-                  <th className="px-4 py-2 font-medium">Katılım</th>
-                  <th className="px-4 py-2 font-medium">Ortalama</th>
-                  <th className="px-4 py-2 font-medium">Stajyer</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-yuzey-100">
-                {katilimGecmisi.map((satir) => (
-                  <tr key={`${satir.kayitId}-${satir.oturumId}`}>
-                    <td className="px-4 py-2 whitespace-nowrap text-zinc-700">
-                      <Link
-                        href={`/koordinator/puanlamalar/${satir.kayitId}/${satir.tarihAnahtari}`}
-                        className="hover:text-marka-700 hover:underline"
-                      >
-                        {tarihGunleBicimle(satir.tarih)}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-zinc-700">
-                      {satir.program}
-                      <span className="text-zinc-400"> · {satir.grupAdi}</span>
-                    </td>
-                    <td className="px-4 py-2 text-zinc-700">
-                      {satir.atolyeAdi}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Rozet tur={satir.attended ? "olumlu" : "pasif"}>
-                        {satir.attended ? "Katıldı" : "Katılmadı"}
-                      </Rozet>
-                    </td>
-                    <td className="px-4 py-2 text-zinc-700">
-                      {satir.attended ? ortalamaBicimle(satir.ortalama) : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-700">
-                      {satir.stajyerAdi ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Kart>
-        )}
-        {katilimGecmisi.length > 0 ? (
-          <p className="text-xs text-zinc-500">
-            En son güncellenen 30 form gösteriliyor.{" "}
-            <Link
-              href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-              className="text-marka-700 hover:underline"
-            >
-              Filtreli tam geçmiş →
-            </Link>
-          </p>
-        ) : null}
-      </div>
-
-      {/* 8. Puanlama geçmişi */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Puanlama geçmişi
-        </h2>
-        {puanlamaIlerlemeleri.length === 0 ? (
-          <BosDurum baslik="Kayıt oluşturulduğunda puanlama takibi başlar." />
-        ) : (
-          <div className="space-y-2">
-            {puanlamaIlerlemeleri.map((ilerleme) => (
-              <Kart key={ilerleme.kayit.id} className="p-4">
-                <div className="grid gap-3 lg:grid-cols-[1fr_16rem] lg:items-center">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/koordinator/puanlamalar/${ilerleme.kayit.id}`}
-                        className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
-                      >
-                        {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi}
-                      </Link>
-                      <Rozet>{ilerleme.kayit.programTuru}</Rozet>
-                      {ilerleme.kayit.aktif ? null : (
-                        <Rozet tur="pasif">İptal</Rozet>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Sorumlu stajyer: {ilerleme.kayit.stajyerAdi ?? "Atanmamış"}
-                      {ilerleme.sonPuanlama
-                        ? ` · Son puanlama ${tarihBicimle(ilerleme.sonPuanlama)}`
-                        : " · Henüz puanlama girilmedi"}
-                    </p>
-                  </div>
-                  <IlerlemeCubugu ozet={ilerleme.ozet} />
-                </div>
-              </Kart>
-            ))}
-          </div>
-        )}
+          <GecmisKarti
+            baslik="Puanlama geçmişi"
+            ozet={
+              puanlamaIlerlemeleri.length === 0
+                ? "Henüz kayıt yok"
+                : `${puanlamaIlerlemeleri.length} kayıt · ${
+                    bekleyenFormSayisi > 0
+                      ? `${bekleyenFormSayisi} form bekliyor`
+                      : "bekleyen form yok"
+                  }`
+            }
+            vurgu={bekleyenFormSayisi > 0}
+            href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
+          />
+        </div>
       </div>
 
       {/* 9–10. Atölye bazlı ve genel raporlar */}
@@ -503,18 +436,63 @@ type ProfilKaydi = {
   };
 };
 
+/**
+ * Uzun bir listeyi kendi sayfasına taşıyan özet kartı. Kartın tamamı
+ * tıklanabilir; sağdaki ok gidilecek bir sayfa olduğunu belli eder.
+ */
+function GecmisKarti({
+  baslik,
+  ozet,
+  href,
+  vurgu = false,
+}: {
+  baslik: string;
+  ozet: string;
+  href: string;
+  vurgu?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
+    >
+      <span>
+        <span className="block text-sm font-medium text-zinc-900">
+          {baslik}
+        </span>
+        <span
+          className={`mt-0.5 block text-xs ${vurgu ? "font-medium text-vurgu-700" : "text-zinc-500"}`}
+        >
+          {ozet}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className="text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
+      >
+        →
+      </span>
+    </Link>
+  );
+}
+
 function KayitBolumu({
   baslik,
   kayitlar,
   bosAciklama,
+  aksiyon,
 }: {
   baslik: string;
   kayitlar: ProfilKaydi[];
   bosAciklama: string;
+  aksiyon?: React.ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
+        {aksiyon}
+      </div>
       {kayitlar.length === 0 ? (
         <BosDurum baslik={bosAciklama} />
       ) : (
