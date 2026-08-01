@@ -5,7 +5,12 @@ import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
-import { pdfGecmisi, raporOzetleri } from "@/lib/rapor-verisi";
+import {
+  pdfGecmisi,
+  raporKapsamSecenekleri,
+  raporOzetleri,
+} from "@/lib/rapor-verisi";
+import { RaporBolumu } from "./rapor-bolumu";
 import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
@@ -40,6 +45,12 @@ export default async function OgrenciProfilSayfasi(
   await koordinatorZorunlu();
   const { id } = await props.params;
 
+  // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
+  // dashboard'dan ve eski rapor adreslerinden gelen bağlantılar bunu kullanır.
+  const parametreler = await props.searchParams;
+  const acilisRaporu =
+    typeof parametreler.rapor === "string" ? parametreler.rapor : undefined;
+
   const ogrenci = await db.student.findUnique({
     where: { id },
     include: {
@@ -69,12 +80,16 @@ export default async function OgrenciProfilSayfasi(
     puanlamaIlerlemeleri,
     raporlar,
     pdfler,
+    kapsamKayitlari,
     toplamFormSayisi,
     katildigiFormSayisi,
   ] = await Promise.all([
     kayitIlerlemeleri({ studentId: id }),
     raporOzetleri({ ogrenciId: id }),
     pdfGecmisi({ ogrenciId: id }),
+    // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
+    // pencere açılmasa da peşinen okunuyor.
+    raporKapsamSecenekleri(id),
     db.score.count({ where: { enrollment: { studentId: id } } }),
     db.score.count({
       where: { enrollment: { studentId: id }, attended: true },
@@ -329,95 +344,19 @@ export default async function OgrenciProfilSayfasi(
         </div>
       </div>
 
-      {/* 9–10. Atölye bazlı ve genel raporlar */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-zinc-900">Raporlar</h2>
-          <Link
-            href={`/koordinator/raporlar/yeni?studentId=${ogrenci.id}`}
-            className="text-sm text-marka-700 hover:underline"
-          >
-            Yeni rapor oluştur
-          </Link>
-        </div>
+      {/* 9–11. Raporlar ve PDF geçmişi.
 
-        {raporlar.length === 0 ? (
-          <BosDurum
-            baslik="Henüz rapor üretilmemiş."
-            aciklama="Rapor, mevcut puanlamalardan istenildiği anda üretilebilir."
-          />
-        ) : (
-          <div className="space-y-2">
-            {raporlar.map((rapor) => (
-              <Kart key={rapor.id} className="p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/koordinator/raporlar/${rapor.id}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
-                  >
-                    {tarihBicimle(rapor.uretimZamani)} raporu
-                  </Link>
-                  <Rozet tur={rapor.guncel ? "olumlu" : "uyari"}>
-                    {rapor.guncel ? "Güncel" : "Güncel değil"}
-                  </Rozet>
-                  {rapor.duzenlemeZamani ? <Rozet>Elle düzenlendi</Rozet> : null}
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {rapor.kapsam.join(" · ")} · {rapor.atolyeSayisi} atölye
-                </p>
-              </Kart>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 11. PDF rapor geçmişi */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">
-          PDF rapor geçmişi
-        </h2>
-
-        {pdfler.length === 0 ? (
-          <BosDurum
-            baslik="Henüz PDF oluşturulmamış."
-            aciklama="Bir raporu açıp “PDF oluştur” düğmesini kullanın. Üretilen PDF’ler burada kalıcı olarak saklanır."
-          />
-        ) : (
-          <Kart className="divide-y divide-yuzey-100">
-            {pdfler.map((pdf) => (
-              <div
-                key={pdf.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm text-zinc-800">
-                    {tarihBicimle(pdf.olusturmaZamani)} tarihli PDF
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {tarihBicimle(pdf.raporUretimZamani)} raporundan üretildi
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/koordinator/raporlar/${pdf.raporId}`}
-                    className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline"
-                  >
-                    Raporu gör
-                  </Link>
-                  <a
-                    href={pdf.adres}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-marka-700 hover:underline"
-                  >
-                    PDF’i aç
-                  </a>
-                </div>
-              </div>
-            ))}
-          </Kart>
-        )}
-      </div>
+          Rapor öğrenciye ait bir belge olduğu için listesi de içeriği de
+          burada duruyor: karta tıklayınca sayfadan çıkmadan bir pencere
+          açılıyor, düzenleme ve PDF üretimi de o pencerede yapılıyor. */}
+      <RaporBolumu
+        ogrenciId={ogrenci.id}
+        ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
+        raporlar={raporlar}
+        kapsamKayitlari={kapsamKayitlari}
+        pdfler={pdfler}
+        acilisParametresi={acilisRaporu}
+      />
     </div>
   );
 }

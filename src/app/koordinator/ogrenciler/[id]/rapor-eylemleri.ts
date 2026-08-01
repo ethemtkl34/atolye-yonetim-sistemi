@@ -1,17 +1,32 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { koordinatorZorunlu } from "@/lib/auth-guard";
-import { raporGovdesiUret } from "@/lib/rapor-verisi";
+import {
+  pdfGecmisi,
+  raporDetayi,
+  raporGovdesiUret,
+  type PdfKaydi,
+  type RaporDetayi,
+} from "@/lib/rapor-verisi";
 import type { RaporGovdesi } from "@/lib/report-engine";
 
-/** §11 — Rapor oluşturma, yeniden üretme ve metin düzenleme. */
+/**
+ * §11 — Rapor oluşturma, yeniden üretme, metin düzenleme ve PDF üretimi.
+ *
+ * Bu eylemler eskiden `/koordinator/raporlar` altındaydı ve iş bitince o
+ * sayfaya `redirect` ediyorlardı. Raporlar artık öğrenci profilindeki
+ * pencerede yönetildiği için hiçbiri yönlendirme yapmıyor; bunun yerine
+ * oluşan raporun kimliğini döndürüyorlar ve pencere kendini o rapora
+ * güncelliyor. Kullanıcı böylece öğrencinin sayfasından hiç çıkmıyor.
+ */
 
 export type EylemDurumu = {
   basari?: string;
   hata?: string;
+  /** Yeni üretilen rapor — pencere bu rapora geçer. */
+  raporId?: string;
 };
 
 /**
@@ -61,9 +76,9 @@ export async function raporOlustur(
     select: { id: true },
   });
 
-  revalidatePath("/koordinator/raporlar");
   revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
-  redirect(`/koordinator/raporlar/${rapor.id}`);
+  revalidatePath("/koordinator");
+  return { basari: "Rapor oluşturuldu.", raporId: rapor.id };
 }
 
 /**
@@ -104,9 +119,12 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
     select: { id: true },
   });
 
-  revalidatePath("/koordinator/raporlar");
   revalidatePath(`/koordinator/ogrenciler/${eski.studentId}`);
-  redirect(`/koordinator/raporlar/${yeni.id}`);
+  revalidatePath("/koordinator");
+  return {
+    basari: "Güncel puanlarla yeni rapor üretildi. Eski rapor geçmişte kaldı.",
+    raporId: yeni.id,
+  };
 }
 
 /**
@@ -147,7 +165,6 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
     });
   });
 
-  revalidatePath(`/koordinator/raporlar/${raporId}`);
   revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
 
   return { basari: "PDF oluşturuldu ve rapor geçmişine eklendi." };
@@ -208,9 +225,34 @@ export async function raporMetniDuzenle(
     },
   });
 
-  revalidatePath("/koordinator/raporlar");
-  revalidatePath(`/koordinator/raporlar/${raporId}`);
   revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
 
-  return { basari: "Rapor metni güncellendi." };
+  return { basari: "Rapor metni güncellendi.", raporId };
+}
+
+export type RaporPenceresiVerisi = {
+  detay: RaporDetayi;
+  pdfler: PdfKaydi[];
+};
+
+/**
+ * Pencere açıldığında raporun tam gövdesini getirir.
+ *
+ * Gövdeler (analiz + metin JSON'u) profil sayfasında peşinen yüklenmiyor:
+ * bir öğrencinin onlarca raporu olabilir ve hepsinin tamamını her profil
+ * açılışında taşımak gereksiz. Pencere hangi rapora bakılacağını bildiği anda
+ * yalnızca onu çeker.
+ */
+export async function raporPenceresiVerisi(
+  raporId: string,
+): Promise<RaporPenceresiVerisi | null> {
+  await koordinatorZorunlu();
+
+  const [detay, pdfler] = await Promise.all([
+    raporDetayi(raporId),
+    pdfGecmisi({ raporId }),
+  ]);
+
+  if (!detay) return null;
+  return { detay, pdfler };
 }

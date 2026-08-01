@@ -106,14 +106,9 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Değerlendirme",
     simge: "puan",
   },
-  {
-    etiket: "Raporlar",
-    yol: "/koordinator/raporlar",
-    hazir: true,
-    paket: "P9",
-    bolum: "Değerlendirme",
-    simge: "rapor",
-  },
+  // Raporlar için ayrı bir menü maddesi yok: rapor öğrenciye ait bir belge
+  // ve öğrencinin kendi sayfasında üretilip düzenleniyor. Bütün raporların
+  // tek listesi pratikte "hangi öğrencinin raporu" sorusuna cevap vermiyordu.
   {
     etiket: "Arşiv",
     yol: "/koordinator/arsiv",
