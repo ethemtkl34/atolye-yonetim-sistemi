@@ -3,12 +3,43 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+/**
+ * Migration'lar HAVUZSUZ bağlantıdan geçmeli.
+ *
+ * `DATABASE_URL` Neon'un havuzlanmış (`-pooler`) ucunu gösteriyor ve uygulama
+ * için doğrusu bu: sunucusuz işlevler kısa ömürlü, havuz olmadan bağlantı
+ * sayısı patlar.
+ *
+ * Ama `prisma migrate deploy` çalışmadan önce OTURUM DÜZEYİNDE bir advisory
+ * kilit alıyor (`pg_advisory_lock`). pgbouncer transaction modunda çalıştığı
+ * için istemci bağlantısı kapansa bile arkadaki sunucu bağlantısı havuzda
+ * yaşamaya devam ediyor — ve oturum düzeyindeki kilit onunla birlikte kalıyor.
+ * Bir dağıtım yarıda kesilirse kilit ORADA ASILI KALIYOR ve sonraki her
+ * dağıtım "Timed out trying to acquire a postgres advisory lock" ile
+ * düşüyor. Bu bir kez yaşandı; kilidi elle düşürmek gerekti.
+ *
+ * Havuzsuz uçta her bağlantı gerçek bir Postgres oturumu: süreç ölünce kilit
+ * de gidiyor.
+ *
+ * `DIRECT_DATABASE_URL` tanımlı değilse `DATABASE_URL`'den türetiliyor —
+ * Neon'da havuzsuz ana bilgisayar adı, havuzlananın `-pooler` eki
+ * çıkarılmış hâli. Böylece ortam değişkeni eklenmemiş kurulumlarda da
+ * doğru davranış kendiliğinden geliyor.
+ */
+function migrationBaglantisi(): string | undefined {
+  const dogrudan = process.env["DIRECT_DATABASE_URL"];
+  if (dogrudan) return dogrudan;
+
+  const havuzlu = process.env["DATABASE_URL"];
+  return havuzlu?.replace("-pooler.", ".");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: migrationBaglantisi(),
   },
 });
