@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cikisYap } from "@/app/cikis/actions";
 import { rolAdi, type SubeliKullanici } from "@/lib/auth-guard";
 import type { MenuOgesi } from "@/lib/navigasyon";
+import { MobilMenu } from "./mobil-menu";
 import { SubeGostergesi } from "./sube-gostergesi";
 import { YanMenu } from "./yan-menu";
 
@@ -64,29 +65,33 @@ export function PanelKabuk({
           {/* Ad, hesap sayfasına giden bağlantı: parola değiştirme buradan
               bulunuyor. Menüye ayrı madde eklenmedi — 13 modülün arasına
               karışmaması, kullanıcının kendi hesabına ait olması gerekiyor. */}
-          <Link
-            href="/hesabim"
-            className="-mx-2 flex min-w-0 items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-marka-50"
-          >
-            <span
-              aria-hidden
-              className="grid size-8 shrink-0 place-items-center rounded-full bg-marka-100 text-xs font-semibold text-marka-700"
+          <div className="flex min-w-0 items-center gap-1">
+            {/* Dar ekranda sol menü gizli; buradaki düğme çekmeceyi açıyor. */}
+            <MobilMenu menu={menu} baslik={baslik} />
+
+            <Link
+              href="/hesabim"
+              className="-mx-2 flex min-w-0 items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-marka-50"
             >
-              {basHarfler(kullanici.name)}
-            </span>
-            {/* Dar ekranda yalnızca avatar kalıyor: üst şeritte üç şeye birden
-                yer yok ve NEREDE olduğunu bilmek KİM olduğunu bilmekten daha
-                kritik — kullanıcı zaten kendi hesabıyla girmiş. Ad, hesap
-                sayfasında tam hâliyle duruyor. */}
-            <span className="hidden min-w-0 sm:block">
-              <span className="block truncate text-sm font-medium text-zinc-900">
-                {kullanici.name}
+              <span
+                aria-hidden
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-marka-100 text-xs font-semibold text-marka-700"
+              >
+                {basHarfler(kullanici.name)}
               </span>
-              <span className="block whitespace-nowrap text-xs text-zinc-500">
-                {rolAdi(kullanici.role)} · Hesabım
+              {/* Dar ekranda yalnızca avatar kalıyor: üst şeritte üç şeye
+                  birden yer yok ve NEREDE olduğunu bilmek KİM olduğunu
+                  bilmekten daha kritik. Ad hesap sayfasında tam duruyor. */}
+              <span className="hidden min-w-0 sm:block">
+                <span className="block truncate text-sm font-medium text-zinc-900">
+                  {kullanici.name}
+                </span>
+                <span className="block whitespace-nowrap text-xs text-zinc-500">
+                  {rolAdi(kullanici.role)} · Hesabım
+                </span>
               </span>
-            </span>
-          </Link>
+            </Link>
+          </div>
 
           <div className="flex shrink-0 items-center gap-3">
             <SubeGostergesi
@@ -105,13 +110,6 @@ export function PanelKabuk({
             </form>
           </div>
         </header>
-
-        {/* Dar ekranda sol menü gizli; menü buraya yatay şerit olarak iniyor.
-            Stajyer formları çoğunlukla telefondan doldurulacağı için menüsüz
-            kalmak seçenek değil. */}
-        <div className="bg-marka-800 md:hidden">
-          <YanMenu menu={menu} yon="yatay" />
-        </div>
 
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">
           {children}
