@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { DONEM_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { bugun, grupZamani, haftaSonuBicimle } from "@/lib/tarih";
@@ -135,7 +135,7 @@ export default async function DonemDetaySayfasi(
       <div>
         <Link
           href="/koordinator/donemler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Dönemler
         </Link>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili, kartBasligiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { atanmamisKayitKosulu } from "@/lib/durumlar";
 import { KayitDurumButonu } from "./kayit-durum-butonu";
@@ -122,7 +122,7 @@ export default async function KayitlarSayfasi(
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/koordinator/ogrenciler/${kayit.student.id}`}
-                        className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                        className={kartBasligiStili}
                       >
                         {kayit.student.firstName} {kayit.student.lastName}
                       </Link>

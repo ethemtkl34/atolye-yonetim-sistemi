@@ -5,7 +5,7 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
-import { BosDurum, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";
 import {
   KayitFormu,
   type ProgramSecenegi,
@@ -198,7 +198,7 @@ export default async function YeniKayitSayfasi(
       <div>
         <Link
           href={`/koordinator/ogrenciler/${ogrenci.id}`}
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Öğrenci profili
         </Link>

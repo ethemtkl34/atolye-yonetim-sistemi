@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import {
   AKTIF_DONEM_KOSULU,
   AKTIF_KULUP_KOSULU,
@@ -333,7 +333,7 @@ export default async function KoordinatorDashboard() {
                   <Rozet tur="uyari">{ilerleme.ozet.bekleyen} form</Rozet>
                   <Link
                     href={`/koordinator/puanlamalar/${ilerleme.kayit.id}`}
-                    className="text-sm text-marka-700 hover:underline"
+                    className={baglantiStili}
                   >
                     Aç
                   </Link>
@@ -369,7 +369,7 @@ export default async function KoordinatorDashboard() {
                       ? `/koordinator/donemler/${grup.term.id}`
                       : `/koordinator/kulupler/${grup.club?.id}`
                   }
-                  className="text-sm text-marka-700 hover:underline"
+                  className={baglantiStili}
                 >
                   Yeni grup ekle
                 </Link>
@@ -405,7 +405,7 @@ export default async function KoordinatorDashboard() {
                   <Rozet tur="uyari">Güncel değil</Rozet>
                   <Link
                     href={`/koordinator/ogrenciler/${rapor.ogrenciId}?rapor=${rapor.id}`}
-                    className="text-sm text-marka-700 hover:underline"
+                    className={baglantiStili}
                   >
                     Aç
                   </Link>
@@ -446,7 +446,7 @@ export default async function KoordinatorDashboard() {
                   </Rozet>
                   <Link
                     href={`/koordinator/ogrenciler/${rapor.ogrenciId}?rapor=${rapor.id}`}
-                    className="text-sm text-marka-700 hover:underline"
+                    className={baglantiStili}
                   >
                     Aç
                   </Link>
@@ -479,7 +479,7 @@ function BolumBasligi({
         ) : null}
       </div>
       {yol ? (
-        <Link href={yol} className="text-sm text-marka-700 hover:underline">
+        <Link href={yol} className={baglantiStili}>
           Tümü
         </Link>
       ) : null}

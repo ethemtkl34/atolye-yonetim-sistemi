@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { KulupSihirbazi } from "./kulup-sihirbazi";
+import { geriBaglantiStili } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Yeni kulüp",
@@ -22,7 +23,7 @@ export default async function YeniKulupSayfasi() {
       <div>
         <Link
           href="/koordinator/kulupler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Kulüpler
         </Link>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { SayfaBasligi } from "@/components/ui";
+import { SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { GunFormEkrani } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";
 import { tarihGunleBicimle } from "@/lib/tarih";
@@ -34,7 +34,7 @@ export default async function KoordinatorGunPuanlamasi(
       <div>
         <Link
           href={`/koordinator/puanlamalar/${kayitId}`}
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← {veri.kayit.ogrenciAdi} · puanlama günleri
         </Link>

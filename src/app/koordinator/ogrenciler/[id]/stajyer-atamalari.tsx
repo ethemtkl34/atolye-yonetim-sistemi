@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bildirim, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Kart, Rozet, baglantiStili } from "@/components/ui";
 import { kayitStajyerDegistir } from "../../kayitlar/actions";
 
 export type AtamaKaydi = {
@@ -60,7 +60,7 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
         </h2>
         <Link
           href="/koordinator/stajyerler"
-          className="text-sm text-marka-700 hover:underline"
+          className={baglantiStili}
         >
           Stajyerler
         </Link>
@@ -108,7 +108,7 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
                         defaultValue={kayit.stajyerId ?? ""}
                         disabled={bekleyen === kayit.kayitId}
                         onChange={(olay) => ata(kayit.kayitId, olay.target.value)}
-                        className="rounded-md border border-yuzey-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60"
+                        className="min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60 sm:min-h-0"
                       >
                         <option value="">Stajyer seçin…</option>
                         {kayit.secenekler.map((stajyer) => (

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { stajyerZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import { doldurulmusFormlar } from "@/lib/puanlama-verisi";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { tarihGunleBicimle } from "@/lib/tarih";
@@ -59,7 +59,7 @@ export default async function FormlarimSayfasi() {
                 )}
                 <Link
                   href={`/stajyer/puanlama/${form.kayitId}/${form.tarihAnahtari}`}
-                  className="text-sm text-marka-700 hover:underline"
+                  className={baglantiStili}
                 >
                   Düzenle
                 </Link>

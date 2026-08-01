@@ -3,6 +3,7 @@ import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { OgrenciFormu } from "../ogrenci-formu";
 import { ogrenciEkle } from "../actions";
+import { geriBaglantiStili } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Yeni öğrenci",
@@ -20,7 +21,7 @@ export default async function YeniOgrenciSayfasi() {
       <div>
         <Link
           href="/koordinator/ogrenciler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Öğrenciler
         </Link>

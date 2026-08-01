@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihGunleBicimle } from "@/lib/tarih";
@@ -62,7 +62,7 @@ export default async function KulupDetaySayfasi(
       <div>
         <Link
           href="/koordinator/kulupler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Kulüpler
         </Link>

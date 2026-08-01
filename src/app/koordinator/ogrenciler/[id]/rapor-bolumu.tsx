@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Buton, CokSatirli, Kart, Rozet, baglantiStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { tarihBicimle } from "@/lib/tarih";
@@ -275,7 +275,7 @@ export function RaporBolumu({
                     href={pdf.adres}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-marka-700 hover:underline"
+                    className={baglantiStili}
                   >
                     PDF’i aç
                   </a>
@@ -483,7 +483,7 @@ function RaporIcerigi({ veri }: { veri: RaporPenceresiVerisi }) {
                   href={pdf.adres}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-marka-700 hover:underline"
+                  className={baglantiStili}
                 >
                   PDF’i aç
                 </a>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
@@ -181,7 +181,7 @@ export default async function OgrenciGecmisiSayfasi(
       <div>
         <Link
           href={`/koordinator/ogrenciler/${ogrenci.id}`}
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← {ogrenci.firstName} {ogrenci.lastName}
         </Link>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { stajyerZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, kartBasligiStili } from "@/components/ui";
 import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import {
   doldurulmusFormlar,
@@ -88,7 +88,7 @@ export default async function StajyerPaneli() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/stajyer/puanlama/${satir.kayitId}/${gun.tarihAnahtari}?geri=gorevler`}
-                          className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                          className={kartBasligiStili}
                         >
                           {satir.ogrenciAdi}
                         </Link>
@@ -116,7 +116,7 @@ export default async function StajyerPaneli() {
           </h2>
           <Link
             href="/stajyer/formlarim"
-            className="text-sm text-marka-700 hover:underline"
+            className={baglantiStili}
           >
             Tümü
           </Link>
@@ -149,7 +149,7 @@ export default async function StajyerPaneli() {
                   )}
                   <Link
                     href={`/stajyer/puanlama/${form.kayitId}/${form.tarihAnahtari}?geri=gorevler`}
-                    className="text-sm text-marka-700 hover:underline"
+                    className={baglantiStili}
                   >
                     Düzenle
                   </Link>

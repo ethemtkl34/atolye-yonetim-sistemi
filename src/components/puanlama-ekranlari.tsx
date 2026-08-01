@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BosDurum, Kart, Rozet } from "@/components/ui";
+import { BosDurum, Kart, Rozet, kartBasligiStili } from "@/components/ui";
 import {
   PuanlamaFormu,
   PuanlamaOlcegi,
@@ -72,7 +72,7 @@ export function KayitListesi({
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`${temelYol}/${ilerleme.kayit.id}`}
-                  className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                  className={kartBasligiStili}
                 >
                   {ilerleme.kayit.ogrenciAdi}
                 </Link>
@@ -150,7 +150,7 @@ export function GunListesi({
                 {gun.puanlanabilir ? (
                   <Link
                     href={`${temelYol}/${gun.tarihAnahtari}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                    className={kartBasligiStili}
                   >
                     {tarihGunleBicimle(gun.tarih)}
                   </Link>

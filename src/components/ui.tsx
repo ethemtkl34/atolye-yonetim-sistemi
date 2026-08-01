@@ -61,6 +61,31 @@ export function SayfaBasligi({
   );
 }
 
+/**
+ * Satır içi bağlantılar ("Aç", "Tümü", "Düzenle", "← geri").
+ *
+ * Bunlar 18–20px yüksekliğinde metin bağlantılarıydı; telefonda parmakla
+ * vurmak zordu. Dokunma alanı `py` ile büyütülüp `-my` ile geri alınıyor:
+ * hedef büyür ama satır yüksekliği ve görsel ritim değişmez. Genişletme
+ * yalnızca telefonda — yoğun listelerde masaüstünde komşu satırların
+ * alanlarıyla çakışmasın.
+ */
+export const baglantiStili =
+  "-my-2.5 inline-block py-2.5 text-sm text-marka-700 hover:underline sm:my-0 sm:py-0";
+
+/** Aynı desenin sayfa başındaki "← geri" bağlantısı için sessiz tonu. */
+export const geriBaglantiStili =
+  "-my-2.5 inline-block py-2.5 text-sm text-zinc-500 hover:text-zinc-900 sm:my-0 sm:py-0";
+
+/**
+ * Liste kartlarındaki ad bağlantısı ("Kerem Aksoy", "Ayşe Yılmaz").
+ *
+ * Kartın asıl hedefi bu ve 21–24px yüksekliğindeydi. Aynı `py`/`-my` numarası:
+ * telefonda alan büyür, satır yüksekliği aynı kalır.
+ */
+export const kartBasligiStili =
+  "-my-2.5 inline-block py-2.5 font-medium text-zinc-900 hover:text-marka-700 hover:underline sm:my-0 sm:py-0";
+
 type ButonTuru = "birincil" | "ikincil" | "tehlike" | "sade";
 
 const BUTON_STILLERI: Record<ButonTuru, string> = {
@@ -72,8 +97,11 @@ const BUTON_STILLERI: Record<ButonTuru, string> = {
   sade: "text-zinc-600 hover:bg-marka-50 hover:text-marka-700",
 };
 
+// `min-h` telefonda 44px: butonlar 36px'ti ve iOS 44pt / Android 48dp
+// önerisinin altındaydı. Masaüstünde eski ölçüye dönüyor — orada imleçle
+// vuruluyor ve yoğun ekranlarda dikey yer kazanmak daha değerli.
 const BUTON_TEMELI =
-  "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600";
+  "inline-flex min-h-[2.75rem] items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:min-h-0";
 
 /**
  * Buton görünümünün sınıf dizisi.

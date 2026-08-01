@@ -107,7 +107,9 @@ export function KullaniciYonetimi({
                   ) : null}
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center gap-1">
+                {/* Telefonda düğmeler tam satıra iniyor: `shrink-0` yüzünden sıra
+                    ekrandan taşıyor ve sayfa yana kayıyordu. */}
+                <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:shrink-0">
                   <Buton
                     tur="sade"
                     disabled={bekliyor}

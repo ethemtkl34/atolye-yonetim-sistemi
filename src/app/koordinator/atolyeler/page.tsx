@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili, kartBasligiStili } from "@/components/ui";
 import { AtolyeEkleFormu } from "./atolye-ekle-formu";
 import { DurumButonu } from "./durum-butonu";
 import { atolyeDurumDegistir } from "./actions";
@@ -58,7 +58,7 @@ export default async function AtolyelerSayfasi() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/koordinator/atolyeler/${atolye.id}`}
-                      className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                      className={kartBasligiStili}
                     >
                       {atolye.name}
                     </Link>

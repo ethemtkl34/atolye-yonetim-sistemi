@@ -56,7 +56,12 @@ export function SuzgecGrubu({
               href={`${temelYol}?${parametreler.toString()}`}
               aria-current={secili === secenek.deger ? "page" : undefined}
               className={cn(
-                "rounded-md px-2.5 py-1 text-sm",
+                // Telefonda 44px yüksekliğinde bir hedef; masaüstünde eski
+                // sıkı ölçü. Süzgeç çipleri neredeyse her liste ekranında var
+                // ve 28px'ti — yan yana duran iki çipten yanlışını seçmek
+                // parmakla fazlasıyla kolaydı.
+                "inline-flex min-h-[2.75rem] items-center rounded-md px-3 text-sm",
+                "sm:min-h-0 sm:px-2.5 sm:py-1",
                 secili === secenek.deger
                   ? "bg-marka-50 font-medium text-marka-700"
                   : "text-zinc-600 hover:bg-marka-50",

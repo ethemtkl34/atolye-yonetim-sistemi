@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bildirim, Buton, Girdi, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Buton, Girdi, Kart, Rozet, kartBasligiStili } from "@/components/ui";
 import { normalizeArama } from "@/lib/turkce";
 import { kayitStajyerDegistir } from "../../kayitlar/actions";
 import { stajyerKadroDurumuDegistir } from "../actions";
@@ -174,7 +174,7 @@ export function AtamaPaneli({
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/koordinator/ogrenciler/${kayit.ogrenciId}`}
-                        className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                        className={kartBasligiStili}
                       >
                         {kayit.ogrenciAdi}
                       </Link>

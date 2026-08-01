@@ -6,6 +6,7 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 import { tarihMetni } from "@/lib/tarih";
 import { OgrenciFormu } from "../../ogrenci-formu";
 import { ogrenciGuncelle } from "../../actions";
+import { geriBaglantiStili } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Öğrenciyi düzenle",
@@ -32,7 +33,7 @@ export default async function OgrenciDuzenleSayfasi(
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href={profilYolu} className="text-sm text-zinc-500 hover:text-zinc-900">
+        <Link href={profilYolu} className={geriBaglantiStili}>
           ← {ogrenci.firstName} {ogrenci.lastName}
         </Link>
         <h1 className="mt-2 text-lg font-semibold text-zinc-900">

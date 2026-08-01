@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, kartBasligiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_KULUP_KOSULU, KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
@@ -84,7 +84,7 @@ export default async function KuluplerSayfasi(
         {arsivSayisi > 0 ? (
           <Link
             href="/koordinator/arsiv"
-            className="text-sm text-marka-700 hover:underline"
+            className={baglantiStili}
           >
             Arşivde {arsivSayisi} kulüp
           </Link>
@@ -123,7 +123,7 @@ export default async function KuluplerSayfasi(
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/koordinator/kulupler/${kulup.id}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                    className={kartBasligiStili}
                   >
                     {kulup.name}
                   </Link>

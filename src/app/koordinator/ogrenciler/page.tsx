@@ -144,10 +144,16 @@ export default async function OgrencilerSayfasi(
             ].filter(Boolean);
 
             return (
-              <Kart key={ogrenci.id} className="p-4">
+              // `relative` + bağlantıdaki `after:inset-0`: kartın TAMAMI
+              // tıklanabilir oluyor. Önceden yalnızca 21px'lik ad
+              // bağlantısı hedefti, kartın kalanı ölü alandı — telefonda
+              // listenin asıl işi olan "öğrenciyi aç" hareketi zordu.
+              // Kartta başka bağlantı veya düğme yok, kaplama kimseyi
+              // engellemiyor.
+              <Kart key={ogrenci.id} className="relative p-4">
                 <Link
                   href={`/koordinator/ogrenciler/${ogrenci.id}`}
-                  className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                  className="font-medium text-zinc-900 after:absolute after:inset-0 hover:text-marka-700 hover:underline"
                 >
                   {ogrenci.firstName} {ogrenci.lastName}
                 </Link>

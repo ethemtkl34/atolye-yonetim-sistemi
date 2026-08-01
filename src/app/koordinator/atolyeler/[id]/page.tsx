@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet } from "@/components/ui";
+import { Kart, Rozet, geriBaglantiStili } from "@/components/ui";
 import { AtolyeDuzenleFormu } from "./atolye-duzenle-formu";
 import { SoruYonetimi, type SoruSatiri } from "./soru-yonetimi";
 
@@ -50,7 +50,7 @@ export default async function AtolyeDetaySayfasi(
       <div>
         <Link
           href="/koordinator/atolyeler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Atölye çeşitleri
         </Link>

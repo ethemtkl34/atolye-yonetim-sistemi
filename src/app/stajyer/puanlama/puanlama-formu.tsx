@@ -38,6 +38,19 @@ export type PuanlamaFormuVerisi = {
   puanlayan: string | null;
 };
 
+/**
+ * Telefonda parmakla vurulabilir hedef.
+ *
+ * Bu form stajyerin telefonundan doldurulan ekran: bir günde 5 atölye × 10
+ * soru × 6 seçenek, yüzlerce dokunma. Etiketler 34–38px'ti; iOS 44pt,
+ * Android 48dp öneriyor ve aradaki fark tam da yanlış kutuya basmanın
+ * sebebi. Telefonda 44px, masaüstünde eski sıkı ölçüye dönüyor — orada
+ * imleçle vuruluyor ve dikey yer daha değerli.
+ */
+const DOKUNMA_HEDEFI =
+  "flex min-h-[2.75rem] items-center justify-center px-3 " +
+  "sm:inline-flex sm:min-h-0 sm:py-1.5";
+
 const SECENEKLER = [
   { deger: "1", etiket: "1" },
   { deger: "2", etiket: "2" },
@@ -101,7 +114,12 @@ export function PuanlamaFormu({
             <legend className="text-sm font-medium text-zinc-700">
               Katılım durumu
             </legend>
-            <div className="mt-2 flex flex-wrap gap-2">
+            {/*
+              Telefonda iki seçenek satırı paylaşıyor: parmakla vurulacak
+              hedef ekran genişliğinin yarısı kadar oluyor. Masaüstünde
+              içeriğe göre daralıyorlar.
+            */}
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {[
                 { deger: "katildi", etiket: "Katıldı" },
                 { deger: "katilmadi", etiket: "Katılmadı" },
@@ -109,7 +127,8 @@ export function PuanlamaFormu({
                 <label
                   key={secenek.deger}
                   className={cn(
-                    "cursor-pointer rounded-md border px-3 py-2 text-sm",
+                    DOKUNMA_HEDEFI,
+                    "cursor-pointer rounded-md border text-sm",
                     katilim === secenek.deger
                       ? "border-marka-600 bg-marka-50 font-medium text-marka-700"
                       : "border-yuzey-200 bg-white text-zinc-700 hover:bg-marka-50",
@@ -214,7 +233,12 @@ function SoruSatiri({
         </p>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap gap-2">
+      {/*
+        Telefonda 1–5 beş eşit sütuna yayılıyor, "Değerlendirilemedi" altta
+        tam satır. Önceden hepsi küçük etiketler hâlinde sarıyordu: 34px'lik
+        hedeflere bir günde yüzlerce kez dokunmak hem yorucu hem hataya açık.
+      */}
+      <div className="mt-2 grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
         {SECENEKLER.map((secenek) => {
           const secili =
             satir.mevcutDeger === null
@@ -226,11 +250,16 @@ function SoruSatiri({
               ? DEGERLENDIRILEMEDI_ACIKLAMA
               : PUAN_ACIKLAMALARI[Number(secenek.deger)];
 
+          const tamSatir = secenek.deger === DEGERLENDIRILEMEDI;
+
           return (
             <label
               key={secenek.deger}
               title={aciklama}
-              className="cursor-pointer"
+              className={cn(
+                "cursor-pointer",
+                tamSatir && "col-span-5 sm:col-span-1",
+              )}
             >
               <input
                 type="radio"
@@ -242,7 +271,8 @@ function SoruSatiri({
               />
               <span
                 className={cn(
-                  "inline-flex items-center rounded-md border border-yuzey-200 bg-white px-3 py-1.5 text-sm text-zinc-700",
+                  DOKUNMA_HEDEFI,
+                  "rounded-md border border-yuzey-200 bg-white text-sm text-zinc-700",
                   "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
                 )}

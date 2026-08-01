@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, geriBaglantiStili, kartBasligiStili } from "@/components/ui";
 import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import { tarihBicimle } from "@/lib/tarih";
@@ -39,7 +39,7 @@ export default async function OgrenciPuanlamalariSayfasi(
       <div>
         <Link
           href={`/koordinator/ogrenciler/${ogrenci.id}`}
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← {ogrenci.firstName} {ogrenci.lastName}
         </Link>
@@ -62,7 +62,7 @@ export default async function OgrenciPuanlamalariSayfasi(
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/koordinator/puanlamalar/${ilerleme.kayit.id}`}
-                      className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                      className={kartBasligiStili}
                     >
                       {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi}
                     </Link>

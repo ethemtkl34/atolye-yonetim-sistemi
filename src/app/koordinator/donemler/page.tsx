@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_DONEM_KOSULU, DONEM_DURUMLARI } from "@/lib/durumlar";
 import { bugun, haftaSonuBicimle } from "@/lib/tarih";
@@ -105,7 +105,7 @@ export default async function DonemlerSayfasi(
         {arsivSayisi > 0 ? (
           <Link
             href="/koordinator/arsiv"
-            className="text-sm text-marka-700 hover:underline"
+            className={baglantiStili}
           >
             Arşivde {arsivSayisi} dönem
           </Link>

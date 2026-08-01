@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import {
   pdfGecmisi,
@@ -197,7 +197,7 @@ export default async function OgrenciProfilSayfasi(
       <div>
         <Link
           href="/koordinator/ogrenciler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Öğrenciler
         </Link>
@@ -316,7 +316,7 @@ export default async function OgrenciProfilSayfasi(
         aksiyon={
           <Link
             href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
-            className="text-sm text-marka-700 hover:underline"
+            className={baglantiStili}
           >
             + Yeni kayıt
           </Link>

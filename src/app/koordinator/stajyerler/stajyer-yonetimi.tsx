@@ -3,15 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import {
-  Alan,
-  Bildirim,
-  Buton,
-  Girdi,
-  Kart,
-  Rozet,
-  butonStili,
-} from "@/components/ui";
+import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, butonStili, kartBasligiStili } from "@/components/ui";
 import {
   stajyerAdiGuncelle,
   stajyerDurumDegistir,
@@ -58,7 +50,7 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/koordinator/stajyerler/${stajyer.id}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                    className={kartBasligiStili}
                   >
                     {stajyer.name}
                   </Link>
@@ -73,7 +65,9 @@ export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] })
                 </p>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-1">
+              {/* Telefonda düğmeler tam satıra iniyor: `shrink-0` yüzünden sıra
+                  ekrandan taşıyor ve sayfa yana kayıyordu. */}
+              <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:shrink-0">
                 <Link
                   href={`/koordinator/stajyerler/${stajyer.id}`}
                   className={butonStili("ikincil")}

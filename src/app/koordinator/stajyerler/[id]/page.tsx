@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { AKTIF_DONEM_KOSULU, AKTIF_KULUP_KOSULU } from "@/lib/durumlar";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import { AtamaPaneli, type AtanabilirKayit } from "./atama-paneli";
@@ -132,7 +132,7 @@ export default async function StajyerDetaySayfasi(
       <div>
         <Link
           href="/koordinator/stajyerler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Stajyerler
         </Link>

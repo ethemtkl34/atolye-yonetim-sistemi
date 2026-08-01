@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";
 import { GunListesi, IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";
 import { grupZamani } from "@/lib/tarih";
@@ -30,7 +30,7 @@ export default async function KoordinatorKayitPuanlamasi(
       <div>
         <Link
           href="/koordinator/puanlamalar"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Puanlamalar
         </Link>

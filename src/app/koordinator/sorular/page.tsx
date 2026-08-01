@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Değerlendirme soruları",
@@ -54,7 +54,7 @@ export default async function SorularSayfasi() {
 
                 <Link
                   href={`/koordinator/atolyeler/${atolye.id}`}
-                  className="text-sm text-marka-700 hover:underline"
+                  className={baglantiStili}
                 >
                   Düzenle
                 </Link>

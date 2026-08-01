@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { DonemSihirbazi } from "./donem-sihirbazi";
+import { geriBaglantiStili } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Yeni dönem",
@@ -35,7 +36,7 @@ export default async function YeniDonemSayfasi() {
       <div>
         <Link
           href="/koordinator/donemler"
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className={geriBaglantiStili}
         >
           ← Dönemler
         </Link>
