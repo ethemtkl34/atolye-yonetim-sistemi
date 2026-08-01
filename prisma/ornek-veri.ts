@@ -21,6 +21,8 @@
  *     neden başka" sorusu doğmaz.
  */
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
+import { hash } from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { normalizeArama, normalizeTelefon } from "../src/lib/turkce";
@@ -33,6 +35,38 @@ import { gunundenGun } from "../src/lib/tarih";
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
+
+/**
+ * Yerel mi uzak mı?
+ *
+ * Betiğin iki davranışı buna bağlı: eski örnek öğrencileri silme ve deneme
+ * stajyerlerine sabit parola verme. İkisi de yerelde zararsız, uzakta
+ * tehlikeli.
+ */
+function yerelVeritabaniMi(): boolean {
+  const adres = process.env.DATABASE_URL ?? "";
+  return adres.includes("localhost") || adres.includes("127.0.0.1");
+}
+
+/**
+ * Deneme stajyerlerinin parolası.
+ *
+ * Yerelde seed ile aynı sabit parola — iki betik aynı hesapları açtığında
+ * giriş bilgisi değişmesin. Uzakta sabit parola kullanılamaz (depo herkese
+ * açık): rastgele üretilir ve çalışma sonunda bir kez ekrana basılır.
+ */
+const YEREL_SIFRE = "Atolye2026!";
+let uretilenSifre: string | null = null;
+
+function stajyerParolasi(): string {
+  if (process.env.ORNEK_VERI_SIFRESI) return process.env.ORNEK_VERI_SIFRESI;
+  if (yerelVeritabaniMi()) return YEREL_SIFRE;
+  uretilenSifre ??= randomBytes(12).toString("base64url");
+  return uretilenSifre;
+}
+
+/** Bu çalışmada açılan stajyer hesapları — sonunda özet yazmak için. */
+const acilanHesaplar: string[] = [];
 
 // ---------------------------------------------------------------------------
 // Öğrenci profilleri
@@ -443,8 +477,14 @@ type SubeSeti = {
   subeId: string;
   ad: string;
   ogrenciler: OgrenciTanimi[];
-  /** Öğrenci tanımındaki `stajyer` anahtarı → hesap e-postası. */
-  stajyerler: Record<string, string>;
+  /**
+   * Öğrenci tanımındaki `stajyer` anahtarı → hesap.
+   *
+   * Ad da burada duruyor çünkü betik hesabı yoksa kendisi açıyor: seed
+   * deneme stajyerlerini yalnızca yerel makinede oluşturuyor, uzak
+   * veritabanında bu liste boş kalırdı.
+   */
+  stajyerler: Record<string, { eposta: string; ad: string }>;
 };
 
 const SUBE_SETLERI: SubeSeti[] = [
@@ -453,9 +493,9 @@ const SUBE_SETLERI: SubeSeti[] = [
     ad: "Ümraniye Tüzder",
     ogrenciler: UMRANIYE_OGRENCILERI,
     stajyerler: {
-      ayse: "ayse@tuzder.local",
-      mehmet: "mehmet@tuzder.local",
-      zeynep: "zeynep@tuzder.local",
+      ayse: { eposta: "ayse@tuzder.local", ad: "Ayşe Yılmaz" },
+      mehmet: { eposta: "mehmet@tuzder.local", ad: "Mehmet Kaya" },
+      zeynep: { eposta: "zeynep@tuzder.local", ad: "Zeynep Demir" },
     },
   },
   {
@@ -463,9 +503,9 @@ const SUBE_SETLERI: SubeSeti[] = [
     ad: "Güneşli Tüzder",
     ogrenciler: GUNESLI_OGRENCILERI,
     stajyerler: {
-      elif: "elif@tuzder.local",
-      burak: "burak@tuzder.local",
-      selin: "selin@tuzder.local",
+      elif: { eposta: "elif@tuzder.local", ad: "Elif Şahin" },
+      burak: { eposta: "burak@tuzder.local", ad: "Burak Yıldırım" },
+      selin: { eposta: "selin@tuzder.local", ad: "Selin Aktaş" },
     },
   },
 ];
@@ -602,6 +642,48 @@ async function gruplariSagla(
   };
 }
 
+/**
+ * Uzak veritabanında ad çakışmalarını YAZMA BAŞLAMADAN denetler.
+ *
+ * Denetimin şube döngüsünün dışında olması şart: içeride olsaydı ikinci
+ * şubede patlayan bir çakışma, birinci şubeye çoktan yazılmış öğrencileri
+ * geride bırakırdı. Burada ya hepsi temizdir ve hiçbir şey yazılmadan
+ * geçilir, ya da tek satır bile yazılmadan durulur.
+ */
+async function cakismalariDenetle(setler: SubeSeti[]) {
+  const raporlar: string[] = [];
+
+  for (const set of setler) {
+    const cakisanlar = await db.student.findMany({
+      where: {
+        branchId: set.subeId,
+        OR: set.ogrenciler.map((o) => ({ firstName: o.ad, lastName: o.soyad })),
+      },
+      select: { firstName: true, lastName: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    });
+
+    if (cakisanlar.length > 0) {
+      raporlar.push(
+        `\n${set.ad} — ${cakisanlar.length} öğrenci:\n` +
+          cakisanlar.map((o) => `  · ${o.firstName} ${o.lastName}`).join("\n"),
+      );
+    }
+  }
+
+  if (raporlar.length === 0) return;
+
+  throw new Error(
+    "Örnek veriyle AYNI ADLI öğrenciler var:" +
+      raporlar.join("\n") +
+      "\n\nYerelde bu kayıtlar silinip yeniden yazılırdı. Uzak veritabanında " +
+      "silinmiyor: bunlar kurumun gerçek öğrencileri olabilir ve kayıtları, " +
+      "puanlamaları, raporlarıyla birlikte giderlerdi.\n" +
+      "Hiçbir şey yazılmadı. Bu öğrencileri arayüzden kontrol edin; gerçekten " +
+      "deneme kaydıysa silip tekrar çalıştırın.",
+  );
+}
+
 /** Bir şubenin öğrencilerini, kayıtlarını ve puanlamalarını üretir. */
 async function subeVerisiUret(
   set: SubeSeti,
@@ -610,43 +692,76 @@ async function subeVerisiUret(
 ) {
   console.log(`\n── ${set.ad} ──`);
 
-  // Stajyer hesapları `seed.ts` tarafından açılıyor; burada yalnızca okunuyor.
+  // Stajyer hesapları: varsa okunur, yoksa açılır.
+  //
+  // Önceden yalnızca okunuyor ve yoksa hata veriliyordu — çünkü hesapları
+  // `seed.ts` açıyor. Ama seed deneme stajyerlerini BİLEREK yalnızca yerel
+  // makinede açıyor (üretime hayalet hesap gitmesin diye), dolayısıyla bu
+  // betik uzak bir veritabanında hiç çalışamıyordu. Artık kendi ihtiyacı olan
+  // hesabı kendisi açıyor; bu betik zaten deneme verisi yazdığı için deneme
+  // stajyeri açması da tutarlı.
   const stajyerler: Record<string, { id: string }> = {};
-  for (const [anahtar, eposta] of Object.entries(set.stajyerler)) {
-    const hesap = await db.user.findUnique({ where: { email: eposta } });
+  for (const [anahtar, tanim] of Object.entries(set.stajyerler)) {
+    let hesap = await db.user.findUnique({ where: { email: tanim.eposta } });
+
     if (!hesap) {
+      hesap = await db.user.create({
+        data: {
+          email: tanim.eposta,
+          name: tanim.ad,
+          role: "STAJYER",
+          branchId: set.subeId,
+          passwordHash: await hash(stajyerParolasi(), 12),
+        },
+      });
+      acilanHesaplar.push(`${tanim.eposta} (${set.ad})`);
+    } else if (hesap.branchId !== set.subeId) {
+      // Var olan bir hesabın şubesini DEĞİŞTİRMİYORUZ: o hesabın diğer
+      // şubede kayıtları ve puanlamaları olabilir, taşımak onları sahipsiz
+      // bırakırdı. Karar kullanıcının.
       throw new Error(
-        `${eposta} bulunamadı. Önce \`npm run db:seed\` çalıştırın.`,
+        `${tanim.eposta} başka bir şubeye ait; örnek veri bu hesabı taşımaz. ` +
+          `Kullanıcılar ekranından şubesini düzeltin ya da bu betiği ` +
+          `çalıştırmadan önce hesabı silin.`,
       );
     }
-    if (hesap.branchId !== set.subeId) {
-      throw new Error(`${eposta} bu şubeye ait değil.`);
-    }
+
     stajyerler[anahtar] = hesap;
   }
 
   const gruplar = await gruplariSagla(set, donem, kulup);
 
-  // --- Eski örnek öğrencileri temizle --------------------------------------
-  // Yalnızca bu şubenin ve bu dosyanın ürettiği adlar siliniyor; elle
-  // eklenenler ve diğer şubenin verisi yerinde kalıyor.
-  const eskiler = await db.student.findMany({
+  // --- Ad çakışması: yerelde temizle, uzakta DOKUNMA ------------------------
+  //
+  // Betik tekrar çalıştırılabilir olsun diye kendi ürettiği öğrencileri silip
+  // yeniden yazıyor. Eşleştirme ADA göre yapılıyor ve bu, uzak bir
+  // veritabanında kabul edilemez: kurumun gerçek öğrencilerinden birinin adı
+  // buradaki uydurma adlardan biriyle aynıysa o çocuğun kaydı, velileri,
+  // puanlamaları ve raporları silinirdi. "Deneme verisi yükledim" diye
+  // çalıştırılan bir komutun gerçek veri silmesi kabul edilebilir bir risk
+  // değil.
+  //
+  // Bu yüzden silme yalnızca YEREL veritabanında yapılıyor. Uzakta çakışma
+  // varsa betik hiçbir şey yazmadan duruyor ve kararı kullanıcıya bırakıyor.
+  const cakisanlar = await db.student.findMany({
     where: {
       branchId: set.subeId,
       OR: set.ogrenciler.map((o) => ({ firstName: o.ad, lastName: o.soyad })),
     },
-    select: { id: true },
+    select: { id: true, firstName: true, lastName: true },
   });
 
-  if (eskiler.length > 0) {
-    const idler = eskiler.map((o) => o.id);
+  // Uzakta buraya hiç gelinmiyor: çakışma varsa `cakismalariDenetle` daha
+  // yazma başlamadan durduruyor.
+  if (cakisanlar.length > 0 && yerelVeritabaniMi()) {
+    const idler = cakisanlar.map((o) => o.id);
     // ReportPdf → Report bağı `Restrict`; önce PDF'ler, sonra raporlar.
     await db.reportPdf.deleteMany({
       where: { report: { studentId: { in: idler } } },
     });
     await db.report.deleteMany({ where: { studentId: { in: idler } } });
     await db.student.deleteMany({ where: { id: { in: idler } } });
-    console.log(`· ${eskiler.length} eski örnek öğrenci silindi`);
+    console.log(`· ${cakisanlar.length} eski örnek öğrenci silindi`);
   }
 
     // --- Öğrenciler, kayıtlar, puanlar ---------------------------------------
@@ -809,19 +924,23 @@ async function main() {
   // Bu betik uydurma öğrenci ve puan yazıyor. Üretim veritabanında
   // çalıştırılması gerçek kayıtların arasına deneme verisi karıştırır ve geri
   // almak zordur; uzak veritabanında baştan reddediliyor.
-  const adres = process.env.DATABASE_URL ?? "";
-  const yerel = adres.includes("localhost") || adres.includes("127.0.0.1");
-
-  if (!yerel && process.env.ORNEK_VERI_ONAY !== "evet") {
+  if (!yerelVeritabaniMi() && process.env.ORNEK_VERI_ONAY !== "evet") {
     console.error(
-      "\nBu betik uydurma öğrenci verisi yazar ve yalnızca yerel veritabanı" +
+      "\nBu betik uydurma öğrenci verisi yazar ve öncelikle yerel veritabanı" +
         "\niçindir. DATABASE_URL yerel bir adrese işaret etmiyor." +
+        "\n\nUzak veritabanında çalıştırılırsa:" +
+        "\n  · eksik deneme stajyeri hesapları AÇILIR (parola sonunda basılır)," +
+        "\n  · örnek veriyle aynı adlı öğrenci varsa hiçbir şey yazmadan DURUR" +
+        "\n    (yereldeki gibi silmez — gerçek öğrenci olabilir)." +
         "\n\nGerçekten devam etmek istiyorsanız: ORNEK_VERI_ONAY=evet\n",
     );
     process.exit(1);
   }
 
   console.log("Örnek veri yükleniyor...");
+  if (!yerelVeritabaniMi()) {
+    console.log("· UZAK veritabanı — silme kapalı, çakışmada durulur.");
+  }
 
   // Dönem ve kulüp ORTAK: iki şube de aynı programın içinde kendi gruplarını
   // açıyor. Bu yüzden bir kez bulunuyor, şube döngüsünün dışında.
@@ -840,8 +959,26 @@ async function main() {
     );
   }
 
+  if (!yerelVeritabaniMi()) {
+    await cakismalariDenetle(SUBE_SETLERI);
+  }
+
   for (const set of SUBE_SETLERI) {
     await subeVerisiUret(set, donem, kulup);
+  }
+
+  if (acilanHesaplar.length > 0) {
+    console.log(`\n✓ ${acilanHesaplar.length} deneme stajyeri hesabı açıldı:`);
+    for (const h of acilanHesaplar) console.log(`   · ${h}`);
+    if (uretilenSifre) {
+      console.log("\n" + "─".repeat(62));
+      console.log("  Bu hesapların parolası (rastgele üretildi):");
+      console.log("\n      %s\n", uretilenSifre);
+      console.log("  Bir daha gösterilmeyecek. Şimdi kaydedin.");
+      console.log("─".repeat(62));
+    } else {
+      console.log(`   parola: ${stajyerParolasi()}`);
+    }
   }
 
   const toplamOgrenci = await db.student.count();
