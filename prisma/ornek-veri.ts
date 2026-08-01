@@ -643,15 +643,20 @@ async function gruplariSagla(
 }
 
 /**
- * Uzak veritabanında ad çakışmalarını YAZMA BAŞLAMADAN denetler.
+ * Uzak veritabanında yazılabilecek şubeleri seçer — YAZMA BAŞLAMADAN.
  *
- * Denetimin şube döngüsünün dışında olması şart: içeride olsaydı ikinci
- * şubede patlayan bir çakışma, birinci şubeye çoktan yazılmış öğrencileri
- * geride bırakırdı. Burada ya hepsi temizdir ve hiçbir şey yazılmadan
- * geçilir, ya da tek satır bile yazılmadan durulur.
+ * Karar ŞUBE BAZINDA: çakışan şube atlanır, temiz şube yazılır. Önce
+ * "herhangi bir şubede çakışma varsa hiçbir şey yapma" diye yazmıştım ve bu
+ * asıl kullanım senaryosunu engelliyordu — kurumun eski verisi bir şubede
+ * duruyor, yeni açılan şube bomboş ve doldurulmak isteniyor. Alakasız bir
+ * şubedeki çakışma yüzünden boş şubeyi dolduramamak işe yaramaz bir katılık.
+ *
+ * Denetimin şube döngüsünün dışında olması yine de şart: içeride olsaydı
+ * ikinci şubede fark edilen bir çakışma, birinci şubeye çoktan yazılmış
+ * öğrencileri geride bırakırdı.
  */
-async function cakismalariDenetle(setler: SubeSeti[]) {
-  const raporlar: string[] = [];
+async function yazilabilirSubeler(setler: SubeSeti[]): Promise<SubeSeti[]> {
+  const yazilabilir: SubeSeti[] = [];
 
   for (const set of setler) {
     const cakisanlar = await db.student.findMany({
@@ -663,25 +668,36 @@ async function cakismalariDenetle(setler: SubeSeti[]) {
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
-    if (cakisanlar.length > 0) {
-      raporlar.push(
-        `\n${set.ad} — ${cakisanlar.length} öğrenci:\n` +
-          cakisanlar.map((o) => `  · ${o.firstName} ${o.lastName}`).join("\n"),
-      );
+    if (cakisanlar.length === 0) {
+      yazilabilir.push(set);
+      continue;
     }
+
+    console.log(
+      `\n⚠ ${set.ad} ATLANIYOR — örnek veriyle aynı adlı ` +
+        `${cakisanlar.length} öğrenci var:`,
+    );
+    for (const o of cakisanlar.slice(0, 8)) {
+      console.log(`    · ${o.firstName} ${o.lastName}`);
+    }
+    if (cakisanlar.length > 8) {
+      console.log(`    · … ve ${cakisanlar.length - 8} kişi daha`);
+    }
+    console.log(
+      "  Yerelde bunlar silinip yeniden yazılırdı; uzakta silinmiyor —\n" +
+        "  kurumun gerçek öğrencileri olabilir. Bu şubeye dokunulmadı.",
+    );
   }
 
-  if (raporlar.length === 0) return;
+  if (yazilabilir.length === 0) {
+    throw new Error(
+      "Yazılabilecek şube kalmadı: bütün şubelerde ad çakışması var.\n" +
+        "Hiçbir şey yazılmadı. Deneme öğrencilerini arayüzden silip tekrar " +
+        "çalıştırın.",
+    );
+  }
 
-  throw new Error(
-    "Örnek veriyle AYNI ADLI öğrenciler var:" +
-      raporlar.join("\n") +
-      "\n\nYerelde bu kayıtlar silinip yeniden yazılırdı. Uzak veritabanında " +
-      "silinmiyor: bunlar kurumun gerçek öğrencileri olabilir ve kayıtları, " +
-      "puanlamaları, raporlarıyla birlikte giderlerdi.\n" +
-      "Hiçbir şey yazılmadı. Bu öğrencileri arayüzden kontrol edin; gerçekten " +
-      "deneme kaydıysa silip tekrar çalıştırın.",
-  );
+  return yazilabilir;
 }
 
 /** Bir şubenin öğrencilerini, kayıtlarını ve puanlamalarını üretir. */
@@ -930,7 +946,7 @@ async function main() {
         "\niçindir. DATABASE_URL yerel bir adrese işaret etmiyor." +
         "\n\nUzak veritabanında çalıştırılırsa:" +
         "\n  · eksik deneme stajyeri hesapları AÇILIR (parola sonunda basılır)," +
-        "\n  · örnek veriyle aynı adlı öğrenci varsa hiçbir şey yazmadan DURUR" +
+        "\n  · örnek veriyle aynı adlı öğrencisi olan ŞUBE ATLANIR" +
         "\n    (yereldeki gibi silmez — gerçek öğrenci olabilir)." +
         "\n\nGerçekten devam etmek istiyorsanız: ORNEK_VERI_ONAY=evet\n",
     );
@@ -939,7 +955,7 @@ async function main() {
 
   console.log("Örnek veri yükleniyor...");
   if (!yerelVeritabaniMi()) {
-    console.log("· UZAK veritabanı — silme kapalı, çakışmada durulur.");
+    console.log("· UZAK veritabanı — silme kapalı, çakışan şube atlanır.");
   }
 
   // Dönem ve kulüp ORTAK: iki şube de aynı programın içinde kendi gruplarını
@@ -959,11 +975,11 @@ async function main() {
     );
   }
 
-  if (!yerelVeritabaniMi()) {
-    await cakismalariDenetle(SUBE_SETLERI);
-  }
+  const setler = yerelVeritabaniMi()
+    ? SUBE_SETLERI
+    : await yazilabilirSubeler(SUBE_SETLERI);
 
-  for (const set of SUBE_SETLERI) {
+  for (const set of setler) {
     await subeVerisiUret(set, donem, kulup);
   }
 
