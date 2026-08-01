@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bildirim, Buton, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Buton, Girdi, Kart, Rozet } from "@/components/ui";
+import { normalizeArama } from "@/lib/turkce";
 import { kayitStajyerDegistir } from "../../kayitlar/actions";
 import { stajyerKadroDurumuDegistir } from "../actions";
 
@@ -50,8 +51,25 @@ export function AtamaPaneli({
     null,
   );
   const [bekleyen, setBekleyen] = useState<string | null>(null);
+  const [arama, setArama] = useState("");
   const [kadroIslemde, kadroBasla] = useTransition();
   const [, basla] = useTransition();
+
+  /**
+   * Öğrenci adına göre süzme — kalabalık dönemlerde (16+ kayıt) aranan
+   * öğrenciyi gözle bulmak zordu. Arama Türkçe karakterlere duyarsız:
+   * "sule" yazınca "Şule" de bulunur (§6.2'deki öğrenci aramasıyla aynı
+   * normalizasyon). Süzme istemcide yapılıyor; liste zaten burada.
+   */
+  const gosterilecekler = useMemo(() => {
+    const anahtar = normalizeArama(arama);
+    if (!anahtar) return kayitlar;
+    return kayitlar.filter(
+      (kayit) =>
+        normalizeArama(kayit.ogrenciAdi).includes(anahtar) ||
+        normalizeArama(kayit.grupAdi).includes(anahtar),
+    );
+  }, [arama, kayitlar]);
 
   function ata(kayitId: string) {
     setBekleyen(kayitId);
@@ -118,57 +136,87 @@ export function AtamaPaneli({
           Bu programda aktif öğrenci kaydı yok.
         </p>
       ) : (
-        <Kart className="divide-y divide-yuzey-100">
-          {kayitlar.map((kayit) => (
-            <div
-              key={kayit.kayitId}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/koordinator/ogrenciler/${kayit.ogrenciId}`}
-                    className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
-                  >
-                    {kayit.ogrenciAdi}
-                  </Link>
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <Girdi
+              type="search"
+              value={arama}
+              onChange={(olay) => setArama(olay.target.value)}
+              placeholder="Öğrenci veya grup adıyla ara"
+              aria-label="Öğrenci ara"
+              className="max-w-xs"
+            />
+            <span className="text-xs text-zinc-500">
+              {arama
+                ? `${gosterilecekler.length} / ${kayitlar.length} kayıt`
+                : `${kayitlar.length} kayıt`}
+            </span>
+            {arama ? (
+              <Buton tur="sade" onClick={() => setArama("")}>
+                Aramayı temizle
+              </Buton>
+            ) : null}
+          </div>
+
+          {gosterilecekler.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+              “{arama}” ile eşleşen öğrenci yok. Aramayı temizleyerek bütün
+              kayıtları görebilirsiniz.
+            </p>
+          ) : (
+            <Kart className="divide-y divide-yuzey-100">
+              {gosterilecekler.map((kayit) => (
+                <div
+                  key={kayit.kayitId}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/koordinator/ogrenciler/${kayit.ogrenciId}`}
+                        className="font-medium text-zinc-900 hover:text-marka-700 hover:underline"
+                      >
+                        {kayit.ogrenciAdi}
+                      </Link>
+                      {kayit.bende ? (
+                        <Rozet tur="olumlu">Bu stajyerde</Rozet>
+                      ) : kayit.mevcutStajyerAdi ? null : (
+                        <Rozet tur="uyari">Atanmamış</Rozet>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {kayit.grupAdi} · {kayit.grupZamani}
+                      {!kayit.bende && kayit.mevcutStajyerAdi
+                        ? ` · Şu an: ${kayit.mevcutStajyerAdi}`
+                        : ""}
+                    </p>
+                  </div>
+
                   {kayit.bende ? (
-                    <Rozet tur="olumlu">Bu stajyerde</Rozet>
-                  ) : kayit.mevcutStajyerAdi ? null : (
-                    <Rozet tur="uyari">Atanmamış</Rozet>
+                    <span className="text-xs text-zinc-500">Atandı</span>
+                  ) : (
+                    <Buton
+                      tur="ikincil"
+                      disabled={bekleyen === kayit.kayitId || kadroDisinda}
+                      engelSebebi={
+                        kadroDisinda
+                          ? `${stajyerAdi} bu dönemin kadrosunda değil. Önce yukarıdan kadroya ekleyin.`
+                          : undefined
+                      }
+                      onClick={() => ata(kayit.kayitId)}
+                    >
+                      {bekleyen === kayit.kayitId
+                        ? "Atanıyor…"
+                        : kayit.mevcutStajyerAdi
+                          ? "Bu stajyere devret"
+                          : "Bu stajyere ata"}
+                    </Buton>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-zinc-500">
-                  {kayit.grupAdi} · {kayit.grupZamani}
-                  {!kayit.bende && kayit.mevcutStajyerAdi
-                    ? ` · Şu an: ${kayit.mevcutStajyerAdi}`
-                    : ""}
-                </p>
-              </div>
-
-              {kayit.bende ? (
-                <span className="text-xs text-zinc-500">Atandı</span>
-              ) : (
-                <Buton
-                  tur="ikincil"
-                  disabled={bekleyen === kayit.kayitId || kadroDisinda}
-                  engelSebebi={
-                    kadroDisinda
-                      ? `${stajyerAdi} bu dönemin kadrosunda değil. Önce yukarıdan kadroya ekleyin.`
-                      : undefined
-                  }
-                  onClick={() => ata(kayit.kayitId)}
-                >
-                  {bekleyen === kayit.kayitId
-                    ? "Atanıyor…"
-                    : kayit.mevcutStajyerAdi
-                      ? "Bu stajyere devret"
-                      : "Bu stajyere ata"}
-                </Buton>
-              )}
-            </div>
-          ))}
-        </Kart>
+              ))}
+            </Kart>
+          )}
+        </>
       )}
     </div>
   );
