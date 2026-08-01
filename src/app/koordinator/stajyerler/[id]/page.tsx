@@ -168,7 +168,7 @@ export default async function StajyerDetaySayfasi(
               <select
                 name="program"
                 defaultValue={secim}
-                className="mt-1 w-full min-w-64 rounded-md border border-yuzey-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+                className="mt-1 min-h-[2.75rem] w-full min-w-64 rounded-md border border-yuzey-200 bg-white px-3 py-2 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 sm:min-h-0 sm:text-sm"
               >
                 <option value="">Seçin…</option>
                 {donemler.length > 0 ? (

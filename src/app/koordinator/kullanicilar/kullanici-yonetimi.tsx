@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { Alan, Bildirim, Buton, Girdi, Kart, Rozet } from "@/components/ui";
+import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, secimStili } from "@/components/ui";
 import { ROL_ADLARI } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
 import {
@@ -29,9 +29,6 @@ export type KullaniciSatiri = {
 };
 
 const ROL_SECENEKLERI: readonly Role[] = ["ADMIN", "KOORDINATOR", "STAJYER"];
-
-const SECIM_STILI =
-  "w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100";
 
 function GonderButonu({ etiket }: { etiket: string }) {
   const { pending } = useFormStatus();
@@ -214,7 +211,7 @@ function RolSubeAlanlari({
           name="role"
           value={role}
           onChange={(olay) => setRole(olay.target.value as Role)}
-          className={SECIM_STILI}
+          className={secimStili}
         >
           {ROL_SECENEKLERI.map((secenek) => (
             <option key={secenek} value={secenek}>
@@ -235,7 +232,7 @@ function RolSubeAlanlari({
           <select
             name="branchId"
             defaultValue={varsayilanSube}
-            className={SECIM_STILI}
+            className={secimStili}
           >
             <option value="">Seçin…</option>
             {subeler.map((sube) => (

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { Alan, Bildirim, Buton, Kart, butonStili } from "@/components/ui";
+import { Alan, Bildirim, Buton, Kart, butonStili, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { kayitOlustur, type EylemDurumu } from "../actions";
 
@@ -33,9 +33,6 @@ export type StajyerSecenegi = {
   ad: string;
   aktifOgrenciSayisi: number;
 };
-
-const SECIM_STILI =
-  "w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-yuzey-50 disabled:text-zinc-400";
 
 function KaydetButonu({
   uyariVar,
@@ -178,7 +175,7 @@ export function KayitFormu({
                     setStajyerId("");
                   }
                 }}
-                className={SECIM_STILI}
+                className={secimStili}
               >
                 <option value="">Seçin…</option>
                 {programlar.map((program) => (
@@ -195,7 +192,7 @@ export function KayitFormu({
                 value={grupId}
                 onChange={(e) => setGrupId(e.target.value)}
                 disabled={!secilenProgram}
-                className={SECIM_STILI}
+                className={secimStili}
               >
                 <option value="">
                   {secilenProgram ? "Seçin…" : "Önce program seçin"}
@@ -285,7 +282,7 @@ export function KayitFormu({
               ref={stajyerSecimi}
               value={stajyerId}
               onChange={(e) => setStajyerId(e.target.value)}
-              className={SECIM_STILI}
+              className={secimStili}
             >
               <option value="">Seçin…</option>
               {uygunStajyerler.map((stajyer) => (

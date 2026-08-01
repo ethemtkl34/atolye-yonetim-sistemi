@@ -3,16 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";
+import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, secimStili } from "@/components/ui";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Atölye geçmişi",
 };
-
-const SECIM_STILI =
-  "w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100";
 
 /**
  * §6.4 — Öğrencinin bütün atölye geçmişi, filtrelerle.
@@ -197,7 +194,7 @@ export default async function OgrenciGecmisiSayfasi(
         <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-sm">
             <span className="text-zinc-600">Program</span>
-            <select name="program" defaultValue={program} className={`mt-1 ${SECIM_STILI}`}>
+            <select name="program" defaultValue={program} className={`mt-1 ${secimStili}`}>
               <option value="">Tümü</option>
               {programlar.map((secenek) => (
                 <option key={secenek.id} value={secenek.id}>
@@ -209,7 +206,7 @@ export default async function OgrenciGecmisiSayfasi(
 
           <label className="block text-sm">
             <span className="text-zinc-600">Kayıt türü</span>
-            <select name="tur" defaultValue={tur} className={`mt-1 ${SECIM_STILI}`}>
+            <select name="tur" defaultValue={tur} className={`mt-1 ${secimStili}`}>
               <option value="">Tümü</option>
               <option value="donem">Dönem kaydı</option>
               <option value="kulup">Kulüp kaydı</option>
@@ -218,7 +215,7 @@ export default async function OgrenciGecmisiSayfasi(
 
           <label className="block text-sm">
             <span className="text-zinc-600">Atölye çeşidi</span>
-            <select name="atolye" defaultValue={atolye} className={`mt-1 ${SECIM_STILI}`}>
+            <select name="atolye" defaultValue={atolye} className={`mt-1 ${secimStili}`}>
               <option value="">Tümü</option>
               {atolyeler.map((secenek) => (
                 <option key={secenek.id} value={secenek.id}>
@@ -230,7 +227,7 @@ export default async function OgrenciGecmisiSayfasi(
 
           <label className="block text-sm">
             <span className="text-zinc-600">Katılım</span>
-            <select name="katilim" defaultValue={katilim} className={`mt-1 ${SECIM_STILI}`}>
+            <select name="katilim" defaultValue={katilim} className={`mt-1 ${secimStili}`}>
               <option value="">Tümü</option>
               <option value="katildi">Katıldı</option>
               <option value="katilmadi">Katılmadı</option>

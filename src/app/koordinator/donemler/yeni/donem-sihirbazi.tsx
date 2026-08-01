@@ -2,14 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  Alan,
-  Bildirim,
-  Buton,
-  CokSatirli,
-  Girdi,
-  Kart,
-} from "@/components/ui";
+import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   bugun,
@@ -419,7 +412,7 @@ export function DonemSihirbazi({
             <select
               name="grupGunu"
               defaultValue={durum.degerler?.grupGunu ?? "CUMARTESI"}
-              className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+              className={secimStili}
             >
               <option value="CUMARTESI">Cumartesi</option>
               <option value="PAZAR">Pazar</option>
@@ -433,7 +426,7 @@ export function DonemSihirbazi({
             <select
               name="grupZamanDilimi"
               defaultValue={durum.degerler?.grupZamanDilimi ?? "OGLEDEN_ONCE"}
-              className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+              className={secimStili}
             >
               <option value="OGLEDEN_ONCE">Öğleden önce</option>
               <option value="OGLEDEN_SONRA">Öğleden sonra</option>

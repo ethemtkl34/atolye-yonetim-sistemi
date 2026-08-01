@@ -38,7 +38,7 @@ export function DurumSecici({
               if (sonuc?.hata) setHata(sonuc.hata);
             });
           }}
-          className="rounded-md border border-yuzey-200 px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60"
+          className="min-h-[2.75rem] rounded-md border border-yuzey-200 px-2 py-1.5 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60 sm:min-h-0 sm:text-sm"
         >
           {/* Yalnızca mevcut durum ve ondan geçilebilen durumlar listelenir;
               sunucu da aynı kuralı uygular, burada saklamak kullanıcıyı

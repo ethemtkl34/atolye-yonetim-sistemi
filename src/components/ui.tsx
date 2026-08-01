@@ -171,8 +171,19 @@ export function Alan({
   );
 }
 
+/**
+ * `text-base` telefonda ZORUNLU, süs değil.
+ *
+ * iOS Safari, yazı boyutu 16px'in altında olan bir alana dokunulduğunda
+ * sayfayı otomatik yakınlaştırıyor ve geri döndürmüyor: kullanıcı öğrenci
+ * formunda tek bir alana dokunduktan sonra ekranın kalanını elle uzaklaştırmak
+ * zorunda kalıyordu. 14px (`text-sm`) tam da o eşiğin altında.
+ *
+ * `min-h` de aynı sebeple: alanlar 38px'ti, parmakla vurulacak asgari ölçünün
+ * altında. Masaüstünde ikisi de eski değerine dönüyor.
+ */
 const GIRDI_STILI =
-  "w-full rounded-md border border-yuzey-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-yuzey-50";
+  "w-full min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-3 py-2 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-yuzey-50 sm:min-h-0 sm:text-sm";
 
 export function Girdi({ className, ...props }: React.ComponentProps<"input">) {
   return <input className={cn(GIRDI_STILI, className)} {...props} />;
@@ -184,6 +195,15 @@ export function CokSatirli({
 }: React.ComponentProps<"textarea">) {
   return <textarea className={cn(GIRDI_STILI, className)} {...props} />;
 }
+
+/**
+ * `<select>` görünümü — `Girdi` ile aynı kurallar geçerli.
+ *
+ * Üç ekranda birbirinin kopyası olarak duruyordu ve hepsi 14px'ti; iOS
+ * dokunulduğunda sayfayı yakınlaştırıyordu (bkz. `GIRDI_STILI`).
+ */
+export const secimStili =
+  "w-full min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-3 py-2 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:bg-yuzey-50 sm:min-h-0 sm:text-sm";
 
 export function Rozet({
   tur = "notr",

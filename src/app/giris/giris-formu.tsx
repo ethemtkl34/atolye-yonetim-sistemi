@@ -10,7 +10,7 @@ function GonderButonu() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 w-full rounded-md bg-marka-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-marka-700 disabled:cursor-not-allowed disabled:opacity-60"
+      className="mt-2 min-h-[2.75rem] w-full rounded-md bg-marka-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-marka-700 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0"
     >
       {pending ? "Giriş yapılıyor…" : "Giriş yap"}
     </button>

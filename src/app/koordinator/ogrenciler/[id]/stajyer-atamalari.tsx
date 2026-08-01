@@ -108,7 +108,7 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
                         defaultValue={kayit.stajyerId ?? ""}
                         disabled={bekleyen === kayit.kayitId}
                         onChange={(olay) => ata(kayit.kayitId, olay.target.value)}
-                        className="min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60 sm:min-h-0"
+                        className="min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-2 py-1.5 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 disabled:opacity-60 sm:min-h-0 sm:text-sm"
                       >
                         <option value="">Stajyer seçin…</option>
                         {kayit.secenekler.map((stajyer) => (

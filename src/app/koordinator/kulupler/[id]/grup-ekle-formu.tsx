@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Alan, Bildirim, Buton, Girdi, Kart } from "@/components/ui";
+import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
 import { kulupGrupEkle, type EylemDurumu } from "../actions";
 
 function KaydetButonu() {
@@ -92,7 +92,7 @@ export function GrupEkleFormu({
             <select
               name="timeSlot"
               defaultValue={durum.degerler?.timeSlot ?? "OGLEDEN_SONRA"}
-              className="w-full rounded-md border border-yuzey-200 px-3 py-2 text-sm outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100"
+              className={secimStili}
             >
               <option value="OGLEDEN_ONCE">Öğleden önce</option>
               <option value="OGLEDEN_SONRA">Öğleden sonra</option>
