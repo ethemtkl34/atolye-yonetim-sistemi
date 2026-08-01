@@ -206,7 +206,12 @@ export default async function KoordinatorDashboard() {
                 ? "Rapor üretildikten sonra puanlar değişti."
                 : "Bütün raporlar güncel."
             }
-            yol="/koordinator/raporlar?suzgec=eski"
+            // Raporların ayrı bir listesi yok — rapor öğrenciye ait bir belge
+            // ve öğrencinin sayfasında yönetiliyor. Bu yüzden kart aşağıdaki
+            // bölüme iniyor; iş yoksa gidilecek yer de yok.
+            yol={
+              guncelOlmayanRaporlar.length > 0 ? "#eski-raporlar" : undefined
+            }
           />
         </div>
       </section>
@@ -286,11 +291,8 @@ export default async function KoordinatorDashboard() {
             deger={aktifOgrenciSayisi}
             yol="/koordinator/ogrenciler?kapsam=aktif"
           />
-          <DurumOgesi
-            baslik="Toplam rapor"
-            deger={toplamRaporSayisi}
-            yol="/koordinator/raporlar?suzgec=tumu"
-          />
+          {/* Raporların tek listesi yok; sayı bağlam bilgisi olarak duruyor. */}
+          <DurumOgesi baslik="Toplam rapor" deger={toplamRaporSayisi} />
         </Kart>
       </section>
 
@@ -377,12 +379,49 @@ export default async function KoordinatorDashboard() {
         </section>
       ) : null}
 
+      {/* --- Güncelliğini yitiren raporlar --- */}
+      {guncelOlmayanRaporlar.length > 0 ? (
+        <section id="eski-raporlar" className="scroll-mt-20 space-y-3">
+          <BolumBasligi
+            baslik="Güncelliğini yitiren raporlar"
+            aciklama="Rapor üretildikten sonra kapsamındaki puanlar değişti. Öğrencinin sayfasından yeniden üretebilirsiniz; eski rapor ve PDF'leri yerinde kalır."
+          />
+          <Kart className="divide-y divide-yuzey-100">
+            {guncelOlmayanRaporlar.map((rapor) => (
+              <div
+                key={rapor.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-zinc-800">
+                    {rapor.ogrenciAdi}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {tarihBicimle(rapor.uretimZamani)} ·{" "}
+                    {rapor.kapsam.join(" · ")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Rozet tur="uyari">Güncel değil</Rozet>
+                  <Link
+                    href={`/koordinator/ogrenciler/${rapor.ogrenciId}?rapor=${rapor.id}`}
+                    className="text-sm text-marka-700 hover:underline"
+                  >
+                    Aç
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </Kart>
+        </section>
+      ) : null}
+
       {/* --- Son raporlar --- */}
       <section className="space-y-3">
-        <BolumBasligi
-          baslik="Son oluşturulan raporlar"
-          yol="/koordinator/raporlar?suzgec=tumu"
-        />
+        {/* Bütün raporların listesi yok: rapor öğrenciye ait bir belge ve
+            öğrencinin sayfasında yönetiliyor. Eskiden buradaki "Tümü"
+            bağlantısı kaldırılmış bir sayfaya gidip süzgeci düşürüyordu. */}
+        <BolumBasligi baslik="Son oluşturulan raporlar" />
         {sonRaporlar.length === 0 ? (
           <BosDurum baslik="Henüz rapor üretilmemiş." />
         ) : (
@@ -406,7 +445,7 @@ export default async function KoordinatorDashboard() {
                     {rapor.guncel ? "Güncel" : "Güncel değil"}
                   </Rozet>
                   <Link
-                    href={`/koordinator/raporlar/${rapor.id}`}
+                    href={`/koordinator/ogrenciler/${rapor.ogrenciId}?rapor=${rapor.id}`}
                     className="text-sm text-marka-700 hover:underline"
                   >
                     Aç
@@ -469,21 +508,21 @@ function IsKarti({
   deger: number;
   birim: string;
   altBilgi: string;
-  yol: string;
+  /**
+   * Kartın açtığı liste. Verilmezse kart tıklanamaz olur.
+   *
+   * Ölü bağlantı vermektense tıklanamaz kart daha dürüst: "Güncelliğini
+   * yitiren rapor" kartı bir süre `/koordinator/raporlar?suzgec=eski`
+   * adresine gidiyordu ama o sayfa kaldırılmıştı; yönlendirme süzgeci
+   * düşürüp kullanıcıyı öğrenci listesine atıyor, "hangi raporlar" sorusu
+   * cevapsız kalıyordu.
+   */
+  yol?: string;
 }) {
   const dikkat = deger > 0;
 
-  return (
-    <Link
-      href={yol}
-      aria-label={`${baslik}: ${deger} ${birim}`}
-      className={cn(
-        "relative flex flex-col overflow-hidden rounded-lg border p-4 pl-5 shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
-        dikkat
-          ? "border-vurgu-200 bg-vurgu-50 hover:bg-vurgu-100"
-          : "border-yuzey-200 bg-white hover:bg-marka-50",
-      )}
-    >
+  const govde = (
+    <>
       <span
         aria-hidden
         className={cn(
@@ -504,6 +543,35 @@ function IsKarti({
         <span className="text-xs text-zinc-500">{birim}</span>
       </p>
       <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{altBilgi}</p>
+    </>
+  );
+
+  const temel = cn(
+    "relative flex flex-col overflow-hidden rounded-lg border p-4 pl-5 shadow-[0_1px_2px_rgba(91,16,53,0.04)]",
+    dikkat ? "border-vurgu-200 bg-vurgu-50" : "border-yuzey-200 bg-white",
+  );
+
+  if (!yol) {
+    // Tıklanamaz kart imleç değiştirmiyor ve vurgu almıyor: tıklanabilir
+    // görünüp hiçbir şey yapmamak, hiç tıklanabilir görünmemekten kötü.
+    return (
+      <div className={temel} aria-label={`${baslik}: ${deger} ${birim}`}>
+        {govde}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={yol}
+      aria-label={`${baslik}: ${deger} ${birim}`}
+      className={cn(
+        temel,
+        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
+        dikkat ? "hover:bg-vurgu-100" : "hover:bg-marka-50",
+      )}
+    >
+      {govde}
     </Link>
   );
 }
@@ -516,18 +584,39 @@ function DurumOgesi({
 }: {
   baslik: string;
   deger: number;
-  yol: string;
+  /** Verilmezse hücre tıklanamaz olur — açılacak bir liste yoksa. */
+  yol?: string;
 }) {
-  return (
-    <Link
-      href={yol}
-      aria-label={`${baslik}: ${deger}`}
-      className="px-4 py-3 transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-marka-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:first:rounded-l-lg sm:first:rounded-tr-none sm:last:rounded-r-lg sm:last:rounded-bl-none"
-    >
+  const govde = (
+    <>
       <span className="block text-xs text-zinc-500">{baslik}</span>
       <span className="mt-0.5 block text-xl font-semibold tabular-nums text-marka-800">
         {deger}
       </span>
+    </>
+  );
+
+  const yerlesim =
+    "px-4 py-3 first:rounded-t-lg last:rounded-b-lg sm:first:rounded-l-lg sm:first:rounded-tr-none sm:last:rounded-r-lg sm:last:rounded-bl-none";
+
+  if (!yol) {
+    return (
+      <div className={yerlesim} aria-label={`${baslik}: ${deger}`}>
+        {govde}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={yol}
+      aria-label={`${baslik}: ${deger}`}
+      className={cn(
+        yerlesim,
+        "transition-colors hover:bg-marka-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
+      )}
+    >
+      {govde}
     </Link>
   );
 }
