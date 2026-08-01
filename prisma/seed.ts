@@ -96,40 +96,111 @@ function parolaBelirle(): { sifre: string; kaynak: string } {
   return { sifre: uretilen, kaynak: "rastgele üretildi" };
 }
 
+/**
+ * Şubeler. Kimlikler migration'daki INSERT ile aynı ve bilerek sabit:
+ * migration onları backfill için kullanıyor, seed de aynı satırlara
+ * tutunabilsin diye. `code` değişmez, `name` kurum isterse değişir.
+ */
+const SUBELER = [
+  { id: "sube_umraniye", code: "umraniye", name: "Ümraniye Tüzder", sortOrder: 0 },
+  { id: "sube_gunesli", code: "gunesli", name: "Güneşli Tüzder", sortOrder: 1 },
+];
+
+/**
+ * Kurulum hesapları: bir yönetici ve her şubeye bir koordinatör.
+ *
+ * `branchId` null olan tek rol ADMIN'dir; veritabanındaki
+ * `User_admin_sube_kurali` CHECK'i bunu ayrıca zorluyor.
+ */
 const KULLANICILAR = [
   {
-    email: "koordinator@tuzder.local",
-    name: "Kurum Koordinatörü",
-    role: "KOORDINATOR" as const,
+    email: "yonetici@tuzder.local",
+    name: "Kurum Yöneticisi",
+    role: "ADMIN" as const,
+    branchId: null,
   },
+  {
+    email: "umraniye@tuzder.local",
+    name: "Ümraniye Koordinatörü",
+    role: "KOORDINATOR" as const,
+    branchId: "sube_umraniye",
+  },
+  {
+    email: "gunesli@tuzder.local",
+    name: "Güneşli Koordinatörü",
+    role: "KOORDINATOR" as const,
+    branchId: "sube_gunesli",
+  },
+];
+
+/**
+ * Yalnızca geliştirme makinesinde açılan deneme stajyerleri.
+ *
+ * Önceden bunlar üretime de gidiyordu; şubeli yapıda bu, kimsenin istemediği
+ * iki hayalet Ümraniye stajyeri demek olurdu. Gerçek stajyer hesaplarını
+ * kurum kendi açar.
+ */
+const YEREL_STAJYERLER = [
   {
     email: "ayse@tuzder.local",
     name: "Ayşe Yılmaz",
     role: "STAJYER" as const,
+    branchId: "sube_umraniye",
   },
   {
     email: "mehmet@tuzder.local",
     name: "Mehmet Kaya",
     role: "STAJYER" as const,
+    branchId: "sube_umraniye",
+  },
+  {
+    email: "zeynep@tuzder.local",
+    name: "Zeynep Demir",
+    role: "STAJYER" as const,
+    branchId: "sube_umraniye",
+  },
+  {
+    email: "gunesli-stajyer@tuzder.local",
+    name: "Elif Demir",
+    role: "STAJYER" as const,
+    branchId: "sube_gunesli",
   },
 ];
 
 async function main() {
   console.log("Başlangıç verisi yükleniyor...\n");
 
+  for (const sube of SUBELER) {
+    await db.branch.upsert({
+      where: { code: sube.code },
+      update: { name: sube.name, sortOrder: sube.sortOrder },
+      create: sube,
+    });
+  }
+  console.log(`✓ ${SUBELER.length} şube`);
+
   const { sifre, kaynak } = parolaBelirle();
   const passwordHash = await hash(sifre, 12);
 
-  for (const kullanici of KULLANICILAR) {
+  const acilacakHesaplar = yerelVeritabaniMi()
+    ? [...KULLANICILAR, ...YEREL_STAJYERLER]
+    : KULLANICILAR;
+
+  for (const kullanici of acilacakHesaplar) {
     await db.user.upsert({
       where: { email: kullanici.email },
       // Şifreyi güncellemiyoruz: seed tekrar çalıştığında kurumun değiştirdiği
-      // şifre sıfırlanmasın.
-      update: { name: kullanici.name, role: kullanici.role },
+      // şifre sıfırlanmasın. Şube ve rol ise güncelleniyor — biri değişmişse
+      // seed'in tekrar çalışması onu düzeltmeli.
+      update: {
+        name: kullanici.name,
+        role: kullanici.role,
+        branchId: kullanici.branchId,
+      },
       create: { ...kullanici, passwordHash },
     });
   }
-  console.log(`✓ ${KULLANICILAR.length} kullanıcı hesabı`);
+  console.log(`✓ ${acilacakHesaplar.length} kullanıcı hesabı`);
 
   let toplamSoru = 0;
 

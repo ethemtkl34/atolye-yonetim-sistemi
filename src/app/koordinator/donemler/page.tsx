@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_DONEM_KOSULU, DONEM_DURUMLARI } from "@/lib/durumlar";
@@ -29,7 +29,7 @@ const TEMEL_YOL = "/koordinator/donemler";
 export default async function DonemlerSayfasi(
   props: PageProps<"/koordinator/donemler">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";

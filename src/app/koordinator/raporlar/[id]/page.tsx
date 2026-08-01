@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 
 /**
  * Eski rapor adresi — raporun sahibi öğrencinin sayfasına yönlendirir ve
@@ -13,7 +13,7 @@ import { koordinatorZorunlu } from "@/lib/auth-guard";
 export default async function EskiRaporAdresi(
   props: PageProps<"/koordinator/raporlar/[id]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   const rapor = await db.report.findUnique({

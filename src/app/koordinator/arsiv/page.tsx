@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import {
   ARSIV_DONEM_KOSULU,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
  * listeleri meşgul etmemesi.
  */
 export default async function ArsivSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const [donemler, kulupler] = await Promise.all([
     db.term.findMany({

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { OgrenciFormu } from "../ogrenci-formu";
 import { ogrenciEkle } from "../actions";
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
  * sayfasında yapılıyor; buraya "aradım, bulamadım" diyerek gelinir.
  */
 export default async function YeniOgrenciSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   return (
     <div className="max-w-3xl space-y-6">

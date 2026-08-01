@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
 import { StajyerYonetimi, type StajyerSatiri } from "./stajyer-yonetimi";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 /** §8 — Stajyer listesi ve yük dağılımı. */
 export default async function StajyerlerSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const stajyerler = await db.user.findMany({
     where: { role: "STAJYER" },

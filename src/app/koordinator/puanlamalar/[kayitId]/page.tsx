@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { GunListesi, IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function KoordinatorKayitPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { kayitId } = await props.params;
 
   const veri = await kayitPuanlamasi(kayitId);

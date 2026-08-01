@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 
 /**
  * Eski "yeni rapor" adresi — öğrenci biliniyorsa profiline gidip rapor
@@ -11,7 +11,7 @@ import { koordinatorZorunlu } from "@/lib/auth-guard";
 export default async function EskiYeniRaporAdresi(
   props: PageProps<"/koordinator/raporlar/yeni">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const ogrenciId =

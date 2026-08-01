@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { tarihMetni } from "@/lib/tarih";
 import { OgrenciFormu } from "../../ogrenci-formu";
 import { ogrenciGuncelle } from "../../actions";
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function OgrenciDuzenleSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/duzenle">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   const ogrenci = await db.student.findUnique({

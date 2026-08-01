@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { AtolyeEkleFormu } from "./atolye-ekle-formu";
 import { DurumButonu } from "./durum-butonu";
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 /** §2.1 — Kurumun tekrar kullandığı atölye tanımlarının yönetimi. */
 export default async function AtolyelerSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const atolyeler = await db.workshopType.findMany({
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],

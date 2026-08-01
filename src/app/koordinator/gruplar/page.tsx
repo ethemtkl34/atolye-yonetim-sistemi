@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_GRUP_KOSULU } from "@/lib/durumlar";
@@ -28,7 +28,7 @@ const TEMEL_YOL = "/koordinator/gruplar";
 export default async function GruplarSayfasi(
   props: PageProps<"/koordinator/gruplar">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";

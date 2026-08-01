@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import {
   AKTIF_DONEM_KOSULU,
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
  * kartta yazan sayı ile listenin uzunluğu birebir aynı kalır.
  */
 export default async function KoordinatorDashboard() {
-  const kullanici = await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const bugunkuTarih = bugun();
 

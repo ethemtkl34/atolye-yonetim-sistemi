@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import { DONEM_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
@@ -27,7 +27,7 @@ export async function generateMetadata(
 export default async function DonemDetaySayfasi(
   props: PageProps<"/koordinator/donemler/[id]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   const [donem, aktifStajyerler, donemKayitSayilari] = await Promise.all([

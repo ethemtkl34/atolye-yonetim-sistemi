@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import {
   bugun,
   haftaCapasi,
@@ -166,7 +166,7 @@ export async function donemOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const donem = donemSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -245,6 +245,7 @@ export async function donemOlustur(
     const ilkGrup = await tx.group.create({
       data: {
         termId: olusturulan.id,
+        branchId: kullanici.aktifSubeId,
         name: grup.data.name,
         day: grup.data.day,
         timeSlot: grup.data.timeSlot,
@@ -288,7 +289,7 @@ export async function donemDurumDegistir(
   donemId: string,
   yeniDurum: (typeof DURUMLAR)[number],
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz dönem durumu." };
@@ -338,7 +339,7 @@ export async function grupEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const grup = grupSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -399,6 +400,7 @@ export async function grupEkle(
     const yeniGrup = await tx.group.create({
       data: {
         termId: donemId,
+        branchId: kullanici.aktifSubeId,
         name: grup.data.name,
         day: grup.data.day,
         timeSlot: grup.data.timeSlot,
@@ -442,7 +444,7 @@ export async function donemStajyerleriniGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const secilenIdler = formVerisi.getAll("stajyerler").map(String).filter(Boolean);
   if (new Set(secilenIdler).size !== secilenIdler.length) {
@@ -529,7 +531,7 @@ export async function donemStajyerleriniGuncelle(
 export async function grupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const grup = await db.group.findUnique({
     where: { id: grupId },

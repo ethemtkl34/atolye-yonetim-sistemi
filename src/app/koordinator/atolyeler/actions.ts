@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { formDegerleri } from "@/lib/formlar";
 
 /**
  * Atölye çeşitleri ve değerlendirme sorularının işlemleri (§2.1, §9.2).
  *
- * Her işlem `koordinatorZorunlu()` ile başlar. Bu sayfaların layout'u da aynı
+ * Her işlem `yonetimZorunlu()` ile başlar. Bu sayfaların layout'u da aynı
  * kontrolü yapıyor ama bir Server Action doğrudan çağrılabilir; yetki
  * kontrolünün her işlemin kendi içinde olması şart.
  */
@@ -61,7 +61,7 @@ export async function atolyeEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = atolyeSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -107,7 +107,7 @@ export async function atolyeGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = atolyeSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -149,7 +149,7 @@ export async function atolyeGuncelle(
 export async function atolyeDurumDegistir(
   atolyeId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const atolye = await db.workshopType.findUnique({
     where: { id: atolyeId },
@@ -180,7 +180,7 @@ export async function soruEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = soruSemasi.safeParse({ text: formVerisi.get("text") });
 
@@ -214,7 +214,7 @@ export async function soruGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = soruSemasi.safeParse({ text: formVerisi.get("text") });
 
@@ -233,7 +233,7 @@ export async function soruGuncelle(
 }
 
 export async function soruDurumDegistir(soruId: string): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const soru = await db.question.findUnique({
     where: { id: soruId },
@@ -264,7 +264,7 @@ export async function soruDurumDegistir(soruId: string): Promise<EylemDurumu> {
  * silinir.
  */
 export async function soruSil(soruId: string): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const soru = await db.question.findUnique({
     where: { id: soruId },
@@ -304,7 +304,7 @@ export async function soruSiraDegistir(
   soruId: string,
   yon: "yukari" | "asagi",
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const soru = await db.question.findUnique({
     where: { id: soruId },

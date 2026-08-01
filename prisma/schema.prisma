@@ -17,10 +17,17 @@ datasource db {
 // Enum'lar
 // ---------------------------------------------------------------------------
 
-/// §3 — Admin, eğitmen ve koordinatör tek bir tam yetkili rolde birleşir.
+/// §3 — Roller.
+///
+/// Sistem tek merkez için yazıldığında admin ve koordinatör tek rolde
+/// birleştirilmişti; kurum iki şubeye çıkınca bu karar geri alındı.
+/// KOORDINATOR ve STAJYER bir şubeye bağlıdır ve yalnızca kendi şubesinin
+/// verisini görür; ADMIN hiçbir şubeye bağlı değildir, üst şeritten şube
+/// seçerek bütün şubelerde çalışır ve hesap/rol yönetimini yapar.
 enum Role {
   KOORDINATOR
   STAJYER
+  ADMIN
 }
 
 /// §4.3
@@ -64,6 +71,40 @@ enum EnrollmentStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Şubeler
+// ---------------------------------------------------------------------------
+
+/// Kurumun fiziksel şubesi (Ümraniye, Güneşli).
+///
+/// Şube sınırı yalnızca üç tabloda doğrudan durur: `User`, `Group`, `Student`.
+/// Kayıt, oturum, puanlama ve raporun şubesi ilişkiden türetilir — kayıt
+/// grubundan, rapor öğrencisinden. Dönem, kulüp, atölye çeşidi ve
+/// değerlendirme soruları ise ORTAKTIR: kurum aynı programı iki konumda
+/// uyguluyor, her şube o programın içinde kendi gruplarını açıyor.
+///
+/// Silme yok, `active: false` var: bir şubenin kapanması geçmiş öğrenci ve
+/// puanlama verisini yok etmemeli. Bütün ilişkiler bu yüzden `Restrict`.
+model Branch {
+  id String @id @default(cuid())
+
+  /// Migration ve seed'in tutunduğu değişmez anahtar. `name` kurum tarafından
+  /// değiştirilebilir, `code` değiştirilmez.
+  code String @unique
+  name String @unique
+
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  students Student[]
+  groups   Group[]
+
+  @@index([active, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
 // Kullanıcılar
 // ---------------------------------------------------------------------------
 
@@ -79,6 +120,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  /// ADMIN hiçbir şubeye bağlı değildir (null); koordinatör ve stajyer her
+  /// zaman bir şubeye bağlıdır. Kural veritabanında CHECK ile de zorlanıyor
+  /// (bkz. migration: `User_admin_sube_kurali`).
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   /// §8 — Stajyer ataması kayıt bazındadır, öğrenci profiline bağlı değildir.
   assignedEnrollments Enrollment[] @relation("AtananStajyer")
   enteredScores       Score[]      @relation("PuanlamayiGiren")
@@ -86,6 +133,7 @@ model User {
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   @@index([role, active])
+  @@index([branchId, role, active])
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +297,13 @@ model Group {
   clubId String?
   club   Club?   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
+  /// Şube sınırının asıl durduğu yer. Dönem ve kulüp ortaktır; grup değildir.
+  /// `Enrollment`, `Session` ve dolayısıyla `Score`/`ScoreAnswer` şubelerini
+  /// buradan türetir — bu yüzden gruba yazılan şube bütün operasyonel
+  /// veriyi kapsar.
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   name     String
   day      Day
   timeSlot TimeSlot
@@ -266,8 +321,9 @@ model Group {
   enrollments Enrollment[]
   sessions    Session[]
 
-  @@index([termId])
-  @@index([clubId])
+  @@index([termId, branchId])
+  @@index([clubId, branchId])
+  @@index([branchId, active])
   @@index([day, timeSlot])
 }
 
@@ -289,6 +345,11 @@ model Student {
   /// `normalizeArama()` ile üretilir; "Şule Çınar" → "sule cinar".
   searchName String
 
+  /// Öğrenci bir şubeye kayıtlıdır. Aynı çocuk iki şubede de eğitim alıyorsa
+  /// iki ayrı kayıt olur; şubeler arası ortak öğrenci havuzu yok.
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -297,8 +358,9 @@ model Student {
   enrollments Enrollment[]
   reports     Report[]
 
-  @@index([searchName])
-  @@index([lastName, firstName])
+  // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
+  @@index([branchId, searchName])
+  @@index([branchId, lastName, firstName])
 }
 
 /// §6.1 — Anne ve baba bilgileri. En az bir ebeveyn telefonu zorunludur;

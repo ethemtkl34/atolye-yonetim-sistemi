@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
 import { BosDurum, Girdi, Kart, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
@@ -29,7 +29,7 @@ const LISTE_SINIRI = 200;
 export default async function OgrencilerSayfasi(
   props: PageProps<"/koordinator/ogrenciler">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { DonemSihirbazi } from "./donem-sihirbazi";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function YeniDonemSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const [atolyeler, stajyerler] = await Promise.all([
     db.workshopType.findMany({

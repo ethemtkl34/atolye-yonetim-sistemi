@@ -23,6 +23,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:ornek-veri": "tsx prisma/ornek-veri.ts",
+    "db:temizlik": "tsx prisma/temizlik.ts",
     "db:reset": "prisma migrate reset --force"
   },
   "dependencies": {

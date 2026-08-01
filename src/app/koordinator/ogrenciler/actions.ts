@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ZodError } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
@@ -95,7 +95,7 @@ export async function ogrenciEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {
@@ -110,6 +110,7 @@ export async function ogrenciEkle(
   const ogrenci = await db.student.create({
     data: {
       ...ogrenciAlanlari(veri),
+      branchId: kullanici.aktifSubeId,
       guardians: { create: veliSatirlari(veri) },
       healthInfo: { create: saglikAlanlari(veri) },
     },
@@ -124,7 +125,7 @@ export async function ogrenciGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {

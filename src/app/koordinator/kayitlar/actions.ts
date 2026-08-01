@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani } from "@/lib/tarih";
 
@@ -45,7 +45,7 @@ export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = kayitSemasi.safeParse({
     studentId: formVerisi.get("studentId"),
@@ -308,7 +308,7 @@ export async function kayitStajyerDegistir(
   kayitId: string,
   internId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   if (!internId) return { hata: "Stajyer seçin." };
 
@@ -372,7 +372,7 @@ export async function kayitStajyerDegistir(
 export async function kayitDurumDegistir(
   kayitId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const hedef = await db.enrollment.findUnique({
     where: { id: kayitId },

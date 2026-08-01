@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default async function YeniKayitSayfasi(
   props: PageProps<"/koordinator/kayitlar/yeni">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const studentId =

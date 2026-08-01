@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import {
   pdfGecmisi,
   raporDetayi,
@@ -38,7 +38,7 @@ export async function raporOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const kayitIdleri = formVerisi.getAll("kayitlar").map(String).filter(Boolean);
 
@@ -89,7 +89,7 @@ export async function raporOlustur(
  * cevaplanabilir.
  */
 export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const eski = await db.report.findUnique({
     where: { id: raporId },
@@ -135,7 +135,7 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
  * düzenlense bile eski PDF'in içeriği değişmez (§13.17).
  */
 export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const rapor = await db.report.findUnique({
     where: { id: raporId },
@@ -182,7 +182,7 @@ export async function raporMetniDuzenle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const rapor = await db.report.findUnique({
     where: { id: raporId },
@@ -246,7 +246,7 @@ export type RaporPenceresiVerisi = {
 export async function raporPenceresiVerisi(
   raporId: string,
 ): Promise<RaporPenceresiVerisi | null> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const [detay, pdfler] = await Promise.all([
     raporDetayi(raporId),

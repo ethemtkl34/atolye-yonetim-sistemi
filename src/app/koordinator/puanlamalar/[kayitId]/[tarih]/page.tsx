@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { SayfaBasligi } from "@/components/ui";
 import { GunFormEkrani } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default async function KoordinatorGunPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]/[tarih]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { kayitId, tarih } = await props.params;
 
   const veri = await kayitPuanlamasi(kayitId);

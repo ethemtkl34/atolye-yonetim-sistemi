@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { formDegerleri } from "@/lib/formlar";
 
 /**
@@ -53,7 +53,7 @@ export async function stajyerEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const cozumlenen = stajyerSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -103,7 +103,7 @@ export async function stajyerAdiGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const ad = String(formVerisi.get("name") ?? "").trim();
   if (ad.length < 2) {
@@ -131,7 +131,7 @@ export async function stajyerAdiGuncelle(
 export async function stajyerDurumDegistir(
   stajyerId: string,
 ): Promise<EylemDurumu> {
-  const koordinator = await koordinatorZorunlu();
+  const koordinator = await yonetimZorunlu();
 
   if (stajyerId === koordinator.id) {
     return { hata: "Kendi hesabınızı pasife alamazsınız." };
@@ -173,7 +173,7 @@ export async function stajyerKadroDurumuDegistir(
   donemId: string,
   stajyerId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const [donem, stajyer, mevcutKadro] = await Promise.all([
     db.term.findUnique({ where: { id: donemId }, select: { name: true } }),
@@ -234,7 +234,7 @@ export async function stajyerParolaSifirla(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parola = String(formVerisi.get("password") ?? "");
   if (parola.length < 8) {

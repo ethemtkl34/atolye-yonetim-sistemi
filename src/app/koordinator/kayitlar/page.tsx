@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
@@ -24,7 +24,7 @@ const TEMEL_YOL = "/koordinator/kayitlar";
 export default async function KayitlarSayfasi(
   props: PageProps<"/koordinator/kayitlar">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const suzgec =

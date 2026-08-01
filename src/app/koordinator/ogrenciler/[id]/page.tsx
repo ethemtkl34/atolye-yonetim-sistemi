@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import {
@@ -43,7 +43,7 @@ export async function generateMetadata(
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;

@@ -1,6 +1,6 @@
 import { PanelKabuk } from "@/components/panel-kabuk";
 import { stajyerZorunlu } from "@/lib/auth-guard";
-import { STAJYER_MENUSU } from "@/lib/navigasyon";
+import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
 
 export default async function StajyerLayout({
   children,
@@ -12,8 +12,8 @@ export default async function StajyerLayout({
   return (
     <PanelKabuk
       kullanici={kullanici}
-      menu={STAJYER_MENUSU}
-      baslik="Stajyer paneli"
+      menu={panelMenusu(kullanici.role)}
+      baslik={panelBasligi(kullanici.role)}
     >
       {children}
     </PanelKabuk>

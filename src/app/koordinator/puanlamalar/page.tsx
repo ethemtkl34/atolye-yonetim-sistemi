@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { KayitListesi } from "@/components/puanlama-ekranlari";
@@ -21,7 +21,7 @@ const TEMEL_YOL = "/koordinator/puanlamalar";
 export default async function PuanlamalarSayfasi(
   props: PageProps<"/koordinator/puanlamalar">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const parametreler = await props.searchParams;
   const suzgec = parametreler.suzgec === "tumu" ? "tumu" : "eksik";

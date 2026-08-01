@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import { AKTIF_DONEM_KOSULU, AKTIF_KULUP_KOSULU } from "@/lib/durumlar";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
@@ -33,7 +33,7 @@ export async function generateMetadata(
 export default async function StajyerDetaySayfasi(
   props: PageProps<"/koordinator/stajyerler/[id]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
   const parametreler = await props.searchParams;
 

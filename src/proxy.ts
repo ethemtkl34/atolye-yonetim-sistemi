@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
+import { ANA_SAYFA_YOLLARI } from "@/lib/roller";
 
 /**
  * Rota koruması — Next.js 16'da bu dosyanın adı `middleware` değil `proxy`.
@@ -36,7 +37,17 @@ export const proxy = auth((istek) => {
     return NextResponse.next();
   }
 
-  const kendiAlani = rol === "KOORDINATOR" ? "/koordinator" : "/stajyer";
+  // Oturum var ama rol yoksa belirteç bozuk demektir; asıl karar sunucu
+  // guard'ının, burada yalnızca girişe yollanır.
+  if (!rol) {
+    return NextResponse.redirect(new URL("/giris", nextUrl));
+  }
+
+  // Rolün kendi alanı tek kaynaktan okunur (`lib/roller.ts`). Burada
+  // "koordinatör değilse stajyerdir" varsayımı vardı; yönetici eklenince o
+  // varsayım yöneticiyi `/stajyer`'e yollayıp guard'ın geri atmasına, yani
+  // her gezintide gereksiz bir tura yol açıyordu.
+  const kendiAlani = ANA_SAYFA_YOLLARI[rol];
 
   // Giriş yapmış kullanıcı giriş sayfasına dönerse kendi paneline gider.
   if (girisSayfasi) {
@@ -47,7 +58,7 @@ export const proxy = auth((istek) => {
     return NextResponse.redirect(new URL("/stajyer", nextUrl));
   }
 
-  if (rol === "KOORDINATOR" && stajyerAlani) {
+  if (rol !== "STAJYER" && stajyerAlani) {
     return NextResponse.redirect(new URL("/koordinator", nextUrl));
   }
 

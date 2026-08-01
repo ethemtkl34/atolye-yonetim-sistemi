@@ -422,26 +422,19 @@ async function main() {
   // --- Stajyer hesapları ---------------------------------------------------
   // Üçüncü stajyer buradan ekleniyor: iki stajyerle atama listesi gerçekçi
   // görünmüyor, §8'in "stajyer başına öğrenci sayısı" ekranı denenemiyordu.
-  const parolaHash = await hash(GELISTIRME_SIFRESI, 12);
-
+  // Üç stajyer de artık `seed.ts` tarafından açılıyor (şube ataması orada
+  // yapılıyor); bu betik yalnızca okuyor.
   const stajyerler = {
     ayse: await db.user.findUnique({ where: { email: "ayse@tuzder.local" } }),
     mehmet: await db.user.findUnique({
       where: { email: "mehmet@tuzder.local" },
     }),
-    zeynep: await db.user.upsert({
+    zeynep: await db.user.findUnique({
       where: { email: "zeynep@tuzder.local" },
-      update: { name: "Zeynep Demir", role: "STAJYER", active: true },
-      create: {
-        email: "zeynep@tuzder.local",
-        name: "Zeynep Demir",
-        role: "STAJYER",
-        passwordHash: parolaHash,
-      },
     }),
   };
 
-  if (!stajyerler.ayse || !stajyerler.mehmet) {
+  if (!stajyerler.ayse || !stajyerler.mehmet || !stajyerler.zeynep) {
     throw new Error(
       "Stajyer hesapları bulunamadı. Önce `npm run db:seed` çalıştırın.",
     );
@@ -469,6 +462,20 @@ async function main() {
     "kulup-sabah": kulup.groups[0],
     "kulup-oglen": kulup.groups[1],
   };
+
+  // Örnek veri tek şubede çalışır: öğrenci hem dönem hem kulüp grubuna
+  // kaydediliyor, gruplar farklı şubelerde olsaydı öğrencinin şubesi
+  // belirsiz kalırdı. Şubeler arası izolasyonu denemek için ikinci şubede
+  // arayüzden birkaç kayıt açmak yeterli.
+  const grupSubeleri = new Set(
+    Object.values(gruplar).map((grup) => grup.branchId),
+  );
+  if (grupSubeleri.size > 1) {
+    throw new Error(
+      "Seçilen dönem ve kulüp grupları farklı şubelerde. Örnek veri tek şubede çalışır.",
+    );
+  }
+  const subeId = gruplar["donem-cumartesi"].branchId;
 
   // --- Eski örnek öğrencileri temizle --------------------------------------
   // Yalnızca bu dosyanın ürettiği adlar siliniyor; elle eklenen öğrenciler
@@ -509,6 +516,7 @@ async function main() {
         grade: tanim.sinif,
         notes: tanim.notlar,
         searchName: normalizeArama(`${tanim.ad} ${tanim.soyad}`),
+        branchId: subeId,
         guardians: {
           create: [
             ...(tanim.anne

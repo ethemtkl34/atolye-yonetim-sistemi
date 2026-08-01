@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { kulupOturumlariniUret } from "@/lib/session-generator";
@@ -108,7 +108,7 @@ export async function kulupOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const kulup = kulupSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -170,6 +170,7 @@ export async function kulupOlustur(
     const ilkGrup = await tx.group.create({
       data: {
         clubId: olusturulan.id,
+        branchId: kullanici.aktifSubeId,
         name: grup.data.name,
         day: gun,
         timeSlot: grup.data.timeSlot,
@@ -212,7 +213,7 @@ export async function kulupDurumDegistir(
   kulupId: string,
   yeniDurum: ClubStatus,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz kulüp durumu." };
@@ -261,7 +262,7 @@ export async function kulupGrupEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  const kullanici = await yonetimZorunlu();
 
   const grup = kulupGrubuSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -305,6 +306,7 @@ export async function kulupGrupEkle(
     const yeniGrup = await tx.group.create({
       data: {
         clubId: kulupId,
+        branchId: kullanici.aktifSubeId,
         name: grup.data.name,
         day: gun,
         timeSlot: grup.data.timeSlot,
@@ -329,7 +331,7 @@ export async function kulupGrupEkle(
 export async function kulupGrupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const grup = await db.group.findUnique({
     where: { id: grupId },

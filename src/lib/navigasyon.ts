@@ -1,5 +1,7 @@
+import type { Role } from "@/generated/prisma/enums";
+
 /**
- * §12.2 — Koordinatör panelinin 13 ana modülü.
+ * §12.2 — Koordinatör panelinin ana modülleri.
  *
  * Menü düz bir liste değil, bölümlere ayrılmış durumda: 13 maddelik tek
  * sütun taranması zor bir yığındı. Bölüm başlığı `bolum` alanından gelir;
@@ -16,6 +18,14 @@ export type MenuOgesi = {
   bolum?: string;
   /** components/yan-menu.tsx içindeki ikon adı. */
   simge?: string;
+  /**
+   * Maddeyi görebilecek roller. Boşsa herkes görür.
+   *
+   * Menüden gizlemek YETKİ DEĞİLDİR: sayfanın kendi `adminZorunlu()` /
+   * `yonetimZorunlu()` kontrolü esastır (bkz. lib/auth-guard.ts). Buradaki
+   * süzgeç yalnızca kullanıcıya giremeyeceği bir bağlantıyı göstermemek için.
+   */
+  roller?: readonly Role[];
 };
 
 export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
@@ -140,3 +150,24 @@ export const STAJYER_MENUSU: readonly MenuOgesi[] = [
     simge: "rapor",
   },
 ];
+
+/**
+ * Rolüne göre kullanıcının göreceği menü.
+ *
+ * Panel seçimini tek yerde tutuyor: önceden her yerde
+ * `role === "KOORDINATOR" ? KOORDINATOR_MENUSU : STAJYER_MENUSU` yazılıydı ve
+ * bu ternary, yönetici eklenince ona sessizce STAJYER menüsünü veriyordu.
+ */
+export function panelMenusu(role: Role): readonly MenuOgesi[] {
+  if (role === "STAJYER") return STAJYER_MENUSU;
+  return KOORDINATOR_MENUSU.filter(
+    (oge) => !oge.roller || oge.roller.includes(role),
+  );
+}
+
+/** Panelin sol üstte yazan adı. */
+export function panelBasligi(role: Role): string {
+  if (role === "STAJYER") return "Stajyer paneli";
+  if (role === "ADMIN") return "Yönetici paneli";
+  return "Koordinatör paneli";
+}

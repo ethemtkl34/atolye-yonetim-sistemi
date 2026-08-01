@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export default async function OgrenciPuanlamalariSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/puanlamalar">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   const ogrenci = await db.student.findUnique({

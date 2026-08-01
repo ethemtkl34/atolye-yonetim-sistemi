@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
  * ancak yan yana görülünce anlaşılır.
  */
 export default async function SorularSayfasi() {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
 
   const atolyeler = await db.workshopType.findMany({
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],

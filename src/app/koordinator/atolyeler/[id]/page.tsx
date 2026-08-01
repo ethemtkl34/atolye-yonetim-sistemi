@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet } from "@/components/ui";
 import { AtolyeDuzenleFormu } from "./atolye-duzenle-formu";
 import { SoruYonetimi, type SoruSatiri } from "./soru-yonetimi";
@@ -22,7 +22,7 @@ export async function generateMetadata(
 export default async function AtolyeDetaySayfasi(
   props: PageProps<"/koordinator/atolyeler/[id]">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
 
   const atolye = await db.workshopType.findUnique({

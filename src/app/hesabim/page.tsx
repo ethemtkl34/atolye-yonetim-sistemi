@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { girisZorunlu, rolAdi } from "@/lib/auth-guard";
 import { Kart, SayfaBasligi } from "@/components/ui";
 import { PanelKabuk } from "@/components/panel-kabuk";
-import { KOORDINATOR_MENUSU, STAJYER_MENUSU } from "@/lib/navigasyon";
+import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
 import { ParolaFormu } from "./parola-formu";
 
 export const metadata: Metadata = {
@@ -19,13 +19,12 @@ export const metadata: Metadata = {
  */
 export default async function HesabimSayfasi() {
   const kullanici = await girisZorunlu();
-  const koordinator = kullanici.role === "KOORDINATOR";
 
   return (
     <PanelKabuk
       kullanici={kullanici}
-      menu={koordinator ? KOORDINATOR_MENUSU : STAJYER_MENUSU}
-      baslik={koordinator ? "Koordinatör paneli" : "Stajyer paneli"}
+      menu={panelMenusu(kullanici.role)}
+      baslik={panelBasligi(kullanici.role)}
     >
       <div className="mx-auto w-full max-w-lg">
         <SayfaBasligi

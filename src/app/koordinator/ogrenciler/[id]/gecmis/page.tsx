@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { koordinatorZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili } from "@/components/ui";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
@@ -24,7 +24,7 @@ const SECIM_STILI =
 export default async function OgrenciGecmisiSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/gecmis">,
 ) {
-  await koordinatorZorunlu();
+  await yonetimZorunlu();
   const { id } = await props.params;
   const parametreler = await props.searchParams;
 
