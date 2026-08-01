@@ -21,13 +21,14 @@
  *     neden başka" sorusu doğmaz.
  */
 import "dotenv/config";
-import { hash } from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { normalizeArama, normalizeTelefon } from "../src/lib/turkce";
-
-/** Geliştirme hesaplarının ortak parolası — `seed.ts` ile aynı. */
-const GELISTIRME_SIFRESI = "Atolye2026!";
+import {
+  donemOturumlariniUret,
+  kulupOturumlariniUret,
+} from "../src/lib/session-generator";
+import { gunundenGun } from "../src/lib/tarih";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -173,10 +174,11 @@ type OgrenciTanimi = {
   profil: keyof typeof PROFILLER;
   /** Hangi programlara kaydedilecek. */
   kayitlar: ("donem-cumartesi" | "donem-pazar" | "kulup-sabah" | "kulup-oglen")[];
-  stajyer: "ayse" | "mehmet" | "zeynep";
+  /** Sorumlu stajyerin e-posta öneki — şubeye göre farklı isimler. */
+  stajyer: string;
 };
 
-const OGRENCILER: OgrenciTanimi[] = [
+const UMRANIYE_OGRENCILERI: OgrenciTanimi[] = [
   {
     ad: "Deniz", soyad: "Aydın", dogum: "2016-03-14",
     okul: "Fatih İlkokulu", sinif: "4. sınıf",
@@ -354,6 +356,120 @@ const OGRENCILER: OgrenciTanimi[] = [
   },
 ];
 
+/**
+ * Güneşli şubesinin öğrencileri.
+ *
+ * Ümraniye'ye göre kasten daha küçük bir set: amaç ikinci şubeyi doldurmak
+ * değil, ŞUBE İZOLASYONUNU denenebilir kılmak. Ümraniye koordinatörü bu
+ * öğrencileri hiçbir ekranda görmemeli; adları da bilerek Ümraniye
+ * listesindekilerden farklı, karışırsa fark edilsin diye.
+ */
+const GUNESLI_OGRENCILERI: OgrenciTanimi[] = [
+  {
+    ad: "Kaan", soyad: "Yücel", dogum: "2016-04-11",
+    okul: "Güneşli İlkokulu", sinif: "4. sınıf",
+    anne: { ad: "Nazan Yücel", tel: "0532 907 61 24" },
+    baba: { ad: "Serkan Yücel", tel: "0533 415 08 77" },
+    profil: "guclu",
+    kayitlar: ["donem-cumartesi", "kulup-sabah"],
+    stajyer: "elif",
+  },
+  {
+    ad: "Defne", soyad: "Arslan", dogum: "2016-11-23",
+    okul: "Güneşli İlkokulu", sinif: "4. sınıf",
+    anne: { ad: "Pınar Arslan", tel: "0505 213 44 96" },
+    profil: "dengeli",
+    kayitlar: ["donem-cumartesi"],
+    stajyer: "elif",
+  },
+  {
+    ad: "Tuna", soyad: "Kılıçarslan", dogum: "2017-02-08",
+    okul: "Bağcılar İlkokulu", sinif: "3. sınıf",
+    anne: { ad: "Melis Kılıçarslan", tel: "0542 778 30 15" },
+    baba: { ad: "Onur Kılıçarslan", tel: "0543 220 91 63" },
+    saglik: {
+      alerji: "Polen alerjisi; bahar aylarında burun tıkanıklığı olabiliyor.",
+      stajyerUyarisi:
+        "Polen alerjisi var. Açık havada uzun süreli etkinlikte öğretmene haber verin.",
+    },
+    profil: "karma",
+    kayitlar: ["donem-cumartesi", "kulup-oglen"],
+    stajyer: "burak",
+  },
+  {
+    ad: "Zehra", soyad: "Toprak", dogum: "2016-06-30",
+    okul: "Bağcılar İlkokulu", sinif: "4. sınıf",
+    anne: { ad: "Sibel Toprak", tel: "0555 634 27 80" },
+    profil: "gelismekte",
+    kayitlar: ["donem-pazar"],
+    stajyer: "burak",
+  },
+  {
+    ad: "Emir", soyad: "Sarıkaya", dogum: "2017-09-05",
+    okul: "Güneşli İlkokulu", sinif: "3. sınıf",
+    baba: { ad: "Hakan Sarıkaya", tel: "0536 401 55 38" },
+    profil: "devamsiz",
+    kayitlar: ["donem-pazar"],
+    stajyer: "selin",
+  },
+  {
+    ad: "Nisan", soyad: "Özdemir", dogum: "2016-12-19",
+    okul: "Kirazlı İlkokulu", sinif: "4. sınıf",
+    anne: { ad: "Gamze Özdemir", tel: "0507 862 19 45" },
+    profil: "azVeri",
+    kayitlar: ["donem-pazar"],
+    stajyer: "selin",
+  },
+  {
+    ad: "Berk", soyad: "Yalçınkaya", dogum: "2017-03-27",
+    okul: "Kirazlı İlkokulu", sinif: "3. sınıf",
+    anne: { ad: "Tuğba Yalçınkaya", tel: "0538 116 73 20" },
+    profil: "eksikFormlu",
+    kayitlar: ["donem-cumartesi"],
+    stajyer: "elif",
+  },
+  {
+    ad: "Ela", soyad: "Bozkurt", dogum: "2016-08-14",
+    okul: "Güneşli İlkokulu", sinif: "4. sınıf",
+    anne: { ad: "Şeyma Bozkurt", tel: "0544 350 62 91" },
+    profil: "puanlanmamis",
+    kayitlar: ["kulup-sabah"],
+    stajyer: "selin",
+  },
+];
+
+/** Şube başına örnek veri tanımı. */
+type SubeSeti = {
+  subeId: string;
+  ad: string;
+  ogrenciler: OgrenciTanimi[];
+  /** Öğrenci tanımındaki `stajyer` anahtarı → hesap e-postası. */
+  stajyerler: Record<string, string>;
+};
+
+const SUBE_SETLERI: SubeSeti[] = [
+  {
+    subeId: "sube_umraniye",
+    ad: "Ümraniye Tüzder",
+    ogrenciler: UMRANIYE_OGRENCILERI,
+    stajyerler: {
+      ayse: "ayse@tuzder.local",
+      mehmet: "mehmet@tuzder.local",
+      zeynep: "zeynep@tuzder.local",
+    },
+  },
+  {
+    subeId: "sube_gunesli",
+    ad: "Güneşli Tüzder",
+    ogrenciler: GUNESLI_OGRENCILERI,
+    stajyerler: {
+      elif: "elif@tuzder.local",
+      burak: "burak@tuzder.local",
+      selin: "selin@tuzder.local",
+    },
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Deterministik sayı üretimi
 // ---------------------------------------------------------------------------
@@ -401,91 +517,123 @@ function puanUret(
 
 // ---------------------------------------------------------------------------
 
-async function main() {
-  // Bu betik 18 uydurma öğrenci ve 1670 uydurma puan yazıyor. Üretim
-  // veritabanında çalıştırılması gerçek kayıtların arasına deneme verisi
-  // karıştırır ve geri almak zordur; uzak veritabanında baştan reddediliyor.
-  const adres = process.env.DATABASE_URL ?? "";
-  const yerel = adres.includes("localhost") || adres.includes("127.0.0.1");
+// ---------------------------------------------------------------------------
+// Şube başına veri üretimi
+// ---------------------------------------------------------------------------
 
-  if (!yerel && process.env.ORNEK_VERI_ONAY !== "evet") {
-    console.error(
-      "\nBu betik uydurma öğrenci verisi yazar ve yalnızca yerel veritabanı" +
-        "\niçindir. DATABASE_URL yerel bir adrese işaret etmiyor." +
-        "\n\nGerçekten devam etmek istiyorsanız: ORNEK_VERI_ONAY=evet\n",
-    );
-    process.exit(1);
+/**
+ * Bir şubenin dönem ve kulüp gruplarını hazırlar; yoksa oluşturur.
+ *
+ * Dönem ve kulüp ORTAK (tek kayıt), gruplar şubeye ait. İkinci şube açıldığında
+ * onun grupları henüz yok — arayüzden tek tek açmak yerine burada üretiliyor,
+ * oturumlarıyla birlikte, uygulamadaki üreticinin aynısıyla.
+ */
+async function gruplariSagla(
+  set: SubeSeti,
+  donem: { id: string; weeks: { id: string; weekNumber: number; date: Date }[]; workshops: { workshopTypeId: string }[] },
+  kulup: { id: string; date: Date; workshops: { workshopTypeId: string }[] },
+) {
+  const atolyeIdleri = donem.workshops.map((a) => a.workshopTypeId);
+
+  async function donemGrubu(ad: string, gun: "CUMARTESI" | "PAZAR", kontenjan: number) {
+    const mevcut = await db.group.findFirst({
+      where: { termId: donem.id, branchId: set.subeId, day: gun },
+    });
+    if (mevcut) return mevcut;
+
+    const grup = await db.group.create({
+      data: {
+        termId: donem.id,
+        branchId: set.subeId,
+        name: ad,
+        day: gun,
+        timeSlot: "OGLEDEN_ONCE",
+        capacity: kontenjan,
+        startWeekNumber: 1,
+      },
+    });
+    const oturumlar = donemOturumlariniUret({
+      haftalar: donem.weeks,
+      atolyeIdleri,
+      grupGunu: gun,
+      baslangicHaftasi: 1,
+    });
+    await db.session.createMany({
+      data: oturumlar.map((o) => ({ ...o, groupId: grup.id })),
+    });
+    return grup;
   }
 
-  console.log("Örnek veri yükleniyor...\n");
+  async function kulupGrubu(ad: string, dilim: "OGLEDEN_ONCE" | "OGLEDEN_SONRA", kontenjan: number) {
+    const mevcut = await db.group.findFirst({
+      where: { clubId: kulup.id, branchId: set.subeId, timeSlot: dilim },
+    });
+    if (mevcut) return mevcut;
 
-  // --- Stajyer hesapları ---------------------------------------------------
-  // Üçüncü stajyer buradan ekleniyor: iki stajyerle atama listesi gerçekçi
-  // görünmüyor, §8'in "stajyer başına öğrenci sayısı" ekranı denenemiyordu.
-  // Üç stajyer de artık `seed.ts` tarafından açılıyor (şube ataması orada
-  // yapılıyor); bu betik yalnızca okuyor.
-  const stajyerler = {
-    ayse: await db.user.findUnique({ where: { email: "ayse@tuzder.local" } }),
-    mehmet: await db.user.findUnique({
-      where: { email: "mehmet@tuzder.local" },
-    }),
-    zeynep: await db.user.findUnique({
-      where: { email: "zeynep@tuzder.local" },
-    }),
+    const gun = gunundenGun(kulup.date);
+    if (!gun) throw new Error("Kulüp tarihi hafta sonuna denk gelmiyor.");
+
+    const grup = await db.group.create({
+      data: {
+        clubId: kulup.id,
+        branchId: set.subeId,
+        name: ad,
+        day: gun,
+        timeSlot: dilim,
+        capacity: kontenjan,
+        startWeekNumber: 1,
+      },
+    });
+    const oturumlar = kulupOturumlariniUret({
+      tarih: kulup.date,
+      atolyeIdleri: kulup.workshops.map((a) => a.workshopTypeId),
+    });
+    await db.session.createMany({
+      data: oturumlar.map((o) => ({ ...o, groupId: grup.id })),
+    });
+    return grup;
+  }
+
+  return {
+    "donem-cumartesi": await donemGrubu("1. Grup", "CUMARTESI", 12),
+    "donem-pazar": await donemGrubu("2. Grup", "PAZAR", 12),
+    "kulup-sabah": await kulupGrubu("1. Grup", "OGLEDEN_ONCE", 12),
+    "kulup-oglen": await kulupGrubu("2. Grup", "OGLEDEN_SONRA", 8),
   };
+}
 
-  if (!stajyerler.ayse || !stajyerler.mehmet || !stajyerler.zeynep) {
-    throw new Error(
-      "Stajyer hesapları bulunamadı. Önce `npm run db:seed` çalıştırın.",
-    );
+/** Bir şubenin öğrencilerini, kayıtlarını ve puanlamalarını üretir. */
+async function subeVerisiUret(
+  set: SubeSeti,
+  donem: Parameters<typeof gruplariSagla>[1],
+  kulup: Parameters<typeof gruplariSagla>[2],
+) {
+  console.log(`\n── ${set.ad} ──`);
+
+  // Stajyer hesapları `seed.ts` tarafından açılıyor; burada yalnızca okunuyor.
+  const stajyerler: Record<string, { id: string }> = {};
+  for (const [anahtar, eposta] of Object.entries(set.stajyerler)) {
+    const hesap = await db.user.findUnique({ where: { email: eposta } });
+    if (!hesap) {
+      throw new Error(
+        `${eposta} bulunamadı. Önce \`npm run db:seed\` çalıştırın.`,
+      );
+    }
+    if (hesap.branchId !== set.subeId) {
+      throw new Error(`${eposta} bu şubeye ait değil.`);
+    }
+    stajyerler[anahtar] = hesap;
   }
 
-  // --- Gruplar -------------------------------------------------------------
-  const donem = await db.term.findFirst({
-    orderBy: { createdAt: "asc" },
-    include: { groups: { orderBy: { createdAt: "asc" } } },
-  });
-  const kulup = await db.club.findFirst({
-    orderBy: { createdAt: "asc" },
-    include: { groups: { orderBy: { createdAt: "asc" } } },
-  });
-
-  if (!donem || donem.groups.length < 2 || !kulup || kulup.groups.length < 2) {
-    throw new Error(
-      "Dönem veya kulüp grupları eksik. Arayüzden bir dönem (2 grup) ve bir kulüp (2 grup) oluşturun.",
-    );
-  }
-
-  const gruplar = {
-    "donem-cumartesi": donem.groups[0],
-    "donem-pazar": donem.groups[1],
-    "kulup-sabah": kulup.groups[0],
-    "kulup-oglen": kulup.groups[1],
-  };
-
-  // Örnek veri tek şubede çalışır: öğrenci hem dönem hem kulüp grubuna
-  // kaydediliyor, gruplar farklı şubelerde olsaydı öğrencinin şubesi
-  // belirsiz kalırdı. Şubeler arası izolasyonu denemek için ikinci şubede
-  // arayüzden birkaç kayıt açmak yeterli.
-  const grupSubeleri = new Set(
-    Object.values(gruplar).map((grup) => grup.branchId),
-  );
-  if (grupSubeleri.size > 1) {
-    throw new Error(
-      "Seçilen dönem ve kulüp grupları farklı şubelerde. Örnek veri tek şubede çalışır.",
-    );
-  }
-  const subeId = gruplar["donem-cumartesi"].branchId;
+  const gruplar = await gruplariSagla(set, donem, kulup);
 
   // --- Eski örnek öğrencileri temizle --------------------------------------
-  // Yalnızca bu dosyanın ürettiği adlar siliniyor; elle eklenen öğrenciler
-  // ve başlangıç verisinden gelen Şule/İpek yerinde kalıyor.
+  // Yalnızca bu şubenin ve bu dosyanın ürettiği adlar siliniyor; elle
+  // eklenenler ve diğer şubenin verisi yerinde kalıyor.
   const eskiler = await db.student.findMany({
     where: {
-      OR: OGRENCILER.map((o) => ({
-        firstName: o.ad,
-        lastName: o.soyad,
-      })),
+      branchId: set.subeId,
+      OR: set.ogrenciler.map((o) => ({ firstName: o.ad, lastName: o.soyad })),
     },
     select: { id: true },
   });
@@ -501,150 +649,148 @@ async function main() {
     console.log(`· ${eskiler.length} eski örnek öğrenci silindi`);
   }
 
-  // --- Öğrenciler, kayıtlar, puanlar ---------------------------------------
-  let kayitSayisi = 0;
-  let puanSayisi = 0;
-  let cevapSayisi = 0;
+    // --- Öğrenciler, kayıtlar, puanlar ---------------------------------------
+    let kayitSayisi = 0;
+    let puanSayisi = 0;
+    let cevapSayisi = 0;
 
-  for (const tanim of OGRENCILER) {
-    const ogrenci = await db.student.create({
-      data: {
-        firstName: tanim.ad,
-        lastName: tanim.soyad,
-        birthDate: new Date(`${tanim.dogum}T00:00:00.000Z`),
-        school: tanim.okul,
-        grade: tanim.sinif,
-        notes: tanim.notlar,
-        searchName: normalizeArama(`${tanim.ad} ${tanim.soyad}`),
-        branchId: subeId,
-        guardians: {
-          create: [
-            ...(tanim.anne
-              ? [
-                  {
-                    type: "ANNE" as const,
-                    fullName: tanim.anne.ad,
-                    phone: tanim.anne.tel,
-                    searchPhone: normalizeTelefon(tanim.anne.tel),
-                  },
-                ]
-              : []),
-            ...(tanim.baba
-              ? [
-                  {
-                    type: "BABA" as const,
-                    fullName: tanim.baba.ad,
-                    phone: tanim.baba.tel,
-                    searchPhone: normalizeTelefon(tanim.baba.tel),
-                  },
-                ]
-              : []),
-          ],
-        },
-        ...(tanim.saglik
-          ? {
-              healthInfo: {
-                create: {
-                  allergies: tanim.saglik.alerji,
-                  medications: tanim.saglik.ilac,
-                  specialEducation: tanim.saglik.ozelEgitim,
-                  healthNotes: tanim.saglik.saglikNotu,
-                  emergencyInfo: tanim.saglik.acil,
-                  internSafetyNote: tanim.saglik.stajyerUyarisi,
-                },
-              },
-            }
-          : {}),
-      },
-    });
-
-    const profil = PROFILLER[tanim.profil];
-
-    for (const grupAnahtari of tanim.kayitlar) {
-      const grup = gruplar[grupAnahtari];
-
-      const kayit = await db.enrollment.create({
+    for (const tanim of set.ogrenciler) {
+      const ogrenci = await db.student.create({
         data: {
-          studentId: ogrenci.id,
-          groupId: grup.id,
-          internId: stajyerler[tanim.stajyer]!.id,
-          status: "AKTIF",
+          firstName: tanim.ad,
+          lastName: tanim.soyad,
+          birthDate: new Date(`${tanim.dogum}T00:00:00.000Z`),
+          school: tanim.okul,
+          grade: tanim.sinif,
+          notes: tanim.notlar,
+          searchName: normalizeArama(`${tanim.ad} ${tanim.soyad}`),
+          branchId: set.subeId,
+          guardians: {
+            create: [
+              ...(tanim.anne
+                ? [
+                    {
+                      type: "ANNE" as const,
+                      fullName: tanim.anne.ad,
+                      phone: tanim.anne.tel,
+                      searchPhone: normalizeTelefon(tanim.anne.tel),
+                    },
+                  ]
+                : []),
+              ...(tanim.baba
+                ? [
+                    {
+                      type: "BABA" as const,
+                      fullName: tanim.baba.ad,
+                      phone: tanim.baba.tel,
+                      searchPhone: normalizeTelefon(tanim.baba.tel),
+                    },
+                  ]
+                : []),
+            ],
+          },
+          ...(tanim.saglik
+            ? {
+                healthInfo: {
+                  create: {
+                    allergies: tanim.saglik.alerji,
+                    medications: tanim.saglik.ilac,
+                    specialEducation: tanim.saglik.ozelEgitim,
+                    healthNotes: tanim.saglik.saglikNotu,
+                    emergencyInfo: tanim.saglik.acil,
+                    internSafetyNote: tanim.saglik.stajyerUyarisi,
+                  },
+                },
+              }
+            : {}),
         },
       });
-      kayitSayisi++;
 
-      // Yalnızca yapılmış oturumlar puanlanır — gelecek tarihli oturumun
-      // formu uygulamada da kilitli (§10.5 yorumu, P7).
-      const oturumlar = await db.session.findMany({
-        where: { groupId: grup.id, date: { lte: new Date() } },
-        orderBy: [{ date: "asc" }, { workshopType: { sortOrder: "asc" } }],
-        include: {
-          workshopType: {
-            include: {
-              questions: {
-                where: { active: true },
-                orderBy: { sortOrder: "asc" },
+      const profil = PROFILLER[tanim.profil];
+
+      for (const grupAnahtari of tanim.kayitlar) {
+        const grup = gruplar[grupAnahtari];
+
+        const kayit = await db.enrollment.create({
+          data: {
+            studentId: ogrenci.id,
+            groupId: grup.id,
+            internId: stajyerler[tanim.stajyer].id,
+            status: "AKTIF",
+          },
+        });
+        kayitSayisi++;
+
+        // Yalnızca yapılmış oturumlar puanlanır — gelecek tarihli oturumun
+        // formu uygulamada da kilitli (§10.5 yorumu, P7).
+        const oturumlar = await db.session.findMany({
+          where: { groupId: grup.id, date: { lte: new Date() } },
+          orderBy: [{ date: "asc" }, { workshopType: { sortOrder: "asc" } }],
+          include: {
+            workshopType: {
+              include: {
+                questions: {
+                  where: { active: true },
+                  orderBy: { sortOrder: "asc" },
+                },
               },
             },
           },
-        },
-      });
+        });
 
-      // Gün sayısı, "ilk N günü doldur" profilleri için gerekiyor.
-      const gunler = [...new Set(oturumlar.map((o) => o.date.toISOString()))];
-      const rastgele = uretici(tohumla(`${ogrenci.id}-${grup.id}`));
+        // Gün sayısı, "ilk N günü doldur" profilleri için gerekiyor.
+        const gunler = [...new Set(oturumlar.map((o) => o.date.toISOString()))];
+        const rastgele = uretici(tohumla(`${ogrenci.id}-${grup.id}`));
 
-      for (const [sira, oturum] of oturumlar.entries()) {
-        const gunSirasi = gunler.indexOf(oturum.date.toISOString());
+        for (const [sira, oturum] of oturumlar.entries()) {
+          const gunSirasi = gunler.indexOf(oturum.date.toISOString());
 
-        // Form hiç doldurulmamış: satır yazılmaz (uygulamada "Eksik" görünür).
-        if (
-          profil.doldurulanGun !== undefined &&
-          gunSirasi >= profil.doldurulanGun
-        ) {
-          continue;
+          // Form hiç doldurulmamış: satır yazılmaz (uygulamada "Eksik" görünür).
+          if (
+            profil.doldurulanGun !== undefined &&
+            gunSirasi >= profil.doldurulanGun
+          ) {
+            continue;
+          }
+
+          const katilmadi = profil.katilmadigi?.includes(sira) ?? false;
+
+          const puanlama = await db.score.create({
+            data: {
+              sessionId: oturum.id,
+              enrollmentId: kayit.id,
+              attended: !katilmadi,
+              scoredByUserId: stajyerler[tanim.stajyer].id,
+            },
+          });
+          puanSayisi++;
+
+          // §10.2 — Katılmadıysa cevap satırı hiç yazılmaz.
+          if (katilmadi) continue;
+
+          const degerlendirilemez =
+            profil.degerlendirilemeyen?.includes(sira) ?? false;
+
+          await db.scoreAnswer.createMany({
+            data: oturum.workshopType.questions.map((soru, soruSirasi) => ({
+              scoreId: puanlama.id,
+              questionId: soru.id,
+              questionTextSnapshot: soru.text,
+              sortOrder: soruSirasi,
+              // "Değerlendirilemedi" bütün soruya değil, birkaç soruya konur;
+              // gerçekte de stajyer tek tek işaretliyor.
+              value:
+                profil.gozlemlenmeyenSorular?.includes(soruSirasi) ||
+                (degerlendirilemez && soruSirasi % 3 === 1)
+                  ? null
+                  : puanUret(profil, soruSirasi, rastgele),
+            })),
+          });
+          cevapSayisi += oturum.workshopType.questions.length;
         }
-
-        const katilmadi = profil.katilmadigi?.includes(sira) ?? false;
-
-        const puanlama = await db.score.create({
-          data: {
-            sessionId: oturum.id,
-            enrollmentId: kayit.id,
-            attended: !katilmadi,
-            scoredByUserId: stajyerler[tanim.stajyer]!.id,
-          },
-        });
-        puanSayisi++;
-
-        // §10.2 — Katılmadıysa cevap satırı hiç yazılmaz.
-        if (katilmadi) continue;
-
-        const degerlendirilemez =
-          profil.degerlendirilemeyen?.includes(sira) ?? false;
-
-        await db.scoreAnswer.createMany({
-          data: oturum.workshopType.questions.map((soru, soruSirasi) => ({
-            scoreId: puanlama.id,
-            questionId: soru.id,
-            questionTextSnapshot: soru.text,
-            sortOrder: soruSirasi,
-            // "Değerlendirilemedi" bütün soruya değil, birkaç soruya konur;
-            // gerçekte de stajyer tek tek işaretliyor.
-            value:
-              profil.gozlemlenmeyenSorular?.includes(soruSirasi) ||
-              (degerlendirilemez && soruSirasi % 3 === 1)
-                ? null
-                : puanUret(profil, soruSirasi, rastgele),
-          })),
-        });
-        cevapSayisi += oturum.workshopType.questions.length;
       }
     }
-  }
 
-  // --- Özet ----------------------------------------------------------------
-  const toplamOgrenci = await db.student.count();
   const doluluk = await Promise.all(
     Object.entries(gruplar).map(async ([anahtar, grup]) => {
       const sayi = await db.enrollment.count({
@@ -654,20 +800,65 @@ async function main() {
     }),
   );
 
-  console.log(`✓ ${OGRENCILER.length} örnek öğrenci`);
-  console.log(`✓ ${kayitSayisi} kayıt`);
+  console.log(`✓ ${set.ogrenciler.length} öğrenci · ${kayitSayisi} kayıt`);
   console.log(`✓ ${puanSayisi} puanlama formu, ${cevapSayisi} cevap satırı`);
-  console.log(`\n  Grup doluluğu:\n${doluluk.join("\n")}`);
+  console.log(`  Grup doluluğu:\n${doluluk.join("\n")}`);
+}
+
+async function main() {
+  // Bu betik uydurma öğrenci ve puan yazıyor. Üretim veritabanında
+  // çalıştırılması gerçek kayıtların arasına deneme verisi karıştırır ve geri
+  // almak zordur; uzak veritabanında baştan reddediliyor.
+  const adres = process.env.DATABASE_URL ?? "";
+  const yerel = adres.includes("localhost") || adres.includes("127.0.0.1");
+
+  if (!yerel && process.env.ORNEK_VERI_ONAY !== "evet") {
+    console.error(
+      "\nBu betik uydurma öğrenci verisi yazar ve yalnızca yerel veritabanı" +
+        "\niçindir. DATABASE_URL yerel bir adrese işaret etmiyor." +
+        "\n\nGerçekten devam etmek istiyorsanız: ORNEK_VERI_ONAY=evet\n",
+    );
+    process.exit(1);
+  }
+
+  console.log("Örnek veri yükleniyor...");
+
+  // Dönem ve kulüp ORTAK: iki şube de aynı programın içinde kendi gruplarını
+  // açıyor. Bu yüzden bir kez bulunuyor, şube döngüsünün dışında.
+  const donem = await db.term.findFirst({
+    orderBy: { createdAt: "asc" },
+    include: { weeks: { orderBy: { weekNumber: "asc" } }, workshops: true },
+  });
+  const kulup = await db.club.findFirst({
+    orderBy: { createdAt: "asc" },
+    include: { workshops: true },
+  });
+
+  if (!donem || donem.weeks.length === 0 || !kulup) {
+    throw new Error(
+      "Ortak dönem veya kulüp yok. Arayüzden bir dönem ve bir kulüp oluşturun.",
+    );
+  }
+
+  for (const set of SUBE_SETLERI) {
+    await subeVerisiUret(set, donem, kulup);
+  }
+
+  const toplamOgrenci = await db.student.count();
   console.log(`\n  Veritabanındaki toplam öğrenci: ${toplamOgrenci}`);
   console.log("\n  Denemeye değer profiller:");
-  for (const tanim of OGRENCILER) {
-    const p = PROFILLER[tanim.profil];
-    if (
-      ["azVeri", "gozlemlenemeyen", "devamsiz", "eksikFormlu", "puanlanmamis", "karma"].includes(
-        tanim.profil,
-      )
-    ) {
-      console.log(`    ${`${tanim.ad} ${tanim.soyad}`.padEnd(20)} ${p.ad}`);
+  for (const set of SUBE_SETLERI) {
+    for (const tanim of set.ogrenciler) {
+      const p = PROFILLER[tanim.profil];
+      if (
+        ["azVeri", "gozlemlenemeyen", "devamsiz", "eksikFormlu", "puanlanmamis", "karma"].includes(
+          tanim.profil,
+        )
+      ) {
+        console.log(
+          `    ${`${tanim.ad} ${tanim.soyad}`.padEnd(20)} ${p.ad.padEnd(24)} ${set.ad}`,
+        );
+      }
     }
   }
 }

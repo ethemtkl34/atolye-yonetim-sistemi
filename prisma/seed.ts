@@ -159,9 +159,23 @@ const YEREL_STAJYERLER = [
     role: "STAJYER" as const,
     branchId: "sube_umraniye",
   },
+  // Güneşli stajyerleri — şube izolasyonunun denenebilmesi için bu şubede de
+  // birden fazla stajyer var (atama ekranı tek stajyerle gerçekçi görünmüyor).
   {
-    email: "gunesli-stajyer@tuzder.local",
-    name: "Elif Demir",
+    email: "elif@tuzder.local",
+    name: "Elif Şahin",
+    role: "STAJYER" as const,
+    branchId: "sube_gunesli",
+  },
+  {
+    email: "burak@tuzder.local",
+    name: "Burak Yıldırım",
+    role: "STAJYER" as const,
+    branchId: "sube_gunesli",
+  },
+  {
+    email: "selin@tuzder.local",
+    name: "Selin Aktaş",
     role: "STAJYER" as const,
     branchId: "sube_gunesli",
   },
