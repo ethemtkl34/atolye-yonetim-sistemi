@@ -13,8 +13,13 @@ dahil"). Doğrulama üretim üzerinde yapılıyor.
 
 - Canlı: `atolye-yonetim-sistemi.vercel.app` (ayrıca `panel.tuzder.org` —
   henüz devrede değil)
-- Push edilince Vercel dağıtıyor ve `prisma migrate deploy` çalışıyor
+- Push edilince Vercel dağıtıyor: `prisma migrate deploy && vitest run &&
+  next build`. Test kırılırsa dağıtım durur — yerelde test döngüsü olmadığı
+  için tek gerçek kontrol noktası burası.
 - **Onay beklemeden push ediliyor** (kullanıcı kalıcı yetki verdi)
+- Kullanıcı sık sık **iki sohbette birden** çalışıyor: yalnızca kendi
+  değiştirdiğiniz dosyaları `git add` edin, `git add -A` başkasının işini
+  de gönderir.
 
 ### Üretim veritabanına erişim
 
@@ -143,10 +148,16 @@ Hesaplar ve parolalar için kullanıcıya sorun; parolalar bu belgeye yazılmad�
 
 ## Sıradaki iş
 
-**Bilinen açık iş yok.** Bugün eklenen her şey canlıda gerçek veriyle
-sınandı; en son çok haftalı kulüp uçtan uca denendi (4 gün seçildi → 12
-oturum, hafta numaraları 1–4) ve deneme verisi silindi.
+**Bilinen açık iş yok.** Eklenen her şey canlıda gerçek veriyle sınandı; çok
+haftalı kulüp uçtan uca denendi (4 gün seçildi → 12 oturum, hafta numaraları
+1–4) ve deneme verisi silindi. Mobil dokunma hedefleri ve şube sızıntısı
+koruması da bitti (yukarıya bakın).
 
-Sıradaki adım ürün kararı: gerçek kullanıma geçiş. `docs/YAYINA-ALMA.md`
-sırası izlenmeli — Neon yedeği → `db:temizlik` → `db:seed` → programların
-arayüzden kurulması.
+Kullanıcı **revize istekleriyle devam edecek** — sıradaki iş onun söyleyeceği
+şey. Aşağıdakiler yalnızca o gelmezse geçerli olan öneriler:
+
+- Gerçek kullanıma geçiş: `docs/YAYINA-ALMA.md` sırası — Neon yedeği →
+  `db:temizlik` → `db:seed` → programların arayüzden kurulması →
+  `panel.tuzder.org` alan adının devreye alınması.
+- Stajyer puanlama akışının telefonda uçtan uca denenmesi (dokunma hedefleri
+  ölçüldü, akışın kendisi mobilde baştan sona yürütülmedi).
