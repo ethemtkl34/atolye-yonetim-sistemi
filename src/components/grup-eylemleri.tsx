@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bildirim, Buton, Girdi } from "@/components/ui";
+import Link from "next/link";
+import { Bildirim, Buton, Girdi, butonStili } from "@/components/ui";
 import {
   grupAdiGuncelle,
   grupDurumDegistir,
@@ -49,6 +50,15 @@ export function GrupEylemleri({
 
   return (
     <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
+      {/* Takvim ayrı sayfada: 30 haftalık bir programda gün listesi karta
+          sığmaz, üstelik telafi günü eklemek kendi formunu istiyor. */}
+      <Link
+        href={`/koordinator/gruplar/${grupId}/takvim`}
+        className={butonStili("sade")}
+      >
+        Takvim
+      </Link>
+
       <Buton
         type="button"
         tur="sade"
