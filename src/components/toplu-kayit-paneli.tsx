@@ -169,12 +169,11 @@ export function TopluKayitPaneli({
   );
 
   /**
-   * Ekrandaki seçimler ham listeden TÜRETİLİYOR, temizlenmiyor.
+   * Ekranda geçerli sayılan seçimler: karşı listeye geçmiş kimlikler süzülür.
    *
-   * İşlem başarılı olunca sayfa tazeleniyor ve öğrenciler karşı listeye
-   * geçiyor; süzgeç onları kendiliğinden düşürüyor. Effect içinde `setState`
-   * çağırmak `react-hooks/set-state-in-effect` kuralına takıldığı gibi fazladan
-   * bir durum kaynağı da olurdu.
+   * Seçim işlem bitince ayrıca sıfırlanıyor (aşağıya bakın); bu süzgeç
+   * sıfırlama ile sunucudan gelen taze verinin arasındaki anı kapsıyor —
+   * o aralıkta seçim sayacı bir an yanlış görünüyordu.
    */
   const gecerliSecim = useMemo(
     () => secilenler.filter((id) => !kayitliIdleri.has(id)),
@@ -218,7 +217,26 @@ export function TopluKayitPaneli({
 
     cikarmaBasla(async () => {
       setCikarDurumu(await topluKayitCikar(grupId, gecerliCikarma));
+      // Seçim İŞLEM BİTİNCE sıfırlanıyor, süzgece bırakılmıyor. Süzgeç
+      // "artık bu grupta olmayanlar" diye çalıştığı için çıkarılan öğrenci
+      // geri eklendiğinde seçimi de geri geliyordu: yeni eklenen öğrenci
+      // "çıkarılmak üzere işaretli" görünüyordu.
+      setCikarilacaklar([]);
+      setSecilenler([]);
     });
+  }
+
+  /**
+   * Ekleme formu gönderilirken seçimler sıfırlanıyor.
+   *
+   * `FormData` bu noktada zaten toplanmış durumda, dolayısıyla gönderilen
+   * veri etkilenmiyor; amaç aynı simetrik hata: eklenen öğrenci sonradan
+   * çıkarılınca ekleme seçimi de geri gelirdi.
+   */
+  function ekleGonder(formVerisi: FormData) {
+    setSecilenler([]);
+    setCikarilacaklar([]);
+    ekleEylemi(formVerisi);
   }
 
   /**
@@ -382,7 +400,7 @@ export function TopluKayitPaneli({
           ) : null}
 
           {/* --- Eklenebilecekler --- */}
-          <form ref={formRef} action={ekleEylemi} className="space-y-3">
+          <form ref={formRef} action={ekleGonder} className="space-y-3">
             <input type="hidden" name="groupId" value={grupId} />
 
             <div className="flex flex-wrap items-center justify-between gap-2">
