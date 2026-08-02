@@ -554,6 +554,50 @@ export async function donemStajyerleriniGuncelle(
   };
 }
 
+/**
+ * Grubun adını değiştirir.
+ *
+ * Grup adı yalnızca bir etikettir ("1. Grup", "Cumartesi sabah"); kayıtlar,
+ * oturumlar ve puanlamalar gruba KİMLİKLE bağlı, adla değil. Bu yüzden
+ * yeniden adlandırma güvenli bir işlem ve geçmiş veriyi bozmuyor.
+ *
+ * Dönem ve kulüp grupları için tek eylem: `Group` tek model, kural aynı.
+ * Sayfa tazeleme grubun bağlı olduğu programa göre yapılıyor.
+ */
+export async function grupAdiGuncelle(
+  grupId: string,
+  ad: string,
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu();
+
+  const cozumlenen = GRUP_SEMASI.shape.name.safeParse(ad);
+  if (!cozumlenen.success) {
+    return { hata: cozumlenen.error.issues[0]?.message ?? "Grup adı geçersiz." };
+  }
+
+  // Şube kontrolü güncellemenin kendi `where`'inde: sıfır satır güncellendiyse
+  // grup ya yok ya da başka şubenin.
+  const grup = await db.group.findFirst({
+    where: { id: grupId, branchId: kullanici.aktifSubeId },
+    select: { termId: true, clubId: true, name: true },
+  });
+
+  if (!grup) return { hata: "Grup bulunamadı." };
+  if (grup.name === cozumlenen.data) return { basari: "Grup adı zaten aynı." };
+
+  await db.group.update({
+    where: { id: grupId },
+    data: { name: cozumlenen.data },
+  });
+
+  if (grup.termId) revalidatePath(`/koordinator/donemler/${grup.termId}`);
+  if (grup.clubId) revalidatePath(`/koordinator/kulupler/${grup.clubId}`);
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/kayitlar");
+
+  return { basari: `Grup adı "${cozumlenen.data}" olarak güncellendi.` };
+}
+
 export async function grupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {

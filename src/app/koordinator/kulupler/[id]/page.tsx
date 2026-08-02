@@ -8,7 +8,7 @@ import { KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihGunleBicimle } from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
-import { GrupDurumButonu } from "@/components/grup-durum-butonu";
+import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 
@@ -136,8 +136,9 @@ export default async function KulupDetaySayfasi(
                   ) : null}
                   {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
                 </div>
-                <GrupDurumButonu
+                <GrupEylemleri
                   grupId={grup.id}
+                  grupAdi={grup.name}
                   aktif={grup.active}
                   tur="kulup"
                 />

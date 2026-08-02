@@ -8,7 +8,7 @@ import { DONEM_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { bugun, grupZamani, haftaSonuBicimle } from "@/lib/tarih";
 import { mevcutHaftaNumarasi } from "@/lib/session-generator";
-import { GrupDurumButonu } from "@/components/grup-durum-butonu";
+import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
@@ -237,8 +237,9 @@ export default async function DonemDetaySayfasi(
                   ) : null}
                   {grup.active ? null : <Rozet tur="pasif">Kapalı</Rozet>}
                 </div>
-                <GrupDurumButonu
+                <GrupEylemleri
                   grupId={grup.id}
+                  grupAdi={grup.name}
                   aktif={grup.active}
                   tur="donem"
                 />
