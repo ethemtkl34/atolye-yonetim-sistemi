@@ -571,7 +571,12 @@ function puanUret(
 async function gruplariSagla(
   set: SubeSeti,
   donem: { id: string; weeks: { id: string; weekNumber: number; date: Date }[]; workshops: { workshopTypeId: string }[] },
-  kulup: { id: string; date: Date; workshops: { workshopTypeId: string }[] },
+  kulup: {
+    id: string;
+    date: Date;
+    weekDates: Date[];
+    workshops: { workshopTypeId: string }[];
+  },
 ) {
   const atolyeIdleri = donem.workshops.map((a) => a.workshopTypeId);
 
@@ -625,7 +630,9 @@ async function gruplariSagla(
       },
     });
     const oturumlar = kulupOturumlariniUret({
-      tarih: kulup.date,
+      // Kulüp artık haftalara yayılabiliyor; eski kayıtlarda liste boşsa tek
+      // gün olarak davranılıyor.
+      tarihler: kulup.weekDates.length > 0 ? kulup.weekDates : [kulup.date],
       atolyeIdleri: kulup.workshops.map((a) => a.workshopTypeId),
     });
     await db.session.createMany({

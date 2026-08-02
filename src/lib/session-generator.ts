@@ -23,6 +23,8 @@ export type HaftaGirdisi = {
 export type UretilecekOturum = {
   workshopTypeId: string;
   termWeekId: string | null;
+  /** Gösterim için hafta numarası; telafi günlerinde boş kalır. */
+  weekNumber: number | null;
   date: Date;
 };
 
@@ -59,6 +61,7 @@ export function donemOturumlariniUret({
       oturumlar.push({
         workshopTypeId: atolyeId,
         termWeekId: hafta.id,
+        weekNumber: hafta.weekNumber,
         date: grupTarihi(hafta.date, grupGunu),
       });
     }
@@ -70,21 +73,37 @@ export function donemOturumlariniUret({
 /**
  * Bir kulüp grubunun oturumlarını üretir.
  *
- * §2.5 — Kulüp tek yarım gün sürer ve 3 atölye içerir; hafta kavramı yoktur,
- * bu yüzden `termWeekId` boş kalır.
+ * Kulüp eskiden TEK yarım gündü; artık birden çok haftaya yayılabiliyor ve
+ * hafta sayısı serbest. Tarihler kulübün kendi listesinden geliyor
+ * (`Club.weekDates`), dönemdeki gibi bir çapa hesabı yok: kulüp haftaları
+ * doğrudan seçilen günlerdir.
+ *
+ * `termWeekId` boş kalmaya devam ediyor — kulübün `TermWeek` kaydı yok. Hafta
+ * numarası oturumun kendi alanında taşınıyor.
  */
 export function kulupOturumlariniUret({
-  tarih,
+  tarihler,
   atolyeIdleri,
 }: {
-  tarih: Date;
+  tarihler: readonly Date[];
   atolyeIdleri: readonly string[];
 }): UretilecekOturum[] {
-  return atolyeIdleri.map((atolyeId) => ({
-    workshopTypeId: atolyeId,
-    termWeekId: null,
-    date: tarih,
-  }));
+  const oturumlar: UretilecekOturum[] = [];
+
+  const sirali = [...tarihler].sort((a, b) => a.getTime() - b.getTime());
+
+  for (const [sira, tarih] of sirali.entries()) {
+    for (const atolyeId of atolyeIdleri) {
+      oturumlar.push({
+        workshopTypeId: atolyeId,
+        termWeekId: null,
+        weekNumber: sira + 1,
+        date: tarih,
+      });
+    }
+  }
+
+  return oturumlar;
 }
 
 /**

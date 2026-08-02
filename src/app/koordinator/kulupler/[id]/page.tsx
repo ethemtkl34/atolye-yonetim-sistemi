@@ -6,7 +6,7 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { KULUP_DURUMLARI } from "@/lib/durumlar";
 import { kontenjanDurumu } from "@/lib/scoring";
-import { grupZamani, tarihGunleBicimle } from "@/lib/tarih";
+import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { DurumSecici } from "./durum-secici";
@@ -57,6 +57,11 @@ export default async function KulupDetaySayfasi(
 
   const durum = KULUP_DURUMLARI[kulup.status];
 
+  // Eski kulüplerde `weekDates` boş kalmış olabilir; migration dolduruyor ama
+  // okuma tarafı da kendini korusun.
+  const gunler =
+    kulup.weekDates.length > 0 ? kulup.weekDates : [kulup.date];
+
   return (
     <div className="space-y-6">
       <div>
@@ -79,11 +84,35 @@ export default async function KulupDetaySayfasi(
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Rozet tur={durum.rozet}>{durum.etiket}</Rozet>
+          {/* Kulüp artık tek gün olmak zorunda değil; kaç gün sürdüğü
+              başlıkta görünüyor, günlerin kendisi aşağıda listeleniyor. */}
           <span className="text-sm text-zinc-600">
-            {tarihGunleBicimle(kulup.date)}
+            {gunler.length === 1
+              ? tarihGunleBicimle(gunler[0])
+              : `${gunler.length} gün · ${tarihBicimle(gunler[0])} – ${tarihBicimle(gunler[gunler.length - 1])}`}
           </span>
         </div>
       </div>
+
+      {gunler.length > 1 ? (
+        <Kart className="p-4">
+          <h2 className="text-base font-semibold text-zinc-900">
+            Kulüp takvimi
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            Bu günler yeni açılan grupların başlangıç takvimidir. Grup
+            açıldıktan sonra takvimi grubun kendi sayfasından düzenlenir.
+          </p>
+          <ol className="mt-3 grid gap-1 text-sm text-zinc-700 sm:grid-cols-2">
+            {gunler.map((gun, sira) => (
+              <li key={gun.toISOString()}>
+                <span className="text-zinc-400">{sira + 1}.</span>{" "}
+                {tarihGunleBicimle(gun)}
+              </li>
+            ))}
+          </ol>
+        </Kart>
+      ) : null}
 
       {/* --- Atölyeler --- */}
       <Kart className="p-4">
@@ -154,7 +183,7 @@ export default async function KulupDetaySayfasi(
 
         <GrupEkleFormu
           kulupId={kulup.id}
-          bilgi={`Yeni grup ${tarihGunleBicimle(kulup.date)} günü toplanır ve aynı ${KULUP_ATOLYE_SAYISI} atölyeyi kullanır. Gruplar zaman dilimiyle ayrışır.`}
+          bilgi={`Yeni grup kulübün ${gunler.length} gününde toplanır ve aynı ${KULUP_ATOLYE_SAYISI} atölyeyi kullanır. Gruplar zaman dilimiyle ayrışır; takvim sonradan grup bazında düzenlenebilir.`}
           engelSebebi={
             kulup.status !== "TASLAK" && kulup.status !== "KAYIT_ALIYOR"
               ? `Bu kulüp "${durum.etiket}" durumunda; yeni grup eklenemez.`

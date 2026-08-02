@@ -134,7 +134,11 @@ export default async function KuluplerSayfasi(
                 </div>
 
                 <p className="mt-1 text-sm text-zinc-600">
-                  {tarihGunleBicimle(kulup.date)} · {kulup.groups.length} grup ·{" "}
+                  {tarihGunleBicimle(kulup.date)}
+                  {kulup.weekDates.length > 1
+                    ? ` · ${kulup.weekDates.length} gün`
+                    : ""}{" "}
+                  · {kulup.groups.length} grup ·{" "}
                   {kontenjan.doluluk}/{kontenjan.kapasite} öğrenci
                 </p>
 

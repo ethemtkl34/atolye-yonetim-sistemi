@@ -108,18 +108,43 @@ describe("donemOturumlariniUret", () => {
 });
 
 describe("kulupOturumlariniUret", () => {
-  it("3 atölye için 3 oturum üretir ve hafta bağı kurmaz", () => {
-    // §13.6 — Kulüp tek yarım gün, 3 atölye.
+  it("tek günlük kulüpte 3 atölye için 3 oturum üretir", () => {
     const oturumlar = kulupOturumlariniUret({
-      tarih: new Date(Date.UTC(2026, 10, 7)),
+      tarihler: [new Date(Date.UTC(2026, 10, 7))],
       atolyeIdleri: ["a1", "a2", "a3"],
     });
 
     expect(oturumlar).toHaveLength(3);
+    // Kulübün `TermWeek` kaydı yok; hafta numarası oturumun kendi alanında.
     expect(oturumlar.every((o) => o.termWeekId === null)).toBe(true);
+    expect(oturumlar.every((o) => o.weekNumber === 1)).toBe(true);
     expect(oturumlar.every((o) => tarihMetni(o.date) === "2026-11-07")).toBe(
       true,
     );
+  });
+
+  it("çok haftalı kulüpte her güne bütün atölyeleri yazar", () => {
+    const oturumlar = kulupOturumlariniUret({
+      tarihler: [
+        new Date(Date.UTC(2026, 10, 14)),
+        new Date(Date.UTC(2026, 10, 7)),
+        new Date(Date.UTC(2026, 10, 21)),
+      ],
+      atolyeIdleri: ["a1", "a2", "a3"],
+    });
+
+    expect(oturumlar).toHaveLength(9);
+
+    // Tarihler sıralanıyor: hafta numarası girilme sırasına değil TAKVİME
+    // göre verilmeli, yoksa "2. hafta" 1. haftadan önce gelebilir.
+    const gunler = [...new Set(oturumlar.map((o) => tarihMetni(o.date)))];
+    expect(gunler).toEqual(["2026-11-07", "2026-11-14", "2026-11-21"]);
+
+    const ilkGun = oturumlar.filter((o) => tarihMetni(o.date) === "2026-11-07");
+    expect(ilkGun.every((o) => o.weekNumber === 1)).toBe(true);
+
+    const sonGun = oturumlar.filter((o) => tarihMetni(o.date) === "2026-11-21");
+    expect(sonGun.every((o) => o.weekNumber === 3)).toBe(true);
   });
 });
 

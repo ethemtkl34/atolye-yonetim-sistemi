@@ -253,9 +253,23 @@ model TermWeek {
 
 /// §2.5 — Dönemden bağımsız, tek yarım günlük hazır program.
 model Club {
-  id          String     @id @default(cuid())
-  name        String
-  date        DateTime   @db.Date
+  id   String @id @default(cuid())
+  name String
+
+  /// Kulübün İLK toplanma günü. `weekDates`'in ilk elemanıyla aynı tutulur;
+  /// listeler ve kartlar tek bir tarih gösterdiği için ayrıca duruyor
+  /// (sıralama da bunun üzerinden yapılıyor).
+  date DateTime @db.Date
+
+  /// Kulübün bütün toplanma günleri.
+  ///
+  /// Kulüp eskiden TEK yarım gündü; artık dönem gibi haftalara yayılabiliyor
+  /// ve hafta sayısı serbest (1 de olur, 30 da). Ayrı bir `ClubWeek` tablosu
+  /// açılmadı: kulüp haftasına bağlanan başka bir kayıt yok, liste sadece
+  /// grup açılırken oturum üretmek için okunuyor. Tablo, ilişkisi olmayan bir
+  /// veri için fazladan bir katman olurdu.
+  weekDates DateTime[] @db.Date
+
   description String?
   status      ClubStatus @default(TASLAK)
   createdAt   DateTime   @default(now())
@@ -455,6 +469,16 @@ model Session {
   /// Kulüp oturumlarında boştur; kulübün tek tarihi vardır, hafta kavramı yok.
   termWeekId String?
   termWeek   TermWeek? @relation(fields: [termWeekId], references: [id], onDelete: Cascade)
+
+  /// Programın kaçıncı haftası — yalnızca GÖSTERİM için.
+  ///
+  /// Dönemde bu bilgi `termWeek` üzerinden okunuyordu ama kulüpte öyle bir
+  /// bağ yok ve kulüp artık haftalara yayılabiliyor. Sayıyı oturumun üstünde
+  /// tutmak iki program türünü tek okumada birleştiriyor.
+  ///
+  /// Telafi günlerinde BOŞ: sonradan eklenen bir gün dönemin 3. haftası
+  /// değildir, arasına sıkışan fazladan bir gündür.
+  weekNumber Int?
 
   date DateTime @db.Date
 

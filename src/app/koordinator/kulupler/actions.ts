@@ -6,7 +6,11 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
-import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
+import {
+  EN_AZ_HAFTA,
+  EN_FAZLA_HAFTA,
+  KULUP_ATOLYE_SAYISI,
+} from "@/lib/kurallar";
 import { kulupOturumlariniUret } from "@/lib/session-generator";
 import { gunundenGun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
@@ -26,7 +30,6 @@ export type EylemDurumu = {
 const KULUP_FORM_ALANLARI = [
   "name",
   "description",
-  "date",
   "grupAdi",
   "grupZamanDilimi",
   "grupKontenjani",
@@ -48,29 +51,48 @@ const kulupSemasi = z.object({
     .transform((d) => (d ? d : null)),
 });
 
-/** Kulüp grubunda gün sorulmaz; kulübün tarihinden türetilir (aşağıdaki nota bakın). */
+/** Kulüp grubunda gün sorulmaz; kulübün ilk toplanma gününden türetilir. */
 const kulupGrubuSemasi = GRUP_SEMASI.omit({ day: true });
 
 /**
- * Kulüp tarihini doğrular.
+ * Kulübün toplanma günlerini doğrular.
  *
- * §5.1 kulübün tek bir tarihi olduğunu, §2.3 ise grubun cumartesi veya pazar
- * toplandığını söylüyor. Kulübün tek tarihi olduğu için grubun günü serbest
- * bir seçim olamaz: tarih cumartesiye denk geliyorsa grup cumartesi grubudur.
- * Bu yüzden gün formda sorulmuyor, tarihten türetiliyor; kulüp grupları
- * birbirinden **zaman dilimiyle** ayrışır (§5.2).
+ * Kulüp eskiden TEK yarım gündü; artık haftalara yayılabiliyor ve hafta
+ * sayısı serbest. Günlerin hepsi hafta sonuna denk gelmeli — kulübün tanımı
+ * bu — ama kaç tane olduğuna kurum karar veriyor.
  */
-function kulupTarihiniDogrula(metin: string): { hata: string } | { tarih: Date } {
-  const tarih = tarihCozumle(metin);
-  if (!tarih) return { hata: "Geçerli bir kulüp tarihi seçin." };
-
-  if (!gunundenGun(tarih)) {
+function kulupGunleriniDogrula(
+  metinler: string[],
+): { hata: string } | { tarihler: Date[] } {
+  if (metinler.length < EN_AZ_HAFTA) {
+    return { hata: "En az bir kulüp günü seçilmeli." };
+  }
+  if (metinler.length > EN_FAZLA_HAFTA) {
     return {
-      hata: `${tarihBicimle(tarih)} bir hafta sonu değil. Kulüpler yalnızca cumartesi veya pazar yapılır.`,
+      hata: `En fazla ${EN_FAZLA_HAFTA} gün seçilebilir. Şu an ${metinler.length} gün seçili.`,
     };
   }
 
-  return { tarih };
+  const tarihler: Date[] = [];
+  for (const metin of metinler) {
+    const tarih = tarihCozumle(metin);
+    if (!tarih) return { hata: `Geçersiz tarih: ${metin}` };
+
+    if (!gunundenGun(tarih)) {
+      return {
+        hata: `${tarihBicimle(tarih)} bir hafta sonu değil. Kulüpler yalnızca cumartesi veya pazar yapılır.`,
+      };
+    }
+    tarihler.push(tarih);
+  }
+
+  const benzersiz = new Set(tarihler.map((t) => t.toISOString()));
+  if (benzersiz.size !== tarihler.length) {
+    return { hata: "Aynı gün birden fazla kez seçilmiş." };
+  }
+
+  tarihler.sort((a, b) => a.getTime() - b.getTime());
+  return { tarihler };
 }
 
 /** §5.1 — Kulüpte tam 3 atölye bulunur (§13.6). */
@@ -135,7 +157,9 @@ export async function kulupOlustur(
   }
   if (!kulup.success || !grup.success) return { hata: "Form doğrulanamadı." };
 
-  const tarihSonucu = kulupTarihiniDogrula(String(formVerisi.get("date") ?? ""));
+  const tarihSonucu = kulupGunleriniDogrula(
+    formVerisi.getAll("tarihler").map(String).filter(Boolean),
+  );
   if ("hata" in tarihSonucu) {
     return { hata: tarihSonucu.hata, degerler: girilenler };
   }
@@ -147,8 +171,11 @@ export async function kulupOlustur(
     return { hata: atolyeSonucu.hata, degerler: girilenler };
   }
 
-  const gun = gunundenGun(tarihSonucu.tarih);
-  if (!gun) return { hata: "Kulüp tarihi hafta sonuna denk gelmeli." };
+  // Grubun günü İLK toplanma gününden türetiliyor: kulüp grubu haftadan
+  // haftaya gün değiştirmez, cumartesi kulübü hep cumartesi toplanır.
+  // Farklı bir gün gerekiyorsa grup takviminden o gün taşınır.
+  const gun = gunundenGun(tarihSonucu.tarihler[0]);
+  if (!gun) return { hata: "Kulüp günü hafta sonuna denk gelmeli." };
 
   // Kulüp, atölyeleri, ilk grubu ve grubun 3 oturumu tek işlemde yazılır.
   const yeniKulup = await db.$transaction(async (tx) => {
@@ -156,7 +183,9 @@ export async function kulupOlustur(
       data: {
         name: kulup.data.name,
         description: kulup.data.description,
-        date: tarihSonucu.tarih,
+        // `date` ilk toplanma günü; listeler ve sıralama onu okuyor.
+        date: tarihSonucu.tarihler[0],
+        weekDates: tarihSonucu.tarihler,
         status: "KAYIT_ALIYOR",
         workshops: {
           create: atolyeSonucu.idler.map((atolyeId, sira) => ({
@@ -181,7 +210,7 @@ export async function kulupOlustur(
     });
 
     const oturumlar = kulupOturumlariniUret({
-      tarih: tarihSonucu.tarih,
+      tarihler: tarihSonucu.tarihler,
       atolyeIdleri: atolyeSonucu.idler,
     });
 
@@ -297,8 +326,13 @@ export async function kulupGrupEkle(
     return { hata: "Kulüp tarihi hafta sonuna denk gelmiyor; grup eklenemez." };
   }
 
+  // Eski kulüplerde `weekDates` boş kalmış olabilir; o zaman tek gün
+  // (`date`) kullanılır — migration bunu dolduruyor ama okuma tarafı da
+  // kendini korusun.
+  const gunler = kulup.weekDates.length > 0 ? kulup.weekDates : [kulup.date];
+
   const oturumlar = kulupOturumlariniUret({
-    tarih: kulup.date,
+    tarihler: gunler,
     atolyeIdleri: kulup.workshops.map((atolye) => atolye.workshopTypeId),
   });
 

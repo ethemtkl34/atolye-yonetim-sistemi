@@ -11,7 +11,11 @@ import {
   tarihCozumle,
   tarihMetni,
 } from "@/lib/tarih";
-import { DONEM_ATOLYE_SAYISI, HAFTA_SAYISI } from "@/lib/kurallar";
+import {
+  DONEM_ATOLYE_SAYISI,
+  EN_AZ_HAFTA,
+  EN_FAZLA_HAFTA,
+} from "@/lib/kurallar";
 import { donemOlustur, type EylemDurumu } from "../actions";
 
 export type AtolyeSecenegi = { id: string; name: string };
@@ -134,7 +138,11 @@ export function DonemSihirbazi({
     );
   }
 
-  const haftaTamam = secilenHaftalar.length === HAFTA_SAYISI;
+  // Hafta sayısı SABİT DEĞİL: kurum 6 haftalık da 30 haftalık da program
+  // açıyor ve müfredat buna göre kuruluyor. Tek şart en az bir hafta.
+  const haftaTamam =
+    secilenHaftalar.length >= EN_AZ_HAFTA &&
+    secilenHaftalar.length <= EN_FAZLA_HAFTA;
   const atolyeTamam = secilenAtolyeler.length === DONEM_ATOLYE_SAYISI;
 
   // Neyin eksik olduğu tek yerde hesaplanıyor: aynı metin hem butonun
@@ -146,7 +154,9 @@ export function DonemSihirbazi({
   const eksikMetni = [
     haftaTamam
       ? null
-      : `${HAFTA_SAYISI - secilenHaftalar.length} hafta daha seçin`,
+      : secilenHaftalar.length === 0
+        ? "En az bir eğitim haftası seçin"
+        : `En fazla ${EN_FAZLA_HAFTA} hafta seçilebilir`,
     atolyeTamam
       ? null
       : atolyeYetersiz
@@ -202,14 +212,15 @@ export function DonemSihirbazi({
               haftaTamam ? "text-emerald-700" : "text-vurgu-700",
             )}
           >
-            {secilenHaftalar.length} / {HAFTA_SAYISI} hafta seçildi
+            {secilenHaftalar.length} hafta seçildi
           </span>
         </div>
 
         <p className="text-sm text-zinc-600">
-          Tatil ve ara verilecek hafta sonlarını işaretlemeyin. Dönem her zaman{" "}
-          {HAFTA_SAYISI} eğitim haftasıdır; atlanan haftalar yüzünden takvim
-          daha uzun sürebilir.
+          Kaç hafta süreceğine siz karar verirsiniz — müfredat neyi
+          gerektiriyorsa. Tatil ve ara verilecek hafta sonlarını
+          işaretlemeyin; atlanan haftalar yüzünden takvim daha uzun sürebilir.
+          Program açıldıktan sonra her grubun takvimi ayrı ayrı düzenlenebilir.
         </p>
 
         <Alan etiket="Listeyi şu tarihten başlat">
@@ -276,7 +287,10 @@ export function DonemSihirbazi({
 
         <p className="text-sm text-zinc-600">
           Seçilen {DONEM_ATOLYE_SAYISI} atölye, dönemin bütün gruplarında ve{" "}
-          {HAFTA_SAYISI} haftanın tamamında uygulanır.
+          {secilenHaftalar.length > 0
+            ? `${secilenHaftalar.length} haftanın`
+            : "seçtiğiniz haftaların"}{" "}
+          tamamında uygulanır.
         </p>
 
         {atolyeler.length < DONEM_ATOLYE_SAYISI ? (
@@ -443,9 +457,20 @@ export function DonemSihirbazi({
           engelSebebi={eksikMetni}
         />
         {haftaTamam && atolyeTamam ? (
-          <span className="text-sm text-zinc-500">
-            {HAFTA_SAYISI} hafta × {DONEM_ATOLYE_SAYISI} atölye ={" "}
-            {HAFTA_SAYISI * DONEM_ATOLYE_SAYISI} atölye oturumu oluşturulacak.
+          /*
+            Hafta sayısı artık serbest olduğu için kaydetmeden ÖNCE sayıyla
+            teyit ettiriliyor: "10 hafta" varsayılan değil, kullanıcının
+            seçimi. Yanlış sayıyla açılan bir dönemin oturumları üretildikten
+            sonra düzeltmek tek tek gün taşımak demek.
+          */
+          <span className="text-sm text-zinc-700">
+            <strong className="font-semibold">
+              {secilenHaftalar.length} hafta
+            </strong>{" "}
+            seçtiniz — müfredat buna göre mi? {secilenHaftalar.length} hafta ×{" "}
+            {DONEM_ATOLYE_SAYISI} atölye ={" "}
+            {secilenHaftalar.length * DONEM_ATOLYE_SAYISI} atölye oturumu
+            oluşturulacak.
           </span>
         ) : (
           /* Buton eksik seçimde kilitli. Genel bir ipucu ("10 hafta ve 5

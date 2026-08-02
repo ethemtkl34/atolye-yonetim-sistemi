@@ -6,8 +6,20 @@
  * fonksiyon dışa aktarabilir; sabitleri oraya koymak derlemeyi bozar.
  */
 
-/** §13.1 — Bir dönem tam olarak 10 eğitim haftasına sahiptir. */
-export const HAFTA_SAYISI = 10;
+/**
+ * Programın hafta sayısı SABİT DEĞİL.
+ *
+ * §13.1 "bir dönem tam olarak 10 hafta" diyordu ve sistem bunu zorluyordu.
+ * Kurum pratikte farklı uzunlukta programlar açıyor — 6 haftalık bir kulüp,
+ * 30 haftalık bir dönem — ve müfredat buna göre değişiyor. Sayı artık
+ * koordinatörün kararı; aşağıdakiler yalnızca varsayılan ve makul sınırlar.
+ *
+ * Üst sınır bir yıl: daha uzun bir "program" pratikte iki ayrı programdır ve
+ * kazara 300 hafta seçilmesi 1500 oturum üretirdi.
+ */
+export const VARSAYILAN_HAFTA_SAYISI = 10;
+export const EN_AZ_HAFTA = 1;
+export const EN_FAZLA_HAFTA = 52;
 
 /** §13.2 — Bir dönem grubunda her eğitim gününde 5 atölye yapılır. */
 export const DONEM_ATOLYE_SAYISI = 5;

@@ -1,16 +1,26 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
+import {
+  EN_AZ_HAFTA,
+  EN_FAZLA_HAFTA,
+  KULUP_ATOLYE_SAYISI,
+} from "@/lib/kurallar";
 import { bugun, gunEkle, tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import { kulupOlustur, type EylemDurumu } from "../actions";
 
 export type AtolyeSecenegi = { id: string; name: string };
 
-/** Verilen tarihten sonraki ilk cumartesi — varsayılan kulüp tarihi. */
+/**
+ * Listede gösterilen hafta sayısı — seçilebilecek gün sayısının sınırı değil.
+ * Dönem sihirbazındaki 26 haftalık pencerenin kulüp karşılığı.
+ */
+const GOSTERILEN_HAFTA = 26;
+
+/** Verilen tarihten sonraki ilk cumartesi — varsayılan kulüp günü. */
 function sonrakiCumartesi(tarih: Date): Date {
   const gun = tarih.getUTCDay();
   return gunEkle(tarih, (6 - gun + 7) % 7);
@@ -48,15 +58,41 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
     {},
   );
 
-  const [tarih, setTarih] = useState(() =>
+  // Kulüp eskiden TEK yarım gündü ve formda tek tarih vardı. Artık haftalara
+  // yayılabiliyor: liste dönem sihirbazındakiyle aynı biçimde, hafta sonlarını
+  // işaretleyerek kuruluyor.
+  const [baslangic, setBaslangic] = useState(() =>
     tarihMetni(sonrakiCumartesi(bugun())),
   );
+  const [secilenGunler, setSecilenGunler] = useState<string[]>(() => [
+    tarihMetni(sonrakiCumartesi(bugun())),
+  ]);
   const [secilenAtolyeler, setSecilenAtolyeler] = useState<string[]>([]);
 
-  const secilenTarih = tarihCozumle(tarih);
-  const haftaSonu = secilenTarih
-    ? [0, 6].includes(secilenTarih.getUTCDay())
-    : false;
+  const adaylar = useMemo(() => {
+    const baslangicTarihi = tarihCozumle(baslangic);
+    if (!baslangicTarihi) return [];
+    const ilk = sonrakiCumartesi(baslangicTarihi);
+    // Her hafta için cumartesi ve pazar ayrı aday: kulüp iki günden birinde
+    // yapılabiliyor ve bir kulüp hafta hafta gün değiştirmiyor ama kurum
+    // hangi günü kullanacağını burada seçiyor.
+    return Array.from({ length: GOSTERILEN_HAFTA }, (_, i) => {
+      const cumartesi = gunEkle(ilk, i * 7);
+      return [cumartesi, gunEkle(cumartesi, 1)];
+    }).flat();
+  }, [baslangic]);
+
+  function gunDegistir(metin: string) {
+    setSecilenGunler((oncekiler) =>
+      oncekiler.includes(metin)
+        ? oncekiler.filter((g) => g !== metin)
+        : [...oncekiler, metin],
+    );
+  }
+
+  const gunTamam =
+    secilenGunler.length >= EN_AZ_HAFTA &&
+    secilenGunler.length <= EN_FAZLA_HAFTA;
   const atolyeTamam = secilenAtolyeler.length === KULUP_ATOLYE_SAYISI;
 
   // Dönem sihirbazıyla aynı biçim: eksik olan şey tek yerde hesaplanıp hem
@@ -64,7 +100,11 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
   const atolyeYetersiz = atolyeler.length < KULUP_ATOLYE_SAYISI;
 
   const eksikMetni = [
-    haftaSonu ? null : "Hafta sonuna denk gelen bir tarih seçin",
+    gunTamam
+      ? null
+      : secilenGunler.length === 0
+        ? "En az bir kulüp günü seçin"
+        : `En fazla ${EN_FAZLA_HAFTA} gün seçilebilir`,
     atolyeTamam
       ? null
       : atolyeYetersiz
@@ -100,35 +140,6 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
         </Alan>
 
         <Alan
-          etiket="Kulüp tarihi"
-          ipucu="Kulüp tek yarım gün sürer; grup bu tarihte toplanır."
-        >
-          <Girdi
-            type="date"
-            name="date"
-            value={tarih}
-            onChange={(e) => setTarih(e.target.value)}
-            className="max-w-xs"
-            required
-          />
-        </Alan>
-
-        {secilenTarih ? (
-          haftaSonu ? (
-            <p className="text-sm text-zinc-600">
-              Seçilen tarih: <strong>{tarihGunleBicimle(secilenTarih)}</strong>.
-              Grup bu gün toplanır; ikinci bir grup açılırsa aynı gün, farklı
-              zaman diliminde olur.
-            </p>
-          ) : (
-            <Bildirim tur="hata">
-              {tarihGunleBicimle(secilenTarih)} bir hafta sonu değil. Kulüpler
-              yalnızca cumartesi veya pazar yapılır.
-            </Bildirim>
-          )
-        ) : null}
-
-        <Alan
           etiket="Açıklama"
           ipucu="İsteğe bağlı."
           hata={durum.alanHatalari?.description}
@@ -139,6 +150,63 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
             defaultValue={durum.degerler?.description}
           />
         </Alan>
+
+        <Alan
+          etiket="Listeyi şu tarihten başlat"
+          ipucu="Aşağıdaki liste bu tarihten sonraki hafta sonlarını gösterir."
+        >
+          <Girdi
+            type="date"
+            value={baslangic}
+            onChange={(e) => setBaslangic(e.target.value)}
+            className="max-w-xs"
+          />
+        </Alan>
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-sm font-medium text-zinc-700">
+              Kulüp günleri
+            </span>
+            <span className="text-sm font-medium text-zinc-600">
+              {secilenGunler.length} gün seçildi
+            </span>
+          </div>
+          <p className="text-sm text-zinc-600">
+            Kulüp tek yarım gün de sürebilir, haftalara da yayılabilir — kaç
+            gün süreceğine siz karar verirsiniz. Program açıldıktan sonra her
+            grubun takvimi ayrı ayrı düzenlenebilir.
+          </p>
+
+          <div className="grid gap-1 sm:grid-cols-2">
+            {adaylar.map((gun: Date) => {
+              const metin = tarihMetni(gun);
+              const secili = secilenGunler.includes(metin);
+              return (
+                <label
+                  key={metin}
+                  className={cn(
+                    "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-md border px-3 text-sm sm:min-h-0 sm:py-2",
+                    secili
+                      ? "border-marka-600 bg-marka-50 text-marka-800"
+                      : "border-yuzey-200 bg-white text-zinc-700 hover:bg-marka-50",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    name="tarihler"
+                    value={metin}
+                    checked={secili}
+                    onChange={() => gunDegistir(metin)}
+                    className="size-4 accent-marka-600"
+                  />
+                  {tarihGunleBicimle(gun)}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
       </Kart>
 
       {/* --- Atölyeler --- */}
@@ -249,12 +317,23 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <KaydetButonu
-          etkin={atolyeTamam && haftaSonu}
+          etkin={atolyeTamam && gunTamam}
           engelSebebi={eksikMetni}
         />
-        {atolyeTamam && haftaSonu ? (
-          <span className="text-sm text-zinc-500">
-            {KULUP_ATOLYE_SAYISI} atölye oturumu oluşturulacak.
+        {atolyeTamam && gunTamam ? (
+          /*
+            Gün sayısı artık serbest; kaydetmeden ÖNCE sayıyla teyit
+            ettiriliyor. Yanlış sayıyla açılan bir kulübün oturumları
+            üretildikten sonra düzeltmek tek tek gün taşımak demek.
+          */
+          <span className="text-sm text-zinc-700">
+            <strong className="font-semibold">
+              {secilenGunler.length} gün
+            </strong>{" "}
+            seçtiniz — müfredat buna göre mi? {secilenGunler.length} gün ×{" "}
+            {KULUP_ATOLYE_SAYISI} atölye ={" "}
+            {secilenGunler.length * KULUP_ATOLYE_SAYISI} atölye oturumu
+            oluşturulacak.
           </span>
         ) : (
           /* Dönem sihirbazıyla aynı gerekçe: eksiğin ne olduğu sayıyla

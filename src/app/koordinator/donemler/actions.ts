@@ -15,7 +15,11 @@ import {
   donemOturumlariniUret,
   mevcutHaftaNumarasi,
 } from "@/lib/session-generator";
-import { DONEM_ATOLYE_SAYISI, HAFTA_SAYISI } from "@/lib/kurallar";
+import {
+  DONEM_ATOLYE_SAYISI,
+  EN_AZ_HAFTA,
+  EN_FAZLA_HAFTA,
+} from "@/lib/kurallar";
 import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
 import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
 
@@ -68,9 +72,16 @@ const donemSemasi = z.object({
 function haftalariDogrula(
   tarihMetinleri: string[],
 ): { hata: string } | { haftalar: Date[] } {
-  if (tarihMetinleri.length !== HAFTA_SAYISI) {
+  // Hafta sayısı SABİT DEĞİL: kurum 6 haftalık da 30 haftalık da program
+  // açabiliyor ve müfredat buna göre kuruluyor. Yalnızca alt ve üst sınır
+  // var; üst sınır kazara üç haneli bir sayı girilip binlerce oturum
+  // üretilmesini engelliyor.
+  if (tarihMetinleri.length < EN_AZ_HAFTA) {
+    return { hata: "En az bir eğitim haftası seçilmeli." };
+  }
+  if (tarihMetinleri.length > EN_FAZLA_HAFTA) {
     return {
-      hata: `Tam ${HAFTA_SAYISI} eğitim haftası seçilmeli. Şu an ${tarihMetinleri.length} hafta seçili.`,
+      hata: `En fazla ${EN_FAZLA_HAFTA} hafta seçilebilir. Şu an ${tarihMetinleri.length} hafta seçili.`,
     };
   }
 
@@ -91,7 +102,7 @@ function haftalariDogrula(
   }
 
   const benzersiz = new Set(capalar.map(tarihMetni));
-  if (benzersiz.size !== HAFTA_SAYISI) {
+  if (benzersiz.size !== capalar.length) {
     return {
       hata: "Aynı hafta sonu birden fazla kez seçilmiş. Her hafta yalnızca bir kez seçilebilir.",
     };
