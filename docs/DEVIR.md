@@ -83,6 +83,24 @@ canlıda ölçüldü; 40px altı kalmadı.
 yüksekliklerini saymak. Bir tur yalnızca `main`'i taradığı için üst şerit
 gözden kaçmıştı — tarama her iki bölgeyi de kapsamalı.
 
+İki ayrı yanılma kaynağı var, ölçüm ikisini de hesaba katmalı:
+
+- **Gerilmiş bağlantı** (`after:absolute after:inset-0`) kartın tamamını
+  kaplar; öğenin kendi kutusu 21px görünse de gerçek hedef ~122px. Ölçümde
+  `getComputedStyle(e, '::after')` bakılıp bunlar elenmeli, yoksa öğrenci
+  listesi 21 sahte bulgu üretir.
+- **Toplu sınıf değiştirme tam dize eşleştirir.** `inline-flex ` öneki
+  taşıyan ya da farklı ton kullanan yedi bağlantı ilk turda desene uymayıp
+  16–20px kalmıştı; en kritiği stajyerin telefonda en çok dokunduğu
+  "… gününü doldur →" idi. Bağlantılar artık `ui.tsx`'teki paylaşılan
+  `baglantiStili` / `geriBaglantiStili` / `kartBasligiStili` üzerinden
+  geçiyor; yeni bağlantı yazarken el yazımı sınıf kullanmayın.
+
+Tarama `src` içinde `className="…hover:underline"` araması ile yapılabilir;
+şu an yalnızca bilinçli gerilmiş bağlantı kalıyor. Ekranlar canlıda 606px
+genişlikte yeniden ölçüldü — puanlamalar, öğrenciler, gruplar, kayıtlar,
+öğrenci profili ve atölye geçmişi: 40px altı hedef yok, yatay taşma yok.
+
 ### Canlıdaki veri
 
 Ümraniye 21 öğrenci / 7 grup, Güneşli 8 / 4. Hepsi deneme verisi; kullanıcı
