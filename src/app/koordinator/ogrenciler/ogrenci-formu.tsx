@@ -1,9 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, butonStili } from "@/components/ui";
+import {
+  Alan,
+  Bildirim,
+  Buton,
+  CokSatirli,
+  Girdi,
+  Kart,
+  butonStili,
+  secimStili,
+} from "@/components/ui";
+import { cn } from "@/lib/utils";
+import type { ProgramSecenegi } from "@/lib/kayit-secenekleri";
 import type { EylemDurumu } from "./actions";
 
 export type OgrenciVarsayilanlari = {
@@ -43,6 +54,7 @@ export function OgrenciFormu({
   varsayilanlar = {},
   kaydetEtiketi,
   iptalYolu,
+  programlar,
 }: {
   eylem: (
     oncekiDurum: EylemDurumu,
@@ -51,6 +63,13 @@ export function OgrenciFormu({
   varsayilanlar?: OgrenciVarsayilanlari;
   kaydetEtiketi: string;
   iptalYolu: string;
+  /**
+   * Verilirse form sonuna isteğe bağlı "Program kaydı" bölümü eklenir ve
+   * öğrenci kaydedilirken seçilen gruba da yazılır. Yalnızca YENİ öğrenci
+   * ekranında geçilir; düzenlemede kayıt açmak yanlış yer olurdu, oradaki
+   * kayıtlar öğrenci profilinden yönetiliyor.
+   */
+  programlar?: ProgramSecenegi[];
 }) {
   const [durum, formEylemi] = useActionState<EylemDurumu, FormData>(
     eylem,
@@ -63,6 +82,32 @@ export function OgrenciFormu({
   // önüne konur ki 16 alanlık formda kullanıcının yazdıkları kaybolmasın.
   const deger = (alan: keyof OgrenciVarsayilanlari) =>
     durum.degerler?.[alan] ?? varsayilanlar[alan];
+
+  const [programId, setProgramId] = useState("");
+  const [grupId, setGrupId] = useState("");
+
+  const secilenProgram = useMemo(
+    () => programlar?.find((program) => program.id === programId),
+    [programlar, programId],
+  );
+  const secilenGrup = useMemo(
+    () => secilenProgram?.gruplar.find((grup) => grup.id === grupId),
+    [secilenProgram, grupId],
+  );
+
+  /**
+   * Seçim kutuları form sıfırlandıktan sonra durumdan geri yazılıyor.
+   * Kayıt sihirbazındaki sorunun aynısı: React eylem bitince `<select>`
+   * öğelerinin DOM değerini ilk seçeneğe düşürüyor, gönderilen değer ise
+   * gizli alandan gittiği için ekran ile veri ayrışıyordu.
+   */
+  const programSecimi = useRef<HTMLSelectElement>(null);
+  const grupSecimi = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (programSecimi.current) programSecimi.current.value = programId;
+    if (grupSecimi.current) grupSecimi.current.value = grupId;
+  }, [durum, programId, grupId]);
 
   return (
     <form action={formEylemi} className="space-y-6">
@@ -229,6 +274,113 @@ export function OgrenciFormu({
           </Alan>
         </div>
       </Kart>
+
+      {/* --- Program kaydı (yalnızca yeni öğrenci) --- */}
+      {programlar ? (
+        <Kart className="space-y-4 p-4">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-900">
+              Program kaydı{" "}
+              <span className="font-normal text-zinc-500">(isteğe bağlı)</span>
+            </h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              Öğrenciyi kaydederken doğrudan bir dönem veya kulüp grubuna da
+              yazabilirsiniz. Boş bırakılırsa öğrenci yalnızca eklenir; kayıt
+              sonradan profilinden ya da dönem sayfasından açılabilir. Sorumlu
+              stajyer burada sorulmuyor, atama dönem başlarken yapılıyor.
+            </p>
+          </div>
+
+          {programlar.length === 0 ? (
+            <Bildirim tur="bilgi">
+              Şu anda kayıt alan program yok. Öğrenci yine de kaydedilir;
+              kaydını dönem &quot;Kayıt alıyor&quot; olunca açabilirsiniz.
+            </Bildirim>
+          ) : (
+            <>
+              {/* Seçim gizli alandan gider; yukarıdaki nota bakın. */}
+              <input type="hidden" name="groupId" value={grupId} />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Alan etiket="Program">
+                  <select
+                    ref={programSecimi}
+                    value={programId}
+                    onChange={(e) => {
+                      setProgramId(e.target.value);
+                      setGrupId("");
+                    }}
+                    className={secimStili}
+                  >
+                    <option value="">Kayıt açılmayacak</option>
+                    {programlar.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.tur}: {program.ad}
+                      </option>
+                    ))}
+                  </select>
+                </Alan>
+
+                <Alan etiket="Grup" hata={h?.groupId}>
+                  <select
+                    ref={grupSecimi}
+                    value={grupId}
+                    onChange={(e) => setGrupId(e.target.value)}
+                    disabled={!secilenProgram}
+                    className={secimStili}
+                  >
+                    <option value="">
+                      {secilenProgram ? "Seçin…" : "Önce program seçin"}
+                    </option>
+                    {secilenProgram?.gruplar.map((grup) => (
+                      <option
+                        key={grup.id}
+                        value={grup.id}
+                        disabled={grup.dolu || !grup.aktif}
+                      >
+                        {grup.ad} · {grup.zaman} · {grup.doluluk}/
+                        {grup.kapasite}
+                        {grup.dolu ? " (dolu)" : ""}
+                        {!grup.aktif ? " (kapalı)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Alan>
+              </div>
+
+              {secilenGrup ? (
+                <div className="rounded-md bg-yuzey-50 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200">
+                      <div
+                        className={cn(
+                          "h-full",
+                          secilenGrup.dolu ? "bg-vurgu-600" : "bg-marka-600",
+                        )}
+                        style={{
+                          width: `${Math.min(100, (secilenGrup.doluluk / secilenGrup.kapasite) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm text-zinc-700">
+                      {secilenGrup.doluluk} / {secilenGrup.kapasite} öğrenci ·{" "}
+                      {secilenGrup.kapasite - secilenGrup.doluluk} yer kaldı
+                    </span>
+                  </div>
+
+                  {secilenGrup.baslangicHaftasi > 1 ? (
+                    <p className="mt-2 text-xs text-vurgu-700">
+                      Bu grup dönem başladıktan sonra açıldı;{" "}
+                      {secilenGrup.baslangicHaftasi}. haftadan itibaren
+                      katılıyor ve önceki haftalar telafi edilmiyor.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
+        </Kart>
+      ) : null}
 
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 

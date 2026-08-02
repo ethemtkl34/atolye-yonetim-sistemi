@@ -5,10 +5,12 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { KULUP_DURUMLARI } from "@/lib/durumlar";
+import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
+import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 
@@ -28,32 +30,74 @@ export default async function KulupDetaySayfasi(
   props: PageProps<"/koordinator/kulupler/[id]">,
 ) {
   const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
   // Kulübün kendisi ortak; her şube kendi gruplarını açar.
-  const kulup = await db.club.findUnique({
-    where: { id },
-    include: {
-      workshops: {
-        orderBy: { sortOrder: "asc" },
-        include: { workshopType: { select: { name: true } } },
-      },
-      groups: {
-        where: { branchId: kullanici.aktifSubeId },
-        orderBy: { createdAt: "asc" },
-        include: {
-          _count: {
-            select: {
-              sessions: true,
-              enrollments: { where: { status: "AKTIF" } },
+  const [kulup, subeOgrencileri] = await Promise.all([
+    db.club.findUnique({
+      where: { id },
+      include: {
+        workshops: {
+          orderBy: { sortOrder: "asc" },
+          include: { workshopType: { select: { name: true } } },
+        },
+        groups: {
+          where: { branchId: subeId },
+          orderBy: { createdAt: "asc" },
+          include: {
+            _count: {
+              select: {
+                sessions: true,
+                enrollments: { where: { status: "AKTIF" } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    // Toplu ekleme paneli için şubenin öğrenci listesi ve her öğrencinin BU
+    // kulüpteki aktif kayıtları.
+    db.student.findMany({
+      where: { branchId: subeId },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        searchName: true,
+        enrollments: {
+          where: { status: "AKTIF", group: { clubId: id, branchId: subeId } },
+          select: { group: { select: { id: true, name: true } } },
+        },
+      },
+    }),
+  ]);
 
   if (!kulup) notFound();
+
+  const panelGruplari = kulup.groups.map((grup) => {
+    const kontenjan = kontenjanDurumu(grup.capacity, grup._count.enrollments);
+    return {
+      id: grup.id,
+      ad: grup.name,
+      zaman: grupZamani(grup.day, grup.timeSlot),
+      kapasite: kontenjan.kapasite,
+      doluluk: kontenjan.doluluk,
+      dolu: kontenjan.dolu,
+      aktif: grup.active,
+    };
+  });
+
+  const panelOgrencileri = subeOgrencileri.map((ogrenci) => ({
+    id: ogrenci.id,
+    ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
+    aramaAdi: ogrenci.searchName,
+    mevcutGruplar: ogrenci.enrollments.map((kayit) => ({
+      id: kayit.group.id,
+      ad: kayit.group.name,
+    })),
+  }));
 
   const durum = KULUP_DURUMLARI[kulup.status];
 
@@ -191,6 +235,18 @@ export default async function KulupDetaySayfasi(
           }
         />
       </div>
+
+      {/* --- Gruba öğrenci ekle --- */}
+      <TopluKayitPaneli
+        gruplar={panelGruplari}
+        ogrenciler={panelOgrencileri}
+        programAdi="kulüp"
+        engelSebebi={
+          kulup.status === "KAYIT_ALIYOR"
+            ? undefined
+            : kayitKapaliMesaji(kulup)
+        }
+      />
     </div>
   );
 }

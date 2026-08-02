@@ -6,6 +6,7 @@ import type { ZodError } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
+import { kayitEngeli } from "@/lib/kayit-kurallari";
 import { tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
 import {
@@ -91,11 +92,22 @@ function veliSatirlari(veri: OgrenciGirdisi) {
   return veliler;
 }
 
+/**
+ * §7.1 — Yeni öğrenci. Form isteğe bağlı olarak bir program grubu da
+ * taşıyabilir; o zaman öğrenci ve kaydı TEK işlemde açılır.
+ *
+ * Tek işlem olması önemli: önce öğrenciyi yazıp sonra kaydı denemek, kontenjan
+ * dolduğunda ya da dönem kayıt almayı kapattığında ortada sahipsiz bir öğrenci
+ * bırakırdı. Koordinatör de hata mesajını gördüğünde öğrencinin kaydedilip
+ * kaydedilmediğini bilemezdi. Bu yüzden grup kontrolü başarısızsa hiçbir şey
+ * yazılmıyor ve form girilen değerlerle geri geliyor.
+ */
 export async function ogrenciEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {
@@ -106,18 +118,69 @@ export async function ogrenciEkle(
   }
 
   const veri = cozumlenen.data;
+  const groupId = String(formVerisi.get("groupId") ?? "");
 
-  const ogrenci = await db.student.create({
-    data: {
-      ...ogrenciAlanlari(veri),
-      branchId: kullanici.aktifSubeId,
-      guardians: { create: veliSatirlari(veri) },
-      healthInfo: { create: saglikAlanlari(veri) },
-    },
+  const ogrenciVerisi = {
+    ...ogrenciAlanlari(veri),
+    branchId: subeId,
+    guardians: { create: veliSatirlari(veri) },
+    healthInfo: { create: saglikAlanlari(veri) },
+  };
+
+  if (!groupId) {
+    // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı; öğrenci
+    // oturumdaki şubeye açılıyor.
+    const ogrenci = await db.student.create({ data: ogrenciVerisi });
+
+    revalidatePath("/koordinator/ogrenciler");
+    redirect(`/koordinator/ogrenciler/${ogrenci.id}`);
+  }
+
+  // Kontenjan okuma ile yazma arasında kaymasın diye kayıt akışıyla aynı kilit.
+  const sonuc = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtext(${"kayit:" + groupId}))::text
+        AS "kilit"
+    `;
+
+    const grup = await tx.group.findFirst({
+      where: { id: groupId, branchId: subeId },
+      include: {
+        term: { select: { status: true } },
+        club: { select: { status: true } },
+        _count: { select: { enrollments: { where: { status: "AKTIF" } } } },
+      },
+    });
+
+    if (!grup) return { alanHatalari: { groupId: "Grup bulunamadı." } };
+
+    const engel = kayitEngeli(grup);
+    if (engel) return { alanHatalari: { groupId: engel } };
+
+    // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı.
+    const ogrenci = await tx.student.create({ data: ogrenciVerisi });
+
+    await tx.enrollment.create({
+      data: { studentId: ogrenci.id, groupId },
+    });
+
+    return { ogrenciId: ogrenci.id, termId: grup.termId, clubId: grup.clubId };
   });
 
+  if (!("ogrenciId" in sonuc)) {
+    return {
+      ...sonuc,
+      degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+    };
+  }
+
   revalidatePath("/koordinator/ogrenciler");
-  redirect(`/koordinator/ogrenciler/${ogrenci.id}`);
+  revalidatePath("/koordinator/kayitlar");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator");
+  if (sonuc.termId) revalidatePath(`/koordinator/donemler/${sonuc.termId}`);
+  if (sonuc.clubId) revalidatePath(`/koordinator/kulupler/${sonuc.clubId}`);
+  redirect(`/koordinator/ogrenciler/${sonuc.ogrenciId}`);
 }
 
 export async function ogrenciGuncelle(

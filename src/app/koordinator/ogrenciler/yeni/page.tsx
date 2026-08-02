@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
+import { kayitAlanProgramlar } from "@/lib/kayit-secenekleri";
 import { OgrenciFormu } from "../ogrenci-formu";
 import { ogrenciEkle } from "../actions";
 import { geriBaglantiStili } from "@/components/ui";
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
  * sayfasında yapılıyor; buraya "aradım, bulamadım" diyerek gelinir.
  */
 export default async function YeniOgrenciSayfasi() {
-  await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu();
+  const programlar = await kayitAlanProgramlar(kullanici.aktifSubeId);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -38,6 +40,7 @@ export default async function YeniOgrenciSayfasi() {
         eylem={ogrenciEkle}
         kaydetEtiketi="Öğrenciyi kaydet"
         iptalYolu="/koordinator/ogrenciler"
+        programlar={programlar}
       />
     </div>
   );

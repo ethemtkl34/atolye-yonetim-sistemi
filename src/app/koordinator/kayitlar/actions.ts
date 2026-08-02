@@ -7,6 +7,11 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani } from "@/lib/tarih";
+import {
+  kayitKapaliMesaji,
+  kontenjanEngeli,
+  programKayitEngeli,
+} from "@/lib/kayit-kurallari";
 
 /** §7 — Öğrenci kayıt akışı ve stajyer ataması. */
 
@@ -20,26 +25,25 @@ export type EylemDurumu = {
   uyari?: string;
   uyariGroupId?: string;
   alanHatalari?: Record<string, string>;
+  /**
+   * Toplu eklemede tek tek anlatılması gereken sonuçlar: eklenemeyen öğrenciler
+   * ve sebepleri, bir de yeni oluşan zaman çakışmaları. Tek satırlık bir başarı
+   * mesajına sığmıyor, sığdırılırsa da hangi çocuğun dışarıda kaldığı kaybolur.
+   */
+  ayrinti?: string[];
 };
 
 const kayitSemasi = z.object({
   studentId: z.string().min(1, "Öğrenci seçin"),
   groupId: z.string().min(1, "Grup seçin"),
-  internId: z.string().min(1, "Sorumlu stajyer seçin"),
+  /**
+   * Boş bırakılabilir. Sorumlu stajyer kayıt anında değil, dönem başlarken
+   * atanıyor; zorunlu tutmak kaydı gereksiz yere bekletiyordu. Atanmamış kayıt
+   * zaten görünür: panodaki kart ve kayıtlar ekranındaki "Atanmamış" süzgeci
+   * `atanmamisKayitKosulu` ile bunları sayıyor.
+   */
+  internId: z.string(),
 });
-
-/**
- * "Kayıt almıyor" hatasını çıkmaza dönüştürmeden açıklar. Devam eden döneme
- * grup eklenebilir (§13.5) ama kayıt ancak dönem "Kayıt alıyor" durumundayken
- * açılır; koordinatöre bir sonraki adım söylenmezse bu bir çıkmaz gibi
- * görünüyordu.
- */
-function kayitKapaliMesaji(term: { status: string } | null): string {
-  if (term?.status === "DEVAM_EDIYOR") {
-    return 'Dönem devam ediyor ancak yeni kayıt kapalı. Kayıt almak için dönem sayfasından durumu "Kayıt alıyor" yapın.';
-  }
-  return "Bu program şu anda kayıt almıyor.";
-}
 
 export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
@@ -63,7 +67,8 @@ export async function kayitOlustur(
     return { alanHatalari: hatalar };
   }
 
-  const { studentId, groupId, internId } = cozumlenen.data;
+  const { studentId, groupId } = cozumlenen.data;
+  const internId = cozumlenen.data.internId || null;
   const onaylandi = formVerisi.get("onaylandi") === "1";
 
   // Grup, öğrenci ve stajyerin ÜÇÜ de aynı şubeden olmalı. Grup şubeye
@@ -90,15 +95,9 @@ export async function kayitOlustur(
   });
 
   if (!grup) return { hata: "Grup bulunamadı." };
-  if (!grup.active) {
-    return { hata: "Bu grup kapalı; yeni kayıt alınamaz." };
-  }
-  if (
-    grup.term?.status !== "KAYIT_ALIYOR" &&
-    grup.club?.status !== "KAYIT_ALIYOR"
-  ) {
-    return { hata: kayitKapaliMesaji(grup.term) };
-  }
+
+  const programEngeli = programKayitEngeli(grup);
+  if (programEngeli) return { hata: programEngeli };
 
   // Aynı öğrenci aynı gruba iki kez kaydedilemez.
   const zatenKayitli = await db.enrollment.findUnique({
@@ -115,19 +114,8 @@ export async function kayitOlustur(
     };
   }
 
-  /**
-   * Kontenjan dolu grupta kayıt engelleniyor.
-   *
-   * Şartname bunu açıkça yasaklamıyor ama §2.3 kontenjan dolduğunda "yeni grup
-   * açılabilir" diyor; aşılabilen bir kontenjanın anlamı kalmazdı. Engellerken
-   * çözüm yolu da söyleniyor.
-   */
-  const kontenjan = kontenjanDurumu(grup.capacity, grup._count.enrollments);
-  if (kontenjan.dolu) {
-    return {
-      hata: `"${grup.name}" grubunun kontenjanı dolu (${kontenjan.doluluk}/${kontenjan.kapasite}). Aynı programa yeni bir grup ekleyip oraya kaydedebilirsiniz.`,
-    };
-  }
+  const doluHatasi = kontenjanEngeli(grup);
+  if (doluHatasi) return { hata: doluHatasi };
 
   /**
    * §7.4 — Çakışma kontrolü.
@@ -169,29 +157,32 @@ export async function kayitOlustur(
     }
   }
 
-  const stajyer = await db.user.findFirst({
-    where: { id: internId, branchId: subeId },
-    select: { role: true, active: true },
-  });
+  // Stajyer seçimi isteğe bağlı; seçildiyse kuralların tamamı geçerli.
+  if (internId) {
+    const stajyer = await db.user.findFirst({
+      where: { id: internId, branchId: subeId },
+      select: { role: true, active: true },
+    });
 
-  if (!stajyer || stajyer.role !== "STAJYER" || !stajyer.active) {
-    return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
-  }
+    if (!stajyer || stajyer.role !== "STAJYER" || !stajyer.active) {
+      return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
+    }
 
-  /**
-   * Dönemin stajyer kadrosu tanımlıysa sorumlu stajyer kadrodan olmalı.
-   * Kadro boşsa kısıt yok; kulüp kayıtlarında da kadro kavramı yok.
-   */
-  if (
-    grup.term &&
-    grup.term.interns.length > 0 &&
-    !grup.term.interns.some((kadro) => kadro.userId === internId)
-  ) {
-    return {
-      alanHatalari: {
-        internId: `Bu stajyer "${grup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
-      },
-    };
+    /**
+     * Dönemin stajyer kadrosu tanımlıysa sorumlu stajyer kadrodan olmalı.
+     * Kadro boşsa kısıt yok; kulüp kayıtlarında da kadro kavramı yok.
+     */
+    if (
+      grup.term &&
+      grup.term.interns.length > 0 &&
+      !grup.term.interns.some((kadro) => kadro.userId === internId)
+    ) {
+      return {
+        alanHatalari: {
+          internId: `Bu stajyer "${grup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
+        },
+      };
+    }
   }
 
   /**
@@ -234,10 +225,12 @@ export async function kayitOlustur(
           where: { id: studentId, branchId: subeId },
           select: { id: true },
         }),
-        tx.user.findFirst({
-          where: { id: internId, branchId: subeId },
-          select: { role: true, active: true },
-        }),
+        internId
+          ? tx.user.findFirst({
+              where: { id: internId, branchId: subeId },
+              select: { role: true, active: true },
+            })
+          : null,
         tx.enrollment.findUnique({
           where: { studentId_groupId: { studentId, groupId } },
           select: { status: true },
@@ -246,15 +239,10 @@ export async function kayitOlustur(
 
     if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
     if (!guncelGrup) return { hata: "Grup bulunamadı." };
-    if (!guncelGrup.active) {
-      return { hata: "Bu grup kapalı; yeni kayıt alınamaz." };
-    }
-    if (
-      guncelGrup.term?.status !== "KAYIT_ALIYOR" &&
-      guncelGrup.club?.status !== "KAYIT_ALIYOR"
-    ) {
-      return { hata: kayitKapaliMesaji(guncelGrup.term) };
-    }
+
+    const guncelProgramEngeli = programKayitEngeli(guncelGrup);
+    if (guncelProgramEngeli) return { hata: guncelProgramEngeli };
+
     if (mevcutKayit) {
       return {
         hata:
@@ -263,37 +251,33 @@ export async function kayitOlustur(
             : "Bu öğrencinin bu grupta iptal edilmiş bir kaydı var. Yeni kayıt yerine mevcut kaydı yeniden etkinleştirin.",
       };
     }
-    if (
-      !guncelStajyer ||
-      guncelStajyer.role !== "STAJYER" ||
-      !guncelStajyer.active
-    ) {
-      return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
-    }
-    if (
-      guncelGrup.term &&
-      guncelGrup.term.interns.length > 0 &&
-      !guncelGrup.term.interns.some((kadro) => kadro.userId === internId)
-    ) {
-      return {
-        alanHatalari: {
-          internId: `Bu stajyer "${guncelGrup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
-        },
-      };
-    }
-
-    const guncelKontenjan = kontenjanDurumu(
-      guncelGrup.capacity,
-      guncelGrup._count.enrollments,
-    );
-    if (guncelKontenjan.dolu) {
-      return {
-        hata: `"${guncelGrup.name}" grubunun kontenjanı dolu (${guncelKontenjan.doluluk}/${guncelKontenjan.kapasite}). Aynı programa yeni bir grup ekleyip oraya kaydedebilirsiniz.`,
-      };
+    if (internId) {
+      if (
+        !guncelStajyer ||
+        guncelStajyer.role !== "STAJYER" ||
+        !guncelStajyer.active
+      ) {
+        return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
+      }
+      if (
+        guncelGrup.term &&
+        guncelGrup.term.interns.length > 0 &&
+        !guncelGrup.term.interns.some((kadro) => kadro.userId === internId)
+      ) {
+        return {
+          alanHatalari: {
+            internId: `Bu stajyer "${guncelGrup.term.name}" döneminin kadrosunda değil. Önce dönem sayfasından kadroya ekleyin.`,
+          },
+        };
+      }
     }
 
-    // şube-muaf: üç kimlik de aynı işlemin başında `branchId: subeId` ile
-    // okundu (grup, öğrenci, stajyer); biri başka şubedense yukarıda dönülüyor.
+    const guncelDoluHatasi = kontenjanEngeli(guncelGrup);
+    if (guncelDoluHatasi) return { hata: guncelDoluHatasi };
+
+    // şube-muaf: kimliklerin hepsi aynı işlemin başında `branchId: subeId` ile
+    // okundu (grup, öğrenci, seçildiyse stajyer); biri başka şubedense yukarıda
+    // dönülüyor.
     await tx.enrollment.create({
       data: { studentId, groupId, internId },
     });
@@ -307,6 +291,219 @@ export async function kayitOlustur(
   revalidatePath("/koordinator/stajyerler");
   revalidatePath(`/koordinator/ogrenciler/${studentId}`);
   redirect(`/koordinator/ogrenciler/${studentId}`);
+}
+
+/**
+ * Dönem ve kulüp sayfasından bir gruba toplu öğrenci ekleme.
+ *
+ * Akış tersine dönüyor: tek kayıt sihirbazı "önce öğrenci, sonra program"
+ * diye ilerliyor, buradaysa program bellidir ve öğrenciler listeden seçilir.
+ * Sınıf mevcudunu bir defada geçirmenin tek pratik yolu buydu; tek tek ekleme
+ * 20 öğrenci için 20 tur demekti.
+ *
+ * Kontenjan yetmezse işlem TÜMÜYLE reddedilmiyor: sığan öğrenciler eklenir,
+ * kalanlar adlarıyla bildirilir. Koordinatörün bir sonraki adımı zaten yeni
+ * grup açmak; seçimi baştan yaptırmanın kimseye faydası yok.
+ *
+ * Sorumlu stajyer burada hiç sorulmuyor — atama dönem başlarken, Atamalar
+ * ekranından toplu yapılıyor. Atanmamış kayıtlar panoda ve kayıtlar
+ * ekranındaki "Atanmamış" süzgecinde görünmeye devam ediyor.
+ */
+export async function topluKayitOlustur(
+  _oncekiDurum: EylemDurumu,
+  formVerisi: FormData,
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
+
+  const groupId = String(formVerisi.get("groupId") ?? "");
+  const secilenler = [
+    ...new Set(
+      formVerisi
+        .getAll("ogrenciler")
+        .map((deger) => String(deger))
+        .filter(Boolean),
+    ),
+  ];
+
+  if (!groupId) return { alanHatalari: { groupId: "Grup seçin." } };
+  if (secilenler.length === 0) {
+    return { hata: "Hiç öğrenci seçilmedi." };
+  }
+
+  /**
+   * İşlemin dönüş türü açıkça yazılıyor: dallardan çıkarılan birleşim TypeScript
+   * tarafında daraltılamıyordu ve başarı dalındaki alanlar "belki tanımsız"
+   * görünüyordu.
+   */
+  type TopluSonuc =
+    | { basarili: false; durum: EylemDurumu }
+    | {
+        basarili: true;
+        grupAdi: string;
+        termId: string | null;
+        clubId: string | null;
+        eklenenSayisi: number;
+        ogrenciIdleri: string[];
+        ayrinti: string[];
+      };
+
+  // Kontenjan okuma ile yazma arasında kaymasın diye tek kayıt akışıyla aynı
+  // kilit: grup kimliğine bağlı transaction advisory lock.
+  const sonuc = await db.$transaction(async (tx): Promise<TopluSonuc> => {
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtext(${"kayit:" + groupId}))::text
+        AS "kilit"
+    `;
+
+    const grup = await tx.group.findFirst({
+      where: { id: groupId, branchId: subeId },
+      include: {
+        term: { select: { status: true } },
+        club: { select: { status: true } },
+        _count: { select: { enrollments: { where: { status: "AKTIF" } } } },
+      },
+    });
+
+    if (!grup) {
+      return { basarili: false, durum: { hata: "Grup bulunamadı." } };
+    }
+
+    const engel = programKayitEngeli(grup);
+    if (engel) return { basarili: false, durum: { hata: engel } };
+
+    // Kimlikler istemciden geliyor; şube süzgeci burada eleme yapıyor.
+    // Sıralama ekrandaki listeyle aynı olsun diye ada göre: kontenjan
+    // yetmediğinde kimin dışarıda kaldığı rastgele değil, öngörülebilir olmalı.
+    const ogrenciler = await tx.student.findMany({
+      where: { id: { in: secilenler }, branchId: subeId },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: { id: true, firstName: true, lastName: true },
+    });
+
+    const mevcutKayitlar = await tx.enrollment.findMany({
+      where: { studentId: { in: secilenler }, group: { branchId: subeId } },
+      select: {
+        studentId: true,
+        groupId: true,
+        status: true,
+        group: {
+          select: {
+            name: true,
+            day: true,
+            timeSlot: true,
+            term: { select: { name: true } },
+            club: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const buGruptakiler = new Map(
+      mevcutKayitlar
+        .filter((kayit) => kayit.groupId === groupId)
+        .map((kayit) => [kayit.studentId, kayit.status]),
+    );
+
+    const kalanYer = Math.max(0, grup.capacity - grup._count.enrollments);
+    const eklenecekler: { id: string; ad: string }[] = [];
+    const atlananlar: string[] = [];
+
+    for (const ogrenci of ogrenciler) {
+      const ad = `${ogrenci.firstName} ${ogrenci.lastName}`;
+      const mevcut = buGruptakiler.get(ogrenci.id);
+
+      if (mevcut === "AKTIF") {
+        atlananlar.push(`${ad} — zaten bu gruba kayıtlı`);
+        continue;
+      }
+      if (mevcut === "IPTAL") {
+        atlananlar.push(
+          `${ad} — bu grupta iptal edilmiş kaydı var; Kayıtlar ekranından yeniden etkinleştirin`,
+        );
+        continue;
+      }
+      if (eklenecekler.length >= kalanYer) {
+        atlananlar.push(`${ad} — kontenjan doldu`);
+        continue;
+      }
+
+      eklenecekler.push({ id: ogrenci.id, ad });
+    }
+
+    const bulunamayan = secilenler.length - ogrenciler.length;
+    if (bulunamayan > 0) {
+      atlananlar.push(
+        `${bulunamayan} seçim bu şubenin öğrencisi değil; atlandı`,
+      );
+    }
+
+    if (eklenecekler.length === 0) {
+      return {
+        basarili: false,
+        durum: { hata: "Hiçbir öğrenci eklenemedi.", ayrinti: atlananlar },
+      };
+    }
+
+    // şube-muaf: grup ve öğrencilerin tamamı bu işlemin içinde
+    // `branchId: subeId` ile okundu; listeye başka şubeden kimlik giremiyor.
+    await tx.enrollment.createMany({
+      data: eklenecekler.map((ogrenci) => ({
+        studentId: ogrenci.id,
+        groupId,
+      })),
+    });
+
+    /**
+     * §7.4 — Çakışma uyarısı toplu akışta engel değil, bildirim. Tek kayıtta
+     * "uyarıya rağmen devam et" adımı var; 20 öğrencilik bir listede aynı adımı
+     * tek tek yürütmek akışı kilitlerdi. Bunun yerine çakışan öğrenciler
+     * eklendikten sonra adlarıyla sayılıyor.
+     */
+    const eklenenIdleri = new Set(eklenecekler.map((ogrenci) => ogrenci.id));
+    const adlar = new Map(eklenecekler.map((ogrenci) => [ogrenci.id, ogrenci.ad]));
+    const cakisanlar = mevcutKayitlar
+      .filter(
+        (kayit) =>
+          kayit.status === "AKTIF" &&
+          kayit.groupId !== groupId &&
+          eklenenIdleri.has(kayit.studentId) &&
+          kayit.group.day === grup.day &&
+          kayit.group.timeSlot === grup.timeSlot,
+      )
+      .map((kayit) => {
+        const program =
+          kayit.group.term?.name ?? kayit.group.club?.name ?? "Program";
+        return `${adlar.get(kayit.studentId)} — aynı zaman diliminde başka kaydı var: ${program} · ${kayit.group.name}`;
+      });
+
+    return {
+      basarili: true,
+      grupAdi: grup.name,
+      termId: grup.termId,
+      clubId: grup.clubId,
+      eklenenSayisi: eklenecekler.length,
+      ogrenciIdleri: eklenecekler.map((ogrenci) => ogrenci.id),
+      ayrinti: [...atlananlar, ...cakisanlar],
+    };
+  });
+
+  if (!sonuc.basarili) return sonuc.durum;
+
+  revalidatePath("/koordinator/kayitlar");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/stajyerler");
+  revalidatePath("/koordinator");
+  if (sonuc.termId) revalidatePath(`/koordinator/donemler/${sonuc.termId}`);
+  if (sonuc.clubId) revalidatePath(`/koordinator/kulupler/${sonuc.clubId}`);
+  for (const ogrenciId of sonuc.ogrenciIdleri) {
+    revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
+  }
+
+  return {
+    basari: `${sonuc.eklenenSayisi} öğrenci "${sonuc.grupAdi}" grubuna kaydedildi. Sorumlu stajyer atanmadı; atamayı Atamalar ekranından yapabilirsiniz.`,
+    ayrinti: sonuc.ayrinti,
+  };
 }
 
 /**

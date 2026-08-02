@@ -72,6 +72,38 @@ atlıyor, silme yapmıyor, eksik stajyer hesaplarını kendisi açıyor
 göstergesi/seçici, yönetici kullanıcı yönetimi. İzolasyon canlıda sınandı —
 başka şubenin id'si adres satırına yapıştırılınca 404.
 
+### Kayıt akışının iki yeni kapısı
+
+Kayıt eskiden TEK yoldan açılıyordu: öğrenci profili → "Yeni kayıt". Artık üç
+yol var ve üçü de aynı kuralları `src/lib/kayit-kurallari.ts` üzerinden okuyor
+(grup açık mı → program "Kayıt alıyor" mu → kontenjan). Kural üç ekrana
+kopyalanmadı; kopyalansaydı hangisinin doğru olduğu ancak canlıda anlaşılırdı.
+
+- **Yeni öğrenci formunda** isteğe bağlı "Program kaydı" bölümü: öğrenci ve
+  kaydı TEK işlemde açılıyor. Tek işlem olması bilinçli — önce öğrenciyi yazıp
+  sonra kaydı denemek, kontenjan dolduğunda ortada sahipsiz bir öğrenci
+  bırakırdı.
+- **Dönem ve kulüp sayfasında "Gruba öğrenci ekle"** paneli: şubenin öğrenci
+  listesinden arayarak tekli ya da toplu seçim. Kontenjan yetmezse işlem
+  tümüyle reddedilmiyor; sığanlar ekleniyor, kalanlar adlarıyla bildiriliyor.
+  Zaman çakışmaları da eklendikten sonra ad ad listeleniyor (tek kayıttaki
+  "uyarıya rağmen devam et" adımı 20 kişilik listede akışı kilitlerdi).
+
+**Sorumlu stajyer artık kayıt anında zorunlu değil** — kullanıcı "dönem
+başlarken atamasını yapıyor olacaklar" dedi. Kayıt sihirbazında "Sonra
+atanacak" seçeneği var, toplu panelde stajyer hiç sorulmuyor. Atanmamış kayıt
+zaten görünür: `atanmamisKayitKosulu` panodaki kartı ve kayıtlar ekranındaki
+"Atanmamış" süzgecini besliyor.
+
+Panelde iki ayrıntı önemli:
+
+- **Seçim listesi temizlenmiyor, süzülüyor.** Ekleme başarılı olunca sayfa
+  tazeleniyor ve eklenenler "bu grupta" oluyor; seçim o süzgeçten kendiliğinden
+  düşüyor. Effect içinde `setState` çağırmak `react-hooks/set-state-in-effect`
+  kuralına takılıyor — türetmek hem lint'i geçiyor hem de daha az durum.
+- Grup değişince seçim korunuyor. Yeni grupta zaten kayıtlı olanların kutusu
+  kilitli ve kilitli kutu formda gönderilmiyor, o yüzden taşımak güvenli.
+
 Son eklenenler (hepsi canlıda doğrulandı):
 - Grup takvimi: gün taşı / telafi günü ekle / gün sil, puanlanmış gün
   silinemez

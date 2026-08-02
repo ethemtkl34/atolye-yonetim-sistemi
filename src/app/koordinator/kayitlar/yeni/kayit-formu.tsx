@@ -6,27 +6,7 @@ import Link from "next/link";
 import { Alan, Bildirim, Buton, Kart, butonStili, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { kayitOlustur, type EylemDurumu } from "../actions";
-
-export type GrupSecenegi = {
-  id: string;
-  ad: string;
-  zaman: string;
-  kapasite: number;
-  doluluk: number;
-  dolu: boolean;
-  aktif: boolean;
-  oturumSayisi: number;
-  baslangicHaftasi: number;
-};
-
-export type ProgramSecenegi = {
-  id: string;
-  ad: string;
-  tur: "Dönem" | "Kulüp";
-  gruplar: GrupSecenegi[];
-  /** Dönemin stajyer kadrosu; `null` = kısıt yok (kulüpler ve kadrosuz dönemler). */
-  stajyerIdleri: string[] | null;
-};
+import type { ProgramSecenegi } from "@/lib/kayit-secenekleri";
 
 export type StajyerSecenegi = {
   id: string;
@@ -251,11 +231,14 @@ export function KayitFormu({
       <Kart className="space-y-4 p-4">
         <div>
           <h2 className="text-base font-semibold text-zinc-900">
-            Sorumlu stajyer
+            Sorumlu stajyer{" "}
+            <span className="font-normal text-zinc-500">(isteğe bağlı)</span>
           </h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Bu kayıt boyunca öğrenciyi bu stajyer puanlar. Öğrencinin başka
-            kayıtlarında farklı bir stajyer görevli olabilir.
+            Boş bırakılabilir; atama genelde dönem başlarken Atamalar
+            ekranından toplu yapılıyor. Seçilirse bu kayıt boyunca öğrenciyi bu
+            stajyer puanlar — öğrencinin başka kayıtlarında farklı bir stajyer
+            görevli olabilir.
             {kadroSuzuyor
               ? " Seçilen dönemin stajyer kadrosu tanımlı; yalnızca kadrodaki stajyerler listeleniyor."
               : ""}
@@ -263,18 +246,18 @@ export function KayitFormu({
         </div>
 
         {stajyerler.length === 0 ? (
-          <Bildirim tur="hata">
-            Aktif stajyer yok. Önce{" "}
+          <Bildirim tur="bilgi">
+            Aktif stajyer yok; kayıt stajyersiz açılacak. Stajyer eklemek için{" "}
             <Link href="/koordinator/stajyerler" className="underline">
-              stajyer ekleyin
-            </Link>
-            .
+              Stajyerler
+            </Link>{" "}
+            ekranına gidin.
           </Bildirim>
         ) : uygunStajyerler.length === 0 ? (
-          <Bildirim tur="hata">
-            Bu dönemin kadrosunda aktif stajyer kalmamış. Dönem sayfasındaki
-            &quot;Stajyer kadrosu&quot; bölümünden kadroya aktif bir stajyer
-            ekleyin.
+          <Bildirim tur="bilgi">
+            Bu dönemin kadrosunda aktif stajyer kalmamış; kayıt stajyersiz
+            açılacak. Kadroya stajyer eklemek için dönem sayfasındaki
+            &quot;Stajyer kadrosu&quot; bölümünü kullanın.
           </Bildirim>
         ) : (
           <Alan etiket="Stajyer" hata={durum.alanHatalari?.internId}>
@@ -284,7 +267,7 @@ export function KayitFormu({
               onChange={(e) => setStajyerId(e.target.value)}
               className={secimStili}
             >
-              <option value="">Seçin…</option>
+              <option value="">Sonra atanacak</option>
               {uygunStajyerler.map((stajyer) => (
                 <option key={stajyer.id} value={stajyer.id}>
                   {stajyer.ad} — {stajyer.aktifOgrenciSayisi} aktif öğrenci
@@ -305,10 +288,7 @@ export function KayitFormu({
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
       <div className="flex items-center gap-2">
-        <KaydetButonu
-          uyariVar={uyariVar}
-          secimEksik={!grupId || !stajyerId}
-        />
+        <KaydetButonu uyariVar={uyariVar} secimEksik={!grupId} />
         <Link
           href={`/koordinator/ogrenciler/${ogrenci.id}`}
           className={butonStili("ikincil")}

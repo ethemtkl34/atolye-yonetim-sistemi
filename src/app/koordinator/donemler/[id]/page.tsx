@@ -5,10 +5,12 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { DONEM_DURUMLARI } from "@/lib/durumlar";
+import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { bugun, grupZamani, haftaSonuBicimle } from "@/lib/tarih";
 import { mevcutHaftaNumarasi } from "@/lib/session-generator";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
+import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
 import { DurumSecici } from "./durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
@@ -33,7 +35,7 @@ export default async function DonemDetaySayfasi(
 
   // Dönemin kendisi ortak (iki şube aynı takvimi kullanır); şubeye ait olan
   // gruplar ve kadro burada süzülüyor.
-  const [donem, aktifStajyerler, donemKayitSayilari] = await Promise.all([
+  const [donem, aktifStajyerler, donemKayitSayilari, subeOgrencileri] = await Promise.all([
     db.term.findUnique({
       where: { id },
       include: {
@@ -78,6 +80,23 @@ export default async function DonemDetaySayfasi(
       },
       _count: true,
     }),
+    // Toplu ekleme paneli için şubenin öğrenci listesi ve her öğrencinin BU
+    // dönemdeki aktif kayıtları. İkisi birlikte okunuyor: panel "zaten bu
+    // grupta" ile "dönemin başka grubunda" ayrımını gösterebilmeli.
+    db.student.findMany({
+      where: { branchId: subeId },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        searchName: true,
+        enrollments: {
+          where: { status: "AKTIF", group: { termId: id, branchId: subeId } },
+          select: { group: { select: { id: true, name: true } } },
+        },
+      },
+    }),
   ]);
 
   if (!donem) notFound();
@@ -108,6 +127,29 @@ export default async function DonemDetaySayfasi(
         kadroda: true,
       })),
   ];
+
+  const panelGruplari = donem.groups.map((grup) => {
+    const kontenjan = kontenjanDurumu(grup.capacity, grup._count.enrollments);
+    return {
+      id: grup.id,
+      ad: grup.name,
+      zaman: grupZamani(grup.day, grup.timeSlot),
+      kapasite: kontenjan.kapasite,
+      doluluk: kontenjan.doluluk,
+      dolu: kontenjan.dolu,
+      aktif: grup.active,
+    };
+  });
+
+  const panelOgrencileri = subeOgrencileri.map((ogrenci) => ({
+    id: ogrenci.id,
+    ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
+    aramaAdi: ogrenci.searchName,
+    mevcutGruplar: ogrenci.enrollments.map((kayit) => ({
+      id: kayit.group.id,
+      ad: kayit.group.name,
+    })),
+  }));
 
   const durum = DONEM_DURUMLARI[donem.status];
   // Sayfadaki tahmin cumartesi çapasına göre; pazar grubu seçilirse gerçek
@@ -267,6 +309,18 @@ export default async function DonemDetaySayfasi(
           engelSebebi={grupEklemeEngeli ?? undefined}
         />
       </div>
+
+      {/* --- Gruba öğrenci ekle --- */}
+      <TopluKayitPaneli
+        gruplar={panelGruplari}
+        ogrenciler={panelOgrencileri}
+        programAdi="dönem"
+        engelSebebi={
+          donem.status === "KAYIT_ALIYOR"
+            ? undefined
+            : kayitKapaliMesaji(donem)
+        }
+      />
     </div>
   );
 }
