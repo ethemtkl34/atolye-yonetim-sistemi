@@ -75,7 +75,13 @@ Son eklenenler (hepsi canlıda doğrulandı):
 - Kulüp çok haftalı olabiliyor (`Club.weekDates`)
 
 Mobil: dokunma hedefleri 44px, iOS yakınlaştırması giderildi, menü çekmecesi
-(eski yatay şerit 8 ekranı erişilemez kılıyordu).
+(eski yatay şerit 8 ekranı erişilemez kılıyordu). Üst şeritteki hedefler de
+canlıda ölçüldü; 40px altı kalmadı.
+
+**Ölçüm yöntemi:** `claude-in-chrome` ile pencereyi küçültüp (`resize_window`
+260×844 → görünüm ~485px) `header`/`main` içindeki `a, button, select, label`
+yüksekliklerini saymak. Bir tur yalnızca `main`'i taradığı için üst şerit
+gözden kaçmıştı — tarama her iki bölgeyi de kapsamalı.
 
 ### Canlıdaki veri
 
