@@ -239,6 +239,9 @@ export async function donemOlustur(
   // Dönem, haftaları, atölyeleri, ilk grubu ve grubun 50 oturumu tek işlemde
   // yazılır. Araya bir hata girerse yarım kalmış bir dönem oluşmamalı.
   const yeniDonem = await db.$transaction(async (tx) => {
+    // şube-muaf: `interns` içindeki kimlikler `stajyerleriDogrula` tarafından
+    // `branchId: subeId` ile sayılarak doğrulandı; biri başka şubedense eylem
+    // buraya gelmeden hata döndü.
     const olusturulan = await tx.term.create({
       data: {
         name: donem.data.name,
@@ -542,6 +545,8 @@ export async function donemStajyerleriniGuncelle(
       },
     });
     if (secilenIdler.length > 0) {
+      // şube-muaf: kimlikler `stajyerleriDogrula` ile kendi şubesinde
+      // doğrulandı. Asıl tehlike bir üstteki `deleteMany`'de ve orada süzgeç var.
       await tx.termIntern.createMany({
         data: secilenIdler.map((userId) => ({
           termId: donemId,

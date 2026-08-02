@@ -22,6 +22,7 @@ export default async function HesapPasifSayfasi() {
   if (!oturum?.user?.id) redirect("/giris");
 
   // Hesap yeniden aktifleştirildiyse kullanıcı burada takılı kalmasın.
+  // şube-muaf: oturumun sahibinin hâlâ aktif olup olmadığına bakılıyor.
   const kullanici = await db.user.findUnique({
     where: { id: oturum.user.id },
     select: { active: true },

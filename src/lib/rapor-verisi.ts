@@ -232,6 +232,8 @@ export async function raporOzetleri(kosul: {
     ),
   ];
 
+  // şube-muaf: `kayitIdleri` bir üstteki şube süzgeçli rapor sorgusundan
+  // türedi; liste zaten tek şubenin kayıtlarından oluşuyor.
   const sonGuncellemeler = await db.score.groupBy({
     by: ["enrollmentId"],
     where: { enrollmentId: { in: kayitIdleri } },

@@ -120,6 +120,8 @@ export async function kayitPuanlamasi(
 
   if (!kayit) return null;
 
+  // şube-muaf: grup, hemen üstteki `group: { branchId: subeId }` süzgeçli
+  // kayıt sorgusundan geldi; oturumları da o şubenin.
   const oturumlar = await db.session.findMany({
     where: { groupId: kayit.group.id },
     orderBy: [{ date: "asc" }, { workshopType: { sortOrder: "asc" } }],
@@ -350,6 +352,7 @@ export async function kayitIlerlemeleri(kosul: {
   const kayitIdleri = kayitlar.map((kayit) => kayit.id);
   const grupIdleri = [...new Set(kayitlar.map((kayit) => kayit.groupId))];
 
+  // şube-muaf: `grupIdleri` şube süzgeçli kayıt sorgusundan türedi.
   const oturumlar = await db.session.findMany({
     where: { groupId: { in: grupIdleri } },
     orderBy: [{ date: "asc" }, { workshopType: { sortOrder: "asc" } }],

@@ -273,6 +273,9 @@ export async function soruSil(soruId: string): Promise<EylemDurumu> {
 
   if (!soru) return { hata: "Soru bulunamadı." };
 
+  // şube-muaf: sayım BİLEREK şubeler üstü. Soru iki şubede de ortak; silinip
+  // silinemeyeceğine karar verirken yalnızca bir şubenin cevaplarına bakmak,
+  // diğer şubenin verisini sessizce yok ederdi.
   const kullanimSayisi = await db.scoreAnswer.count({
     where: { questionId: soruId },
   });

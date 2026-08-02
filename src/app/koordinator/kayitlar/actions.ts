@@ -292,6 +292,8 @@ export async function kayitOlustur(
       };
     }
 
+    // şube-muaf: üç kimlik de aynı işlemin başında `branchId: subeId` ile
+    // okundu (grup, öğrenci, stajyer); biri başka şubedense yukarıda dönülüyor.
     await tx.enrollment.create({
       data: { studentId, groupId, internId },
     });

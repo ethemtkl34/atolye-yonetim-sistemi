@@ -100,6 +100,8 @@ async function subeyiCoz(
  * yönetimi ekranına yalnızca yönetici girebiliyor.
  */
 async function sonYoneticiMi(kullaniciId: string): Promise<boolean> {
+  // şube-muaf: yönetici sayısı şubeler üstü bir değişmez. Buraya yalnızca
+  // `adminZorunlu()` geçmiş eylemler giriyor.
   const hedef = await db.user.findUnique({
     where: { id: kullaniciId },
     select: { role: true, active: true },
@@ -107,6 +109,8 @@ async function sonYoneticiMi(kullaniciId: string): Promise<boolean> {
 
   if (hedef?.role !== "ADMIN" || !hedef.active) return false;
 
+  // şube-muaf: aynı değişmez — sistemde kaç aktif yönetici kaldığı sorusunun
+  // şubeye göre cevabı yok.
   const kalan = await db.user.count({
     where: { role: "ADMIN", active: true, id: { not: kullaniciId } },
   });

@@ -65,6 +65,8 @@ export async function parolamiDegistir(
     };
   }
 
+  // şube-muaf: kullanıcı kendi hesabını okuyor; kimlik oturumdan geliyor,
+  // dışarıdan gelen bir id yok.
   const kayit = await db.user.findUnique({
     where: { id: kullanici.id },
     select: { passwordHash: true },
@@ -77,6 +79,7 @@ export async function parolamiDegistir(
     return { alanHatalari: { mevcut: "Mevcut parola hatalı." } };
   }
 
+  // şube-muaf: kendi parolasını değiştiriyor; kimlik oturumdan geliyor.
   await db.user.update({
     where: { id: kullanici.id },
     data: { passwordHash: await hash(cozumlenen.data.yeni, 12) },

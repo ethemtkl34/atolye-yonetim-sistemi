@@ -101,6 +101,38 @@ Tarama `src` içinde `className="…hover:underline"` araması ile yapılabilir;
 genişlikte yeniden ölçüldü — puanlamalar, öğrenciler, gruplar, kayıtlar,
 öğrenci profili ve atölye geçmişi: 40px altı hedef yok, yatay taşma yok.
 
+### Şube sızıntısı koruması
+
+`src/lib/sube-sizinti.ts` kod tabanını TypeScript çözümleyicisiyle tarıyor ve
+şube süzgeci taşımayan sorguları buluyor; `sube-sizinti.test.ts` bunu teste
+bağlıyor. Sebep: şube süzmesi eklendikten **sonra** üç ekran hâlâ süzgeçsiz
+okuyordu ve bu ancak canlıda gözle görüldü — eksik bir `where` geçerli
+TypeScript'tir, tip denetimi göremez.
+
+Kural sırayla: şubeli model ya da şubeli ilişkiye giren iç içe okuma mu →
+`adminZorunlu()` mu (şubeler üstü, muaf) → süzgeç çağrının içinde mi →
+gerekçeli `// şube-muaf:` yorumu var mı → tekil kayıt ya da doğrulanmış üst
+kayda çapa mı. Hiçbiri değilse bulgu.
+
+İki ayrıntı önemli:
+
+- **İç içe okuma** (`term.findMany({ include: { groups: … } })`) ayrıca
+  denetleniyor. Yaşanan üç sızıntının üçü de buydu: dış model şubesiz olduğu
+  için yalnızca modele bakan bir kural görmezdi.
+- **`{ notIn: […] }` çapa sayılmaz.** Veri kaybı hatası tam olarak buydu.
+  Çapa, doğrulanmış tek bir üst kaydın kimliğidir; küme değildir.
+
+Yeni bir sorgu süzgeci unutursa test kırılır. Bilerek süzgeçsizse çağrının
+üstüne gerekçesi yazılır (`// şube-muaf: …`) — gerekçesiz muafiyet kabul
+edilmiyor.
+
+Testler artık **dağıtımda da çalışıyor** (`vercel-build`): yerelde test
+döngüsü olmadığı için koruma ancak burada anlam taşıyor. Test kırılırsa
+dağıtım durur, hatalı sürüm canlıya çıkmaz.
+
+Tarayıcı bugün 193 sorgunun tamamını gezdi; 14'ü elle incelendi, **hiçbiri
+sızıntı değildi** ve her birinin gerekçesi koda yazıldı.
+
 ### Canlıdaki veri
 
 Ümraniye 21 öğrenci / 7 grup, Güneşli 8 / 4. Hepsi deneme verisi; kullanıcı

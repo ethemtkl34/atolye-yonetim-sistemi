@@ -75,6 +75,8 @@ export async function stajyerEkle(
   // biçimde yapılmalı ki eşleşsin.
   const email = cozumlenen.data.email.toLowerCase();
 
+  // şube-muaf: e-posta bütün sistemde tekil. Yalnızca kendi şubesine bakmak,
+  // diğer şubede var olan bir e-postayla ikinci hesap açılmasına izin verirdi.
   const mevcut = await db.user.findUnique({ where: { email } });
   if (mevcut) {
     return {

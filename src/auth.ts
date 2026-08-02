@@ -45,7 +45,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // "ı"ya dönüşüyor, yani "ADMIN" → "admın" olup hiçbir kayıtla
         // eşleşmiyordu. Telefon klavyeleri ilk harfi büyütmeye eğilimli
         // olduğu için bu, gerçek bir giriş engeli.
-        const kullanici = await db.user.findUnique({
+        // şube-muaf: giriş anı — kullanıcının şubesi zaten bu sorgudan öğreniliyor.
+  const kullanici = await db.user.findUnique({
           where: { email: email.toLowerCase() },
         });
 
