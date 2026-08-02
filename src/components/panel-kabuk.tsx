@@ -103,7 +103,7 @@ export function PanelKabuk({
             <form action={cikisYap}>
               <button
                 type="submit"
-                className="rounded-md border border-marka-200 px-3 py-1.5 text-sm font-medium text-marka-700 transition-colors hover:bg-marka-50"
+                className="min-h-[2.75rem] rounded-md border border-marka-200 px-3 py-1.5 text-sm font-medium text-marka-700 transition-colors hover:bg-marka-50 sm:min-h-0"
               >
                 Çıkış
               </button>

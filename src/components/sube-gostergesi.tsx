@@ -103,7 +103,9 @@ export function SubeGostergesi({
               await subeDegistir(secilen);
             });
           }}
-          className="-ml-1 max-w-[11rem] cursor-pointer truncate rounded bg-transparent py-0 pl-1 pr-6 text-sm font-medium leading-tight text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:max-w-none"
+          // Telefonda 44px: seçici 20px'ti ve üst şeritteki en küçük hedefti.
+          // Masaüstünde eski sıkı ölçüye dönüyor.
+          className="-ml-1 min-h-[2.75rem] max-w-[11rem] cursor-pointer truncate rounded bg-transparent py-0 pl-1 pr-6 text-base font-medium leading-tight text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:min-h-0 sm:max-w-none sm:text-sm"
         >
           {subeler.map((sube) => (
             <option key={sube.id} value={sube.id}>
