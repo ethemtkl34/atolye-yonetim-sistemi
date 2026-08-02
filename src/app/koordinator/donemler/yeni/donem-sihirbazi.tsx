@@ -236,9 +236,14 @@ export function DonemSihirbazi({
           {haftaSonlari.map((cumartesi) => {
             const metin = tarihMetni(cumartesi);
             const secili = secilenHaftalar.includes(metin);
-            // Kota dolduysa yeni hafta işaretlenemez; seçili olanlar
-            // kaldırılabilir kalmalı.
-            const kilitli = !secili && haftaTamam;
+            // Yalnızca ÜST SINIRA dayanınca kilitlenir; seçili olanlar her
+            // zaman kaldırılabilir.
+            //
+            // Burada eskiden `haftaTamam` kullanılıyordu ve o zaman "tam 10
+            // hafta" demekti. Hafta sayısı serbest bırakılınca `haftaTamam`
+            // "en az bir hafta" anlamına geldi ve bu satır ilk seçimden sonra
+            // bütün listeyi kilitledi: kullanıcı tek hafta seçebiliyordu.
+            const kilitli = !secili && secilenHaftalar.length >= EN_FAZLA_HAFTA;
 
             return (
               <li key={metin}>
