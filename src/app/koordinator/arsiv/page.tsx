@@ -9,7 +9,7 @@ import {
   KULUP_DURUMLARI,
   DONEM_DURUMLARI,
 } from "@/lib/durumlar";
-import { grupZamani, haftaSonuBicimle, tarihGunleBicimle } from "@/lib/tarih";
+import { grupZamani, haftaBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Arşiv",
@@ -43,7 +43,7 @@ export default async function ArsivSayfasi() {
           select: {
             id: true,
             name: true,
-            day: true,
+            days: true,
             timeSlot: true,
             // Diğer bütün ekranlar gibi yalnızca AKTIF kayıtlar sayılır;
             // filtresiz sayım iptal edilmiş kayıtları da katıyor ve arşiv,
@@ -69,7 +69,7 @@ export default async function ArsivSayfasi() {
           select: {
             id: true,
             name: true,
-            day: true,
+            days: true,
             timeSlot: true,
             _count: {
               select: {
@@ -130,14 +130,14 @@ export default async function ArsivSayfasi() {
                   {donem.weeks.length} hafta · {donem._count.workshops} atölye ·{" "}
                   {donem.groups.length} grup · {toplamKayit} kayıt
                   {ilkHafta && sonHafta
-                    ? ` · ${haftaSonuBicimle(ilkHafta.date)} – ${haftaSonuBicimle(sonHafta.date)}`
+                    ? ` · ${haftaBicimle(ilkHafta.date, donem.dayMode)} – ${haftaBicimle(sonHafta.date, donem.dayMode)}`
                     : ""}
                 </p>
 
                 <ul className="mt-2 space-y-1">
                   {donem.groups.map((grup) => (
                     <li key={grup.id} className="text-xs text-zinc-500">
-                      {grup.name} · {grupZamani(grup.day, grup.timeSlot)} ·{" "}
+                      {grup.name} · {grupZamani(grup.days, grup.timeSlot)} ·{" "}
                       {grup._count.enrollments} kayıt · {grup._count.sessions}{" "}
                       oturum
                     </li>
@@ -181,7 +181,7 @@ export default async function ArsivSayfasi() {
                 <ul className="mt-2 space-y-1">
                   {kulup.groups.map((grup) => (
                     <li key={grup.id} className="text-xs text-zinc-500">
-                      {grup.name} · {grupZamani(grup.day, grup.timeSlot)} ·{" "}
+                      {grup.name} · {grupZamani(grup.days, grup.timeSlot)} ·{" "}
                       {grup._count.enrollments} kayıt · {grup._count.sessions}{" "}
                       oturum
                     </li>

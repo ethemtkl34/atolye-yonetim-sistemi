@@ -1,3 +1,4 @@
+import type { Day } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
@@ -35,7 +36,7 @@ export type ProgramSecenegi = {
 type HamGrup = {
   id: string;
   name: string;
-  day: "CUMARTESI" | "PAZAR";
+  days: Day[];
   timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
   capacity: number;
   active: boolean;
@@ -49,7 +50,7 @@ export function grupSecenekleri(gruplar: HamGrup[]): GrupSecenegi[] {
     return {
       id: grup.id,
       ad: grup.name,
-      zaman: grupZamani(grup.day, grup.timeSlot),
+      zaman: grupZamani(grup.days, grup.timeSlot),
       kapasite: kontenjan.kapasite,
       doluluk: kontenjan.doluluk,
       dolu: kontenjan.dolu,
@@ -82,7 +83,7 @@ export async function kayitAlanProgramlar(
           select: {
             id: true,
             name: true,
-            day: true,
+            days: true,
             timeSlot: true,
             capacity: true,
             active: true,
@@ -110,7 +111,7 @@ export async function kayitAlanProgramlar(
           select: {
             id: true,
             name: true,
-            day: true,
+            days: true,
             timeSlot: true,
             capacity: true,
             active: true,

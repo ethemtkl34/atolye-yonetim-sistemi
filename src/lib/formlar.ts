@@ -14,7 +14,25 @@ export const GRUP_SEMASI = z.object({
     .trim()
     .min(1, "Grup adı gerekli")
     .max(60, "Grup adı en fazla 60 karakter olabilir"),
-  day: z.enum(["CUMARTESI", "PAZAR"], { message: "Gün seçin" }),
+  /**
+   * Grup haftada birden çok gün toplanabilir; formdan çoklu kutu geliyor.
+   * Hangi günlerin sunulacağını dönemin `dayMode` alanı belirliyor, ama şema
+   * yedi günün hepsini kabul ediyor: kısıt sunucuda dönem okunduktan sonra
+   * uygulanıyor (formdan gelen değere güvenilmez).
+   */
+  days: z
+    .array(
+      z.enum([
+        "PAZARTESI",
+        "SALI",
+        "CARSAMBA",
+        "PERSEMBE",
+        "CUMA",
+        "CUMARTESI",
+        "PAZAR",
+      ]),
+    )
+    .min(1, "En az bir gün seçin"),
   timeSlot: z.enum(["OGLEDEN_ONCE", "OGLEDEN_SONRA"], {
     message: "Zaman dilimi seçin",
   }),

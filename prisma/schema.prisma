@@ -48,10 +48,32 @@ enum ClubStatus {
   ARSIVLENDI
 }
 
-/// §2.3 — Programlar yalnızca hafta sonu yapılır.
+/// Programın toplandığı gün.
+///
+/// Sistem başlangıçta yalnızca hafta sonunu tanıyordu (§2.3) çünkü dönemler
+/// cumartesi–pazar yürüyordu. Yaz programları hafta içi yapılıyor; enum yedi
+/// güne çıktı ve hangi günlerin seçilebileceği artık dönemin `dayMode`
+/// alanından geliyor.
+///
+/// Sıra takvim sırası: `orderBy` ve gün listeleri bu sıraya güveniyor.
 enum Day {
+  PAZARTESI
+  SALI
+  CARSAMBA
+  PERSEMBE
+  CUMA
   CUMARTESI
   PAZAR
+}
+
+/// Dönemin gün düzeni — grup açarken hangi günlerin sunulacağını belirler.
+///
+/// Sezon (sonbahar/yaz) etiketi olarak DEĞİL, işlevsel bir alan olarak
+/// duruyor: dönem adı zaten serbest metin, sezonu oradan okunuyor. Burada
+/// kararlaştırılan şey takvimde ve grup formunda hangi günlerin görüneceği.
+enum DayMode {
+  HAFTA_SONU
+  HAFTA_ICI
 }
 
 /// §2.3 — Atölyelerin dakika bazlı saati tutulmaz (§14), yalnızca yarım gün.
@@ -199,6 +221,12 @@ model Term {
   name        String
   description String?
   status      TermStatus @default(TASLAK)
+
+  /// Grupların hangi günlerde toplanabileceği. Dönem oluşturulurken seçilir;
+  /// takvimdeki hafta gösterimi ve grup formundaki gün listesi buna göre
+  /// daralır. Eski dönemlerin hepsi hafta sonu.
+  dayMode DayMode @default(HAFTA_SONU)
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -245,8 +273,13 @@ model TermWorkshop {
   @@index([termId, sortOrder])
 }
 
-/// §2.2 — Eğitim yapılacak 10 tarih. Tatil haftaları seçilmediği için takvim
-/// 11–12 haftaya uzayabilir; bu yüzden tarihler tek tek tutulur, aralık değil.
+/// §2.2 — Eğitim yapılacak haftalar. Tatil haftaları seçilmediği için takvim
+/// uzayabilir; bu yüzden tarihler tek tek tutulur, aralık değil.
+///
+/// `date` haftanın ÇAPASI: o haftanın PAZARTESİ tarihi. Eskiden cumartesiydi
+/// (program yalnızca hafta sonu yapılırdı); hafta içi dönemler gelince çapa
+/// haftanın başına alındı, böylece yedi günün hepsi aynı çapadan türetiliyor.
+/// Grubun gerçek toplanma tarihi `grupTarihi(çapa, gün)` ile hesaplanır.
 model TermWeek {
   id         String   @id @default(cuid())
   termId     String
@@ -332,8 +365,17 @@ model Group {
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
-  name     String
-  day      Day
+  name String
+
+  /// Grubun haftada toplandığı günler. En az bir gün olmak zorunda
+  /// (`Group_gun_dolu` CHECK kısıtı).
+  ///
+  /// Tek alan değil liste: yaz programlarında bir grup haftada birden çok gün
+  /// toplanıyor ve HER toplanma gününde dönemin bütün atölyeleri yapılıyor.
+  /// Oturum sayısı bu yüzden gün sayısıyla çarpılır — 10 hafta × 2 gün ×
+  /// 5 atölye = 100 oturum.
+  days Day[]
+
   timeSlot TimeSlot
   capacity Int
 
@@ -352,7 +394,6 @@ model Group {
   @@index([termId, branchId])
   @@index([clubId, branchId])
   @@index([branchId, active])
-  @@index([day, timeSlot])
 }
 
 // ---------------------------------------------------------------------------

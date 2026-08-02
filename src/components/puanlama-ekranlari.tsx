@@ -86,7 +86,7 @@ export function KayitListesi({
               </div>
               <p className="mt-1 text-sm text-zinc-600">
                 {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi} ·{" "}
-                {grupZamani(ilerleme.kayit.gun, ilerleme.kayit.zamanDilimi)}
+                {grupZamani(ilerleme.kayit.gunler, ilerleme.kayit.zamanDilimi)}
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Sorumlu stajyer: {ilerleme.kayit.stajyerAdi ?? "Atanmamış"}

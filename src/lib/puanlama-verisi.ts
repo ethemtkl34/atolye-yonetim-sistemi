@@ -66,7 +66,7 @@ export type PuanlamaKaydi = {
   program: string;
   programTuru: "Dönem" | "Kulüp";
   grupAdi: string;
-  gun: Day;
+  gunler: Day[];
   zamanDilimi: TimeSlot;
   /** Stajyerin görebildiği tek sağlık bilgisi (§3.2). */
   guvenlikUyarisi: string | null;
@@ -109,7 +109,7 @@ export async function kayitPuanlamasi(
         select: {
           id: true,
           name: true,
-          day: true,
+          days: true,
           timeSlot: true,
           term: { select: { name: true } },
           club: { select: { name: true } },
@@ -252,7 +252,7 @@ type KayitSorgusu = {
   };
   group: {
     name: string;
-    day: Day;
+    days: Day[];
     timeSlot: TimeSlot;
     term: { name: string } | null;
     club: { name: string } | null;
@@ -270,7 +270,7 @@ function kayitSatiri(kayit: KayitSorgusu): PuanlamaKaydi {
     program: kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
     programTuru: kayit.group.term ? "Dönem" : "Kulüp",
     grupAdi: kayit.group.name,
-    gun: kayit.group.day,
+    gunler: kayit.group.days,
     zamanDilimi: kayit.group.timeSlot,
     guvenlikUyarisi: kayit.student.healthInfo?.internSafetyNote ?? null,
   };
@@ -338,7 +338,7 @@ export async function kayitIlerlemeleri(kosul: {
       group: {
         select: {
           name: true,
-          day: true,
+          days: true,
           timeSlot: true,
           term: { select: { name: true } },
           club: { select: { name: true } },

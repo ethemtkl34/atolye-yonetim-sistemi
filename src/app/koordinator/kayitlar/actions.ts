@@ -147,7 +147,13 @@ export async function kayitOlustur(
       where: {
         studentId,
         status: "AKTIF",
-        group: { day: grup.day, timeSlot: grup.timeSlot, branchId: subeId },
+        // Çakışma artık gün KESİŞİMİ: iki grup haftada birden çok gün
+        // toplanabildiği için tek bir günün eşitliğine bakmak yetmiyor.
+        group: {
+          days: { hasSome: grup.days },
+          timeSlot: grup.timeSlot,
+          branchId: subeId,
+        },
       },
       include: {
         group: {
@@ -169,7 +175,7 @@ export async function kayitOlustur(
         .join(", ");
 
       return {
-        uyari: `Bu öğrencinin ${grupZamani(grup.day, grup.timeSlot).toLocaleLowerCase("tr-TR")} zaman diliminde başka aktif kaydı var: ${adlar}. Devam etmek isterseniz kaydı yine de oluşturabilirsiniz.`,
+        uyari: `Bu öğrencinin ${grupZamani(grup.days, grup.timeSlot).toLocaleLowerCase("tr-TR")} zaman diliminde başka aktif kaydı var: ${adlar}. Devam etmek isterseniz kaydı yine de oluşturabilirsiniz.`,
         uyariGroupId: groupId,
       };
     }
@@ -409,7 +415,7 @@ export async function topluKayitOlustur(
         group: {
           select: {
             name: true,
-            day: true,
+            days: true,
             timeSlot: true,
             term: { select: { name: true } },
             club: { select: { name: true } },
@@ -526,7 +532,7 @@ export async function topluKayitOlustur(
           kayit.status === "AKTIF" &&
           kayit.groupId !== groupId &&
           eklenenIdleri.has(kayit.studentId) &&
-          kayit.group.day === grup.day &&
+          kayit.group.days.some((gun) => grup.days.includes(gun)) &&
           kayit.group.timeSlot === grup.timeSlot,
       )
       .map((kayit) => {

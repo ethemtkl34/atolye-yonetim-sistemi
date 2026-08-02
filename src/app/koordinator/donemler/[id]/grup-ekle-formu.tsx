@@ -3,6 +3,9 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
+import { GUN_ADLARI } from "@/lib/tarih";
+import { cn } from "@/lib/utils";
+import type { Day } from "@/generated/prisma/enums";
 import { grupEkle, type EylemDurumu } from "../actions";
 
 function KaydetButonu() {
@@ -26,17 +29,31 @@ export function GrupEkleFormu({
   donemId,
   bilgi,
   engelSebebi,
+  secilebilirGunler,
 }: {
   donemId: string;
   bilgi: string;
   /** Doluysa buton kilitlenir — eylemin kesin reddedeceği durumlar için. */
   engelSebebi?: string;
+  /** Dönemin gün düzeninin kapsadığı günler — liste bununla daralır. */
+  secilebilirGunler: Day[];
 }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     grupEkle.bind(null, donemId),
     {},
   );
   const [acik, setAcik] = useState(false);
+  const [gunler, setGunler] = useState<Day[]>(() =>
+    secilebilirGunler.slice(0, 1),
+  );
+
+  function gunDegistir(gun: Day) {
+    setGunler((oncekiler) =>
+      oncekiler.includes(gun)
+        ? oncekiler.filter((g) => g !== gun)
+        : [...oncekiler, gun],
+    );
+  }
   const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
 
   // Başarıdan sonra paneli kapat (render sırasında durum ayarlama).
@@ -90,15 +107,37 @@ export function GrupEkleFormu({
             />
           </Alan>
 
-          <Alan etiket="Gün" hata={durum.alanHatalari?.day}>
-            <select
-              name="day"
-              defaultValue={durum.degerler?.day ?? "CUMARTESI"}
-              className={secimStili}
-            >
-              <option value="CUMARTESI">Cumartesi</option>
-              <option value="PAZAR">Pazar</option>
-            </select>
+          <Alan
+            etiket="Toplanma günleri"
+            ipucu="Grup her toplanma gününde dönemin bütün atölyelerini yapar."
+            hata={durum.alanHatalari?.days}
+          >
+            <div className="flex flex-wrap gap-1">
+              {secilebilirGunler.map((gun) => {
+                const secili = gunler.includes(gun);
+                return (
+                  <label
+                    key={gun}
+                    className={cn(
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      secili
+                        ? "bg-marka-50 text-marka-700"
+                        : "text-zinc-700 hover:bg-marka-50",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      name="days"
+                      value={gun}
+                      checked={secili}
+                      onChange={() => gunDegistir(gun)}
+                      className="size-4"
+                    />
+                    {GUN_ADLARI[gun]}
+                  </label>
+                );
+              })}
+            </div>
           </Alan>
 
           <Alan etiket="Zaman dilimi" hata={durum.alanHatalari?.timeSlot}>

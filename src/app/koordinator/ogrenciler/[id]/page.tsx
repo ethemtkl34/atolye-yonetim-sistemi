@@ -19,7 +19,7 @@ import {
   DONEM_DURUMLARI,
   KULUP_DURUMLARI,
 } from "@/lib/durumlar";
-import type { CancelReason, ClubStatus, TermStatus } from "@/generated/prisma/enums";
+import type { CancelReason, ClubStatus, Day, TermStatus } from "@/generated/prisma/enums";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
@@ -398,7 +398,7 @@ type ProfilKaydi = {
   _count: { scores: number };
   group: {
     name: string;
-    day: "CUMARTESI" | "PAZAR";
+    days: Day[];
     timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
     term: { name: string; status: TermStatus } | null;
     club: { name: string; status: ClubStatus; date: Date } | null;
@@ -499,7 +499,7 @@ function KayitBolumu({
               </div>
               <p className="mt-1 text-sm text-zinc-700">
                 {kayit.group.name} ·{" "}
-                {grupZamani(kayit.group.day, kayit.group.timeSlot)}
+                {grupZamani(kayit.group.days, kayit.group.timeSlot)}
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Kayıt tarihi {tarihBicimle(kayit.createdAt)}

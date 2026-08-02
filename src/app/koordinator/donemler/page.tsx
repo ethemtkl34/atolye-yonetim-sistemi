@@ -5,7 +5,7 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AKTIF_DONEM_KOSULU, DONEM_DURUMLARI } from "@/lib/durumlar";
-import { bugun, haftaSonuBicimle } from "@/lib/tarih";
+import { bugun, haftaBicimle } from "@/lib/tarih";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -170,7 +170,7 @@ export default async function DonemlerSayfasi(
 
                   <p className="text-sm text-zinc-600">
                     {ilkHafta && sonHafta
-                      ? `${haftaSonuBicimle(ilkHafta.date)} → ${haftaSonuBicimle(sonHafta.date)}`
+                      ? `${haftaBicimle(ilkHafta.date, donem.dayMode)} → ${haftaBicimle(sonHafta.date, donem.dayMode)}`
                       : "Takvim tanımlı değil"}
                   </p>
 

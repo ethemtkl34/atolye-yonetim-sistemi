@@ -183,7 +183,7 @@ export default async function KayitlarSayfasi(
                       {kayit.group.name}
                     </p>
                     <p className="mt-1 text-xs text-zinc-500">
-                      {grupZamani(kayit.group.day, kayit.group.timeSlot)}
+                      {grupZamani(kayit.group.days, kayit.group.timeSlot)}
                       {kayit.group.club
                         ? ` · ${tarihBicimle(kayit.group.club.date)}`
                         : ""}

@@ -157,7 +157,7 @@ export default async function GruplarSayfasi(
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-zinc-900">{grup.name}</span>
                   <span className="text-sm text-zinc-600">
-                    {grupZamani(grup.day, grup.timeSlot)}
+                    {grupZamani(grup.days, grup.timeSlot)}
                   </span>
                   {kontenjan.dolu ? (
                     <Rozet tur="uyari">Kontenjan dolu</Rozet>

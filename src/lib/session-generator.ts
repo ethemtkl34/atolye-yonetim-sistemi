@@ -1,5 +1,5 @@
 import type { Day } from "@/generated/prisma/enums";
-import { grupTarihi } from "./tarih";
+import { grupTarihi, gunEkle, gunleriSirala } from "./tarih";
 
 /**
  * Oturum üretimi — §2.4, §13.2, §13.5.
@@ -16,7 +16,7 @@ import { grupTarihi } from "./tarih";
 export type HaftaGirdisi = {
   id: string;
   weekNumber: number;
-  /** Haftanın çapası: o hafta sonunun CUMARTESİ tarihi. */
+  /** Haftanın çapası: o haftanın PAZARTESİ tarihi. */
   date: Date;
 };
 
@@ -32,22 +32,26 @@ export type UretilecekOturum = {
  * Bir dönem grubunun bütün oturumlarını üretir.
  *
  * §13.5 — Dönem başladıktan sonra açılan grup geçmiş haftaları telafi etmez.
- * `baslangicHaftasi` 1 ise 10 haftanın tamamı, 4 ise yalnızca 4–10 haftaları
- * üretilir. 10 hafta × 5 atölye = 50 oturum; 4. haftadan başlayan grup için
- * 7 hafta × 5 atölye = 35 oturum.
+ * `baslangicHaftasi` 1 ise haftaların tamamı, 4 ise yalnızca 4. haftadan
+ * sonrası üretilir.
  *
- * Oturum tarihi grubun gününe göre hesaplanır: cumartesi grubu haftanın
- * cumartesisinde, pazar grubu ertesi gün toplanır.
+ * Grup haftada birden çok gün toplanabilir ve HER toplanma gününde dönemin
+ * bütün atölyeleri yapılır. Oturum sayısı bu yüzden üç çarpanın çarpımıdır:
+ * hafta × gün × atölye. 10 hafta × 1 gün × 5 atölye = 50 oturum;
+ * 10 hafta × 2 gün × 5 atölye = 100 oturum.
+ *
+ * Günler takvim sırasına diziliyor: üretim sırası ekrandaki sırayla aynı
+ * kalsın diye, koordinatör kutuları hangi sırayla işaretlerse işaretlesin.
  */
 export function donemOturumlariniUret({
   haftalar,
   atolyeIdleri,
-  grupGunu,
+  grupGunleri,
   baslangicHaftasi,
 }: {
   haftalar: readonly HaftaGirdisi[];
   atolyeIdleri: readonly string[];
-  grupGunu: Day;
+  grupGunleri: readonly Day[];
   baslangicHaftasi: number;
 }): UretilecekOturum[] {
   const oturumlar: UretilecekOturum[] = [];
@@ -56,14 +60,18 @@ export function donemOturumlariniUret({
     .filter((hafta) => hafta.weekNumber >= baslangicHaftasi)
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
+  const gunler = gunleriSirala(grupGunleri);
+
   for (const hafta of ilgiliHaftalar) {
-    for (const atolyeId of atolyeIdleri) {
-      oturumlar.push({
-        workshopTypeId: atolyeId,
-        termWeekId: hafta.id,
-        weekNumber: hafta.weekNumber,
-        date: grupTarihi(hafta.date, grupGunu),
-      });
+    for (const gun of gunler) {
+      for (const atolyeId of atolyeIdleri) {
+        oturumlar.push({
+          workshopTypeId: atolyeId,
+          termWeekId: hafta.id,
+          weekNumber: hafta.weekNumber,
+          date: grupTarihi(hafta.date, gun),
+        });
+      }
     }
   }
 
@@ -110,11 +118,14 @@ export function kulupOturumlariniUret({
  * Dönem başladıktan sonra açılan bir grubun hangi haftadan başlayacağını
  * belirler: bugünden itibaren yapılacak ilk eğitim haftası.
  *
- * `grupGunu` verilirse hafta, çapa (cumartesi) yerine grubun gerçek toplanma
- * tarihine göre değerlendirilir. Bu fark pazar gruplarında önemli: pazar günü
- * açılan bir pazar grubunun o haftaki oturumu henüz yapılmamıştır; çapaya
- * bakılsaydı (cumartesi < bugün) hafta geçmiş sayılır ve grup 5 oturumunu
- * sessizce kaybederdi.
+ * `grupGunleri` verilirse hafta, çapa (pazartesi) yerine grubun gerçek
+ * toplanma tarihlerine göre değerlendirilir. Fark haftanın sonuna düşen
+ * gruplarda önemli: cumartesi günü açılan bir cumartesi grubunun o haftaki
+ * oturumu henüz yapılmamıştır; çapaya bakılsaydı (pazartesi < bugün) hafta
+ * geçmiş sayılır ve grup o haftanın oturumlarını sessizce kaybederdi.
+ *
+ * Çok günlü grupta grubun O HAFTAKİ SON toplanma günü esas alınır: haftanın
+ * bir günü geçmiş olsa da sonraki günü duruyorsa hafta hâlâ yapılacaktır.
  *
  * Dönem henüz başlamadıysa 1 döner (grup baştan katılır). Dönemin bütün
  * haftaları geçmişse null döner — böyle bir gruba üretilecek oturum yoktur ve
@@ -123,12 +134,20 @@ export function kulupOturumlariniUret({
 export function mevcutHaftaNumarasi(
   haftalar: readonly HaftaGirdisi[],
   bugun: Date,
-  grupGunu?: Day,
+  grupGunleri?: readonly Day[],
 ): number | null {
+  const gunler = grupGunleri ? gunleriSirala(grupGunleri) : [];
+
   const gelecekHaftalar = haftalar
     .filter((hafta) => {
-      const toplanma = grupGunu ? grupTarihi(hafta.date, grupGunu) : hafta.date;
-      return toplanma.getTime() >= bugun.getTime();
+      // Gün verilmediyse haftanın SONU esas alınır: çapa (pazartesi) geçmiş
+      // olsa da o haftanın cumartesisi hâlâ yapılacak olabilir. Dönem
+      // sayfasındaki "yeni grup kaçıncı haftadan başlar" tahmini bunu kullanıyor.
+      const sonToplanma =
+        gunler.length > 0
+          ? grupTarihi(hafta.date, gunler[gunler.length - 1])
+          : gunEkle(hafta.date, 6);
+      return sonToplanma.getTime() >= bugun.getTime();
     })
     .sort((a, b) => a.weekNumber - b.weekNumber);
 

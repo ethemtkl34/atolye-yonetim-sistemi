@@ -37,7 +37,7 @@ export default async function KoordinatorKayitPuanlamasi(
         <div className="mt-2">
           <SayfaBasligi
             baslik={kayit.ogrenciAdi}
-            aciklama={`${kayit.program} · ${kayit.grupAdi} · ${grupZamani(kayit.gun, kayit.zamanDilimi)}`}
+            aciklama={`${kayit.program} · ${kayit.grupAdi} · ${grupZamani(kayit.gunler, kayit.zamanDilimi)}`}
             aksiyon={
               <Link
                 href={`/koordinator/ogrenciler/${kayit.ogrenciId}`}

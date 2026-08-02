@@ -582,7 +582,7 @@ async function gruplariSagla(
 
   async function donemGrubu(ad: string, gun: "CUMARTESI" | "PAZAR", kontenjan: number) {
     const mevcut = await db.group.findFirst({
-      where: { termId: donem.id, branchId: set.subeId, day: gun },
+      where: { termId: donem.id, branchId: set.subeId, days: { has: gun } },
     });
     if (mevcut) return mevcut;
 
@@ -591,7 +591,7 @@ async function gruplariSagla(
         termId: donem.id,
         branchId: set.subeId,
         name: ad,
-        day: gun,
+        days: [gun],
         timeSlot: "OGLEDEN_ONCE",
         capacity: kontenjan,
         startWeekNumber: 1,
@@ -600,7 +600,7 @@ async function gruplariSagla(
     const oturumlar = donemOturumlariniUret({
       haftalar: donem.weeks,
       atolyeIdleri,
-      grupGunu: gun,
+      grupGunleri: [gun],
       baslangicHaftasi: 1,
     });
     await db.session.createMany({
@@ -616,14 +616,13 @@ async function gruplariSagla(
     if (mevcut) return mevcut;
 
     const gun = gunundenGun(kulup.date);
-    if (!gun) throw new Error("Kulüp tarihi hafta sonuna denk gelmiyor.");
 
     const grup = await db.group.create({
       data: {
         clubId: kulup.id,
         branchId: set.subeId,
         name: ad,
-        day: gun,
+        days: [gun],
         timeSlot: dilim,
         capacity: kontenjan,
         startWeekNumber: 1,

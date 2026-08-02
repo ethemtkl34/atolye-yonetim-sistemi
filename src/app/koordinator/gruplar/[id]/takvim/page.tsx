@@ -33,7 +33,7 @@ export default async function GrupTakvimiSayfasi(
     select: {
       id: true,
       name: true,
-      day: true,
+      days: true,
       timeSlot: true,
       term: { select: { id: true, name: true } },
       club: { select: { id: true, name: true } },
@@ -96,7 +96,7 @@ export default async function GrupTakvimiSayfasi(
         <div className="mt-2">
           <SayfaBasligi
             baslik={`${grup.name} · takvim`}
-            aciklama={`${grupZamani(grup.day, grup.timeSlot)} · ${gunler.length} gün · ${grup.sessions.length} atölye oturumu. Takvim bu gruba aittir; buradaki değişiklik aynı programın diğer gruplarını etkilemez.`}
+            aciklama={`${grupZamani(grup.days, grup.timeSlot)} · ${gunler.length} gün · ${grup.sessions.length} atölye oturumu. Takvim bu gruba aittir; buradaki değişiklik aynı programın diğer gruplarını etkilemez.`}
           />
         </div>
       </div>

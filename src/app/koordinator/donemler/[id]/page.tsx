@@ -7,7 +7,7 @@ import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { DONEM_DURUMLARI } from "@/lib/durumlar";
 import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/scoring";
-import { bugun, grupZamani, haftaSonuBicimle } from "@/lib/tarih";
+import { bugun, DUZEN_GUNLERI, grupZamani, haftaBicimle } from "@/lib/tarih";
 import { mevcutHaftaNumarasi } from "@/lib/session-generator";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
@@ -133,7 +133,7 @@ export default async function DonemDetaySayfasi(
     return {
       id: grup.id,
       ad: grup.name,
-      zaman: grupZamani(grup.day, grup.timeSlot),
+      zaman: grupZamani(grup.days, grup.timeSlot),
       kapasite: kontenjan.kapasite,
       doluluk: kontenjan.doluluk,
       dolu: kontenjan.dolu,
@@ -238,7 +238,7 @@ export default async function DonemDetaySayfasi(
                 <span className="w-16 shrink-0 whitespace-nowrap tabular-nums text-zinc-400">
                   {hafta.weekNumber}. hafta
                 </span>
-                <span>{haftaSonuBicimle(hafta.date)}</span>
+                <span>{haftaBicimle(hafta.date, donem.dayMode)}</span>
               </li>
             );
           })}
@@ -272,7 +272,7 @@ export default async function DonemDetaySayfasi(
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-zinc-900">{grup.name}</span>
                   <span className="text-sm text-zinc-600">
-                    {grupZamani(grup.day, grup.timeSlot)}
+                    {grupZamani(grup.days, grup.timeSlot)}
                   </span>
                   {kontenjan.dolu ? (
                     <Rozet tur="uyari">Kontenjan dolu</Rozet>
@@ -307,6 +307,7 @@ export default async function DonemDetaySayfasi(
           donemId={donem.id}
           bilgi={grupEklemeBilgisi}
           engelSebebi={grupEklemeEngeli ?? undefined}
+          secilebilirGunler={DUZEN_GUNLERI[donem.dayMode]}
         />
       </div>
 

@@ -7,7 +7,9 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import {
   bugun,
-  haftaCapasi,
+  DUZEN_GUNLERI,
+  GUN_ADLARI,
+  haftaBasi,
   tarihCozumle,
   tarihMetni,
 } from "@/lib/tarih";
@@ -43,12 +45,20 @@ const DONEM_FORM_ALANLARI = [
   "grupKontenjani",
 ] as const;
 
-const GRUP_FORM_ALANLARI = ["name", "day", "timeSlot", "capacity"] as const;
+const GRUP_FORM_ALANLARI = ["name", "timeSlot", "capacity"] as const;
 
 /** Grup şeması dönem ve kulüpte ortak — tek kaynak `lib/formlar.ts`. */
 const grupSemasi = GRUP_SEMASI;
 
 const donemSemasi = z.object({
+  /**
+   * Gün düzeni sezon etiketi değil, işlevsel bir alan: takvimdeki hafta
+   * gösterimi ve grup formundaki gün listesi buna göre daralıyor. Yaz
+   * programları hafta içi yapıldığı için eklendi.
+   */
+  dayMode: z.enum(["HAFTA_SONU", "HAFTA_ICI"], {
+    message: "Gün düzeni seçin",
+  }),
   name: z
     .string()
     .trim()
@@ -91,20 +101,15 @@ function haftalariDogrula(
     const tarih = tarihCozumle(metin);
     if (!tarih) return { hata: `Geçersiz tarih: ${metin}` };
 
-    const capa = haftaCapasi(tarih);
-    if (!capa) {
-      return {
-        hata: `${metin} bir hafta sonu değil. Atölyeler yalnızca cumartesi ve pazar yapılır.`,
-      };
-    }
-
-    capalar.push(capa);
+    // Hangi gün seçilirse seçilsin o haftanın PAZARTESİ'sine sabitlenir:
+    // takvimden seçilen şey bir gün değil, bir hafta.
+    capalar.push(haftaBasi(tarih));
   }
 
   const benzersiz = new Set(capalar.map(tarihMetni));
   if (benzersiz.size !== capalar.length) {
     return {
-      hata: "Aynı hafta sonu birden fazla kez seçilmiş. Her hafta yalnızca bir kez seçilebilir.",
+      hata: "Aynı hafta birden fazla kez seçilmiş. Her hafta yalnızca bir kez seçilebilir.",
     };
   }
 
@@ -189,13 +194,14 @@ export async function donemOlustur(
   const kullanici = await yonetimZorunlu();
 
   const donem = donemSemasi.safeParse({
+    dayMode: formVerisi.get("dayMode"),
     name: formVerisi.get("name"),
     description: formVerisi.get("description"),
   });
 
   const grup = grupSemasi.safeParse({
     name: formVerisi.get("grupAdi"),
-    day: formVerisi.get("grupGunu"),
+    days: formVerisi.getAll("grupGunleri").map(String).filter(Boolean),
     timeSlot: formVerisi.get("grupZamanDilimi"),
     capacity: formVerisi.get("grupKontenjani"),
   });
@@ -213,6 +219,20 @@ export async function donemOlustur(
     return { alanHatalari: hatalar, degerler: girilenler };
   }
   if (!donem.success || !grup.success) return { hata: "Form doğrulanamadı." };
+
+  // İlk grubun günleri dönemin düzenine uymalı. Form zaten daraltılmış liste
+  // gösteriyor; bu kontrol formdan gelen değere güvenilmediği için var.
+  const ilkGrupKacagi = grup.data.days.find(
+    (gun) => !DUZEN_GUNLERI[donem.data.dayMode].includes(gun),
+  );
+  if (ilkGrupKacagi) {
+    return {
+      alanHatalari: {
+        "grup.days": `Bu dönem ${donem.data.dayMode === "HAFTA_SONU" ? "hafta sonu" : "hafta içi"} yapılıyor; ${GUN_ADLARI[ilkGrupKacagi]} seçilemez.`,
+      },
+      degerler: girilenler,
+    };
+  }
 
   const haftaSonucu = haftalariDogrula(
     formVerisi.getAll("tarihler").map(String).filter(Boolean),
@@ -246,6 +266,7 @@ export async function donemOlustur(
       data: {
         name: donem.data.name,
         description: donem.data.description,
+        dayMode: donem.data.dayMode,
         status: "KAYIT_ALIYOR",
         workshops: {
           create: atolyeSonucu.idler.map((atolyeId, sira) => ({
@@ -271,7 +292,7 @@ export async function donemOlustur(
         termId: olusturulan.id,
         branchId: kullanici.aktifSubeId,
         name: grup.data.name,
-        day: grup.data.day,
+        days: grup.data.days,
         timeSlot: grup.data.timeSlot,
         capacity: grup.data.capacity,
         startWeekNumber: 1,
@@ -281,7 +302,7 @@ export async function donemOlustur(
     const oturumlar = donemOturumlariniUret({
       haftalar: olusturulan.weeks,
       atolyeIdleri: atolyeSonucu.idler,
-      grupGunu: grup.data.day,
+      grupGunleri: grup.data.days,
       baslangicHaftasi: 1,
     });
 
@@ -367,7 +388,7 @@ export async function grupEkle(
 
   const grup = grupSemasi.safeParse({
     name: formVerisi.get("name"),
-    day: formVerisi.get("day"),
+    days: formVerisi.getAll("days").map(String).filter(Boolean),
     timeSlot: formVerisi.get("timeSlot"),
     capacity: formVerisi.get("capacity"),
   });
@@ -397,12 +418,26 @@ export async function grupEkle(
     };
   }
 
-  // Hafta, grubun gerçek toplanma gününe göre hesaplanır: pazar günü açılan
-  // bir pazar grubunun o haftaki oturumu henüz yapılmamıştır.
+  // Grubun günleri dönemin düzenine uymak zorunda: hafta sonu dönemine salı
+  // grubu açılamaz. Form zaten daraltılmış liste gösteriyor ama formdan gelen
+  // değere güvenilmez.
+  const uygunGunler = DUZEN_GUNLERI[donem.dayMode];
+  const kacakGun = grup.data.days.find((gun) => !uygunGunler.includes(gun));
+  if (kacakGun) {
+    return {
+      alanHatalari: {
+        days: `Bu dönem ${donem.dayMode === "HAFTA_SONU" ? "hafta sonu" : "hafta içi"} yapılıyor; ${GUN_ADLARI[kacakGun]} seçilemez.`,
+      },
+      degerler: formDegerleri(formVerisi, ["name", "capacity"]),
+    };
+  }
+
+  // Hafta, grubun gerçek toplanma gününe göre hesaplanır: haftanın son
+  // toplanma günü henüz gelmediyse o hafta hâlâ yapılacaktır.
   const baslangicHaftasi = mevcutHaftaNumarasi(
     donem.weeks,
     bugun(),
-    grup.data.day,
+    grup.data.days,
   );
 
   if (baslangicHaftasi === null) {
@@ -416,7 +451,7 @@ export async function grupEkle(
   const oturumlar = donemOturumlariniUret({
     haftalar: donem.weeks,
     atolyeIdleri,
-    grupGunu: grup.data.day,
+    grupGunleri: grup.data.days,
     baslangicHaftasi,
   });
 
@@ -426,7 +461,7 @@ export async function grupEkle(
         termId: donemId,
         branchId: kullanici.aktifSubeId,
         name: grup.data.name,
-        day: grup.data.day,
+        days: grup.data.days,
         timeSlot: grup.data.timeSlot,
         capacity: grup.data.capacity,
         startWeekNumber: baslangicHaftasi,

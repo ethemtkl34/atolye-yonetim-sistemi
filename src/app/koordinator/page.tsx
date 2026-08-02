@@ -17,7 +17,7 @@ import {
   bugun,
   gunEkle,
   grupZamani,
-  haftaCapasi,
+  haftaBasi,
   tarihBicimle,
   tarihGunleBicimle,
   tarihMetni,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
  *
  *   1. **Bekleyen işler** — koordinatörün bugün yapması gereken şeyler.
  *      Sağlıklı bir kurumda hepsi sıfırdır; sıfır olmayan her kart bir görev.
- *   2. **Yaklaşan hafta sonu** — hangi grupların ne zaman toplandığı. Panelde
+ *   2. **Yaklaşan eğitim günleri** — hangi grupların ne zaman toplandığı. Panelde
  *      başka hiçbir ekran "sırada ne var" sorusuna cevap vermiyordu.
  *   3. **Kurumun durumu** — aktif dönem/kulüp/grup/öğrenci sayıları. Bunlar
  *      haftalarca değişmeyen bağlam bilgisi; bu yüzden küçük ve altta.
@@ -77,7 +77,7 @@ export default async function KoordinatorDashboard() {
       select: {
         id: true,
         name: true,
-        day: true,
+        days: true,
         timeSlot: true,
         capacity: true,
         term: { select: { id: true, name: true } },
@@ -148,7 +148,7 @@ export default async function KoordinatorDashboard() {
         baslik={`Hoş geldiniz, ${kullanici.name}`}
         aciklama={
           bekleyenBasliklar === 0
-            ? "Bekleyen iş yok. Aşağıda yaklaşan hafta sonu ve kurumun güncel durumu var."
+            ? "Bekleyen iş yok. Aşağıda yaklaşan eğitim günleri ve kurumun güncel durumu var."
             : `${bekleyenBasliklar} başlıkta işlem bekliyor. Her karta tıklayarak ilgili listeye gidebilirsiniz.`
         }
       />
@@ -216,10 +216,10 @@ export default async function KoordinatorDashboard() {
         </div>
       </section>
 
-      {/* --- 2. Yaklaşan hafta sonu --- */}
+      {/* --- 2. Yaklaşan eğitim günleri --- */}
       <section className="space-y-3">
         <BolumBasligi
-          baslik="Yaklaşan hafta sonu"
+          baslik="Yaklaşan eğitim günleri"
           aciklama={
             haftaSonu
               ? `${haftaSonu.gruplar.length} grup toplanıyor.`
@@ -229,7 +229,7 @@ export default async function KoordinatorDashboard() {
         {!haftaSonu ? (
           <BosDurum
             baslik="Takvimde yaklaşan oturum yok."
-            aciklama="Aktif bir dönem veya kulübün takvimi tanımlandığında sıradaki hafta sonu burada görünür."
+            aciklama="Aktif bir dönem veya kulübün takvimi tanımlandığında sıradaki eğitim günleri burada görünür."
           />
         ) : (
           <div className="space-y-3">
@@ -253,7 +253,7 @@ export default async function KoordinatorDashboard() {
                           {grup.programAdi} · {grup.ad}
                         </span>
                         <span className="text-xs text-zinc-500">
-                          {grupZamani(grup.gun, grup.zamanDilimi)} ·{" "}
+                          {grupZamani(grup.gunler, grup.zamanDilimi)} ·{" "}
                           {grup.atolyeSayisi} atölye · {grup.ogrenciSayisi}/
                           {grup.kapasite} öğrenci
                         </span>
@@ -359,7 +359,7 @@ export default async function KoordinatorDashboard() {
                     {grup.term?.name ?? grup.club?.name} · {grup.name}
                   </p>
                   <p className="text-xs text-zinc-500">
-                    {grupZamani(grup.day, grup.timeSlot)} ·{" "}
+                    {grupZamani(grup.days, grup.timeSlot)} ·{" "}
                     {grup._count.enrollments}/{grup.capacity} öğrenci
                   </p>
                 </div>
@@ -625,7 +625,7 @@ type HaftaSonuGrubu = {
   id: string;
   ad: string;
   programAdi: string;
-  gun: Day;
+  gunler: Day[];
   zamanDilimi: TimeSlot;
   kapasite: number;
   ogrenciSayisi: number;
@@ -643,7 +643,7 @@ type HaftaSonuGunu = {
 type AktifGrup = {
   id: string;
   name: string;
-  day: Day;
+  days: Day[];
   timeSlot: TimeSlot;
   capacity: number;
   term: { id: string; name: string } | null;
@@ -652,9 +652,9 @@ type AktifGrup = {
 };
 
 /**
- * Sıradaki hafta sonunu bulur.
+ * Sıradaki eğitim haftasını bulur.
  *
- * Tek bir "en yakın tarih" yetmiyor: aynı hafta sonunda cumartesi ve pazar
+ * Tek bir "en yakın tarih" yetmiyor: aynı hafta içinde birden çok gün
  * grupları ayrı tarihlerde toplanıyor, yalnızca en yakın tarihi göstermek
  * pazar gruplarını görünmez bırakırdı. Bu yüzden en yakın oturum tarihinin
  * hafta çapası (cumartesi) alınıp o çapa ile ertesi gün birlikte gösterilir.
@@ -669,9 +669,11 @@ function yaklasanHaftaSonu(
     a.date.getTime() <= b.date.getTime() ? a : b,
   ).date;
 
-  // Hafta içi bir tarih takvimde olmamalı; olursa o günü tek başına gösteririz.
-  const capa = haftaCapasi(enYakin) ?? enYakin;
-  const sinir = gunEkle(capa, 1).getTime();
+  // Yaklaşan eğitim günleri, en yakın oturumun HAFTASI boyunca gösteriliyor.
+  // Eskiden yalnızca hafta sonuna (cumartesi + pazar) bakılıyordu; hafta içi
+  // programlar gelince pencere haftanın tamamına açıldı — pazartesiden pazara.
+  const capa = haftaBasi(enYakin);
+  const sinir = gunEkle(capa, 6).getTime();
 
   const grupHaritasi = new Map(gruplar.map((grup) => [grup.id, grup]));
   const bugunAnahtari = tarihMetni(bugun());
@@ -689,7 +691,7 @@ function yaklasanHaftaSonu(
       id: grup.id,
       ad: grup.name,
       programAdi: grup.term?.name ?? grup.club?.name ?? "Program",
-      gun: grup.day,
+      gunler: grup.days,
       zamanDilimi: grup.timeSlot,
       kapasite: grup.capacity,
       ogrenciSayisi: grup._count.enrollments,

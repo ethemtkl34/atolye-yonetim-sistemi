@@ -1,4 +1,4 @@
-import type { Day, TimeSlot } from "@/generated/prisma/enums";
+import type { Day, DayMode, TimeSlot } from "@/generated/prisma/enums";
 
 /**
  * Tarih yardımcıları.
@@ -38,18 +38,63 @@ const GUNLER = [
 const GUNDE_MS = 24 * 60 * 60 * 1000;
 
 export const GUN_ADLARI: Record<Day, string> = {
+  PAZARTESI: "Pazartesi",
+  SALI: "Salı",
+  CARSAMBA: "Çarşamba",
+  PERSEMBE: "Perşembe",
+  CUMA: "Cuma",
   CUMARTESI: "Cumartesi",
   PAZAR: "Pazar",
 };
+
+/**
+ * Takvim sırası. Hafta çapası PAZARTESİ olduğu için bu dizideki sıra aynı
+ * zamanda çapaya eklenecek gün sayısıdır: `grupTarihi` buna güvenir.
+ */
+export const GUN_SIRASI: Day[] = [
+  "PAZARTESI",
+  "SALI",
+  "CARSAMBA",
+  "PERSEMBE",
+  "CUMA",
+  "CUMARTESI",
+  "PAZAR",
+];
+
+/** Gün düzeninin kapsadığı günler — grup formundaki liste buradan gelir. */
+export const DUZEN_GUNLERI: Record<DayMode, Day[]> = {
+  HAFTA_SONU: ["CUMARTESI", "PAZAR"],
+  HAFTA_ICI: ["PAZARTESI", "SALI", "CARSAMBA", "PERSEMBE", "CUMA"],
+};
+
+export const GUN_DUZENI_ADLARI: Record<DayMode, string> = {
+  HAFTA_SONU: "Hafta sonu",
+  HAFTA_ICI: "Hafta içi",
+};
+
+/** Günleri takvim sırasına dizer — kullanıcı hangi sırayla işaretlerse işaretlesin. */
+export function gunleriSirala(gunler: readonly Day[]): Day[] {
+  return GUN_SIRASI.filter((gun) => gunler.includes(gun));
+}
 
 export const ZAMAN_DILIMI_ADLARI: Record<TimeSlot, string> = {
   OGLEDEN_ONCE: "Öğleden önce",
   OGLEDEN_SONRA: "Öğleden sonra",
 };
 
-/** "Cumartesi öğleden önce" gibi tek satırlık grup zamanı. */
-export function grupZamani(gun: Day, dilim: TimeSlot): string {
-  return `${GUN_ADLARI[gun]} ${ZAMAN_DILIMI_ADLARI[dilim].toLocaleLowerCase("tr-TR")}`;
+/**
+ * "Cumartesi öğleden önce" / "Pazartesi, Çarşamba öğleden önce" gibi tek
+ * satırlık grup zamanı.
+ *
+ * Zaman dilimi bütün günlerde aynı; grup haftada kaç gün toplanırsa toplansın
+ * tek dilime bağlı (bkz. `Group.timeSlot`).
+ */
+export function grupZamani(gunler: readonly Day[], dilim: TimeSlot): string {
+  const adlar = gunleriSirala(gunler).map((gun) => GUN_ADLARI[gun]);
+  const dilimAdi = ZAMAN_DILIMI_ADLARI[dilim].toLocaleLowerCase("tr-TR");
+  return adlar.length === 0
+    ? dilimAdi
+    : `${adlar.join(", ")} ${dilimAdi}`;
 }
 
 /** "YYYY-MM-DD" metnini UTC gece yarısına sabitlenmiş Date'e çevirir. */
@@ -96,59 +141,54 @@ export function gunEkle(tarih: Date, gunSayisi: number): Date {
   return new Date(tarih.getTime() + gunSayisi * GUNDE_MS);
 }
 
-export function haftaSonuMu(tarih: Date): boolean {
+/** Bir tarihin haftanın hangi gününe denk geldiği. */
+export function gunundenGun(tarih: Date): Day {
+  // getUTCDay(): 0 = Pazar. GUN_SIRASI pazartesiden başlıyor.
   const gun = tarih.getUTCDay();
-  return gun === 0 || gun === 6;
+  return GUN_SIRASI[(gun + 6) % 7];
 }
 
 /**
- * Bir tarihin hangi hafta sonu gününe denk geldiğini söyler.
+ * Bir tarihi kendi haftasının PAZARTESİ'sine sabitler.
  *
- * Kulüpler tek bir tarihte yapıldığı için grubun günü seçilmez, tarihten
- * türetilir (§5.1). Hafta içi bir tarih verilirse null döner.
+ * Dönem haftaları tek bir "çapa" tarihle saklanır çünkü aynı dönemde farklı
+ * günlerde toplanan gruplar olabilir; her grup kendi gününde toplanır.
+ * Koordinatör takvimden haftanın hangi gününü seçerse seçsin aynı hafta
+ * kaydedilir.
+ *
+ * Çapa eskiden cumartesiydi ve pazar grubu "çapa + 1" diye bulunuyordu; hafta
+ * içi günler bu hesaba sığmadığı için çapa haftanın başına alındı.
  */
-export function gunundenGun(tarih: Date): Day | null {
+export function haftaBasi(tarih: Date): Date {
   const gun = tarih.getUTCDay();
-  if (gun === 6) return "CUMARTESI";
-  if (gun === 0) return "PAZAR";
-  return null;
+  return gunEkle(tarih, -((gun + 6) % 7));
+}
+
+/** Hafta çapasından (pazartesi) o grubun gerçek toplanma tarihi. */
+export function grupTarihi(haftaBasi: Date, gun: Day): Date {
+  return gunEkle(haftaBasi, GUN_SIRASI.indexOf(gun));
 }
 
 /**
- * Bir hafta sonu tarihini o haftanın CUMARTESİ'sine sabitler.
+ * Haftanın eğitim günlerini tek satırda gösterir. Ay veya yıl sınırında
+ * kısaltma yapılmaz ki "31 Ekim – 1 Kasım 2026" gibi durumlar yanlış
+ * okunmasın.
  *
- * Dönem haftaları tek bir "çapa" tarihle saklanır çünkü aynı dönemde hem
- * cumartesi hem pazar grupları olabilir; her grup kendi gününde toplanır.
- * Koordinatör takvimden cumartesiyi de pazarı da seçse aynı hafta kaydedilir.
- * Hafta içi bir tarih verilirse null döner.
+ *   17–18 Ekim 2026      (hafta sonu)
+ *   12–16 Ekim 2026      (hafta içi)
  */
-export function haftaCapasi(tarih: Date): Date | null {
-  const gun = tarih.getUTCDay();
-  if (gun === 6) return tarih;
-  if (gun === 0) return gunEkle(tarih, -1);
-  return null;
-}
+export function haftaBicimle(haftaBasi: Date, duzen: DayMode): string {
+  const gunler = DUZEN_GUNLERI[duzen];
+  const ilk = grupTarihi(haftaBasi, gunler[0]);
+  const son = grupTarihi(haftaBasi, gunler[gunler.length - 1]);
 
-/** Hafta çapasından (cumartesi) o grubun gerçek toplanma tarihi. */
-export function grupTarihi(haftaCapasi: Date, gun: Day): Date {
-  return gun === "CUMARTESI" ? haftaCapasi : gunEkle(haftaCapasi, 1);
-}
+  if (ilk.getTime() === son.getTime()) return tarihBicimle(ilk);
 
-/**
- * Hafta sonunu tek satırda gösterir. Ay veya yıl sınırında kısaltma
- * yapılmaz ki "31 Ekim – 1 Kasım 2026" gibi durumlar yanlış okunmasın.
- *
- *   17–18 Ekim 2026
- *   31 Ekim – 1 Kasım 2026
- */
-export function haftaSonuBicimle(cumartesi: Date): string {
-  const pazar = gunEkle(cumartesi, 1);
-
-  if (cumartesi.getUTCMonth() === pazar.getUTCMonth()) {
-    return `${cumartesi.getUTCDate()}–${tarihBicimle(pazar)}`;
+  if (ilk.getUTCMonth() === son.getUTCMonth()) {
+    return `${ilk.getUTCDate()}–${tarihBicimle(son)}`;
   }
 
-  return `${tarihBicimle(cumartesi)} – ${tarihBicimle(pazar)}`;
+  return `${tarihBicimle(ilk)} – ${tarihBicimle(son)}`;
 }
 
 /** Bugünün UTC gece yarısına sabitlenmiş hali — karşılaştırmalar için. */

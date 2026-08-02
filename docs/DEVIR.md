@@ -97,6 +97,46 @@ reddediyordu ("Kayıtlar ekranından yeniden etkinleştirin"); aynı panelde hem
 öğrenciyi geri koyamıyordun. Yeni kayıt açmak da doğru cevap değil, öğrencinin
 puanlama geçmişini koparırdı. Kontenjan ikisini birlikte sayıyor.
 
+### Hafta içi dönemler ve çok günlü gruplar
+
+Sistem "program yalnızca hafta sonu yapılır" (§2.3) varsayımıyla yazılmıştı ve
+bu varsayım üç yerde şemaya kadar iniyordu: `Day` enum'unda yalnızca cumartesi
+ve pazar vardı, `TermWeek.date` bir **cumartesi çapasıydı**, sihirbaz hafta içi
+tarihi reddediyordu. Yaz programları hafta içi yapılıyor.
+
+**Sezon etiketi (Sonbahar/İlkbahar/Yaz) eklenmedi** — dönem adı zaten serbest
+metin, sezonu oradan okunuyor; etiket ikinci bir doğruluk kaynağı olur ve
+hiçbir günü açmazdı. Bunun yerine dönem oluşturulurken **gün düzeni** soruluyor
+(`Term.dayMode`: hafta içi / hafta sonu); takvimdeki hafta gösterimi ve grup
+formundaki gün listesi buna göre daralıyor.
+
+Üç yapısal değişiklik:
+
+- **`Day` yedi güne çıktı.** Sıra takvim sırası (pazartesi → pazar) çünkü
+  `orderBy` ve gün listeleri bu sıraya güveniyor. Enum'a değer eklemek kendi
+  başına bir migration olmak zorunda (`ALTER TYPE … ADD VALUE` aynı
+  transaction içinde kullanılamıyor) — depoda bunun bir kez yaşanmış notu var.
+- **Hafta çapası cumartesiden PAZARTESİ'ye taşındı.** Eskiden pazar grubunun
+  tarihi "çapa + 1" diye bulunuyordu; hafta içi günler bu hesaba sığmıyordu.
+  Çapa haftanın başına alınınca yedi gün de aynı formülden çıkıyor:
+  `çapa + günün sırası`. Migration mevcut çapaları 5 gün geri aldı; üretilmiş
+  `Session` tarihleri gerçek toplanma günü olduğu için değişmedi.
+- **Grup artık haftada birden çok gün toplanabiliyor** (`Group.day` →
+  `days Day[]`, en az bir gün `Group_gun_dolu` CHECK kısıtıyla zorunlu). **Her
+  toplanma gününde dönemin bütün atölyeleri yapılıyor**, yani oturum sayısı üç
+  çarpanın çarpımı: hafta × gün × atölye. 10 hafta × 3 gün × 5 atölye = 150
+  oturum ve öğrenci başına 150 puanlama formu — gün sayısı arttıkça stajyerin
+  dolduracağı form da katlanıyor.
+
+Bunun yan etkileri: çakışma uyarısı artık gün **kesişimine** bakıyor
+(`days: { hasSome: … }`), zaman dilimi bütün günlerde ortak, kulüplerde gün
+kulübün tarihlerinden türetiliyor ve hafta sonu kısıtı kalktı, dashboard'daki
+"Yaklaşan hafta sonu" bölümü "Yaklaşan eğitim günleri" oldu ve pencere haftanın
+tamamına açıldı.
+
+`mevcutHaftaNumarasi` gün verilmediğinde artık haftanın SONUNU esas alıyor:
+çapa (pazartesi) geçmiş olsa da o haftanın cumartesisi hâlâ yapılacak olabilir.
+
 ### İptal artık sebebiyle birlikte tutuluyor
 
 İptal tek tıktı ve geriye hiçbir iz bırakmıyordu: bir çocuğun 4. haftada

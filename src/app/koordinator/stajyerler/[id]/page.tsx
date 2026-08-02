@@ -110,7 +110,7 @@ export default async function StajyerDetaySayfasi(
             internId: true,
             student: { select: { id: true, firstName: true, lastName: true } },
             intern: { select: { name: true } },
-            group: { select: { name: true, day: true, timeSlot: true } },
+            group: { select: { name: true, days: true, timeSlot: true } },
           },
         })
       : [];
@@ -120,7 +120,7 @@ export default async function StajyerDetaySayfasi(
     ogrenciId: kayit.student.id,
     ogrenciAdi: `${kayit.student.firstName} ${kayit.student.lastName}`,
     grupAdi: kayit.group.name,
-    grupZamani: grupZamani(kayit.group.day, kayit.group.timeSlot),
+    grupZamani: grupZamani(kayit.group.days, kayit.group.timeSlot),
     mevcutStajyerAdi: kayit.intern?.name ?? null,
     bende: kayit.internId === stajyer.id,
   }));

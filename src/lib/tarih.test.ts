@@ -4,9 +4,8 @@ import {
   gunundenGun,
   grupTarihi,
   grupZamani,
-  haftaCapasi,
-  haftaSonuBicimle,
-  haftaSonuMu,
+  haftaBasi,
+  haftaBicimle,
   tarihBicimle,
   tarihCozumle,
   tarihGunleBicimle,
@@ -47,54 +46,57 @@ describe("tarihBicimle", () => {
   });
 });
 
-describe("haftaSonuMu", () => {
-  it("cumartesi ve pazarı hafta sonu sayar", () => {
-    expect(haftaSonuMu(tarihCozumle("2026-10-17")!)).toBe(true); // Cumartesi
-    expect(haftaSonuMu(tarihCozumle("2026-10-18")!)).toBe(true); // Pazar
-    expect(haftaSonuMu(tarihCozumle("2026-10-19")!)).toBe(false); // Pazartesi
-  });
-});
-
 describe("gunundenGun", () => {
-  it("cumartesi ve pazarı ayırt eder", () => {
-    // 1 Ağustos 2026 cumartesi, 2 Ağustos pazar.
+  it("haftanın yedi gününü de ayırt eder", () => {
+    // 3 Ağustos 2026 pazartesi.
+    expect(gunundenGun(new Date(Date.UTC(2026, 7, 3)))).toBe("PAZARTESI");
+    expect(gunundenGun(new Date(Date.UTC(2026, 7, 5)))).toBe("CARSAMBA");
     expect(gunundenGun(new Date(Date.UTC(2026, 7, 1)))).toBe("CUMARTESI");
     expect(gunundenGun(new Date(Date.UTC(2026, 7, 2)))).toBe("PAZAR");
   });
-
-  it("hafta içi tarih için null döner", () => {
-    expect(gunundenGun(new Date(Date.UTC(2026, 7, 3)))).toBeNull();
-  });
 });
 
-describe("haftaCapasi", () => {
-  it("cumartesiyi olduğu gibi bırakır", () => {
-    expect(tarihMetni(haftaCapasi(tarihCozumle("2026-10-17")!)!)).toBe(
-      "2026-10-17",
+describe("haftaBasi", () => {
+  // 2026-10-12 pazartesi, 2026-10-18 pazar.
+  it("pazartesiyi olduğu gibi bırakır", () => {
+    expect(tarihMetni(haftaBasi(tarihCozumle("2026-10-12")!))).toBe(
+      "2026-10-12",
     );
   });
 
-  it("pazarı aynı hafta sonunun cumartesisine çeker", () => {
-    // Koordinatör takvimden pazarı seçse de aynı hafta kaydedilmeli.
-    expect(tarihMetni(haftaCapasi(tarihCozumle("2026-10-18")!)!)).toBe(
-      "2026-10-17",
-    );
+  it("haftanın her gününü aynı çapaya çeker", () => {
+    // Koordinatör takvimden hangi günü seçerse seçsin aynı hafta kaydedilmeli.
+    for (const gun of ["2026-10-13", "2026-10-17", "2026-10-18"]) {
+      expect(tarihMetni(haftaBasi(tarihCozumle(gun)!))).toBe("2026-10-12");
+    }
   });
 
-  it("hafta içi tarihi reddeder", () => {
-    expect(haftaCapasi(tarihCozumle("2026-10-20")!)).toBeNull();
+  it("pazarı bir sonraki haftaya taşımaz", () => {
+    // ISO haftası pazar günü biter; pazartesiye yuvarlansaydı pazar grupları
+    // bir hafta ileri kayardı.
+    expect(tarihMetni(haftaBasi(tarihCozumle("2026-10-18")!))).toBe(
+      "2026-10-12",
+    );
   });
 });
 
 describe("grupTarihi", () => {
-  const cumartesi = tarihCozumle("2026-10-17")!;
+  const pazartesi = tarihCozumle("2026-10-12")!;
 
-  it("cumartesi grubunu çapa tarihinde toplar", () => {
-    expect(tarihMetni(grupTarihi(cumartesi, "CUMARTESI"))).toBe("2026-10-17");
+  it("çapa gününü olduğu gibi verir", () => {
+    expect(tarihMetni(grupTarihi(pazartesi, "PAZARTESI"))).toBe("2026-10-12");
   });
 
-  it("pazar grubunu ertesi günde toplar", () => {
-    expect(tarihMetni(grupTarihi(cumartesi, "PAZAR"))).toBe("2026-10-18");
+  it("hafta içi günleri çapadan sayar", () => {
+    expect(tarihMetni(grupTarihi(pazartesi, "CARSAMBA"))).toBe("2026-10-14");
+    expect(tarihMetni(grupTarihi(pazartesi, "CUMA"))).toBe("2026-10-16");
+  });
+
+  it("hafta sonu günleri eski tarihlere denk gelir", () => {
+    // Çapa cumartesiden pazartesiye taşındı ama gerçek toplanma tarihi
+    // değişmedi: eskiden çapa 17 Ekim'di, cumartesi grubu yine 17 Ekim'de.
+    expect(tarihMetni(grupTarihi(pazartesi, "CUMARTESI"))).toBe("2026-10-17");
+    expect(tarihMetni(grupTarihi(pazartesi, "PAZAR"))).toBe("2026-10-18");
   });
 });
 
@@ -112,26 +114,41 @@ describe("gunEkle", () => {
   });
 });
 
-describe("haftaSonuBicimle", () => {
-  it("aynı ay içindeki hafta sonunu kısaltır", () => {
-    expect(haftaSonuBicimle(tarihCozumle("2026-10-17")!)).toBe(
+describe("haftaBicimle", () => {
+  it("hafta sonunu aynı ay içindeyse kısaltır", () => {
+    // 2026-10-12 pazartesi; hafta sonu 17–18 Ekim.
+    expect(haftaBicimle(tarihCozumle("2026-10-12")!, "HAFTA_SONU")).toBe(
       "17–18 Ekim 2026",
     );
   });
 
-  it("ay sınırındaki hafta sonunu kısaltmadan yazar", () => {
+  it("hafta içi aralığını pazartesi–cuma olarak yazar", () => {
+    expect(haftaBicimle(tarihCozumle("2026-10-12")!, "HAFTA_ICI")).toBe(
+      "12–16 Ekim 2026",
+    );
+  });
+
+  it("ay sınırındaki aralığı kısaltmadan yazar", () => {
+    // 2026-10-26 pazartesi; hafta sonu 31 Ekim – 1 Kasım.
     // "31–1 Kasım" yanlış okunurdu.
-    expect(haftaSonuBicimle(tarihCozumle("2026-10-31")!)).toBe(
+    expect(haftaBicimle(tarihCozumle("2026-10-26")!, "HAFTA_SONU")).toBe(
       "31 Ekim 2026 – 1 Kasım 2026",
     );
   });
 });
 
 describe("grupZamani", () => {
-  it("§2.3'teki dört zaman dilimini üretir", () => {
-    expect(grupZamani("CUMARTESI", "OGLEDEN_ONCE")).toBe(
+  it("tek günlü grubu eskisi gibi yazar", () => {
+    expect(grupZamani(["CUMARTESI"], "OGLEDEN_ONCE")).toBe(
       "Cumartesi öğleden önce",
     );
-    expect(grupZamani("PAZAR", "OGLEDEN_SONRA")).toBe("Pazar öğleden sonra");
+    expect(grupZamani(["PAZAR"], "OGLEDEN_SONRA")).toBe("Pazar öğleden sonra");
+  });
+
+  it("çok günlü grubu takvim sırasına dizer", () => {
+    // Koordinatör kutuları hangi sırayla işaretlerse işaretlesin.
+    expect(grupZamani(["CARSAMBA", "PAZARTESI"], "OGLEDEN_ONCE")).toBe(
+      "Pazartesi, Çarşamba öğleden önce",
+    );
   });
 });

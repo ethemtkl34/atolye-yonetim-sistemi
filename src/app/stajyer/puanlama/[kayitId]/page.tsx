@@ -40,7 +40,7 @@ export default async function StajyerKayitGunleri(
         <div className="mt-2">
           <SayfaBasligi
             baslik={kayit.ogrenciAdi}
-            aciklama={`${kayit.program} · ${kayit.grupAdi} · ${grupZamani(kayit.gun, kayit.zamanDilimi)}`}
+            aciklama={`${kayit.program} · ${kayit.grupAdi} · ${grupZamani(kayit.gunler, kayit.zamanDilimi)}`}
           />
         </div>
       </div>

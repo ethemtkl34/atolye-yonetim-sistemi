@@ -6,11 +6,16 @@ import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/co
 import { cn } from "@/lib/utils";
 import {
   bugun,
+  DUZEN_GUNLERI,
+  GUN_ADLARI,
+  GUN_DUZENI_ADLARI,
   gunEkle,
-  haftaSonuBicimle,
+  haftaBasi,
+  haftaBicimle,
   tarihCozumle,
   tarihMetni,
 } from "@/lib/tarih";
+import type { Day, DayMode } from "@/generated/prisma/enums";
 import {
   DONEM_ATOLYE_SAYISI,
   EN_AZ_HAFTA,
@@ -26,15 +31,8 @@ export type StajyerSecenegi = {
   aktifOgrenciSayisi: number;
 };
 
-/** Takvimde kaç hafta sonu gösterilsin — 6 aya yakın bir aralık. */
+/** Takvimde kaç hafta gösterilsin — 6 aya yakın bir aralık. */
 const GOSTERILEN_HAFTA_SAYISI = 26;
-
-/** Verilen tarihten sonraki ilk cumartesi. */
-function sonrakiCumartesi(tarih: Date): Date {
-  const gun = tarih.getUTCDay();
-  const fark = (6 - gun + 7) % 7;
-  return gunEkle(tarih, fark);
-}
 
 function KaydetButonu({
   etkin,
@@ -58,10 +56,15 @@ function KaydetButonu({
 /**
  * §4.1 — Dönem oluşturma.
  *
- * Haftalar bir ay ızgarası yerine hafta sonu listesi olarak sunuluyor:
- * kurum yalnızca hafta sonu çalışıyor, seçim birimi de hafta. Liste hâlinde
- * göstermek tatil haftalarını atlayarak 10 hafta işaretlemeyi doğrudan
- * yapılabilir kılıyor; ay ızgarasında hafta içi günler gereksiz gürültü olurdu.
+ * Haftalar bir ay ızgarası yerine hafta listesi olarak sunuluyor: seçim
+ * birimi gün değil hafta. Liste hâlinde göstermek tatil haftalarını atlayarak
+ * işaretlemeyi doğrudan yapılabilir kılıyor; ay ızgarasında tek tek günler
+ * gereksiz gürültü olurdu.
+ *
+ * Gün düzeni (hafta içi / hafta sonu) EN BAŞTA soruluyor çünkü hem takvimdeki
+ * hafta gösterimini hem de ilk grubun gün listesini belirliyor. Yaz programları
+ * hafta içi yapıldığı için eklendi; sezon adı bu kararı vermiyor, dönem adı
+ * zaten serbest metin.
  */
 export function DonemSihirbazi({
   atolyeler,
@@ -75,20 +78,38 @@ export function DonemSihirbazi({
     {},
   );
 
+  const [gunDuzeni, setGunDuzeni] = useState<DayMode>("HAFTA_SONU");
+  const [grupGunleri, setGrupGunleri] = useState<Day[]>(["CUMARTESI"]);
+
   const [baslangic, setBaslangic] = useState(() =>
-    tarihMetni(sonrakiCumartesi(bugun())),
+    tarihMetni(haftaBasi(bugun())),
   );
+
+  function duzeniDegistir(yeni: DayMode) {
+    setGunDuzeni(yeni);
+    // Eski düzenin günleri taşınmaz: hafta sonu döneminde salı grubu
+    // olamayacağı için sunucu zaten reddederdi.
+    setGrupGunleri(yeni === "HAFTA_SONU" ? ["CUMARTESI"] : ["PAZARTESI"]);
+  }
+
+  function grupGunuDegistir(gun: Day) {
+    setGrupGunleri((oncekiler) =>
+      oncekiler.includes(gun)
+        ? oncekiler.filter((g) => g !== gun)
+        : [...oncekiler, gun],
+    );
+  }
   const [secilenHaftalar, setSecilenHaftalar] = useState<string[]>([]);
   const [secilenAtolyeler, setSecilenAtolyeler] = useState<string[]>([]);
   const [secilenStajyerler, setSecilenStajyerler] = useState<string[]>([]);
 
-  const haftaSonlari = useMemo(() => {
+  const haftalar = useMemo(() => {
     const baslangicTarihi = tarihCozumle(baslangic);
     if (!baslangicTarihi) return [];
 
-    const ilkCumartesi = sonrakiCumartesi(baslangicTarihi);
+    const ilkHafta = haftaBasi(baslangicTarihi);
     return Array.from({ length: GOSTERILEN_HAFTA_SAYISI }, (_, i) =>
-      gunEkle(ilkCumartesi, i * 7),
+      gunEkle(ilkHafta, i * 7),
     );
   }, [baslangic]);
 
@@ -111,10 +132,10 @@ export function DonemSihirbazi({
     const tarih = tarihCozumle(deger);
     if (!tarih) return;
 
-    const ilkCumartesi = sonrakiCumartesi(tarih);
+    const ilkHafta = haftaBasi(tarih);
     const gorunurler = new Set(
       Array.from({ length: GOSTERILEN_HAFTA_SAYISI }, (_, i) =>
-        tarihMetni(gunEkle(ilkCumartesi, i * 7)),
+        tarihMetni(gunEkle(ilkHafta, i * 7)),
       ),
     );
     setSecilenHaftalar((oncekiler) =>
@@ -188,6 +209,26 @@ export function DonemSihirbazi({
         </Alan>
 
         <Alan
+          etiket="Gün düzeni"
+          ipucu="Takvimdeki haftalar ve grup gün listesi buna göre gösterilir. Dönem oluşturulduktan sonra değişmez."
+          hata={durum.alanHatalari?.dayMode}
+        >
+          <select
+            name="dayMode"
+            value={gunDuzeni}
+            onChange={(e) => duzeniDegistir(e.target.value as DayMode)}
+            className={secimStili}
+          >
+            <option value="HAFTA_SONU">
+              {GUN_DUZENI_ADLARI.HAFTA_SONU} (cumartesi–pazar)
+            </option>
+            <option value="HAFTA_ICI">
+              {GUN_DUZENI_ADLARI.HAFTA_ICI} (pazartesi–cuma)
+            </option>
+          </select>
+        </Alan>
+
+        <Alan
           etiket="Açıklama"
           ipucu="İsteğe bağlı."
           hata={durum.alanHatalari?.description}
@@ -233,8 +274,8 @@ export function DonemSihirbazi({
         </Alan>
 
         <ul className="grid max-h-80 gap-1 overflow-y-auto rounded-md border border-yuzey-200 p-2 sm:grid-cols-2">
-          {haftaSonlari.map((cumartesi) => {
-            const metin = tarihMetni(cumartesi);
+          {haftalar.map((haftaninBasi) => {
+            const metin = tarihMetni(haftaninBasi);
             const secili = secilenHaftalar.includes(metin);
             // Yalnızca ÜST SINIRA dayanınca kilitlenir; seçili olanlar her
             // zaman kaldırılabilir.
@@ -264,7 +305,7 @@ export function DonemSihirbazi({
                     onChange={() => haftaDegistir(metin)}
                     className="size-4"
                   />
-                  {haftaSonuBicimle(cumartesi)}
+                  {haftaBicimle(haftaninBasi, gunDuzeni)}
                 </label>
               </li>
             );
@@ -427,15 +468,37 @@ export function DonemSihirbazi({
             />
           </Alan>
 
-          <Alan etiket="Gün" hata={durum.alanHatalari?.["grup.day"]}>
-            <select
-              name="grupGunu"
-              defaultValue={durum.degerler?.grupGunu ?? "CUMARTESI"}
-              className={secimStili}
-            >
-              <option value="CUMARTESI">Cumartesi</option>
-              <option value="PAZAR">Pazar</option>
-            </select>
+          <Alan
+            etiket="Toplanma günleri"
+            ipucu="Grup her toplanma gününde dönemin bütün atölyelerini yapar."
+            hata={durum.alanHatalari?.["grup.days"]}
+          >
+            <div className="flex flex-wrap gap-1">
+              {DUZEN_GUNLERI[gunDuzeni].map((gun) => {
+                const secili = grupGunleri.includes(gun);
+                return (
+                  <label
+                    key={gun}
+                    className={cn(
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      secili
+                        ? "bg-marka-50 text-marka-700"
+                        : "text-zinc-700 hover:bg-marka-50",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      name="grupGunleri"
+                      value={gun}
+                      checked={secili}
+                      onChange={() => grupGunuDegistir(gun)}
+                      className="size-4"
+                    />
+                    {GUN_ADLARI[gun]}
+                  </label>
+                );
+              })}
+            </div>
           </Alan>
 
           <Alan
