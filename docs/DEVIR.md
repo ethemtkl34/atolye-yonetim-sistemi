@@ -87,6 +87,10 @@ Hesaplar ve parolalar için kullanıcıya sorun; parolalar bu belgeye yazılmad�
 
 ## Sıradaki iş
 
-Bilinen açık iş kalmadı. Çok haftalı kulüp henüz gerçek veriyle
-denenmedi — ilk açıldığında hafta numaralarının puanlama ekranında doğru
-göründüğü kontrol edilmeli.
+**Bilinen açık iş yok.** Bugün eklenen her şey canlıda gerçek veriyle
+sınandı; en son çok haftalı kulüp uçtan uca denendi (4 gün seçildi → 12
+oturum, hafta numaraları 1–4) ve deneme verisi silindi.
+
+Sıradaki adım ürün kararı: gerçek kullanıma geçiş. `docs/YAYINA-ALMA.md`
+sırası izlenmeli — Neon yedeği → `db:temizlik` → `db:seed` → programların
+arayüzden kurulması.
