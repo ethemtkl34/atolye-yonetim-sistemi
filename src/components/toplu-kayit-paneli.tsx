@@ -1,11 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useFormStatus } from "react-dom";
-import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, secimStili } from "@/components/ui";
+import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
 import { normalizeArama } from "@/lib/turkce";
 import { cn } from "@/lib/utils";
 import {
+  topluKayitCikar,
   topluKayitOlustur,
   type EylemDurumu,
 } from "@/app/koordinator/kayitlar/actions";
@@ -46,13 +54,55 @@ function EkleButonu({ sayi, engel }: { sayi: number; engel?: string }) {
   );
 }
 
+/** Ekleme ve çıkarma listelerinin ortak satır görünümü. */
+function OgrenciSatiri({
+  ad,
+  secili,
+  not,
+  alan,
+  onChange,
+}: {
+  ad: string;
+  secili: boolean;
+  not?: string;
+  /** Formda gönderilen alan adı; çıkarma listesi form kullanmıyor. */
+  alan?: { ad: string; deger: string };
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-[2.75rem] items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+        secili
+          ? "cursor-pointer bg-marka-50 text-marka-700"
+          : "cursor-pointer text-zinc-700 hover:bg-marka-50",
+      )}
+    >
+      <input
+        type="checkbox"
+        name={alan?.ad}
+        value={alan?.deger}
+        checked={secili}
+        onChange={onChange}
+        className="size-4 shrink-0"
+      />
+      <span className="flex-1">{ad}</span>
+      {not ? <span className="text-xs text-zinc-500">{not}</span> : null}
+    </label>
+  );
+}
+
 /**
- * Dönem ve kulüp sayfasındaki "gruba öğrenci ekle" paneli.
+ * Dönem ve kulüp sayfasındaki grup öğrenci paneli.
  *
  * Kayıt akışının ters yönü: sihirbaz öğrenciden başlayıp programa gidiyor,
  * burada program bellidir ve öğrenciler şubenin listesinden seçilir. Tek
- * öğrenci de aynı panelden eklenir — ayrı bir "tekli" ekran açmak, aynı
- * kuralların ikinci bir kopyasını doğururdu.
+ * öğrenci de aynı panelden eklenip çıkarılır — ayrı bir "tekli" ekran açmak,
+ * aynı kuralların ikinci bir kopyasını doğururdu.
+ *
+ * İki liste tek grup seçicisini paylaşıyor: üstte grubun mevcut öğrencileri
+ * (çıkarma), altta eklenebilecekler. Çıkarma kaydı silmez, iptal eder;
+ * geri eklenince kayıt puanlamalarıyla birlikte yeniden etkinleşir.
  *
  * Sorumlu stajyer burada hiç sorulmuyor; atama dönem başlarken Atamalar
  * ekranından yapılıyor.
@@ -70,24 +120,26 @@ export function TopluKayitPaneli({
   /** Doluysa panel kilitli ve sebep gösteriliyor (durum kayıt almıyor gibi). */
   engelSebebi?: string;
 }) {
-  const [durum, eylem] = useActionState<EylemDurumu, FormData>(
+  const [ekleDurumu, ekleEylemi] = useActionState<EylemDurumu, FormData>(
     topluKayitOlustur,
     {},
   );
+  const [cikarDurumu, setCikarDurumu] = useState<EylemDurumu>({});
+  const [cikariliyor, cikarmaBasla] = useTransition();
 
-  const acilabilirGruplar = gruplar.filter((grup) => grup.aktif);
   const [grupId, setGrupId] = useState(
-    () => acilabilirGruplar.find((grup) => !grup.dolu)?.id ?? "",
+    () => gruplar.find((grup) => grup.aktif && !grup.dolu)?.id ?? "",
   );
   const [arama, setArama] = useState("");
   const [secilenler, setSecilenler] = useState<string[]>([]);
+  const [cikarilacaklar, setCikarilacaklar] = useState<string[]>([]);
 
   const secilenGrup = gruplar.find((grup) => grup.id === grupId);
   const kalanYer = secilenGrup
     ? Math.max(0, secilenGrup.kapasite - secilenGrup.doluluk)
     : 0;
 
-  /** Seçili grupta zaten aktif kaydı olanlar. */
+  /** Seçili grupta aktif kaydı olanlar. */
   const kayitliIdleri = useMemo(
     () =>
       new Set(
@@ -100,21 +152,8 @@ export function TopluKayitPaneli({
     [ogrenciler, grupId],
   );
 
-  /**
-   * Ekranda geçerli sayılan seçim.
-   *
-   * Ham seçim listesi temizlenmiyor, süzülüyor: ekleme başarılı olunca sayfa
-   * tazeleniyor ve eklenen öğrenciler artık "bu grupta" oluyor — buradan da
-   * kendiliğinden düşüyorlar. Grup değiştiğinde de aynı süzgeç çalışıyor, geri
-   * kalan seçim korunuyor (aynı listeyi başka bir gruba eklemek yaygın).
-   */
-  const gecerliSecim = useMemo(
-    () => secilenler.filter((id) => !kayitliIdleri.has(id)),
-    [secilenler, kayitliIdleri],
-  );
-
   const aranan = normalizeArama(arama);
-  const gorunenler = useMemo(
+  const suzulmus = useMemo(
     () =>
       aranan
         ? ogrenciler.filter((ogrenci) => ogrenci.aramaAdi.includes(aranan))
@@ -122,8 +161,35 @@ export function TopluKayitPaneli({
     [ogrenciler, aranan],
   );
 
-  function degistir(id: string) {
-    setSecilenler((oncekiler) =>
+  const gruptakiler = suzulmus.filter((ogrenci) =>
+    kayitliIdleri.has(ogrenci.id),
+  );
+  const eklenebilirler = suzulmus.filter(
+    (ogrenci) => !kayitliIdleri.has(ogrenci.id),
+  );
+
+  /**
+   * Ekrandaki seçimler ham listeden TÜRETİLİYOR, temizlenmiyor.
+   *
+   * İşlem başarılı olunca sayfa tazeleniyor ve öğrenciler karşı listeye
+   * geçiyor; süzgeç onları kendiliğinden düşürüyor. Effect içinde `setState`
+   * çağırmak `react-hooks/set-state-in-effect` kuralına takıldığı gibi fazladan
+   * bir durum kaynağı da olurdu.
+   */
+  const gecerliSecim = useMemo(
+    () => secilenler.filter((id) => !kayitliIdleri.has(id)),
+    [secilenler, kayitliIdleri],
+  );
+  const gecerliCikarma = useMemo(
+    () => cikarilacaklar.filter((id) => kayitliIdleri.has(id)),
+    [cikarilacaklar, kayitliIdleri],
+  );
+
+  function degistir(
+    ayarla: React.Dispatch<React.SetStateAction<string[]>>,
+    id: string,
+  ) {
+    ayarla((oncekiler) =>
       oncekiler.includes(id)
         ? oncekiler.filter((secili) => secili !== id)
         : [...oncekiler, id],
@@ -131,17 +197,33 @@ export function TopluKayitPaneli({
   }
 
   function gorunenleriSec() {
-    const eklenebilir = gorunenler
-      .filter((ogrenci) => !kayitliIdleri.has(ogrenci.id))
-      .map((ogrenci) => ogrenci.id);
     setSecilenler((oncekiler) => [
-      ...new Set([...oncekiler, ...eklenebilir]),
+      ...new Set([...oncekiler, ...eklenebilirler.map((o) => o.id)]),
     ]);
   }
 
+  function cikar() {
+    const adlar = gruptakiler
+      .filter((ogrenci) => gecerliCikarma.includes(ogrenci.id))
+      .map((ogrenci) => ogrenci.ad)
+      .join(", ");
+
+    if (
+      !window.confirm(
+        `${gecerliCikarma.length} öğrenci "${secilenGrup?.ad}" grubundan çıkarılacak: ${adlar}.\n\nKayıtları iptal edilir, girilmiş puanlamalar korunur. Devam edilsin mi?`,
+      )
+    ) {
+      return;
+    }
+
+    cikarmaBasla(async () => {
+      setCikarDurumu(await topluKayitCikar(grupId, gecerliCikarma));
+    });
+  }
+
   /**
-   * Kutular form sıfırlandıktan sonra durumdan geri yazılıyor — kayıt
-   * formundaki ve stajyer kadrosundaki sorunun aynısı.
+   * Ekleme formunun kutuları form sıfırlandıktan sonra durumdan geri
+   * yazılıyor — kayıt formundaki ve stajyer kadrosundaki sorunun aynısı.
    */
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -152,9 +234,9 @@ export function TopluKayitPaneli({
     )) {
       kutu.checked = gecerliSecim.includes(kutu.value);
     }
-  }, [durum, gecerliSecim]);
+  }, [ekleDurumu, gecerliSecim]);
 
-  const grupEngeli = engelSebebi
+  const ekleEngeli = engelSebebi
     ? engelSebebi
     : gruplar.length === 0
       ? `Bu ${programAdi} sayfasında henüz grup yok; önce grup ekleyin.`
@@ -166,13 +248,13 @@ export function TopluKayitPaneli({
     <Kart className="space-y-4 p-4">
       <div>
         <h2 className="text-base font-semibold text-zinc-900">
-          Gruba öğrenci ekle
+          Grubun öğrencileri
         </h2>
         <p className="mt-1 text-sm text-zinc-600">
-          Şubenizin öğrenci listesinden seçip topluca kaydedin. Sorumlu stajyer
-          burada sorulmuyor; atama {programAdi} başlarken Atamalar ekranından
-          yapılıyor. Kontenjan yetmezse sığan öğrenciler eklenir, kalanlar
-          adlarıyla bildirilir.
+          Şubenizin öğrenci listesinden seçip topluca ekleyin ya da gruptan
+          çıkarın. Sorumlu stajyer burada sorulmuyor; atama {programAdi}{" "}
+          başlarken Atamalar ekranından yapılıyor. Kontenjan yetmezse sığan
+          öğrenciler eklenir, kalanlar adlarıyla bildirilir.
         </p>
       </div>
 
@@ -189,16 +271,13 @@ export function TopluKayitPaneli({
           ekleyin.
         </Bildirim>
       ) : (
-        <form ref={formRef} action={eylem} className="space-y-4">
-          <input type="hidden" name="groupId" value={grupId} />
-
+        <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Alan etiket="Grup" hata={durum.alanHatalari?.groupId}>
+            <Alan etiket="Grup" hata={ekleDurumu.alanHatalari?.groupId}>
               <select
                 value={grupId}
                 onChange={(e) => setGrupId(e.target.value)}
                 className={secimStili}
-                disabled={Boolean(engelSebebi)}
               >
                 <option value="">Seçin…</option>
                 {gruplar.map((grup) => (
@@ -234,107 +313,153 @@ export function TopluKayitPaneli({
             </p>
           ) : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium text-zinc-700">
-              {gecerliSecim.length} öğrenci seçildi
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
+          {/* --- Gruptakiler: çıkarma --- */}
+          {grupId ? (
+            <div className="space-y-2 rounded-md border border-yuzey-200 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-zinc-900">
+                  Bu gruptakiler ({kayitliIdleri.size})
+                </h3>
+                {gecerliCikarma.length > 0 ? (
+                  <span className="text-sm text-zinc-600">
+                    {gecerliCikarma.length} seçildi
+                  </span>
+                ) : null}
+              </div>
+
+              {gruptakiler.length === 0 ? (
+                <p className="px-2 py-2 text-sm text-zinc-500">
+                  {kayitliIdleri.size === 0
+                    ? "Bu grupta henüz öğrenci yok."
+                    : "Aramaya uyan öğrenci yok."}
+                </p>
+              ) : (
+                <ul className="max-h-72 space-y-1 overflow-y-auto">
+                  {gruptakiler.map((ogrenci) => (
+                    <li key={ogrenci.id}>
+                      <OgrenciSatiri
+                        ad={ogrenci.ad}
+                        secili={gecerliCikarma.includes(ogrenci.id)}
+                        onChange={() => degistir(setCikarilacaklar, ogrenci.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {cikarDurumu.basari ? (
+                <Bildirim tur="basari">{cikarDurumu.basari}</Bildirim>
+              ) : null}
+              {cikarDurumu.hata ? (
+                <Bildirim tur="hata">{cikarDurumu.hata}</Bildirim>
+              ) : null}
+              {cikarDurumu.ayrinti && cikarDurumu.ayrinti.length > 0 ? (
+                <ul className="space-y-0.5 text-sm text-zinc-600">
+                  {cikarDurumu.ayrinti.map((satir) => (
+                    <li key={satir}>• {satir}</li>
+                  ))}
+                </ul>
+              ) : null}
+
               <Buton
                 type="button"
-                tur="ikincil"
-                onClick={gorunenleriSec}
-                disabled={!grupId}
+                tur="tehlike"
+                onClick={cikar}
+                disabled={cikariliyor || gecerliCikarma.length === 0}
+                engelSebebi={
+                  gecerliCikarma.length === 0
+                    ? "Önce çıkarılacak öğrencileri seçin."
+                    : undefined
+                }
               >
-                Görünenleri seç
-              </Buton>
-              <Buton
-                type="button"
-                tur="sade"
-                onClick={() => setSecilenler([])}
-                disabled={gecerliSecim.length === 0}
-              >
-                Seçimi temizle
+                {cikariliyor
+                  ? "Çıkarılıyor…"
+                  : gecerliCikarma.length === 0
+                    ? "Gruptan çıkar"
+                    : `${gecerliCikarma.length} öğrenciyi çıkar`}
               </Buton>
             </div>
-          </div>
+          ) : null}
 
-          <ul className="max-h-96 space-y-1 overflow-y-auto rounded-md border border-yuzey-200 p-1">
-            {gorunenler.length === 0 ? (
-              <li className="px-2 py-3 text-sm text-zinc-500">
-                Aramaya uyan öğrenci yok.
-              </li>
+          {/* --- Eklenebilecekler --- */}
+          <form ref={formRef} action={ekleEylemi} className="space-y-3">
+            <input type="hidden" name="groupId" value={grupId} />
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-zinc-900">
+                Eklenebilecek öğrenciler
+              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-zinc-600">
+                  {gecerliSecim.length} seçildi
+                </span>
+                <Buton
+                  type="button"
+                  tur="ikincil"
+                  onClick={gorunenleriSec}
+                  disabled={!grupId || eklenebilirler.length === 0}
+                >
+                  Görünenleri seç
+                </Buton>
+                <Buton
+                  type="button"
+                  tur="sade"
+                  onClick={() => setSecilenler([])}
+                  disabled={gecerliSecim.length === 0}
+                >
+                  Seçimi temizle
+                </Buton>
+              </div>
+            </div>
+
+            <ul className="max-h-96 space-y-1 overflow-y-auto rounded-md border border-yuzey-200 p-1">
+              {eklenebilirler.length === 0 ? (
+                <li className="px-2 py-3 text-sm text-zinc-500">
+                  Eklenebilecek öğrenci yok.
+                </li>
+              ) : null}
+
+              {eklenebilirler.map((ogrenci) => (
+                <li key={ogrenci.id}>
+                  <OgrenciSatiri
+                    ad={ogrenci.ad}
+                    secili={gecerliSecim.includes(ogrenci.id)}
+                    alan={{ ad: "ogrenciler", deger: ogrenci.id }}
+                    // Bu programın BAŞKA bir grubundaki kayıt engel değil,
+                    // bilgi: aynı çocuk iki gruba yazılabilir ama koordinatör
+                    // bunu görerek yapmalı.
+                    not={ogrenci.mevcutGruplar
+                      .map((grup) => grup.ad)
+                      .join(", ")}
+                    onChange={() => degistir(setSecilenler, ogrenci.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+
+            {ekleDurumu.basari ? (
+              <Bildirim tur="basari">{ekleDurumu.basari}</Bildirim>
+            ) : null}
+            {ekleDurumu.hata ? (
+              <Bildirim tur="hata">{ekleDurumu.hata}</Bildirim>
             ) : null}
 
-            {gorunenler.map((ogrenci) => {
-              const kayitli = kayitliIdleri.has(ogrenci.id);
-              const secili = gecerliSecim.includes(ogrenci.id);
-              // Bu programın BAŞKA bir grubundaki kayıtlar engel değil, bilgi:
-              // aynı çocuk iki gruba yazılabilir, ama koordinatör bunu görerek
-              // yapmalı.
-              const digerGruplar = ogrenci.mevcutGruplar.filter(
-                (grup) => grup.id !== grupId,
-              );
+            {ekleDurumu.ayrinti && ekleDurumu.ayrinti.length > 0 ? (
+              <div className="rounded-md border border-vurgu-200 bg-vurgu-50 p-3">
+                <p className="text-sm font-medium text-vurgu-800">
+                  Dikkat edilmesi gerekenler
+                </p>
+                <ul className="mt-1 space-y-0.5 text-sm text-vurgu-700">
+                  {ekleDurumu.ayrinti.map((satir) => (
+                    <li key={satir}>• {satir}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-              return (
-                <li key={ogrenci.id}>
-                  <label
-                    title={
-                      kayitli
-                        ? `${ogrenci.ad} bu gruba zaten kayıtlı.`
-                        : undefined
-                    }
-                    className={cn(
-                      "flex min-h-[2.75rem] items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
-                      kayitli
-                        ? "cursor-not-allowed text-zinc-400"
-                        : secili
-                          ? "cursor-pointer bg-marka-50 text-marka-700"
-                          : "cursor-pointer text-zinc-700 hover:bg-marka-50",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      name="ogrenciler"
-                      value={ogrenci.id}
-                      checked={secili}
-                      disabled={kayitli || !grupId}
-                      onChange={() => degistir(ogrenci.id)}
-                      className="size-4 shrink-0"
-                    />
-                    <span className="flex-1">{ogrenci.ad}</span>
-                    {kayitli ? (
-                      <Rozet tur="olumlu">Bu grupta</Rozet>
-                    ) : digerGruplar.length > 0 ? (
-                      <span className="text-xs text-zinc-500">
-                        {digerGruplar.map((grup) => grup.ad).join(", ")}
-                      </span>
-                    ) : null}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-
-          {durum.basari ? (
-            <Bildirim tur="basari">{durum.basari}</Bildirim>
-          ) : null}
-          {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
-
-          {durum.ayrinti && durum.ayrinti.length > 0 ? (
-            <div className="rounded-md border border-vurgu-200 bg-vurgu-50 p-3">
-              <p className="text-sm font-medium text-vurgu-800">
-                Dikkat edilmesi gerekenler
-              </p>
-              <ul className="mt-1 space-y-0.5 text-sm text-vurgu-700">
-                {durum.ayrinti.map((satir) => (
-                  <li key={satir}>• {satir}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <EkleButonu sayi={gecerliSecim.length} engel={grupEngeli} />
-        </form>
+            <EkleButonu sayi={gecerliSecim.length} engel={ekleEngeli} />
+          </form>
+        </>
       )}
     </Kart>
   );

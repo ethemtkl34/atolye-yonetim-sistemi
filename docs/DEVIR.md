@@ -83,11 +83,32 @@ kopyalanmadı; kopyalansaydı hangisinin doğru olduğu ancak canlıda anlaşıl
   kaydı TEK işlemde açılıyor. Tek işlem olması bilinçli — önce öğrenciyi yazıp
   sonra kaydı denemek, kontenjan dolduğunda ortada sahipsiz bir öğrenci
   bırakırdı.
-- **Dönem ve kulüp sayfasında "Gruba öğrenci ekle"** paneli: şubenin öğrenci
-  listesinden arayarak tekli ya da toplu seçim. Kontenjan yetmezse işlem
-  tümüyle reddedilmiyor; sığanlar ekleniyor, kalanlar adlarıyla bildiriliyor.
-  Zaman çakışmaları da eklendikten sonra ad ad listeleniyor (tek kayıttaki
-  "uyarıya rağmen devam et" adımı 20 kişilik listede akışı kilitlerdi).
+- **Dönem ve kulüp sayfasında "Grubun öğrencileri"** paneli: tek grup
+  seçicisini paylaşan iki liste — üstte gruptakiler (çıkar), altta
+  eklenebilecekler (ekle). Kontenjan yetmezse işlem tümüyle reddedilmiyor;
+  sığanlar ekleniyor, kalanlar adlarıyla bildiriliyor. Zaman çakışmaları da
+  eklendikten sonra ad ad listeleniyor (tek kayıttaki "uyarıya rağmen devam et"
+  adımı 20 kişilik listede akışı kilitlerdi).
+
+**Çıkarma kaydı silmez, iptal eder** ve panelden geri eklenince kayıt eski
+puanlamalarıyla birlikte yeniden etkinleşir. İlk sürüm iptal edilmiş kaydı
+reddediyordu ("Kayıtlar ekranından yeniden etkinleştirin"); aynı panelde hem
+çıkarma hem ekleme olunca bu bir çıkmaz oluyordu — yanlışlıkla çıkardığın
+öğrenciyi geri koyamıyordun. Yeni kayıt açmak da doğru cevap değil, öğrencinin
+puanlama geçmişini koparırdı. Kontenjan ikisini birlikte sayıyor.
+
+### Öğrenci silme
+
+Yoktu, eklendi: düzenleme ekranının sonunda ayrı bir bölüm. Profil sayfasına
+konmadı — silme geri alınamaz ve okuma ekranında yanlışlıkla tıklanmaya çok
+yakın durur.
+
+Sınır veriye bakarak çiziliyor: **puanlaması veya raporu olan öğrenci
+silinemez**, sebebi buton kilitliyken zaten yazılı. Kalanlar veli, sağlık ve
+kayıt satırlarıyla birlikte gidiyor. Kontrol ile silme aynı işlemde: arada
+girilen bir puanlamanın sessizce silinmesi kabul edilemez bir kayıp olurdu.
+PDF raporu olan öğrenci veritabanı seviyesinde zaten silinemiyor
+(`ReportPdf` → `Restrict`); uygulama katmanı bu sınırı daha erken çiziyor.
 
 **Sorumlu stajyer artık kayıt anında zorunlu değil** — kullanıcı "dönem
 başlarken atamasını yapıyor olacaklar" dedi. Kayıt sihirbazında "Sonra

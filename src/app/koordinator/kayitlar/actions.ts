@@ -384,6 +384,7 @@ export async function topluKayitOlustur(
     const mevcutKayitlar = await tx.enrollment.findMany({
       where: { studentId: { in: secilenler }, group: { branchId: subeId } },
       select: {
+        id: true,
         studentId: true,
         groupId: true,
         status: true,
@@ -407,7 +408,24 @@ export async function topluKayitOlustur(
 
     const kalanYer = Math.max(0, grup.capacity - grup._count.enrollments);
     const eklenecekler: { id: string; ad: string }[] = [];
+    /**
+     * İptal edilmiş kayıt SİLİNMEZ, yeniden etkinleştirilir.
+     *
+     * Panelde çıkarma da olduğu için yanlışlıkla çıkarılan öğrenciyi geri
+     * eklemek sık bir işlem; yeni kayıt açmak eski puanlamalarını kopardığı
+     * için doğru cevap değil. Kayıtlar ekranındaki "Yeniden etkinleştir" ile
+     * aynı iş, aynı kısıtlar (program kayıt alıyor + kontenjan).
+     */
+    const yenidenAcilacaklar: { id: string; ad: string; kayitId: string }[] = [];
     const atlananlar: string[] = [];
+
+    const iptalKayitlari = new Map(
+      mevcutKayitlar
+        .filter(
+          (kayit) => kayit.groupId === groupId && kayit.status === "IPTAL",
+        )
+        .map((kayit) => [kayit.studentId, kayit.id]),
+    );
 
     for (const ogrenci of ogrenciler) {
       const ad = `${ogrenci.firstName} ${ogrenci.lastName}`;
@@ -417,15 +435,17 @@ export async function topluKayitOlustur(
         atlananlar.push(`${ad} — zaten bu gruba kayıtlı`);
         continue;
       }
-      if (mevcut === "IPTAL") {
-        atlananlar.push(
-          `${ad} — bu grupta iptal edilmiş kaydı var; Kayıtlar ekranından yeniden etkinleştirin`,
-        );
-        continue;
-      }
-      if (eklenecekler.length >= kalanYer) {
+      // Kontenjan ikisini birlikte sayar: yeniden açılan kayıt da yer kaplar.
+      if (eklenecekler.length + yenidenAcilacaklar.length >= kalanYer) {
         atlananlar.push(`${ad} — kontenjan doldu`);
         continue;
+      }
+      if (mevcut === "IPTAL") {
+        const kayitId = iptalKayitlari.get(ogrenci.id);
+        if (kayitId) {
+          yenidenAcilacaklar.push({ id: ogrenci.id, ad, kayitId });
+          continue;
+        }
       }
 
       eklenecekler.push({ id: ogrenci.id, ad });
@@ -438,21 +458,31 @@ export async function topluKayitOlustur(
       );
     }
 
-    if (eklenecekler.length === 0) {
+    if (eklenecekler.length === 0 && yenidenAcilacaklar.length === 0) {
       return {
         basarili: false,
         durum: { hata: "Hiçbir öğrenci eklenemedi.", ayrinti: atlananlar },
       };
     }
 
-    // şube-muaf: grup ve öğrencilerin tamamı bu işlemin içinde
-    // `branchId: subeId` ile okundu; listeye başka şubeden kimlik giremiyor.
-    await tx.enrollment.createMany({
-      data: eklenecekler.map((ogrenci) => ({
-        studentId: ogrenci.id,
-        groupId,
-      })),
-    });
+    if (eklenecekler.length > 0) {
+      // şube-muaf: grup ve öğrencilerin tamamı bu işlemin içinde
+      // `branchId: subeId` ile okundu; listeye başka şubeden kimlik giremiyor.
+      await tx.enrollment.createMany({
+        data: eklenecekler.map((ogrenci) => ({
+          studentId: ogrenci.id,
+          groupId,
+        })),
+      });
+    }
+
+    if (yenidenAcilacaklar.length > 0) {
+      // Kimlikler yukarıdaki şube süzgeçli okumadan geldi.
+      await tx.enrollment.updateMany({
+        where: { id: { in: yenidenAcilacaklar.map((k) => k.kayitId) } },
+        data: { status: "AKTIF" },
+      });
+    }
 
     /**
      * §7.4 — Çakışma uyarısı toplu akışta engel değil, bildirim. Tek kayıtta
@@ -460,8 +490,9 @@ export async function topluKayitOlustur(
      * tek tek yürütmek akışı kilitlerdi. Bunun yerine çakışan öğrenciler
      * eklendikten sonra adlarıyla sayılıyor.
      */
-    const eklenenIdleri = new Set(eklenecekler.map((ogrenci) => ogrenci.id));
-    const adlar = new Map(eklenecekler.map((ogrenci) => [ogrenci.id, ogrenci.ad]));
+    const tumEklenenler = [...eklenecekler, ...yenidenAcilacaklar];
+    const eklenenIdleri = new Set(tumEklenenler.map((ogrenci) => ogrenci.id));
+    const adlar = new Map(tumEklenenler.map((ogrenci) => [ogrenci.id, ogrenci.ad]));
     const cakisanlar = mevcutKayitlar
       .filter(
         (kayit) =>
@@ -482,9 +513,15 @@ export async function topluKayitOlustur(
       grupAdi: grup.name,
       termId: grup.termId,
       clubId: grup.clubId,
-      eklenenSayisi: eklenecekler.length,
-      ogrenciIdleri: eklenecekler.map((ogrenci) => ogrenci.id),
-      ayrinti: [...atlananlar, ...cakisanlar],
+      eklenenSayisi: tumEklenenler.length,
+      ogrenciIdleri: tumEklenenler.map((ogrenci) => ogrenci.id),
+      ayrinti: [
+        ...yenidenAcilacaklar.map(
+          (k) => `${k.ad} — iptal edilmiş kaydı yeniden etkinleştirildi, eski puanlamaları korundu`,
+        ),
+        ...atlananlar,
+        ...cakisanlar,
+      ],
     };
   });
 
@@ -503,6 +540,81 @@ export async function topluKayitOlustur(
   return {
     basari: `${sonuc.eklenenSayisi} öğrenci "${sonuc.grupAdi}" grubuna kaydedildi. Sorumlu stajyer atanmadı; atamayı Atamalar ekranından yapabilirsiniz.`,
     ayrinti: sonuc.ayrinti,
+  };
+}
+
+/**
+ * Dönem/kulüp sayfasından bir gruptan öğrenci çıkarma.
+ *
+ * Kayıt SİLİNMEZ, iptal edilir — Kayıtlar ekranındaki "Kaydı iptal et" ile
+ * birebir aynı iş. Girilmiş puanlamalar ve katılım geçmişi korunur; öğrenci
+ * yanlışlıkla çıkarıldıysa aynı panelden geri eklenince kaydı puanlamalarıyla
+ * birlikte yeniden etkinleşir.
+ *
+ * Form yerine doğrudan çağrı: çıkarma geri dönüşü olan ama açıklama isteyen
+ * bir işlem, önce onay soruluyor (kayıt iptal düğmesindeki desenle aynı).
+ */
+export async function topluKayitCikar(
+  groupId: string,
+  ogrenciIdleri: string[],
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
+
+  if (!groupId) return { hata: "Grup seçin." };
+  if (ogrenciIdleri.length === 0) return { hata: "Hiç öğrenci seçilmedi." };
+
+  const grup = await db.group.findFirst({
+    where: { id: groupId, branchId: subeId },
+    select: { name: true, termId: true, clubId: true },
+  });
+  if (!grup) return { hata: "Grup bulunamadı." };
+
+  const kayitlar = await db.enrollment.findMany({
+    where: {
+      groupId,
+      status: "AKTIF",
+      studentId: { in: ogrenciIdleri },
+      group: { branchId: subeId },
+    },
+    select: {
+      id: true,
+      studentId: true,
+      student: { select: { firstName: true, lastName: true } },
+      _count: { select: { scores: true } },
+    },
+  });
+
+  if (kayitlar.length === 0) {
+    return { hata: "Çıkarılacak aktif kayıt bulunamadı." };
+  }
+
+  // Kimlikler yukarıdaki şube süzgeçli okumadan geldi.
+  await db.enrollment.updateMany({
+    where: { id: { in: kayitlar.map((kayit) => kayit.id) } },
+    data: { status: "IPTAL" },
+  });
+
+  revalidatePath("/koordinator/kayitlar");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/stajyerler");
+  revalidatePath("/koordinator");
+  if (grup.termId) revalidatePath(`/koordinator/donemler/${grup.termId}`);
+  if (grup.clubId) revalidatePath(`/koordinator/kulupler/${grup.clubId}`);
+  for (const kayit of kayitlar) {
+    revalidatePath(`/koordinator/ogrenciler/${kayit.studentId}`);
+  }
+
+  const puanlamasiOlanlar = kayitlar.filter(
+    (kayit) => kayit._count.scores > 0,
+  );
+
+  return {
+    basari: `${kayitlar.length} öğrenci "${grup.name}" grubundan çıkarıldı. Kayıtları iptal edildi, kontenjandan düştü.`,
+    ayrinti: puanlamasiOlanlar.map(
+      (kayit) =>
+        `${kayit.student.firstName} ${kayit.student.lastName} — ${kayit._count.scores} puanlaması korundu; geri eklenirse kaydı puanlamalarıyla birlikte açılır`,
+    ),
   };
 }
 

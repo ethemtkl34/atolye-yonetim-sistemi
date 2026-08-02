@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
-import { BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
+import { Bildirim, BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { tarihBicimle } from "@/lib/tarih";
 
@@ -34,6 +34,10 @@ export default async function OgrencilerSayfasi(
   const parametreler = await props.searchParams;
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
+  // Silme öğrencinin kendi sayfasında gerçekleşiyor ve oradan buraya
+  // dönülüyor; sonucu söyleyecek başka bir yer kalmıyor.
+  const silinen =
+    typeof parametreler.silinen === "string" ? parametreler.silinen : "";
 
   const ogrenciler = await ogrenciAra(sorgu, {
     subeId: kullanici.aktifSubeId,
@@ -55,6 +59,10 @@ export default async function OgrencilerSayfasi(
           </Link>
         }
       />
+
+      {silinen ? (
+        <Bildirim tur="basari">{silinen} kalıcı olarak silindi.</Bildirim>
+      ) : null}
 
       <form method="get" className="flex max-w-lg gap-2">
         {/* Süzgeç arama yapılınca kaybolmasın diye adresle birlikte taşınır. */}

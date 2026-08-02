@@ -183,6 +183,88 @@ export async function ogrenciEkle(
   redirect(`/koordinator/ogrenciler/${sonuc.ogrenciId}`);
 }
 
+/**
+ * Öğrenciyi kalıcı siler — yalnızca hiç iz bırakmamışsa.
+ *
+ * Sistem öğrenciyi silmek üzere tasarlanmadı: değerlendirme geçmişi çocuğa
+ * bağlı ve geriye dönük okunabilir olmalı, PDF raporu olan bir öğrenci
+ * veritabanı seviyesinde zaten silinemiyor (`ReportPdf` → `Restrict`).
+ * Buna karşılık deneme aşamasında yanlış eklenen öğrenciyi temizlemenin bir
+ * yolu yoktu ve elle veritabanına girmek gerekiyordu.
+ *
+ * Sınır bu yüzden veriye bakarak çiziliyor: puanlaması veya raporu olan
+ * öğrenci silinmez, sebebi söylenir. Kalanlar (yeni eklenmiş, henüz
+ * puanlanmamış öğrenci) veli ve sağlık satırlarıyla birlikte gider; varsa
+ * kayıtları da düşer, çünkü puanlaması olmayan bir kaydın taşıdığı bilgi yok.
+ *
+ * Kontrol ile silme aynı işlemde: arada girilen bir puanlamanın sessizce
+ * silinmesi bu ekranda kabul edilemez bir kayıp olurdu.
+ */
+export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
+
+  type SilmeSonucu =
+    | { silindi: false; hata: string }
+    | { silindi: true; ad: string };
+
+  const sonuc = await db.$transaction(async (tx): Promise<SilmeSonucu> => {
+    const ogrenci = await tx.student.findFirst({
+      where: { id: ogrenciId, branchId: subeId },
+      select: {
+        firstName: true,
+        lastName: true,
+        _count: { select: { reports: true } },
+        enrollments: { select: { _count: { select: { scores: true } } } },
+      },
+    });
+
+    if (!ogrenci) return { silindi: false, hata: "Öğrenci bulunamadı." };
+
+    const ad = `${ogrenci.firstName} ${ogrenci.lastName}`;
+    const puanlamaSayisi = ogrenci.enrollments.reduce(
+      (toplam, kayit) => toplam + kayit._count.scores,
+      0,
+    );
+
+    if (puanlamaSayisi > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${puanlamaSayisi} puanlaması var ve bu geçmiş korunmalı. Öğrenciyi programdan çıkarmak için kaydını iptal edin.`,
+      };
+    }
+
+    if (ogrenci._count.reports > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: üretilmiş ${ogrenci._count.reports} raporu var.`,
+      };
+    }
+
+    // Şube kontrolü silmenin KENDİ where'inde — `ogrenciGuncelle`deki desenle
+    // aynı. Veli, sağlık ve kayıt satırları şemadaki Cascade ile düşüyor.
+    const silinen = await tx.student.deleteMany({
+      where: { id: ogrenciId, branchId: subeId },
+    });
+
+    if (silinen.count === 0) {
+      return { silindi: false, hata: "Öğrenci bulunamadı." };
+    }
+
+    return { silindi: true, ad };
+  });
+
+  if (!sonuc.silindi) return { hata: sonuc.hata };
+
+  revalidatePath("/koordinator/ogrenciler");
+  revalidatePath("/koordinator/kayitlar");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/donemler");
+  revalidatePath("/koordinator/kulupler");
+  revalidatePath("/koordinator");
+  redirect(`/koordinator/ogrenciler?silinen=${encodeURIComponent(sonuc.ad)}`);
+}
+
 export async function ogrenciGuncelle(
   ogrenciId: string,
   _oncekiDurum: EylemDurumu,
