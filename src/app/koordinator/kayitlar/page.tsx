@@ -3,7 +3,7 @@ import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
-import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili, kartBasligiStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, kartBasligiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { atanmamisKayitKosulu } from "@/lib/durumlar";
 import { KayitDurumButonu } from "./kayit-durum-butonu";
@@ -138,7 +138,7 @@ export default async function KayitlarSayfasi(
                       {program ? (
                         <Link
                           href={program.yol}
-                          className="text-marka-700 hover:underline"
+                          className={baglantiStili}
                         >
                           {program.ad}
                         </Link>

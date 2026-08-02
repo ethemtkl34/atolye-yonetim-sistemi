@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, secimStili } from "@/components/ui";
+import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, kartBasligiStili, secimStili } from "@/components/ui";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
@@ -298,7 +298,7 @@ export default async function OgrenciGecmisiSayfasi(
                     <td className="px-4 py-2 whitespace-nowrap text-zinc-700">
                       <Link
                         href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
-                        className="hover:text-marka-700 hover:underline"
+                        className={kartBasligiStili}
                       >
                         {tarihGunleBicimle(puanlama.session.date)}
                       </Link>

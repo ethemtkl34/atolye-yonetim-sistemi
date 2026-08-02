@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
-import { BosDurum, Girdi, Kart, SayfaBasligi, butonStili } from "@/components/ui";
+import { BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { tarihBicimle } from "@/lib/tarih";
 
@@ -99,7 +99,7 @@ export default async function OgrencilerSayfasi(
                 ? `${TEMEL_YOL}?kapsam=aktif`
                 : TEMEL_YOL
             }
-            className="text-marka-700 hover:underline"
+            className={baglantiStili}
           >
             aramayı temizle
           </Link>

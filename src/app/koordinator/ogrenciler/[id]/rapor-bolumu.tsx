@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, CokSatirli, Kart, Rozet, baglantiStili } from "@/components/ui";
+import { Bildirim, Buton, CokSatirli, Kart, Rozet, baglantiStili, geriBaglantiStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ortalamaBicimle } from "@/lib/scoring";
 import { tarihBicimle } from "@/lib/tarih";
@@ -267,7 +267,7 @@ export function RaporBolumu({
                   <button
                     type="button"
                     onClick={() => ac({ mod: "detay", raporId: pdf.raporId })}
-                    className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline"
+                    className={geriBaglantiStili}
                   >
                     Raporu gör
                   </button>

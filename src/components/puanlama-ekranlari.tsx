@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BosDurum, Kart, Rozet, kartBasligiStili } from "@/components/ui";
+import { BosDurum, Kart, Rozet, baglantiStili, kartBasligiStili } from "@/components/ui";
 import {
   PuanlamaFormu,
   PuanlamaOlcegi,
@@ -95,7 +95,7 @@ export function KayitListesi({
                     {" · "}
                     <Link
                       href={`${ogrenciYolu}/${ilerleme.kayit.ogrenciId}`}
-                      className="text-marka-700 hover:underline"
+                      className={baglantiStili}
                     >
                       Öğrenci profili
                     </Link>
@@ -109,7 +109,7 @@ export function KayitListesi({
               {ilerleme.bekleyenGun ? (
                 <Link
                   href={`${temelYol}/${ilerleme.kayit.id}/${ilerleme.bekleyenGun.tarihAnahtari}`}
-                  className="inline-flex text-sm text-marka-700 hover:underline"
+                  className={baglantiStili}
                 >
                   {tarihGunleBicimle(ilerleme.bekleyenGun.tarih)} gününü doldur →
                 </Link>
