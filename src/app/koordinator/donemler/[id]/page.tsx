@@ -169,8 +169,8 @@ export default async function DonemDetaySayfasi(
   const grupEklemeBilgisi =
     grupEklemeEngeli ??
     (baslangicHaftasi === 1
-      ? `Dönem henüz başlamadı; yeni grup ${donem.weeks.length} haftanın tamamına katılır ve ${donem.weeks.length * donem.workshops.length} atölye oturumu oluşturulur.`
-      : `Dönem devam ediyor. Yeni grup ${baslangicHaftasi}. haftadan başlar; geçmiş ${(baslangicHaftasi ?? 1) - 1} hafta telafi edilmez ve ${(donem.weeks.length - (baslangicHaftasi ?? 1) + 1) * donem.workshops.length} atölye oturumu oluşturulur.`);
+      ? `Dönem henüz başlamadı; yeni grup ${donem.weeks.length} haftanın tamamına katılır ve seçilen HER toplanma günü için ${donem.weeks.length * donem.workshops.length} atölye oturumu oluşturulur.`
+      : `Dönem devam ediyor. Yeni grup ${baslangicHaftasi}. haftadan başlar; geçmiş ${(baslangicHaftasi ?? 1) - 1} hafta telafi edilmez ve seçilen HER toplanma günü için ${(donem.weeks.length - (baslangicHaftasi ?? 1) + 1) * donem.workshops.length} atölye oturumu oluşturulur.`);
 
   return (
     <div className="space-y-6">

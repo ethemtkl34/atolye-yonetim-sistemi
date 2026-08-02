@@ -536,9 +536,9 @@ export function DonemSihirbazi({
               {secilenHaftalar.length} hafta
             </strong>{" "}
             seçtiniz — müfredat buna göre mi? {secilenHaftalar.length} hafta ×{" "}
-            {DONEM_ATOLYE_SAYISI} atölye ={" "}
-            {secilenHaftalar.length * DONEM_ATOLYE_SAYISI} atölye oturumu
-            oluşturulacak.
+            {grupGunleri.length} gün × {DONEM_ATOLYE_SAYISI} atölye ={" "}
+            {secilenHaftalar.length * grupGunleri.length * DONEM_ATOLYE_SAYISI}{" "}
+            atölye oturumu oluşturulacak.
           </span>
         ) : (
           /* Buton eksik seçimde kilitli. Genel bir ipucu ("10 hafta ve 5
