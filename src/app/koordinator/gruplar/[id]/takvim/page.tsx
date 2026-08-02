@@ -41,7 +41,9 @@ export default async function GrupTakvimiSayfasi(
         orderBy: { date: "asc" },
         select: {
           date: true,
-          termWeek: { select: { weekNumber: true } },
+          // Hafta numarası oturumun kendi alanından: kulüplerin `TermWeek`
+          // kaydı yok ve telafi günleri hiçbir haftaya bağlanmıyor.
+          weekNumber: true,
           _count: { select: { scores: true } },
         },
       },
@@ -68,7 +70,7 @@ export default async function GrupTakvimiSayfasi(
     gunHaritasi.set(anahtar, {
       anahtar,
       gosterim: tarihGunleBicimle(oturum.date),
-      haftaNumarasi: oturum.termWeek?.weekNumber ?? null,
+      haftaNumarasi: oturum.weekNumber,
       atolyeSayisi: 1,
       puanlamaSayisi: oturum._count.scores,
       gecmis: oturum.date.getTime() < bugunkuTarih.getTime(),

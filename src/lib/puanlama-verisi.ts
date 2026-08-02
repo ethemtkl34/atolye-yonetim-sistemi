@@ -126,7 +126,10 @@ export async function kayitPuanlamasi(
     select: {
       id: true,
       date: true,
-      termWeek: { select: { weekNumber: true } },
+      // Hafta numarası oturumun kendi alanından okunuyor, `termWeek`
+      // ilişkisinden değil: kulüplerin `TermWeek` kaydı yok ve kulüp artık
+      // haftalara yayılabiliyor. Telafi günlerinde boş kalır.
+      weekNumber: true,
       workshopType: {
         select: {
           id: true,
@@ -208,7 +211,7 @@ export async function kayitPuanlamasi(
       gunHaritasi.set(anahtar, {
         tarih: oturum.date,
         tarihAnahtari: anahtar,
-        haftaNumarasi: oturum.termWeek?.weekNumber ?? null,
+        haftaNumarasi: oturum.weekNumber,
         puanlanabilir: form.puanlanabilir,
         formlar: [form],
         ozet: gorevOzeti([]),

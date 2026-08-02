@@ -87,9 +87,6 @@ Hesaplar ve parolalar için kullanıcıya sorun; parolalar bu belgeye yazılmad�
 
 ## Sıradaki iş
 
-**Puanlama ekranı hafta numarasını hâlâ `termWeek` üzerinden okuyor.**
-`Session.weekNumber` alanı eklendi ve dolduruldu ama okuma tarafı
-değişmedi. Dönemlerde ikisi aynı sonucu veriyor; **çok haftalı bir kulüpte
-hafta numaraları görünmeyecek.** İlk çok haftalı kulüp açılmadan önce
-`src/lib/puanlama-verisi.ts` içindeki okuma `session.weekNumber`'a
-çevrilmeli.
+Bilinen açık iş kalmadı. Çok haftalı kulüp henüz gerçek veriyle
+denenmedi — ilk açıldığında hafta numaralarının puanlama ekranında doğru
+göründüğü kontrol edilmeli.
