@@ -70,6 +70,20 @@ enum EnrollmentStatus {
   IPTAL
 }
 
+/// Kaydın neden iptal edildiği.
+///
+/// Serbest metin yerine etiket: "bu dönem kaç çocuk taşındığı için ayrıldı"
+/// sorusu ancak sayılabilir bir alandan cevaplanır. Liste bilerek kısa —
+/// uzun listede seçim yapmak zorlaşır ve etiketler birbirine karışır.
+/// `DIGER` seçildiğinde açıklama zorunludur.
+enum CancelReason {
+  TASINMA
+  SAGLIK
+  AILEVI
+  DEVAMSIZLIK
+  DIGER
+}
+
 // ---------------------------------------------------------------------------
 // Şubeler
 // ---------------------------------------------------------------------------
@@ -441,12 +455,34 @@ model Enrollment {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
+  /// İptal sebebi. `null` = sebep girilmeden iptal edilmiş: dönem/kulüp
+  /// sayfasındaki toplu çıkarma (düzeltme amaçlı, sebebi yok) ve bu alanlar
+  /// eklenmeden önce iptal edilmiş eski kayıtlar.
+  cancelReason CancelReason?
+  /// Serbest açıklama — "şehir değiştirdiler" gibi. `DIGER` için zorunlu.
+  cancelNote   String?
+  cancelledAt  DateTime?
+
+  /// Öğrencinin SON KATILDIĞI eğitim günü.
+  ///
+  /// İki alan birlikte okunur, üç durumu ayırt ederler:
+  ///   ikisi de boş           → hiç katılmadan ayrıldı
+  ///   tarih dolu, hafta boş  → telafi günü (telafi gününün hafta numarası yok)
+  ///   ikisi de dolu          → programın o haftası
+  ///
+  /// Hangi atölyeleri tamamladığı buradan TÜRETİLMİYOR; o bilgi zaten
+  /// `Score` satırlarında duruyor. Bu alan "kaçıncı haftada ayrıldı"
+  /// sorusunun cevabı, ikinci bir katılım kaydı değil.
+  lastAttendedWeek Int?
+  lastAttendedDate DateTime? @db.Date
+
   scores      Score[]
   reportLinks ReportEnrollment[]
 
   @@unique([studentId, groupId])
   @@index([groupId, status])
   @@index([internId, status])
+  @@index([cancelReason])
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import {
   raporKapsamSecenekleri,
   raporOzetleri,
 } from "@/lib/rapor-verisi";
+import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
 import { RaporBolumu } from "./rapor-bolumu";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
 import {
@@ -18,7 +19,7 @@ import {
   DONEM_DURUMLARI,
   KULUP_DURUMLARI,
 } from "@/lib/durumlar";
-import type { ClubStatus, TermStatus } from "@/generated/prisma/enums";
+import type { CancelReason, ClubStatus, TermStatus } from "@/generated/prisma/enums";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
@@ -66,8 +67,12 @@ export default async function OgrenciProfilSayfasi(
         orderBy: { createdAt: "desc" },
         include: {
           intern: { select: { name: true, active: true } },
+          // İptal özetindeki atölye sayıları buradan türetiliyor; iptal anında
+          // ayrıca saklanmıyor (bkz. `atolyeOzeti`).
+          _count: { select: { scores: { where: { attended: true } } } },
           group: {
             include: {
+              _count: { select: { sessions: true } },
               term: {
                 select: {
                   name: true,
@@ -386,12 +391,18 @@ type ProfilKaydi = {
   status: "AKTIF" | "IPTAL";
   createdAt: Date;
   intern: { name: string; active: boolean } | null;
+  cancelReason: CancelReason | null;
+  cancelNote: string | null;
+  lastAttendedWeek: number | null;
+  lastAttendedDate: Date | null;
+  _count: { scores: number };
   group: {
     name: string;
     day: "CUMARTESI" | "PAZAR";
     timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
     term: { name: string; status: TermStatus } | null;
     club: { name: string; status: ClubStatus; date: Date } | null;
+    _count: { sessions: number };
   };
 };
 
@@ -498,6 +509,19 @@ function KayitBolumu({
                 {" · "}
                 Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
               </p>
+
+              {kayit.status === "IPTAL" ? (
+                <KayitIptalOzeti
+                  kayit={{
+                    cancelReason: kayit.cancelReason,
+                    cancelNote: kayit.cancelNote,
+                    lastAttendedWeek: kayit.lastAttendedWeek,
+                    lastAttendedDate: kayit.lastAttendedDate,
+                    tamamlananAtolye: kayit._count.scores,
+                    toplamAtolye: kayit.group._count.sessions,
+                  }}
+                />
+              ) : null}
             </Kart>
             );
           })}

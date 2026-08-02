@@ -97,6 +97,35 @@ reddediyordu ("Kayıtlar ekranından yeniden etkinleştirin"); aynı panelde hem
 öğrenciyi geri koyamıyordun. Yeni kayıt açmak da doğru cevap değil, öğrencinin
 puanlama geçmişini koparırdı. Kontenjan ikisini birlikte sayıyor.
 
+### İptal artık sebebiyle birlikte tutuluyor
+
+İptal tek tıktı ve geriye hiçbir iz bırakmıyordu: bir çocuğun 4. haftada
+taşındığı için mi yoksa devamsızlıktan mı düştüğü sonradan okunamıyordu.
+`Enrollment`'a beş alan eklendi (`cancelReason`, `cancelNote`, `cancelledAt`,
+`lastAttendedWeek`, `lastAttendedDate`) ve Kayıtlar ekranındaki düğme küçük
+bir forma dönüştü: sebep etiketi + son katıldığı gün + açıklama.
+
+- **Sebep etiket, serbest metin değil.** "Bu dönem kaç çocuk taşındığı için
+  ayrıldı" sorusu ancak sayılabilir bir alandan cevaplanır. `DIGER` seçilince
+  açıklama zorunlu.
+- **Son katıldığı gün grubun KENDİ takviminden seçiliyor**, serbest tarih
+  değil; hafta numarası da oradan okunuyor. Serbest tarihte hafta numarası
+  tahmin edilmek zorunda kalır, telafi günleri de yanlış haftaya yazılırdı.
+  İki alan birlikte üç durumu ayırıyor: ikisi de boş → hiç katılmadan ayrıldı,
+  tarih dolu + hafta boş → telafi günü, ikisi de dolu → o hafta.
+- **Tamamladığı / katılamadığı atölyeler SAKLANMIYOR, türetiliyor.** Bilgi
+  zaten `Score` satırlarında; ikinci bir kopya iki kaynak ve çelişki demekti.
+- **Toplu çıkarma sebepsiz kalıyor** (yalnızca `cancelledAt` yazılıyor): o bir
+  düzeltme aracı, gerçek ayrılma değil. Gerçek ayrılmalar Kayıtlar ekranından
+  tek tek giriliyor.
+
+`Enrollment_iptal_alanlari` CHECK kısıtı bu alanların yalnızca `IPTAL`
+kayıtta dolu olmasını veritabanı seviyesinde zorluyor. Sebebi: kayıt yeniden
+etkinleştirildiğinde alanları temizlemeyi uygulama katmanının hatırlamasına
+bırakırsak, unutulduğu gün "aktif ama 4. haftada ayrılmış" gibi kendisiyle
+çelişen bir satır kalır. Üç yerde temizleniyor: `kayitYenidenEtkinlestir`,
+paneldeki yeniden etkinleştirme ve elbette kısıtın kendisi.
+
 ### Öğrenci silme
 
 Yoktu, eklendi: düzenleme ekranının sonunda ayrı bir bölüm. Profil sayfasına

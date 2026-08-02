@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { grupZamani, tarihBicimle } from "@/lib/tarih";
+import { grupZamani, tarihBicimle, tarihMetni } from "@/lib/tarih";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, kartBasligiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { atanmamisKayitKosulu } from "@/lib/durumlar";
-import { KayitDurumButonu } from "./kayit-durum-butonu";
+import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
+import { KayitDurumButonu, type IptalGunu } from "./kayit-durum-butonu";
 
 export const metadata: Metadata = {
   title: "Öğrenci kayıtları",
@@ -43,16 +44,49 @@ export default async function KayitlarSayfasi(
         select: { id: true, firstName: true, lastName: true },
       },
       intern: { select: { id: true, name: true, active: true } },
+      // Atölye özeti türetiliyor: katılım işaretli puanlama sayısı ile grubun
+      // oturum sayısı. İptal anında ayrıca saklanmıyor (bkz. `atolyeOzeti`).
+      _count: { select: { scores: { where: { attended: true } } } },
       group: {
         include: {
           term: { select: { id: true, name: true } },
           club: { select: { id: true, name: true, date: true } },
+          _count: { select: { sessions: true } },
         },
       },
     },
     }),
     db.enrollment.count({ where: atanmamisKayitKosulu(subeId) }),
   ]);
+
+  /**
+   * İptal formundaki "son katıldığı gün" listesi grubun KENDİ takviminden
+   * geliyor. Tek sorguda bütün gruplar okunuyor; kayıt başına bir sorgu
+   * açılsaydı liste uzadıkça sayfa açılışı yavaşlardı.
+   */
+  const grupIdleri = [...new Set(kayitlar.map((kayit) => kayit.groupId))];
+  const oturumGunleri =
+    grupIdleri.length > 0
+      ? await db.session.findMany({
+          where: { groupId: { in: grupIdleri }, group: { branchId: subeId } },
+          distinct: ["groupId", "date"],
+          orderBy: { date: "asc" },
+          select: { groupId: true, date: true, weekNumber: true },
+        })
+      : [];
+
+  const gruplarinGunleri = new Map<string, IptalGunu[]>();
+  for (const oturum of oturumGunleri) {
+    const liste = gruplarinGunleri.get(oturum.groupId) ?? [];
+    liste.push({
+      deger: tarihMetni(oturum.date),
+      etiket:
+        oturum.weekNumber === null
+          ? `Telafi günü · ${tarihBicimle(oturum.date)}`
+          : `${oturum.weekNumber}. hafta · ${tarihBicimle(oturum.date)}`,
+    });
+    gruplarinGunleri.set(oturum.groupId, liste);
+  }
 
   return (
     <div className="space-y-6">
@@ -172,8 +206,22 @@ export default async function KayitlarSayfasi(
                   <KayitDurumButonu
                     kayitId={kayit.id}
                     aktif={kayit.status === "AKTIF"}
+                    gunler={gruplarinGunleri.get(kayit.groupId) ?? []}
                   />
                 </div>
+
+                {kayit.status === "IPTAL" ? (
+                  <KayitIptalOzeti
+                    kayit={{
+                      cancelReason: kayit.cancelReason,
+                      cancelNote: kayit.cancelNote,
+                      lastAttendedWeek: kayit.lastAttendedWeek,
+                      lastAttendedDate: kayit.lastAttendedDate,
+                      tamamlananAtolye: kayit._count.scores,
+                      toplamAtolye: kayit.group._count.sessions,
+                    }}
+                  />
+                ) : null}
               </Kart>
             );
           })}

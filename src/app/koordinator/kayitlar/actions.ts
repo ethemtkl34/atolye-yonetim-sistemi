@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { kontenjanDurumu } from "@/lib/scoring";
-import { grupZamani } from "@/lib/tarih";
+import { grupZamani, tarihCozumle } from "@/lib/tarih";
 import {
   kayitKapaliMesaji,
   kontenjanEngeli,
@@ -44,6 +44,24 @@ const kayitSemasi = z.object({
    */
   internId: z.string(),
 });
+
+/**
+ * İptal formu. Sebep zorunlu; açıklama yalnızca `DIGER` için zorunlu, çünkü
+ * "Diğer" tek başına hiçbir şey anlatmaz. `sonGun` boş ise öğrenci hiç
+ * katılmadan ayrılmış demektir.
+ */
+const iptalSemasi = z
+  .object({
+    sebep: z.enum(["TASINMA", "SAGLIK", "AILEVI", "DEVAMSIZLIK", "DIGER"], {
+      message: "İptal sebebi seçin",
+    }),
+    aciklama: z.string().trim().max(500, "Açıklama en fazla 500 karakter"),
+    sonGun: z.string(),
+  })
+  .refine((veri) => veri.sebep !== "DIGER" || veri.aciklama.length > 0, {
+    message: '"Diğer" seçtiyseniz sebebi kısaca yazın',
+    path: ["aciklama"],
+  });
 
 export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
@@ -477,10 +495,19 @@ export async function topluKayitOlustur(
     }
 
     if (yenidenAcilacaklar.length > 0) {
-      // Kimlikler yukarıdaki şube süzgeçli okumadan geldi.
+      // Kimlikler yukarıdaki şube süzgeçli okumadan geldi. İptal alanları
+      // temizleniyor: kayıt artık iptal değil ve veritabanı kısıtı
+      // (`Enrollment_iptal_alanlari`) bunu zaten zorunlu kılıyor.
       await tx.enrollment.updateMany({
         where: { id: { in: yenidenAcilacaklar.map((k) => k.kayitId) } },
-        data: { status: "AKTIF" },
+        data: {
+          status: "AKTIF",
+          cancelReason: null,
+          cancelNote: null,
+          cancelledAt: null,
+          lastAttendedWeek: null,
+          lastAttendedDate: null,
+        },
       });
     }
 
@@ -590,9 +617,14 @@ export async function topluKayitCikar(
   }
 
   // Kimlikler yukarıdaki şube süzgeçli okumadan geldi.
+  //
+  // Sebep BİLEREK boş: toplu çıkarma bir düzeltme aracı (yanlış eklenmiş
+  // öğrenci), gerçek bir ayrılma değil. Gerçek ayrılmalar Kayıtlar ekranından
+  // tek tek, sebebi ve son katıldığı günüyle giriliyor. Zaman damgası yine de
+  // yazılıyor: kaydın ne zaman kapandığı her hâlükârda okunabilmeli.
   await db.enrollment.updateMany({
     where: { id: { in: kayitlar.map((kayit) => kayit.id) } },
-    data: { status: "IPTAL" },
+    data: { status: "IPTAL", cancelledAt: new Date() },
   });
 
   revalidatePath("/koordinator/kayitlar");
@@ -693,10 +725,109 @@ export async function kayitStajyerDegistir(
 }
 
 /**
- * Kayıt iptal edilir, silinmez: girilmiş puanlamalar ve katılım geçmişi
- * korunmalı. İptal edilen kayıt kontenjandan düşer.
+ * §7.5 — Kayıt iptali: sebep ve ayrılma anı ile birlikte.
+ *
+ * Kayıt SİLİNMEZ, iptal edilir; girilmiş puanlamalar ve katılım geçmişi
+ * korunur ve kayıt kontenjandan düşer.
+ *
+ * İptal eskiden tek tıktı ve geriye hiçbir iz bırakmıyordu: bir çocuğun 4.
+ * haftada taşındığı için mi yoksa devamsızlıktan mı düştüğü sonradan
+ * okunamıyordu. Artık sebep etiketi ve son katıldığı gün zorunlu; hangi
+ * atölyeleri tamamladığı bunlardan değil, mevcut puanlama satırlarından
+ * türetiliyor.
  */
-export async function kayitDurumDegistir(
+export async function kayitIptalEt(
+  kayitId: string,
+  veri: { sebep: string; aciklama: string; sonGun: string },
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu();
+  const subeId = kullanici.aktifSubeId;
+
+  const cozumlenen = iptalSemasi.safeParse(veri);
+  if (!cozumlenen.success) {
+    const hatalar: Record<string, string> = {};
+    for (const sorun of cozumlenen.error.issues) {
+      const alan = sorun.path.join(".");
+      if (alan && !hatalar[alan]) hatalar[alan] = sorun.message;
+    }
+    return { alanHatalari: hatalar };
+  }
+
+  const { sebep, aciklama, sonGun } = cozumlenen.data;
+
+  const kayit = await db.enrollment.findFirst({
+    where: { id: kayitId, group: { branchId: subeId } },
+    select: { status: true, groupId: true, studentId: true },
+  });
+  if (!kayit) return { hata: "Kayıt bulunamadı." };
+  if (kayit.status === "IPTAL") return { hata: "Bu kayıt zaten iptal edilmiş." };
+
+  /**
+   * Son katıldığı gün grubun KENDİ takviminden seçilir; hafta numarası da
+   * oradan okunur. Serbest tarih kabul edilseydi hafta numarası tahmin
+   * edilmek zorunda kalırdı ve telafi günleri (numarası olmayan günler)
+   * yanlış bir haftaya yazılırdı.
+   */
+  let sonOturum: { date: Date; weekNumber: number | null } | null = null;
+  if (sonGun) {
+    const gun = tarihCozumle(sonGun);
+    if (!gun) {
+      return { alanHatalari: { sonGun: "Geçerli bir gün seçin." } };
+    }
+
+    sonOturum = await db.session.findFirst({
+      where: {
+        groupId: kayit.groupId,
+        date: gun,
+        group: { branchId: subeId },
+      },
+      select: { date: true, weekNumber: true },
+    });
+
+    if (!sonOturum) {
+      return {
+        alanHatalari: {
+          sonGun: "Seçilen gün bu grubun takviminde yok.",
+        },
+      };
+    }
+  }
+
+  await db.enrollment.update({
+    where: { id: kayitId },
+    data: {
+      status: "IPTAL",
+      cancelReason: sebep,
+      cancelNote: aciklama || null,
+      cancelledAt: new Date(),
+      lastAttendedWeek: sonOturum?.weekNumber ?? null,
+      lastAttendedDate: sonOturum?.date ?? null,
+    },
+  });
+
+  revalidatePath("/koordinator/kayitlar");
+  revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/donemler");
+  revalidatePath("/koordinator/kulupler");
+  revalidatePath("/koordinator/stajyerler");
+  revalidatePath("/koordinator");
+  revalidatePath(`/koordinator/ogrenciler/${kayit.studentId}`);
+
+  return {
+    basari:
+      "Kayıt iptal edildi. Girilmiş puanlamalar ve katılım geçmişi korundu.",
+  };
+}
+
+/**
+ * İptal edilmiş kaydı geri açar.
+ *
+ * İptal bilgileri (sebep, açıklama, ayrılma günü) TEMİZLENİR: kayıt artık
+ * iptal değil. Veritabanındaki `Enrollment_iptal_alanlari` kısıtı bunu ayrıca
+ * zorluyor — unutulduğu gün "aktif ama 4. haftada ayrılmış" gibi kendisiyle
+ * çelişen bir satır kalırdı.
+ */
+export async function kayitYenidenEtkinlestir(
   kayitId: string,
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu();
@@ -708,6 +839,8 @@ export async function kayitDurumDegistir(
   });
   if (!hedef) return { hata: "Kayıt bulunamadı." };
 
+  // Kontenjan kontrolü ile yazma aynı kritik bölümde — kayıt açma akışıyla
+  // aynı kilit, aynı sebep.
   const sonuc = await db.$transaction(async (tx) => {
     await tx.$queryRaw`
       SELECT pg_advisory_xact_lock(hashtext(${"kayit:" + hedef.groupId}))::text
@@ -731,51 +864,51 @@ export async function kayitDurumDegistir(
       },
     });
     if (!kayit) return { hata: "Kayıt bulunamadı." };
+    if (kayit.status === "AKTIF") return { hata: "Bu kayıt zaten aktif." };
 
-    if (kayit.status === "IPTAL") {
-      if (
-        kayit.group.term?.status !== "KAYIT_ALIYOR" &&
-        kayit.group.club?.status !== "KAYIT_ALIYOR"
-      ) {
-        return {
-          hata: `${kayitKapaliMesaji(kayit.group.term)} Kayıt yeniden etkinleştirilemez.`,
-        };
-      }
+    if (
+      kayit.group.term?.status !== "KAYIT_ALIYOR" &&
+      kayit.group.club?.status !== "KAYIT_ALIYOR"
+    ) {
+      return {
+        hata: `${kayitKapaliMesaji(kayit.group.term)} Kayıt yeniden etkinleştirilemez.`,
+      };
+    }
 
-      const kontenjan = kontenjanDurumu(
-        kayit.group.capacity,
-        kayit.group._count.enrollments,
-      );
-      if (kontenjan.dolu) {
-        return {
-          hata: `"${kayit.group.name}" grubunun kontenjanı dolu; kayıt yeniden etkinleştirilemez.`,
-        };
-      }
+    const kontenjan = kontenjanDurumu(
+      kayit.group.capacity,
+      kayit.group._count.enrollments,
+    );
+    if (kontenjan.dolu) {
+      return {
+        hata: `"${kayit.group.name}" grubunun kontenjanı dolu; kayıt yeniden etkinleştirilemez.`,
+      };
     }
 
     await tx.enrollment.update({
       where: { id: kayitId },
-      data: { status: kayit.status === "AKTIF" ? "IPTAL" : "AKTIF" },
+      data: {
+        status: "AKTIF",
+        cancelReason: null,
+        cancelNote: null,
+        cancelledAt: null,
+        lastAttendedWeek: null,
+        lastAttendedDate: null,
+      },
     });
 
-    return {
-      degisti: true as const,
-      oncekiDurum: kayit.status,
-      studentId: kayit.studentId,
-    };
+    return { degisti: true as const, studentId: kayit.studentId };
   });
 
   if (!("degisti" in sonuc)) return sonuc;
 
   revalidatePath("/koordinator/kayitlar");
   revalidatePath("/koordinator/gruplar");
+  revalidatePath("/koordinator/donemler");
+  revalidatePath("/koordinator/kulupler");
   revalidatePath("/koordinator/stajyerler");
+  revalidatePath("/koordinator");
   revalidatePath(`/koordinator/ogrenciler/${sonuc.studentId}`);
 
-  return {
-    basari:
-      sonuc.oncekiDurum === "AKTIF"
-        ? "Kayıt iptal edildi. Girilmiş puanlamalar korundu."
-        : "Kayıt yeniden etkinleştirildi.",
-  };
+  return { basari: "Kayıt yeniden etkinleştirildi." };
 }
