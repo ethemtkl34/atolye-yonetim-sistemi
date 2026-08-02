@@ -17,7 +17,6 @@ import {
   bugun,
   gunEkle,
   grupZamani,
-  haftaBasi,
   tarihBicimle,
   tarihGunleBicimle,
   tarihMetni,
@@ -652,12 +651,18 @@ type AktifGrup = {
 };
 
 /**
- * Sıradaki eğitim haftasını bulur.
+ * Yaklaşan eğitim günlerini bulur: en yakın oturumdan başlayan 7 günlük
+ * pencere.
  *
- * Tek bir "en yakın tarih" yetmiyor: aynı hafta içinde birden çok gün
- * grupları ayrı tarihlerde toplanıyor, yalnızca en yakın tarihi göstermek
- * pazar gruplarını görünmez bırakırdı. Bu yüzden en yakın oturum tarihinin
- * hafta çapası (cumartesi) alınıp o çapa ile ertesi gün birlikte gösterilir.
+ * Tek bir "en yakın tarih" yetmiyor: farklı gruplar farklı günlerde
+ * toplanıyor, yalnızca en yakın tarihi göstermek diğerlerini görünmez
+ * bırakırdı.
+ *
+ * Pencere TAKVİM HAFTASI değil, en yakın oturumdan itibaren 7 gün. Takvim
+ * haftası denendi ve hafta içi programlarla birlikte şu tuhaflığı üretti:
+ * pazar günü bakıldığında pencere o gün bitiyor ve ertesi sabah başlayan
+ * dersler panelde hiç görünmüyordu. Panelin cevapladığı soru "sırada ne var",
+ * "bu takvim haftasında ne vardı" değil.
  */
 function yaklasanHaftaSonu(
   oturumlar: { date: Date; groupId: string; _count: { _all: number } }[],
@@ -669,11 +674,10 @@ function yaklasanHaftaSonu(
     a.date.getTime() <= b.date.getTime() ? a : b,
   ).date;
 
-  // Yaklaşan eğitim günleri, en yakın oturumun HAFTASI boyunca gösteriliyor.
-  // Eskiden yalnızca hafta sonuna (cumartesi + pazar) bakılıyordu; hafta içi
-  // programlar gelince pencere haftanın tamamına açıldı — pazartesiden pazara.
-  const capa = haftaBasi(enYakin);
-  const sinir = gunEkle(capa, 6).getTime();
+  // Sorgu zaten `date >= bugün` süzüyor, dolayısıyla en yakın oturum bugün ya
+  // da sonrası. Pencere oradan başlayıp 7 günü kapsıyor.
+  const baslangic = enYakin.getTime();
+  const sinir = gunEkle(enYakin, 6).getTime();
 
   const grupHaritasi = new Map(gruplar.map((grup) => [grup.id, grup]));
   const bugunAnahtari = tarihMetni(bugun());
@@ -682,7 +686,7 @@ function yaklasanHaftaSonu(
 
   for (const oturum of oturumlar) {
     const zaman = oturum.date.getTime();
-    if (zaman < capa.getTime() || zaman > sinir) continue;
+    if (zaman < baslangic || zaman > sinir) continue;
 
     const grup = grupHaritasi.get(oturum.groupId);
     if (!grup) continue;
