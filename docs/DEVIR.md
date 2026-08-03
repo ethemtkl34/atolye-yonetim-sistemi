@@ -97,6 +97,29 @@ reddediyordu ("Kayıtlar ekranından yeniden etkinleştirin"); aynı panelde hem
 öğrenciyi geri koyamıyordun. Yeni kayıt açmak da doğru cevap değil, öğrencinin
 puanlama geçmişini koparırdı. Kontenjan ikisini birlikte sayıyor.
 
+### Psikolog görüşmeleri ve profil sadeleştirme
+
+Öğrencilerle yapılan psikolog/koordinatör görüşmeleri öğrenci kartında
+tutuluyor (`CounselingSession`). Görüşmeci **serbest metin** (psikologlar
+sistemde kullanıcı değil) + tür etiketi (`CounselorType`: PSIKOLOG /
+KOORDINATOR — sayılabilsin diye). Kaydı kimin girdiği otomatik (`createdBy`,
+SetNull). Gelecek tarih kabul edilmez: yapılmış görüşmenin kaydı, randevu
+defteri değil. Düzenleme yok, sil + yeniden ekle (4 alanlık kayıt).
+
+**GİZLİLİK: görüşmeler stajyerden TAMAMEN gizli** — sağlık bilgisi kuralının
+aynısı, stajyer sorgularının select/include'una hiç girmez. Yeni sorgu
+yazarken dikkat; `sube-sizinti` listelerine model ve ilişki eklendi.
+Görüşmesi olan öğrenci silinemez (puanlama/rapor engeliyle aynı ilke).
+
+Profil sayfası iki kata ayrıldı: üstte her zaman görünen operasyonel kat
+(özet kartı + aktif kayıtlar + görüşmeler + raporlar), altta `<details>` ile
+KAPALI başlayan arşiv katı (genel bilgiler, veliler, sağlık, geçmiş
+kayıtlar, stajyer atamaları). Özet kartında veli telefonları `tel:`
+bağlantısı. Eski "Geçmiş" kart bölümü kaldırıldı; `/gecmis` ve
+`/puanlamalar` alt sayfaları duruyor, erişim Aktif kayıtlar başlığındaki
+"Katılım geçmişi" / "Puanlamalar" bağlantılarından. `StajyerAtamalari`
+artık çerçevesiz (Kart + başlık katlanır bölümden geliyor).
+
 ### Hafta içi dönemler ve çok günlü gruplar
 
 Sistem "program yalnızca hafta sonu yapılır" (§2.3) varsayımıyla yazılmıştı ve

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
-import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import {
   pdfGecmisi,
   raporKapsamSecenekleri,
@@ -13,6 +12,7 @@ import {
 import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
 import { RaporBolumu } from "./rapor-bolumu";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
+import { GorusmelerBolumu, type GorusmeSatiri } from "./gorusmeler-bolumu";
 import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
@@ -20,7 +20,7 @@ import {
   KULUP_DURUMLARI,
 } from "@/lib/durumlar";
 import type { CancelReason, ClubStatus, Day, TermStatus } from "@/generated/prisma/enums";
-import { grupZamani, tarihBicimle } from "@/lib/tarih";
+import { bugun, grupZamani, tarihBicimle, tarihMetni } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -42,8 +42,12 @@ export async function generateMetadata(
 /**
  * §6.3 — Öğrenci profili.
  *
- * Genel bilgiler, veliler, sağlık, kayıtlar ve kayıt bazlı stajyer atamaları
- * dolu. Katılım, puanlama ve rapor bölümleri sonraki paketlerde eklenecek.
+ * Sayfa iki kata ayrıldı: üstte HER ZAMAN görünen operasyonel kat (özet
+ * kartı, aktif kayıtlar, görüşmeler, raporlar), altta KAPALI başlayan arşiv
+ * katı (genel bilgiler, veliler, sağlık, geçmiş kayıtlar, stajyer atamaları).
+ * Önceki düzende sekiz bölüm alt alta ~5 ekran boyu tutuyordu ve koordinatör
+ * her seferinde aynı uzun sayfayı kaydırıyordu; oysa günlük iş ilk kattaki
+ * dört bölümde geçiyor.
  */
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -97,44 +101,36 @@ export default async function OgrenciProfilSayfasi(
 
   if (!ogrenci) notFound();
 
-  // §6.3.7–8 — Katılım ve puanlama geçmişi profilde liste olarak değil,
-  // kendi sayfalarına götüren özet kartları olarak durur; ekran kalabalığı
-  // bu iki uzun listeden geliyordu. Burada yalnızca özet sayılar okunur.
-  const [
-    puanlamaIlerlemeleri,
-    raporlar,
-    pdfler,
-    kapsamKayitlari,
-    aktifStajyerler,
-    toplamFormSayisi,
-    katildigiFormSayisi,
-  ] = await Promise.all([
-    kayitIlerlemeleri({ subeId, studentId: id }),
-    raporOzetleri({ subeId, ogrenciId: id }),
-    pdfGecmisi({ subeId, ogrenciId: id }),
-    // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
-    // pencere açılmasa da peşinen okunuyor.
-    raporKapsamSecenekleri(id, subeId),
-    db.user.findMany({
-      where: { role: "STAJYER", active: true, branchId: subeId },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    db.score.count({
-      where: { enrollment: { studentId: id, group: { branchId: subeId } } },
-    }),
-    db.score.count({
-      where: {
-        enrollment: { studentId: id, group: { branchId: subeId } },
-        attended: true,
-      },
-    }),
-  ]);
+  const [raporlar, pdfler, kapsamKayitlari, aktifStajyerler, gorusmeKayitlari] =
+    await Promise.all([
+      raporOzetleri({ subeId, ogrenciId: id }),
+      pdfGecmisi({ subeId, ogrenciId: id }),
+      // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
+      // pencere açılmasa da peşinen okunuyor.
+      raporKapsamSecenekleri(id, subeId),
+      db.user.findMany({
+        where: { role: "STAJYER", active: true, branchId: subeId },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      // GİZLİLİK: görüşmeler yalnızca bu koordinatör sayfasında okunur;
+      // stajyer sorgularının hiçbirine girmez (sağlık bilgisi kuralı).
+      db.counselingSession.findMany({
+        where: { studentId: id, student: { branchId: subeId } },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        include: { createdBy: { select: { name: true } } },
+      }),
+    ]);
 
-  const bekleyenFormSayisi = puanlamaIlerlemeleri.reduce(
-    (toplam, ilerleme) => toplam + ilerleme.ozet.bekleyen,
-    0,
-  );
+  const gorusmeler: GorusmeSatiri[] = gorusmeKayitlari.map((gorusme) => ({
+    id: gorusme.id,
+    tarih: gorusme.date,
+    gorusmeciAdi: gorusme.counselorName,
+    tur: gorusme.counselorType,
+    not: gorusme.notes,
+    ekleyen: gorusme.createdBy?.name ?? null,
+    eklenmeTarihi: gorusme.createdAt,
+  }));
 
   /**
    * §8 — Atama satırları. Dönem kadrosu tanımlıysa seçenekler kadroyla
@@ -207,10 +203,6 @@ export default async function OgrenciProfilSayfasi(
           ← Öğrenciler
         </Link>
         <div className="mt-2">
-          {/* Başlıkta tek eylem duruyor; "Yeni kayıt" buradan kaldırılıp
-              ait olduğu yere, Aktif kayıtlar bölümünün köşesine taşındı —
-              sayfa açılır açılmaz kayıt butonuyla karşılaşılması ekranı
-              kalabalıklaştırıyordu. */}
           <SayfaBasligi
             baslik={`${ogrenci.firstName} ${ogrenci.lastName}`}
             aksiyon={
@@ -225,12 +217,97 @@ export default async function OgrenciProfilSayfasi(
         </div>
       </div>
 
-      {/* 1. Genel bilgiler */}
+      {/* --- Özet kartı: tek bakışta öğrenci. Ayrıntılar aşağıdaki kapalı
+          bölümlerde; buradaki her hücre "aramadan görülmesi gereken" bilgi.
+          Veli telefonları tıklanabilir — koordinatör en çok aileyi arıyor. */}
       <Kart className="p-4">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Genel bilgiler
-        </h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-5">
+          <OzetHucresi
+            etiket="Okul · Sınıf"
+            deger={
+              ogrenci.school || ogrenci.grade
+                ? [ogrenci.school, ogrenci.grade].filter(Boolean).join(" · ")
+                : null
+            }
+          />
+          <VeliHucresi etiket="Anne" veli={anne} />
+          <VeliHucresi etiket="Baba" veli={baba} />
+          <OzetHucresi
+            etiket="Aktif kayıt"
+            deger={String(aktifKayitlar.length)}
+          />
+          <OzetHucresi etiket="Görüşme" deger={String(gorusmeler.length)} />
+        </dl>
+
+        {saglik?.internSafetyNote ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-medium text-amber-800">
+              Güvenlik uyarısı (stajyerler de görür)
+            </p>
+            <p className="mt-1 text-sm text-amber-900">
+              {saglik.internSafetyNote}
+            </p>
+          </div>
+        ) : null}
+      </Kart>
+
+      {/* --- Aktif kayıtlar --- */}
+      <KayitBolumu
+        baslik="Aktif kayıtlar"
+        kayitlar={aktifKayitlar}
+        bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
+        aksiyon={
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {/* Katılım ve puanlama geçmişi kendi sayfalarında; eski "Geçmiş"
+                kart bölümü kaldırıldı, erişim bu iki bağlantıdan sürüyor. */}
+            <Link
+              href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
+              className={baglantiStili}
+            >
+              Katılım geçmişi
+            </Link>
+            <Link
+              href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
+              className={baglantiStili}
+            >
+              Puanlamalar
+            </Link>
+            <Link
+              href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
+              className={baglantiStili}
+            >
+              + Yeni kayıt
+            </Link>
+          </div>
+        }
+      />
+
+      {/* --- Görüşmeler (psikolog/koordinatör) — stajyerden gizli --- */}
+      <GorusmelerBolumu
+        ogrenciId={ogrenci.id}
+        gorusmeler={gorusmeler}
+        bugunMetni={tarihMetni(bugun())}
+      />
+
+      {/* --- Raporlar ve PDF geçmişi.
+
+          Rapor öğrenciye ait bir belge olduğu için listesi de içeriği de
+          burada duruyor: karta tıklayınca sayfadan çıkmadan bir pencere
+          açılıyor, düzenleme ve PDF üretimi de o pencerede yapılıyor. */}
+      <RaporBolumu
+        ogrenciId={ogrenci.id}
+        ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
+        raporlar={raporlar}
+        kapsamKayitlari={kapsamKayitlari}
+        pdfler={pdfler}
+        acilisParametresi={acilisRaporu}
+      />
+
+      {/* --- Arşiv katı: kapalı başlayan bölümler. Sık bakılmayan ayrıntılar
+          buraya indi; sayfa artık günlük işte tek ekran boyunda. --- */}
+
+      <KatlanirBolum baslik="Genel bilgiler">
+        <dl className="grid gap-3 sm:grid-cols-3">
           <Bilgi
             etiket="Doğum tarihi"
             deger={ogrenci.birthDate ? tarihBicimle(ogrenci.birthDate) : null}
@@ -246,14 +323,10 @@ export default async function OgrenciProfilSayfasi(
             </p>
           </div>
         ) : null}
-      </Kart>
+      </KatlanirBolum>
 
-      {/* 2. Anne ve baba */}
-      <Kart className="p-4">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Anne ve baba bilgileri
-        </h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <KatlanirBolum baslik="Anne ve baba bilgileri">
+        <dl className="grid gap-3 sm:grid-cols-2">
           <Bilgi
             etiket="Anne"
             deger={
@@ -271,25 +344,20 @@ export default async function OgrenciProfilSayfasi(
             }
           />
         </dl>
-      </Kart>
+      </KatlanirBolum>
 
-      {/* 3. Sağlık */}
-      <Kart className="p-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Sağlık ve özel durum
-          </h2>
-          <span className="text-xs text-zinc-500">
+      <KatlanirBolum
+        baslik="Sağlık ve özel durum"
+        etiket={
+          <span className="text-xs font-normal text-zinc-500">
             Stajyerlere kapalı
           </span>
-        </div>
-
+        }
+      >
         {saglikSatirlari.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">
-            Kayıtlı sağlık bilgisi yok.
-          </p>
+          <p className="text-sm text-zinc-500">Kayıtlı sağlık bilgisi yok.</p>
         ) : (
-          <dl className="mt-3 space-y-3">
+          <dl className="space-y-3">
             {saglikSatirlari.map((satir) => (
               <div key={satir.etiket}>
                 <dt className="text-sm text-zinc-500">{satir.etiket}</dt>
@@ -300,88 +368,27 @@ export default async function OgrenciProfilSayfasi(
             ))}
           </dl>
         )}
+      </KatlanirBolum>
 
-        {saglik?.internSafetyNote ? (
-          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-medium text-amber-800">
-              Stajyerin gördüğü uyarı
-            </p>
-            <p className="mt-1 text-sm text-amber-900">
-              {saglik.internSafetyNote}
-            </p>
-          </div>
-        ) : null}
-      </Kart>
-
-      {/* 4. Aktif kayıtlar */}
-      <KayitBolumu
-        baslik="Aktif kayıtlar"
-        kayitlar={aktifKayitlar}
-        bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
-        aksiyon={
-          <Link
-            href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
-            className={baglantiStili}
-          >
-            + Yeni kayıt
-          </Link>
-        }
-      />
-
-      {/* 5. Geçmiş kayıtlar */}
-      <KayitBolumu
+      <KatlanirBolum
         baslik="Geçmiş kayıtlar"
-        kayitlar={gecmisKayitlar}
-        bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
-      />
+        etiket={
+          gecmisKayitlar.length > 0 ? (
+            <span className="text-xs font-normal text-zinc-500">
+              {gecmisKayitlar.length} kayıt
+            </span>
+          ) : undefined
+        }
+      >
+        <KayitListesi
+          kayitlar={gecmisKayitlar}
+          bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
+        />
+      </KatlanirBolum>
 
-      {/* 6. Stajyer atamaları — atama doğrudan burada yapılır. */}
-      <StajyerAtamalari kayitlar={atamaKayitlari} />
-
-      {/* 7–8. Katılım ve puanlama geçmişi — listeler kendi sayfalarında,
-          profilde yalnızca özet sayıları taşıyan bağlantı kartları durur. */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">Geçmiş</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <GecmisKarti
-            baslik="Atölye katılım geçmişi"
-            ozet={
-              toplamFormSayisi === 0
-                ? "Henüz doldurulmuş form yok"
-                : `${toplamFormSayisi} form · ${katildigiFormSayisi} katıldı · ${toplamFormSayisi - katildigiFormSayisi} katılmadı`
-            }
-            href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-          />
-          <GecmisKarti
-            baslik="Puanlama geçmişi"
-            ozet={
-              puanlamaIlerlemeleri.length === 0
-                ? "Henüz kayıt yok"
-                : `${puanlamaIlerlemeleri.length} kayıt · ${
-                    bekleyenFormSayisi > 0
-                      ? `${bekleyenFormSayisi} form bekliyor`
-                      : "bekleyen form yok"
-                  }`
-            }
-            vurgu={bekleyenFormSayisi > 0}
-            href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
-          />
-        </div>
-      </div>
-
-      {/* 9–11. Raporlar ve PDF geçmişi.
-
-          Rapor öğrenciye ait bir belge olduğu için listesi de içeriği de
-          burada duruyor: karta tıklayınca sayfadan çıkmadan bir pencere
-          açılıyor, düzenleme ve PDF üretimi de o pencerede yapılıyor. */}
-      <RaporBolumu
-        ogrenciId={ogrenci.id}
-        ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
-        raporlar={raporlar}
-        kapsamKayitlari={kapsamKayitlari}
-        pdfler={pdfler}
-        acilisParametresi={acilisRaporu}
-      />
+      <KatlanirBolum baslik="Stajyer atamaları">
+        <StajyerAtamalari kayitlar={atamaKayitlari} />
+      </KatlanirBolum>
     </div>
   );
 }
@@ -407,42 +414,85 @@ type ProfilKaydi = {
 };
 
 /**
- * Uzun bir listeyi kendi sayfasına taşıyan özet kartı. Kartın tamamı
- * tıklanabilir; sağdaki ok gidilecek bir sayfa olduğunu belli eder.
+ * Kapalı başlayan bölüm çerçevesi.
+ *
+ * Native `<details>`: JS gerektirmediği için sunucu bileşeninde çalışıyor ve
+ * içindeki istemci bileşenleri (stajyer atamaları gibi) etkilenmiyor. Özet
+ * satırı telefonda 44px dokunma hedefi; masaüstünde sıkı ölçüye dönüyor.
  */
-function GecmisKarti({
+function KatlanirBolum({
   baslik,
-  ozet,
-  href,
-  vurgu = false,
+  etiket,
+  children,
 }: {
   baslik: string;
-  ozet: string;
-  href: string;
-  vurgu?: boolean;
+  etiket?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className="group flex items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
-    >
-      <span>
-        <span className="block text-sm font-medium text-zinc-900">
-          {baslik}
-        </span>
-        <span
-          className={`mt-0.5 block text-xs ${vurgu ? "font-medium text-vurgu-700" : "text-zinc-500"}`}
-        >
-          {ozet}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className="text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
-      >
-        →
-      </span>
-    </Link>
+    <Kart className="p-4">
+      <details className="group">
+        <summary className="flex min-h-[2.75rem] cursor-pointer list-none items-center justify-between gap-2 sm:min-h-0">
+          <span className="flex flex-wrap items-center gap-2 text-base font-semibold text-zinc-900">
+            {baslik}
+            {etiket}
+          </span>
+          <span className="shrink-0 text-xs text-zinc-500 group-open:hidden">
+            Göster
+          </span>
+          <span className="hidden shrink-0 text-xs text-zinc-500 group-open:inline">
+            Gizle
+          </span>
+        </summary>
+        <div className="mt-3">{children}</div>
+      </details>
+    </Kart>
+  );
+}
+
+function OzetHucresi({
+  etiket,
+  deger,
+}: {
+  etiket: string;
+  deger: string | null;
+}) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-500">{etiket}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-zinc-900">
+        {deger ?? <span className="font-normal text-zinc-400">—</span>}
+      </dd>
+    </div>
+  );
+}
+
+/** Veli adı + tıklanabilir telefon. Koordinatörün en sık işi aileyi aramak. */
+function VeliHucresi({
+  etiket,
+  veli,
+}: {
+  etiket: string;
+  veli: { fullName: string; phone: string | null } | undefined;
+}) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-500">{etiket}</dt>
+      <dd className="mt-0.5 text-sm">
+        {veli ? (
+          <>
+            <span className="font-medium text-zinc-900">{veli.fullName}</span>
+            {veli.phone ? (
+              <a href={`tel:${veli.phone}`} className={`block ${baglantiStili}`}>
+                {veli.phone}
+              </a>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-zinc-400">—</span>
+        )}
+      </dd>
+    </div>
   );
 }
 
@@ -463,70 +513,83 @@ function KayitBolumu({
         <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
         {aksiyon}
       </div>
-      {kayitlar.length === 0 ? (
-        <BosDurum baslik={bosAciklama} />
-      ) : (
-        <div className="space-y-2">
-          {kayitlar.map((kayit) => {
-            // İki ayrı durum var ve karıştırılmamalı: kaydın kendi durumu
-            // (aktif / iptal) ve programın durumu (tamamlandı, arşivlendi...).
-            // Kayıt aktif olduğu hâlde program bittiyse bunu yazmak gerekiyor;
-            // yoksa "Geçmiş kayıtlar" başlığı altındaki "Aktif" rozeti
-            // çelişkili görünüyor.
-            const programDurumu = kayit.group.term
-              ? DONEM_DURUMLARI[kayit.group.term.status]
-              : kayit.group.club
-                ? KULUP_DURUMLARI[kayit.group.club.status]
-                : null;
+      <KayitListesi kayitlar={kayitlar} bosAciklama={bosAciklama} />
+    </div>
+  );
+}
 
-            return (
-            <Kart key={kayit.id} className="p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-900">
-                  {kayit.group.term?.name ??
-                    kayit.group.club?.name ??
-                    "Program bulunamadı"}
-                </span>
-                <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
-                <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
-                  Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
+/** Kayıt kartları — başlıksız; katlanır bölümün içinde de kullanılıyor. */
+function KayitListesi({
+  kayitlar,
+  bosAciklama,
+}: {
+  kayitlar: ProfilKaydi[];
+  bosAciklama: string;
+}) {
+  if (kayitlar.length === 0) {
+    return <BosDurum baslik={bosAciklama} />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {kayitlar.map((kayit) => {
+        // İki ayrı durum var ve karıştırılmamalı: kaydın kendi durumu
+        // (aktif / iptal) ve programın durumu (tamamlandı, arşivlendi...).
+        // Kayıt aktif olduğu hâlde program bittiyse bunu yazmak gerekiyor;
+        // yoksa "Geçmiş kayıtlar" başlığı altındaki "Aktif" rozeti
+        // çelişkili görünüyor.
+        const programDurumu = kayit.group.term
+          ? DONEM_DURUMLARI[kayit.group.term.status]
+          : kayit.group.club
+            ? KULUP_DURUMLARI[kayit.group.club.status]
+            : null;
+
+        return (
+          <Kart key={kayit.id} className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-zinc-900">
+                {kayit.group.term?.name ??
+                  kayit.group.club?.name ??
+                  "Program bulunamadı"}
+              </span>
+              <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
+              <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
+                Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
+              </Rozet>
+              {programDurumu ? (
+                <Rozet tur={programDurumu.rozet}>
+                  Program: {programDurumu.etiket}
                 </Rozet>
-                {programDurumu ? (
-                  <Rozet tur={programDurumu.rozet}>
-                    Program: {programDurumu.etiket}
-                  </Rozet>
-                ) : null}
-              </div>
-              <p className="mt-1 text-sm text-zinc-700">
-                {kayit.group.name} ·{" "}
-                {grupZamani(kayit.group.days, kayit.group.timeSlot)}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Kayıt tarihi {tarihBicimle(kayit.createdAt)}
-                {kayit.group.club
-                  ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
-                  : ""}
-                {" · "}
-                Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
-              </p>
-
-              {kayit.status === "IPTAL" ? (
-                <KayitIptalOzeti
-                  kayit={{
-                    cancelReason: kayit.cancelReason,
-                    cancelNote: kayit.cancelNote,
-                    lastAttendedWeek: kayit.lastAttendedWeek,
-                    lastAttendedDate: kayit.lastAttendedDate,
-                    tamamlananAtolye: kayit._count.scores,
-                    toplamAtolye: kayit.group._count.sessions,
-                  }}
-                />
               ) : null}
-            </Kart>
-            );
-          })}
-        </div>
-      )}
+            </div>
+            <p className="mt-1 text-sm text-zinc-700">
+              {kayit.group.name} ·{" "}
+              {grupZamani(kayit.group.days, kayit.group.timeSlot)}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Kayıt tarihi {tarihBicimle(kayit.createdAt)}
+              {kayit.group.club
+                ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
+                : ""}
+              {" · "}
+              Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
+            </p>
+
+            {kayit.status === "IPTAL" ? (
+              <KayitIptalOzeti
+                kayit={{
+                  cancelReason: kayit.cancelReason,
+                  cancelNote: kayit.cancelNote,
+                  lastAttendedWeek: kayit.lastAttendedWeek,
+                  lastAttendedDate: kayit.lastAttendedDate,
+                  tamamlananAtolye: kayit._count.scores,
+                  toplamAtolye: kayit.group._count.sessions,
+                }}
+              />
+            ) : null}
+          </Kart>
+        );
+      })}
     </div>
   );
 }

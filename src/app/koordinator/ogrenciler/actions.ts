@@ -214,7 +214,7 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       select: {
         firstName: true,
         lastName: true,
-        _count: { select: { reports: true } },
+        _count: { select: { reports: true, counselingSessions: true } },
         enrollments: { select: { _count: { select: { scores: true } } } },
       },
     });
@@ -238,6 +238,15 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       return {
         silindi: false,
         hata: `${ad} silinemez: üretilmiş ${ogrenci._count.reports} raporu var.`,
+      };
+    }
+
+    // Görüşme notu da puanlama gibi korunması gereken geçmiş — hatta daha
+    // hassas. Görüşmesi olan öğrenci "yanlışlıkla eklenmiş" olamaz.
+    if (ogrenci._count.counselingSessions > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${ogrenci._count.counselingSessions} görüşme kaydı var ve bu geçmiş korunmalı.`,
       };
     }
 

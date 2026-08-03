@@ -92,6 +92,17 @@ enum EnrollmentStatus {
   IPTAL
 }
 
+/// Görüşmeyi kimin yaptığı — psikolog mu, koordinatör mü.
+///
+/// Psikologlar sistemde kullanıcı DEĞİL; görüşmeci adı serbest metin
+/// (`CounselingSession.counselorName`). Etiket ayrıca tutuluyor çünkü
+/// "kaç görüşme psikologla yapıldı" sorusu ancak sayılabilir bir alandan
+/// cevaplanır.
+enum CounselorType {
+  PSIKOLOG
+  KOORDINATOR
+}
+
 /// Kaydın neden iptal edildiği.
 ///
 /// Serbest metin yerine etiket: "bu dönem kaç çocuk taşındığı için ayrıldı"
@@ -166,6 +177,7 @@ model User {
   assignedEnrollments Enrollment[] @relation("AtananStajyer")
   enteredScores       Score[]      @relation("PuanlamayiGiren")
   editedReports       Report[]     @relation("RaporuDuzenleyen")
+  addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   @@index([role, active])
@@ -422,10 +434,11 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guardians   Guardian[]
-  healthInfo  HealthInfo?
-  enrollments Enrollment[]
-  reports     Report[]
+  guardians          Guardian[]
+  healthInfo         HealthInfo?
+  enrollments        Enrollment[]
+  reports            Report[]
+  counselingSessions CounselingSession[]
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
   @@index([branchId, searchName])
@@ -471,6 +484,36 @@ model HealthInfo {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Psikolog/koordinatör görüşmeleri.
+///
+/// GİZLİLİK (§3.2 ile aynı kural): görüşme notları sağlık bilgisi gibi
+/// hassastır ve stajyerden TAMAMEN gizlidir. Bu, arayüzde saklamakla değil,
+/// stajyer rolündeki sorguların select/include listesine bu ilişkinin hiç
+/// alınmamasıyla sağlanır.
+///
+/// Görüşmeyi yapan kişi serbest metindir (`counselorName`): psikologlar
+/// sistemde kullanıcı değil. Kaydı kimin girdiği ise ayrıca otomatik tutulur
+/// (`createdBy`, SetNull — hesap silinse de görüşme kaydı kalır).
+model CounselingSession {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Görüşmenin yapıldığı gün. Gelecek tarih kabul edilmez: bu yapılmış bir
+  /// görüşmenin kaydıdır, randevu defteri değil (uygulama katmanında doğrulanır).
+  date DateTime @db.Date
+
+  counselorName String
+  counselorType CounselorType
+  notes         String
+
+  createdByUserId String?
+  createdBy       User?   @relation("GorusmeyiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([studentId, date])
 }
 
 // ---------------------------------------------------------------------------

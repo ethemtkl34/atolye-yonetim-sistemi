@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bildirim, Kart, Rozet, baglantiStili } from "@/components/ui";
+import { Bildirim, Rozet, baglantiStili } from "@/components/ui";
 import { kayitStajyerDegistir } from "../../kayitlar/actions";
 
 export type AtamaKaydi = {
@@ -52,12 +52,12 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
     });
   }
 
+  // Çerçeve (Kart + başlık) sayfadaki katlanır bölüme taşındı; bileşen artık
+  // yalnızca içeriği çiziyor. Başlığı burada da çizseydik katlanır özet
+  // satırıyla çift başlık olurdu.
   return (
-    <Kart className="p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Stajyer atamaları
-        </h2>
+    <div>
+      <div className="flex justify-end">
         <Link
           href="/koordinator/stajyerler"
           className={baglantiStili}
@@ -141,7 +141,7 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
           ))}
         </div>
       )}
-    </Kart>
+    </div>
   );
 }
 
