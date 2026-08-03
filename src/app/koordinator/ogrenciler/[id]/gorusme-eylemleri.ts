@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
+import { formDegerleri } from "@/lib/formlar";
 
 /**
  * Psikolog görüşmeleri — ekleme ve silme.
@@ -21,7 +22,15 @@ export type GorusmeEylemDurumu = {
   basari?: string;
   hata?: string;
   alanHatalari?: Record<string, string>;
+  /**
+   * Doğrulama hatasında girilenler — React 19 form eylemi bitince alanları
+   * sıfırlıyor; not 5000 karaktere kadar olabildiği için yazılanın kaybolması
+   * kabul edilemez. Öğrenci formundaki desenle aynı.
+   */
+  degerler?: Record<string, string>;
 };
+
+const GORUSME_FORM_ALANLARI = ["tarih", "gorusmeciAdi", "tur", "not"] as const;
 
 const gorusmeSemasi = z.object({
   /**
@@ -66,21 +75,32 @@ export async function gorusmeEkle(
       const alan = sorun.path.join(".");
       if (alan && !hatalar[alan]) hatalar[alan] = sorun.message;
     }
-    return { alanHatalari: hatalar };
+    return {
+      alanHatalari: hatalar,
+      degerler: formDegerleri(formVerisi, GORUSME_FORM_ALANLARI),
+    };
   }
 
   const veri = cozumlenen.data;
 
+  const girilenler = formDegerleri(formVerisi, GORUSME_FORM_ALANLARI);
+
   const tarih = veri.tarih ? tarihCozumle(veri.tarih) : bugun();
   if (!tarih) {
-    return { alanHatalari: { tarih: "Geçerli bir tarih seçin." } };
+    return {
+      alanHatalari: { tarih: "Geçerli bir tarih seçin." },
+      degerler: girilenler,
+    };
   }
 
   // Gelecek tarih kabul edilmez: bu yapılmış bir görüşmenin kaydıdır,
   // randevu defteri değil. İleri tarihli kayıt "yapıldı mı yapılmadı mı"
   // belirsizliği doğururdu.
   if (tarih.getTime() > bugun().getTime()) {
-    return { alanHatalari: { tarih: "Görüşme tarihi ileride olamaz." } };
+    return {
+      alanHatalari: { tarih: "Görüşme tarihi ileride olamaz." },
+      degerler: girilenler,
+    };
   }
 
   const ogrenci = await db.student.findFirst({

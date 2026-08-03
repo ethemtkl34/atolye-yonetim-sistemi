@@ -80,6 +80,11 @@ export function GorusmelerBolumu({
     if (durum.basari) setAcik(false);
   }
 
+  // React 19, eylem bitince formu sıfırlıyor — doğrulama hatasında da.
+  // Eylem girilenleri geri döndürüyor; alanlar buradan doldurulur ki uzun
+  // bir görüşme notu tek eksik alan yüzünden kaybolmasın.
+  const deger = (alan: string) => durum.degerler?.[alan];
+
   const [silmeDurumu, setSilmeDurumu] = useState<GorusmeEylemDurumu>({});
   const [siliniyor, silmeyeBasla] = useTransition();
 
@@ -134,7 +139,11 @@ export function GorusmelerBolumu({
                 ipucu="Bugün için olduğu gibi bırakın."
                 hata={durum.alanHatalari?.tarih}
               >
-                <Girdi name="tarih" type="date" defaultValue={bugunMetni} />
+                <Girdi
+                  name="tarih"
+                  type="date"
+                  defaultValue={deger("tarih") ?? bugunMetni}
+                />
               </Alan>
 
               <Alan
@@ -143,6 +152,7 @@ export function GorusmelerBolumu({
               >
                 <Girdi
                   name="gorusmeciAdi"
+                  defaultValue={deger("gorusmeciAdi")}
                   placeholder="Örn. Psk. Ayşe Yılmaz"
                   autoFocus
                 />
@@ -151,7 +161,7 @@ export function GorusmelerBolumu({
               <Alan etiket="Görüşmeci" hata={durum.alanHatalari?.tur}>
                 <select
                   name="tur"
-                  defaultValue="PSIKOLOG"
+                  defaultValue={deger("tur") ?? "PSIKOLOG"}
                   className={secimStili}
                 >
                   <option value="PSIKOLOG">Psikolog</option>
@@ -164,6 +174,7 @@ export function GorusmelerBolumu({
               <CokSatirli
                 name="not"
                 rows={4}
+                defaultValue={deger("not")}
                 placeholder="Görüşmede konuşulanlar, gözlemler, öneriler…"
               />
             </Alan>

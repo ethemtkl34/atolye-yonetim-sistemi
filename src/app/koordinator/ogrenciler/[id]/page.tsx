@@ -481,9 +481,13 @@ function VeliHucresi({
       <dd className="mt-0.5 text-sm">
         {veli ? (
           <>
-            <span className="font-medium text-zinc-900">{veli.fullName}</span>
+            {/* Ad kendi satırında: bağlantı stili `inline-block` olduğu için
+                `block` eklemek çakışıyordu ve telefon ada yapışıyordu. */}
+            <span className="block font-medium text-zinc-900">
+              {veli.fullName}
+            </span>
             {veli.phone ? (
-              <a href={`tel:${veli.phone}`} className={`block ${baglantiStili}`}>
+              <a href={`tel:${veli.phone}`} className={baglantiStili}>
                 {veli.phone}
               </a>
             ) : null}
