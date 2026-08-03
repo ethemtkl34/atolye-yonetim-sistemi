@@ -99,11 +99,22 @@ export function PuanlamaFormu({
 
       if (eksik.length > 0) {
         setIstemciEksikleri(eksik);
-        // İlk eksik soruya götür: 11 soruluk formda hangisinin boş kaldığını
-        // aramak telefonda en yorucu iş.
-        document
-          .getElementById(soruAlanId(form.oturumId, eksik[0]))
-          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+
+        /*
+          İlk eksik soruya götür: 10 soruluk formda hangisinin boş kaldığını
+          aramak telefonda en yorucu iş.
+
+          Kaydırma bir sonraki kareye ERTELENİYOR. Doğrudan çağrıldığında
+          çalışmıyordu: React hemen ardından kutuları kırmızıya boyayıp uyarı
+          satırını ekliyor, sayfa uzuyor ve başlamış kaydırma yarıda kalıyor.
+          `smooth` de bu yüzden kaldırıldı — uzun mesafede animasyon
+          kesilmeye açık, anlık kaydırma hedefi şaşırmıyor.
+        */
+        requestAnimationFrame(() => {
+          document
+            .getElementById(soruAlanId(form.oturumId, eksik[0]))
+            ?.scrollIntoView({ block: "center" });
+        });
         return;
       }
     }
