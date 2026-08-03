@@ -78,8 +78,45 @@ export function PuanlamaFormu({
     form.attended === null ? "" : form.attended ? "katildi" : "katilmadi",
   );
 
+  /**
+   * Boş bırakılan soruları GÖNDERMEDEN ÖNCE yakalar.
+   *
+   * Radyo düğmelerindeki `required` işi tarayıcıya bırakıyordu ve telefonda
+   * sessiz bir duvara dönüşüyordu: tarayıcı ilk eksik alana odaklanmaya
+   * çalışıyor ama o alan `sr-only` 1×1 pikselik bir kutu, ekranda hiçbir şey
+   * görünmüyor. Stajyer "kaydet'e bastım, bir şey olmadı" durumunda kalıyordu.
+   *
+   * Sunucu zaten eksikleri `eksikSatirlar` ile döndürüyordu; bu kontrol aynı
+   * işaretlemeyi ağa hiç çıkmadan yapıyor.
+   */
+  const [istemciEksikleri, setIstemciEksikleri] = useState<string[]>([]);
+
+  function gonder(formVerisi: FormData) {
+    if (katilim === "katildi") {
+      const eksik = form.satirlar
+        .filter((satir) => !formVerisi.get(`cevap:${satir.anahtar}`))
+        .map((satir) => satir.anahtar);
+
+      if (eksik.length > 0) {
+        setIstemciEksikleri(eksik);
+        // İlk eksik soruya götür: 11 soruluk formda hangisinin boş kaldığını
+        // aramak telefonda en yorucu iş.
+        document
+          .getElementById(soruAlanId(form.oturumId, eksik[0]))
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
+    }
+
+    setIstemciEksikleri([]);
+    eylem(formVerisi);
+  }
+
   const rozet = PUANLAMA_DURUM_ETIKETLERI[form.durum];
-  const eksikler = new Set(durum.eksikSatirlar ?? []);
+  const eksikler = new Set([
+    ...(durum.eksikSatirlar ?? []),
+    ...istemciEksikleri,
+  ]);
   const kilitli = !duzenlenebilir || !form.puanlanabilir;
 
   return (
@@ -106,7 +143,11 @@ export function PuanlamaFormu({
           Bu atölye henüz yapılmadı. Form, oturum günü geldiğinde açılır.
         </p>
       ) : (
-        <form action={eylem} className="mt-4 space-y-4">
+        // `noValidate`: doğrulama tarayıcıdan alınıp `gonder`e verildi.
+        // Tarayıcının baloncuğu görünmez bir kutuya bağlanıyordu (yukarıdaki
+        // nota bakın); eksikler artık soru kutusunun kendisinde kırmızıyla
+        // gösteriliyor.
+        <form action={gonder} noValidate className="mt-4 space-y-4">
           <input type="hidden" name="oturumId" value={form.oturumId} />
           <input type="hidden" name="kayitId" value={kayitId} />
 
@@ -166,12 +207,21 @@ export function PuanlamaFormu({
               {form.satirlar.map((satir, sira) => (
                 <SoruSatiri
                   key={satir.anahtar}
+                  alanId={soruAlanId(form.oturumId, satir.anahtar)}
                   satir={satir}
                   sira={sira + 1}
                   eksik={eksikler.has(satir.anahtar)}
                 />
               ))}
             </fieldset>
+          ) : null}
+
+          {istemciEksikleri.length > 0 ? (
+            <Bildirim tur="hata">
+              {istemciEksikleri.length} soru boş kaldı. Kırmızı işaretli
+              soruları doldurun; puan veremiyorsanız
+              “Değerlendirilemedi” seçin.
+            </Bildirim>
           ) : null}
 
           {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
@@ -199,21 +249,53 @@ export function PuanlamaFormu({
   );
 }
 
+/** Eksik soruya kaydırabilmek için kararlı bir kimlik. */
+function soruAlanId(oturumId: string, anahtar: string): string {
+  return `soru-${oturumId}-${anahtar}`;
+}
+
+/** Seçeneğin ölçekteki karşılığı. */
+function secenekAciklamasi(deger: string): string {
+  return deger === DEGERLENDIRILEMEDI
+    ? DEGERLENDIRILEMEDI_ACIKLAMA
+    : PUAN_ACIKLAMALARI[Number(deger)];
+}
+
 function SoruSatiri({
+  alanId,
   satir,
   sira,
   eksik,
 }: {
+  alanId: string;
   satir: FormSatiri;
   sira: number;
   eksik: boolean;
 }) {
   const alanAdi = `cevap:${satir.anahtar}`;
 
+  /**
+   * Seçim denetimli tutuluyor ki seçilen puanın ANLAMI soru kutusunun içinde
+   * yazılabilsin.
+   *
+   * Düğmeler yalnızca rakam gösteriyordu; "3 neydi" sorusunun cevabı sayfanın
+   * en üstündeki ölçek kartındaydı ve telefonda oraya dönmek 11 soruluk bir
+   * formda gerçek bir maliyet. Artık cevap seçildiği anda satırın altında
+   * duruyor.
+   */
+  const [secim, setSecim] = useState<string>(() =>
+    satir.mevcutDeger !== null
+      ? String(satir.mevcutDeger)
+      : satir.cevaplandi
+        ? DEGERLENDIRILEMEDI
+        : "",
+  );
+
   return (
     <fieldset
+      id={alanId}
       className={cn(
-        "rounded-md border px-3 py-3",
+        "scroll-mt-4 rounded-md border px-3 py-3",
         eksik ? "border-red-300 bg-red-50" : "border-yuzey-200",
       )}
     >
@@ -240,16 +322,8 @@ function SoruSatiri({
       */}
       <div className="mt-2 grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
         {SECENEKLER.map((secenek) => {
-          const secili =
-            satir.mevcutDeger === null
-              ? satir.cevaplandi && secenek.deger === DEGERLENDIRILEMEDI
-              : String(satir.mevcutDeger) === secenek.deger;
-
-          const aciklama =
-            secenek.deger === DEGERLENDIRILEMEDI
-              ? DEGERLENDIRILEMEDI_ACIKLAMA
-              : PUAN_ACIKLAMALARI[Number(secenek.deger)];
-
+          const secili = secim === secenek.deger;
+          const aciklama = secenekAciklamasi(secenek.deger);
           const tamSatir = secenek.deger === DEGERLENDIRILEMEDI;
 
           return (
@@ -265,8 +339,8 @@ function SoruSatiri({
                 type="radio"
                 name={alanAdi}
                 value={secenek.deger}
-                defaultChecked={secili}
-                required
+                checked={secili}
+                onChange={(olay) => setSecim(olay.target.value)}
                 className="peer sr-only"
               />
               <span
@@ -284,16 +358,39 @@ function SoruSatiri({
           );
         })}
       </div>
+
+      {secim ? (
+        <p className="mt-2 text-xs text-zinc-600">
+          {secim === DEGERLENDIRILEMEDI ? "" : `${secim} — `}
+          {secenekAciklamasi(secim)}
+        </p>
+      ) : null}
     </fieldset>
   );
 }
 
-/** §10.4 — Puan açıklamaları formun yanında görünür. */
+/**
+ * §10.4 — Puan açıklamaları.
+ *
+ * Katlanabilir: tablo telefonda 400 pikselden fazla yer kaplıyordu ve her gün
+ * ekranının en üstünde duruyordu — stajyer forma ulaşmak için her seferinde
+ * onu geçiyordu. Puanların anlamı artık seçildiği anda sorunun altında da
+ * yazdığı için bu tablo ikincil bir başvuru kaynağı; kapalı başlıyor.
+ */
 export function PuanlamaOlcegi() {
   return (
     <Kart className="p-4">
-      <h2 className="text-sm font-semibold text-zinc-900">Puanlama ölçeği</h2>
-      <dl className="mt-2 space-y-1 text-sm">
+      <details className="group">
+        <summary className="flex min-h-[2.75rem] cursor-pointer list-none items-center justify-between text-sm font-semibold text-zinc-900 sm:min-h-0">
+          Puanlama ölçeği
+          <span className="text-xs font-normal text-zinc-500 group-open:hidden">
+            Göster
+          </span>
+          <span className="hidden text-xs font-normal text-zinc-500 group-open:inline">
+            Gizle
+          </span>
+        </summary>
+        <dl className="mt-2 space-y-1 text-sm">
         <div className="flex gap-2">
           <dt className="w-36 shrink-0 text-zinc-500">Değerlendirilemedi</dt>
           <dd className="text-zinc-700">{DEGERLENDIRILEMEDI_ACIKLAMA}</dd>
@@ -303,8 +400,9 @@ export function PuanlamaOlcegi() {
             <dt className="w-36 shrink-0 text-zinc-500">{puan}</dt>
             <dd className="text-zinc-700">{PUAN_ACIKLAMALARI[puan]}</dd>
           </div>
-        ))}
-      </dl>
+          ))}
+        </dl>
+      </details>
     </Kart>
   );
 }
