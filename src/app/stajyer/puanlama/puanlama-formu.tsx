@@ -90,8 +90,19 @@ export function PuanlamaFormu({
    * işaretlemeyi ağa hiç çıkmadan yapıyor.
    */
   const [istemciEksikleri, setIstemciEksikleri] = useState<string[]>([]);
+  /** Katılım hiç seçilmeden kaydete basıldığında gösterilir. */
+  const [katilimEksik, setKatilimEksik] = useState(false);
 
   function gonder(formVerisi: FormData) {
+    // Katılım da `required` ile tarayıcıya bırakılmıştı; doğrulama buraya
+    // taşınınca onun da karşılığı gerekti, yoksa kaydet düğmesi sessiz kalıyor.
+    if (!katilim) {
+      setKatilimEksik(true);
+      setIstemciEksikleri([]);
+      return;
+    }
+    setKatilimEksik(false);
+
     if (katilim === "katildi") {
       const eksik = form.satirlar
         .filter((satir) => !formVerisi.get(`cevap:${satir.anahtar}`))
@@ -162,7 +173,13 @@ export function PuanlamaFormu({
           <input type="hidden" name="oturumId" value={form.oturumId} />
           <input type="hidden" name="kayitId" value={kayitId} />
 
-          <fieldset disabled={kilitli || bekliyor}>
+          <fieldset
+            disabled={kilitli || bekliyor}
+            className={cn(
+              "rounded-md",
+              katilimEksik && "border border-red-300 bg-red-50 px-3 py-2",
+            )}
+          >
             <legend className="text-sm font-medium text-zinc-700">
               Katılım durumu
             </legend>
@@ -191,7 +208,10 @@ export function PuanlamaFormu({
                     name="attended"
                     value={secenek.deger}
                     checked={katilim === secenek.deger}
-                    onChange={(olay) => setKatilim(olay.target.value)}
+                    onChange={(olay) => {
+                      setKatilim(olay.target.value);
+                      setKatilimEksik(false);
+                    }}
                     className="sr-only"
                     required
                   />
@@ -225,6 +245,12 @@ export function PuanlamaFormu({
                 />
               ))}
             </fieldset>
+          ) : null}
+
+          {katilimEksik ? (
+            <Bildirim tur="hata">
+              Önce katılım durumunu seçin: öğrenci bu atölyeye katıldı mı?
+            </Bildirim>
           ) : null}
 
           {istemciEksikleri.length > 0 ? (
