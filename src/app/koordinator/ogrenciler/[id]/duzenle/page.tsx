@@ -31,6 +31,7 @@ export default async function OgrenciDuzenleSayfasi(
           reports: true,
           counselingSessions: true,
           parentMeetings: true,
+          intelligenceTests: true,
         },
       },
       enrollments: { select: { _count: { select: { scores: true } } } },
@@ -53,7 +54,9 @@ export default async function OgrenciDuzenleSayfasi(
           ? `Bu öğrenci silinemez: ${ogrenci._count.counselingSessions} görüşme kaydı var ve bu geçmiş korunmalı.`
           : ogrenci._count.parentMeetings > 0
             ? `Bu öğrenci silinemez: ${ogrenci._count.parentMeetings} veli görüşmesi kaydı var ve bu geçmiş korunmalı.`
-            : undefined;
+            : ogrenci._count.intelligenceTests > 0
+              ? `Bu öğrenci silinemez: ${ogrenci._count.intelligenceTests} zeka testi belgesi var ve bu geçmiş korunmalı.`
+              : undefined;
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");

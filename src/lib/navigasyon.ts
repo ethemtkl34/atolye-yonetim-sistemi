@@ -112,6 +112,17 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Kişiler",
     simge: "sohbet",
   },
+  // Zeka testi sonuç belgeleri (PDF/görsel yükleme + önizleme). Danışmanlık
+  // gibi: tek yazma adresi bu ekran, öğrenci profili yalnızca gösterir.
+  // Stajyer menüsünde asla yer almaz — sağlık bilgisi kuralı.
+  {
+    etiket: "Zeka testleri",
+    yol: "/koordinator/zeka-testleri",
+    hazir: true,
+    paket: "P16",
+    bolum: "Kişiler",
+    simge: "ampul",
+  },
   // Yalnızca yöneticide. Koordinatörün Stajyerler ekranı yerinde duruyor ve
   // kendi şubesiyle sınırlı; burası bütün şubelerin hesaplarına bakan, rol ve
   // şube değiştirebilen ekran.

@@ -188,6 +188,7 @@ model User {
   editedReports       Report[]     @relation("RaporuDuzenleyen")
   addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
   addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
+  addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   @@index([role, active])
@@ -450,6 +451,7 @@ model Student {
   reports            Report[]
   counselingSessions CounselingSession[]
   parentMeetings     ParentMeeting[]
+  intelligenceTests  IntelligenceTest[]
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
   @@index([branchId, searchName])
@@ -572,6 +574,48 @@ model ParentMeeting {
 
   createdByUserId String?
   createdBy       User?    @relation("VeliGorusmesiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([studentId, date])
+}
+
+/// Zeka testi sonuç belgeleri — kuruma uygulanan testlerin (örn. WISC)
+/// yüklenen PDF veya görsel dosyaları.
+///
+/// GİZLİLİK (§3.2 ile aynı kural): test sonuçları sağlık bilgisi gibi
+/// hassastır ve stajyerden TAMAMEN gizlidir; stajyer sorgularının
+/// select/include listesine bu ilişki hiç alınmaz.
+///
+/// Dosyanın ikili verisi veritabanında (`fileData`): sistemde ayrı bir nesne
+/// deposu yok ve rapor PDF'leri de depo bağımlılığı olmadan çalışıyor.
+/// Server Action + Vercel istek sınırı gereği dosya başına 4MB üst sınır
+/// uygulama katmanında zorlanır. Daha büyük arşiv gerekirse nesne deposuna
+/// (örn. Vercel Blob) geçilir; yalnızca bu alan ve indirme rotası değişir.
+/// Liste sorguları `fileData`yı SEÇMEZ — megabaytlarca veri liste ekranına
+/// taşınmamalı, dosya yalnızca indirme rotasından okunur.
+model IntelligenceTest {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Testin uygulandığı gün.
+  date DateTime @db.Date
+
+  /// Testin adı — serbest metin (örn. "WISC-4"). Kurumun uyguladığı test
+  /// yelpazesi sabit olmadığı için etiket listesi tutulmuyor.
+  testName String
+
+  /// İsteğe bağlı kısa değerlendirme notu.
+  notes String?
+
+  fileName String
+  mimeType String
+  /// Bayt cinsinden — liste ekranında dosya verisi okunmadan gösterilir.
+  fileSize Int
+  fileData Bytes
+
+  createdByUserId String?
+  createdBy       User?    @relation("ZekaTestiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
 
   @@index([studentId, date])

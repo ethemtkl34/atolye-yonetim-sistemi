@@ -92,6 +92,13 @@ const SIMGE_YOLLARI: Record<string, React.ReactNode> = {
       <path d="M19.3 15.3L22 18v2.5h-2.5" />
     </>
   ),
+  // Zeka testleri: ampul — test sonuç belgeleri.
+  ampul: (
+    <>
+      <path d="M12 3a6 6 0 0 1 4.2 10.3c-.8.75-1.4 1.6-1.6 2.7h-5.2c-.2-1.1-.8-1.95-1.6-2.7A6 6 0 0 1 12 3z" />
+      <path d="M9.5 19h5M10.5 21.5h3" />
+    </>
+  ),
   // Danışmanlık: konuşma balonu + kalp — görüşme ve terapi kayıtları.
   sohbet: (
     <>

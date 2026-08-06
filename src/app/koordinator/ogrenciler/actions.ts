@@ -219,6 +219,7 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
             reports: true,
             counselingSessions: true,
             parentMeetings: true,
+            intelligenceTests: true,
           },
         },
         enrollments: { select: { _count: { select: { scores: true } } } },
@@ -260,6 +261,13 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       return {
         silindi: false,
         hata: `${ad} silinemez: ${ogrenci._count.parentMeetings} veli görüşmesi kaydı var ve bu geçmiş korunmalı.`,
+      };
+    }
+
+    if (ogrenci._count.intelligenceTests > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${ogrenci._count.intelligenceTests} zeka testi belgesi var ve bu geçmiş korunmalı.`,
       };
     }
 

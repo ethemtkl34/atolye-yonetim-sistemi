@@ -22,6 +22,10 @@ import {
 } from "@/components/veli-gorusmeleri-bolumu";
 import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
 import {
+  ZekaTestleriBolumu,
+  type ZekaTestiSatiri,
+} from "@/components/zeka-testleri-bolumu";
+import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
   DONEM_DURUMLARI,
@@ -116,6 +120,7 @@ export default async function OgrenciProfilSayfasi(
     aktifStajyerler,
     gorusmeKayitlari,
     veliGorusmeKayitlari,
+    zekaTestiKayitlari,
   ] = await Promise.all([
       raporOzetleri({ subeId, ogrenciId: id }),
       pdfGecmisi({ subeId, ogrenciId: id }),
@@ -140,6 +145,24 @@ export default async function OgrenciProfilSayfasi(
         where: { studentId: id, student: { branchId: subeId } },
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
         include: { createdBy: { select: { name: true } } },
+      }),
+      // GİZLİLİK: zeka testleri de sağlık bilgisi kuralına tabi. `fileData`
+      // seçilmiyor — belge yalnızca indirme rotasından okunur.
+      db.intelligenceTest.findMany({
+        where: { studentId: id, student: { branchId: subeId } },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          studentId: true,
+          date: true,
+          testName: true,
+          notes: true,
+          fileName: true,
+          mimeType: true,
+          fileSize: true,
+          createdAt: true,
+          createdBy: { select: { name: true } },
+        },
       }),
     ]);
 
@@ -175,6 +198,20 @@ export default async function OgrenciProfilSayfasi(
       eklenmeTarihi: gorusme.createdAt,
     }),
   );
+
+  const zekaTestleri: ZekaTestiSatiri[] = zekaTestiKayitlari.map((test) => ({
+    id: test.id,
+    ogrenciId: test.studentId,
+    ogrenciAdi,
+    tarih: test.date,
+    testAdi: test.testName,
+    not: test.notes,
+    dosyaAdi: test.fileName,
+    mime: test.mimeType,
+    boyut: test.fileSize,
+    ekleyen: test.createdBy?.name ?? null,
+    eklenmeTarihi: test.createdAt,
+  }));
 
   /**
    * §8 — Atama satırları. Dönem kadrosu tanımlıysa seçenekler kadroyla
@@ -334,6 +371,10 @@ export default async function OgrenciProfilSayfasi(
           sayfasında (bölüm başlıklarındaki bağlantı oraya götürür). --- */}
       <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
       <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+
+      {/* --- Zeka testleri — salt okunur, belgeler pencerede önizlenir;
+          yükleme ve silme Zeka testleri sayfasında. Stajyerden gizli. --- */}
+      <ZekaTestleriBolumu mod="okuma" testler={zekaTestleri} />
 
       {/* --- Raporlar ve PDF geçmişi.
 
