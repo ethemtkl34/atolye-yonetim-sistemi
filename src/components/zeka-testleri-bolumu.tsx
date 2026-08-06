@@ -47,7 +47,6 @@ import {
 
 export type ZekaTestiSatiri = {
   id: string;
-  ogrenciId: string;
   ogrenciAdi: string;
   tarih: Date;
   testAdi: string;
@@ -83,6 +82,7 @@ export function ZekaTestleriBolumu({
   ogrenciSecenekleri = [],
   testAdiSecenekleri = [],
   bugunMetni = "",
+  suzgecEtkin = false,
 }: {
   /** Yetki kademesi: yonetim = yükle/sil, okuma = önizle, liste = üstveri. */
   mod: "yonetim" | "okuma" | "liste";
@@ -94,12 +94,14 @@ export function ZekaTestleriBolumu({
    */
   baglam?: "sayfa" | "profil";
   testler: ZekaTestiSatiri[];
-  /** Sayfa bağlamında: yükleme formundaki ve süzgeçteki öğrenciler. */
+  /** Sayfa bağlamında: yükleme formundaki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
   /** Yalnızca yönetim modunda: "Testin adı" açılır listesi (katalogdan). */
   testAdiSecenekleri?: string[];
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
   bugunMetni?: string;
+  /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
+  suzgecEtkin?: boolean;
 }) {
   const yonetim = mod === "yonetim";
   const sayfada = baglam === "sayfa";
@@ -126,13 +128,6 @@ export function ZekaTestleriBolumu({
 
   const [silmeDurumu, setSilmeDurumu] = useState<ZekaTestiEylemDurumu>({});
   const [siliniyor, silmeyeBasla] = useTransition();
-
-  // Süzgeç yalnızca yönetim modunda; istemcide süzülüyor (görüşme
-  // bölümlerindeki gerekçeyle aynı).
-  const [ogrenciSuzgeci, setOgrenciSuzgeci] = useState("");
-  const suzulmus = testler.filter(
-    (test) => !ogrenciSuzgeci || test.ogrenciId === ogrenciSuzgeci,
-  );
 
   const [secili, setSecili] = useState<ZekaTestiSatiri | null>(null);
   const pencereRef = useRef<HTMLDialogElement>(null);
@@ -283,36 +278,25 @@ export function ZekaTestleriBolumu({
         </Kart>
       ) : null}
 
-      {sayfada && testler.length > 0 ? (
-        <select
-          value={ogrenciSuzgeci}
-          onChange={(olay) => setOgrenciSuzgeci(olay.target.value)}
-          className={`${secimStili} w-auto`}
-          aria-label="Öğrenciye göre süz"
-        >
-          <option value="">Bütün öğrenciler</option>
-          {ogrenciSecenekleri.map((ogrenci) => (
-            <option key={ogrenci.id} value={ogrenci.id}>
-              {ogrenci.ad}
-            </option>
-          ))}
-        </select>
-      ) : null}
-
       {testler.length === 0 && !acik ? (
-        <BosDurum
-          baslik="Henüz zeka testi belgesi yok."
-          aciklama={
-            yonetim
-              ? "Uygulanan testlerin sonuç belgelerini (PDF/görsel) buradan yükleyebilirsiniz. Belgeler stajyerlere görünmez."
-              : "Test belgeleri Test Uygulayıcısı tarafından yüklenir."
-          }
-        />
-      ) : testler.length > 0 && suzulmus.length === 0 ? (
-        <BosDurum baslik="Süzgece uyan belge yok." />
+        suzgecEtkin ? (
+          <BosDurum
+            baslik="Süzgece uyan belge yok."
+            aciklama="Üstteki süzgeci değiştirin."
+          />
+        ) : (
+          <BosDurum
+            baslik="Henüz zeka testi belgesi yok."
+            aciklama={
+              yonetim
+                ? "Uygulanan testlerin sonuç belgelerini (PDF/görsel) buradan yükleyebilirsiniz. Belgeler stajyerlere görünmez."
+                : "Test belgeleri Test Uygulayıcısı tarafından yüklenir."
+            }
+          />
+        )
       ) : (
         <div className="space-y-2">
-          {suzulmus.map((test) => {
+          {testler.map((test) => {
             const icerik = (
               <>
                 <span className="flex min-w-0 flex-wrap items-center gap-2">

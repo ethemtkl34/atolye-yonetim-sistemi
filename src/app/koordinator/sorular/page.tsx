@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
+import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 
 export const metadata: Metadata = {
   title: "Değerlendirme soruları",
@@ -15,10 +16,17 @@ export const metadata: Metadata = {
  * göstermek. Bir atölyenin sorusunu değiştirmek diğerlerini etkilemez ve bu
  * ancak yan yana görülünce anlaşılır.
  */
-export default async function SorularSayfasi() {
+export default async function SorularSayfasi(
+  props: PageProps<"/koordinator/sorular">,
+) {
   await yonetimZorunlu("sorular");
 
+  const parametreler = await props.searchParams;
+  const atolyeSuzgeci =
+    typeof parametreler.atolye === "string" ? parametreler.atolye : "";
+
   const atolyeler = await db.workshopType.findMany({
+    where: atolyeSuzgeci ? { id: atolyeSuzgeci } : {},
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
     include: {
       questions: {
@@ -29,6 +37,12 @@ export default async function SorularSayfasi() {
     },
   });
 
+  // Seçici bütün atölyeleri listeler; süzgeç uygulanmış sorgudan türetilemez.
+  const atolyeSecenekleri = await db.workshopType.findMany({
+    orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
+    select: { id: true, name: true },
+  });
+
   return (
     <div className="space-y-6">
       <SayfaBasligi
@@ -36,6 +50,19 @@ export default async function SorularSayfasi() {
         aciklama="Her atölyenin kendi soru seti vardır ve bağımsız düzenlenir. Setler iki şubede ortaktır. Bir sorunun metnini değiştirmek geçmiş değerlendirmeleri etkilemez; onlar puanlama anındaki metni saklar."
         ustBilgi={<Rozet tur="notr">Bütün şubelerde ortak</Rozet>}
       />
+
+      <SuzgecCubugu>
+        <SuzgecSecici
+          etiket="Atölye"
+          temelYol="/koordinator/sorular"
+          anahtar="atolye"
+          secili={atolyeSuzgeci}
+          secenekler={atolyeSecenekleri.map((atolye) => ({
+            deger: atolye.id,
+            etiket: atolye.name,
+          }))}
+        />
+      </SuzgecCubugu>
 
       {atolyeler.length === 0 ? (
         <BosDurum baslik="Henüz atölye çeşidi yok." />

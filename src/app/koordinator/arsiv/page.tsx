@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, kartBasligiStili } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import {
   ARSIV_DONEM_KOSULU,
   ARSIV_KULUP_KOSULU,
@@ -27,12 +28,21 @@ export const metadata: Metadata = {
  * (kayıt yalnızca "Kayıt alıyor" durumundaki programa açılabiliyor) ve günlük
  * listeleri meşgul etmemesi.
  */
-export default async function ArsivSayfasi() {
+export default async function ArsivSayfasi(
+  props: PageProps<"/koordinator/arsiv">,
+) {
   const kullanici = await yonetimZorunlu("arsiv");
   const subeId = kullanici.aktifSubeId;
 
+  const parametreler = await props.searchParams;
+  const turSuzgeci =
+    parametreler.tur === "donem" || parametreler.tur === "kulup"
+      ? parametreler.tur
+      : "tumu";
+
+  // Seçilmeyen türün sorgusu hiç koşmaz (danışmanlık sayfasındaki desen).
   const [donemler, kulupler] = await Promise.all([
-    db.term.findMany({
+    turSuzgeci === "kulup" ? [] : db.term.findMany({
       where: ARSIV_DONEM_KOSULU,
       orderBy: { createdAt: "desc" },
       include: {
@@ -59,7 +69,7 @@ export default async function ArsivSayfasi() {
         _count: { select: { workshops: true } },
       },
     }),
-    db.club.findMany({
+    turSuzgeci === "donem" ? [] : db.club.findMany({
       where: ARSIV_KULUP_KOSULU,
       orderBy: { date: "desc" },
       include: {
@@ -93,11 +103,32 @@ export default async function ArsivSayfasi() {
         aciklama="Arşivlenmiş dönem ve kulüpler. Kayıtlar, puanlamalar ve raporlar korunur; arşivlenen programa yeni kayıt alınamaz. Programı geri almak için sayfasındaki durumu değiştirmeniz yeterli."
       />
 
-      {bosMu ? (
-        <BosDurum
-          baslik="Arşivde program yok."
-          aciklama="Bir dönem veya kulübün durumu “Arşivlendi” yapıldığında burada listelenir ve aktif listelerden çıkar."
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Program türü"
+          temelYol="/koordinator/arsiv"
+          anahtar="tur"
+          secili={turSuzgeci}
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            { deger: "donem", etiket: "Dönemler" },
+            { deger: "kulup", etiket: "Kulüpler" },
+          ]}
         />
+      </SuzgecCubugu>
+
+      {bosMu ? (
+        turSuzgeci !== "tumu" ? (
+          <BosDurum
+            baslik="Bu türde arşivlenmiş program yok."
+            aciklama="Üstteki süzgeci değiştirin."
+          />
+        ) : (
+          <BosDurum
+            baslik="Arşivde program yok."
+            aciklama="Bir dönem veya kulübün durumu “Arşivlendi” yapıldığında burada listelenir ve aktif listelerden çıkar."
+          />
+        )
       ) : null}
 
       {donemler.length > 0 ? (

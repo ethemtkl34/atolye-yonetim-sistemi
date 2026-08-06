@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { SayfaBasligi } from "@/components/ui";
+import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 import { bugun, tarihMetni } from "@/lib/tarih";
 import { tamAd, turkceKarsilastir } from "@/lib/turkce";
 import {
@@ -29,10 +30,16 @@ export const metadata: Metadata = {
  * GİZLİLİK: Test sonuçları sağlık bilgisi kuralına tabidir — stajyer
  * sorgularına hiç girmez.
  */
-export default async function ZekaTestleriSayfasi() {
+export default async function ZekaTestleriSayfasi(
+  props: PageProps<"/koordinator/zeka-testleri">,
+) {
   const kullanici = await yonetimZorunlu("zekaTestleri", "LISTE");
   const subeId = kullanici.aktifSubeId;
   const yetki = kullanici.yetkiler.zekaTestleri;
+
+  const parametreler = await props.searchParams;
+  const ogrenciSuzgeci =
+    typeof parametreler.ogrenci === "string" ? parametreler.ogrenci : "";
 
   const [ogrenciler, testTurleri, testKayitlari] = await Promise.all([
     // Yükleme formundaki öğrenci seçici — şubenin bütün öğrencileri.
@@ -50,7 +57,10 @@ export default async function ZekaTestleriSayfasi() {
     // `fileData` bilinçli olarak SEÇİLMİYOR: liste ekranı megabaytlarca
     // belge verisini taşımamalı, belge yalnızca indirme rotasından okunur.
     db.intelligenceTest.findMany({
-      where: { student: { branchId: subeId } },
+      where: {
+        student: { branchId: subeId },
+        ...(ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {}),
+      },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -79,7 +89,6 @@ export default async function ZekaTestleriSayfasi() {
 
   const testler: ZekaTestiSatiri[] = testKayitlari.map((test) => ({
     id: test.id,
-    ogrenciId: test.studentId,
     ogrenciAdi: tamAd(test.student.firstName, test.student.lastName),
     tarih: test.date,
     testAdi: test.testName,
@@ -104,9 +113,23 @@ export default async function ZekaTestleriSayfasi() {
         }
       />
 
+      <SuzgecCubugu>
+        <SuzgecSecici
+          etiket="Öğrenci"
+          temelYol="/koordinator/zeka-testleri"
+          anahtar="ogrenci"
+          secili={ogrenciSuzgeci}
+          secenekler={ogrenciSecenekleri.map((ogrenci) => ({
+            deger: ogrenci.id,
+            etiket: ogrenci.ad,
+          }))}
+        />
+      </SuzgecCubugu>
+
       <ZekaTestleriBolumu
         mod={yetki === "TAM" ? "yonetim" : yetki === "GORUNTULE" ? "okuma" : "liste"}
         baglam="sayfa"
+        suzgecEtkin={Boolean(ogrenciSuzgeci)}
         testler={testler}
         ogrenciSecenekleri={ogrenciSecenekleri}
         testAdiSecenekleri={testTurleri.map((tur) => tur.name)}

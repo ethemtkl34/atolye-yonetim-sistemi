@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, kartBasligiStili, secimStili } from "@/components/ui";
+import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, kartBasligiStili } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
@@ -14,9 +15,10 @@ export const metadata: Metadata = {
 /**
  * §6.4 — Öğrencinin bütün atölye geçmişi, filtrelerle.
  *
- * Filtreler sıradan bir GET formu: seçim adres satırında durur, sonuç
- * paylaşılabilir ve geri tuşu beklendiği gibi çalışır (P5'teki arama ekranıyla
- * aynı yaklaşım).
+ * Süzgeçler diğer liste ekranlarıyla aynı sözleşmede (`SuzgecCubugu`):
+ * seçim adres satırında durur, sonuç paylaşılabilir ve geri tuşu beklendiği
+ * gibi çalışır. Tarih aralığı serbest girdi olduğu için küçük bir GET formu
+ * olarak aynı çubukta durur.
  */
 export default async function OgrenciGecmisiSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/gecmis">,
@@ -32,11 +34,30 @@ export default async function OgrenciGecmisiSayfasi(
   };
 
   const program = tekDeger("program");
-  const tur = tekDeger("tur");
+  const turHam = tekDeger("tur");
+  const tur = turHam === "donem" || turHam === "kulup" ? turHam : "tumu";
   const atolye = tekDeger("atolye");
-  const katilim = tekDeger("katilim");
+  const katilimHam = tekDeger("katilim");
+  const katilim =
+    katilimHam === "katildi" || katilimHam === "katilmadi"
+      ? katilimHam
+      : "tumu";
   const baslangic = tekDeger("baslangic");
   const bitis = tekDeger("bitis");
+
+  /** Adreste korunan süzgeçler — varsayılanlar adrese yazılmaz. */
+  const korunanlar: Record<string, string> = {
+    ...(tur !== "tumu" ? { tur } : {}),
+    ...(katilim !== "tumu" ? { katilim } : {}),
+    ...(program ? { program } : {}),
+    ...(atolye ? { atolye } : {}),
+    ...(baslangic ? { baslangic } : {}),
+    ...(bitis ? { bitis } : {}),
+  };
+  const korunanlarHaric = (...haric: string[]) =>
+    Object.fromEntries(
+      Object.entries(korunanlar).filter(([anahtar]) => !haric.includes(anahtar)),
+    );
 
   const baslangicTarihi = baslangic ? tarihCozumle(baslangic) : null;
   const bitisTarihi = bitis ? tarihCozumle(bitis) : null;
@@ -169,9 +190,8 @@ export default async function OgrenciGecmisiSayfasi(
     ).values(),
   ].filter((secenek) => secenek.id);
 
-  const filtreliMi = Boolean(
-    program || tur || atolye || katilim || baslangic || bitis,
-  );
+  const filtreliMi = Object.keys(korunanlar).length > 0;
+  const temelYol = `/koordinator/ogrenciler/${ogrenci.id}/gecmis`;
 
   return (
     <div className="space-y-6">
@@ -190,73 +210,89 @@ export default async function OgrenciGecmisiSayfasi(
         </div>
       </div>
 
-      <Kart className="p-4">
-        <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="block text-sm">
-            <span className="text-zinc-600">Program</span>
-            <select name="program" defaultValue={program} className={`mt-1 ${secimStili}`}>
-              <option value="">Tümü</option>
-              {programlar.map((secenek) => (
-                <option key={secenek.id} value={secenek.id}>
-                  {secenek.tur}: {secenek.ad}
-                </option>
-              ))}
-            </select>
-          </label>
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Kayıt türü"
+          temelYol={temelYol}
+          anahtar="tur"
+          secili={tur}
+          digerler={korunanlarHaric("tur")}
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            { deger: "donem", etiket: "Dönem" },
+            { deger: "kulup", etiket: "Kulüp" },
+          ]}
+        />
+        <SuzgecGrubu
+          etiket="Katılım"
+          temelYol={temelYol}
+          anahtar="katilim"
+          secili={katilim}
+          digerler={korunanlarHaric("katilim")}
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            { deger: "katildi", etiket: "Katıldı" },
+            { deger: "katilmadi", etiket: "Katılmadı" },
+          ]}
+        />
+        <SuzgecSecici
+          etiket="Program"
+          temelYol={temelYol}
+          anahtar="program"
+          secili={program}
+          digerler={korunanlarHaric("program")}
+          secenekler={programlar.map((secenek) => ({
+            deger: secenek.id,
+            etiket: `${secenek.tur}: ${secenek.ad}`,
+          }))}
+        />
+        <SuzgecSecici
+          etiket="Atölye"
+          temelYol={temelYol}
+          anahtar="atolye"
+          secili={atolye}
+          digerler={korunanlarHaric("atolye")}
+          secenekler={atolyeler.map((secenek) => ({
+            deger: secenek.id,
+            etiket: secenek.name,
+          }))}
+        />
 
-          <label className="block text-sm">
-            <span className="text-zinc-600">Kayıt türü</span>
-            <select name="tur" defaultValue={tur} className={`mt-1 ${secimStili}`}>
-              <option value="">Tümü</option>
-              <option value="donem">Dönem kaydı</option>
-              <option value="kulup">Kulüp kaydı</option>
-            </select>
-          </label>
-
-          <label className="block text-sm">
-            <span className="text-zinc-600">Atölye çeşidi</span>
-            <select name="atolye" defaultValue={atolye} className={`mt-1 ${secimStili}`}>
-              <option value="">Tümü</option>
-              {atolyeler.map((secenek) => (
-                <option key={secenek.id} value={secenek.id}>
-                  {secenek.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm">
-            <span className="text-zinc-600">Katılım</span>
-            <select name="katilim" defaultValue={katilim} className={`mt-1 ${secimStili}`}>
-              <option value="">Tümü</option>
-              <option value="katildi">Katıldı</option>
-              <option value="katilmadi">Katılmadı</option>
-            </select>
-          </label>
-
-          <label className="block text-sm">
-            <span className="text-zinc-600">Başlangıç tarihi</span>
-            <Girdi type="date" name="baslangic" defaultValue={baslangic} className="mt-1" />
-          </label>
-
-          <label className="block text-sm">
-            <span className="text-zinc-600">Bitiş tarihi</span>
-            <Girdi type="date" name="bitis" defaultValue={bitis} className="mt-1" />
-          </label>
-
-          <div className="flex items-end gap-2">
-            <Buton type="submit">Filtrele</Buton>
-            {filtreliMi ? (
-              <Link
-                href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-                className={butonStili("ikincil")}
-              >
-                Temizle
-              </Link>
-            ) : null}
-          </div>
+        {/* Tarih aralığı serbest girdi: çip/seçici modeline sığmaz, küçük bir
+            GET formu olarak aynı çubukta durur. Gizli alanlar diğer süzgeçleri
+            taşır (ogrenciler sayfasındaki arama formu deseni). */}
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          {Object.entries(korunanlarHaric("baslangic", "bitis")).map(
+            ([anahtar, deger]) => (
+              <input key={anahtar} type="hidden" name={anahtar} value={deger} />
+            ),
+          )}
+          <span className="text-sm text-zinc-500">Tarih:</span>
+          <Girdi
+            type="date"
+            name="baslangic"
+            defaultValue={baslangic}
+            aria-label="Başlangıç tarihi"
+            className="w-auto"
+          />
+          <span className="text-sm text-zinc-400">–</span>
+          <Girdi
+            type="date"
+            name="bitis"
+            defaultValue={bitis}
+            aria-label="Bitiş tarihi"
+            className="w-auto"
+          />
+          <Buton type="submit" tur="ikincil">
+            Uygula
+          </Buton>
+          {filtreliMi ? (
+            <Link href={temelYol} className={butonStili("sade")}>
+              Temizle
+            </Link>
+          ) : null}
         </form>
-      </Kart>
+      </SuzgecCubugu>
 
       {puanlamalar.length === 0 ? (
         <BosDurum

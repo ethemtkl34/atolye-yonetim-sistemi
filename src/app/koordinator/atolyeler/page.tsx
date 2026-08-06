@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { BosDurum, Kart, Rozet, SayfaBasligi, butonStili, kartBasligiStili } from "@/components/ui";
+import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { AtolyeEkleFormu } from "./atolye-ekle-formu";
 import { DurumButonu } from "./durum-butonu";
 import { atolyeDurumDegistir } from "./actions";
@@ -12,10 +13,20 @@ export const metadata: Metadata = {
 };
 
 /** §2.1 — Kurumun tekrar kullandığı atölye tanımlarının yönetimi. */
-export default async function AtolyelerSayfasi() {
+export default async function AtolyelerSayfasi(
+  props: PageProps<"/koordinator/atolyeler">,
+) {
   await yonetimZorunlu("atolyeler");
 
+  const parametreler = await props.searchParams;
+  const durumSuzgeci =
+    parametreler.durum === "aktif" || parametreler.durum === "pasif"
+      ? parametreler.durum
+      : "tumu";
+
   const atolyeler = await db.workshopType.findMany({
+    where:
+      durumSuzgeci === "tumu" ? {} : { active: durumSuzgeci === "aktif" },
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
     include: {
       _count: {
@@ -38,11 +49,32 @@ export default async function AtolyelerSayfasi() {
 
       <AtolyeEkleFormu />
 
-      {atolyeler.length === 0 ? (
-        <BosDurum
-          baslik="Henüz atölye çeşidi yok."
-          aciklama="Dönem oluşturabilmek için en az 5 atölye çeşidi gerekir."
+      <SuzgecCubugu>
+        <SuzgecGrubu
+          etiket="Durum"
+          temelYol="/koordinator/atolyeler"
+          anahtar="durum"
+          secili={durumSuzgeci}
+          secenekler={[
+            { deger: "tumu", etiket: "Tümü" },
+            { deger: "aktif", etiket: "Aktif" },
+            { deger: "pasif", etiket: "Pasif" },
+          ]}
         />
+      </SuzgecCubugu>
+
+      {atolyeler.length === 0 ? (
+        durumSuzgeci !== "tumu" ? (
+          <BosDurum
+            baslik="Bu durumda atölye çeşidi yok."
+            aciklama="Üstteki süzgeci değiştirin."
+          />
+        ) : (
+          <BosDurum
+            baslik="Henüz atölye çeşidi yok."
+            aciklama="Dönem oluşturabilmek için en az 5 atölye çeşidi gerekir."
+          />
+        )
       ) : (
         <div className="space-y-3">
           {atolyeler.map((atolye) => {

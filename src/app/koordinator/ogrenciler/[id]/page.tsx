@@ -213,7 +213,6 @@ export default async function OgrenciProfilSayfasi(
 
   const zekaTestleri: ZekaTestiSatiri[] = zekaTestiKayitlari.map((test) => ({
     id: test.id,
-    ogrenciId: test.studentId,
     ogrenciAdi,
     tarih: test.date,
     testAdi: test.testName,
