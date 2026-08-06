@@ -90,9 +90,14 @@ function GondermeButonlari({ vazgec }: { vazgec: () => void }) {
 /**
  * Mini testin bir sorusu — stajyer puanlama formundaki `SoruSatiri` deseninin
  * yerel kopyası (o bileşen dışa açık değil ve kendi form tipine bağlı).
- * Seçim denetimli: seçilen puanın anlamı satırın altında yazılır ve React 19
- * form sıfırlaması denetimli girdileri etkilemediği için önizleme dönüşünde
- * cevaplar yerinde kalır.
+ *
+ * Radio'lar bilinçli olarak DENETİMSİZ (`defaultChecked`): React 19 form
+ * sıfırlaması denetimli radio'yu bile DOM'da boşaltıyor (canlıda görüldü —
+ * önizleme dönüşünde işaretler kayboluyor, sonrasında kaydet boş cevapla
+ * giderdi). Metin alanlarındaki `degerler` + `defaultValue` deseninin aynısı
+ * burada `defaultChecked` ile kurulu: sıfırlama anında React güncel
+ * varsayılanı uygular, cevaplar geri gelir. `secim` yalnızca puanın anlamını
+ * satır altında yazmak için tutulur.
  */
 function MiniTestSatiri({
   anahtar,
@@ -131,7 +136,7 @@ function MiniTestSatiri({
               type="radio"
               name={`cevap-${anahtar}`}
               value={deger}
-              checked={secim === deger}
+              defaultChecked={varsayilan === deger}
               onChange={(olay) => setSecim(olay.target.value)}
               className="peer sr-only"
             />
