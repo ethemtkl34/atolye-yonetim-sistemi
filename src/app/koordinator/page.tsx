@@ -56,6 +56,13 @@ export default async function KoordinatorDashboard() {
   const kullanici = await yonetimZorunlu();
   const subeId = kullanici.aktifSubeId;
 
+  // Dashboard'un kendisi modülsüz (panele giren herkes açar) ama içindeki
+  // kartlar modüllere bağlı: yetkisi olmayan modülün görev kartı gösterilmez
+  // ve SORGUSU HİÇ ATILMAZ (danışma görevlisi puanlama/rapor verisi çekmez).
+  // Tıklanınca guard'a çarpıp geri atılan bir kart, görev değil tuzaktır.
+  const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
+  const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
+
   const bugunkuTarih = bugun();
 
   const [
@@ -88,15 +95,19 @@ export default async function KoordinatorDashboard() {
     // öğrenci sayısı. Aynı öğrencinin iki kaydı varsa bir kez sayılır.
     db.student.count({ where: aktifOgrenciKosulu(subeId) }),
     db.enrollment.count({ where: atanmamisKayitKosulu(subeId) }),
-    kayitIlerlemeleri({
-      subeId,
-      yalnizcaAktif: true,
-      yalnizcaAktifProgram: true,
-    }),
-    raporOzetleri({ subeId }),
+    puanlamaGorebilir
+      ? kayitIlerlemeleri({
+          subeId,
+          yalnizcaAktif: true,
+          yalnizcaAktifProgram: true,
+        })
+      : [],
+    raporGorebilir ? raporOzetleri({ subeId }) : [],
     // "Toplam rapor" listeden değil count'tan: raporOzetleri en yeni 200
     // satırla sınırlı, kart ise gerçek toplamı söylemeli.
-    db.report.count({ where: { student: { branchId: subeId } } }),
+    raporGorebilir
+      ? db.report.count({ where: { student: { branchId: subeId } } })
+      : 0,
     // Yaklaşan oturumlar grup ve gün bazında toplanır: bir grubun bir günde
     // 5 (dönem) veya 3 (kulüp) atölyesi var, satır satır çekmeye gerek yok.
     db.session.groupBy({
@@ -135,10 +146,10 @@ export default async function KoordinatorDashboard() {
   const haftaSonu = yaklasanHaftaSonu(yaklasanOturumlar, aktifGruplar);
 
   const bekleyenBasliklar = [
-    bekleyenFormSayisi,
+    ...(puanlamaGorebilir ? [bekleyenFormSayisi] : []),
     atanmamisKayitSayisi,
     dolanGruplar.length,
-    guncelOlmayanRaporlar.length,
+    ...(raporGorebilir ? [guncelOlmayanRaporlar.length] : []),
   ].filter((sayi) => sayi > 0).length;
 
   return (
@@ -159,21 +170,23 @@ export default async function KoordinatorDashboard() {
           aciklama="Sıfır olmayan her kart bir görev."
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <IsKarti
-            baslik="Eksik puanlama"
-            deger={bekleyenFormSayisi}
-            birim="form"
-            altBilgi={
-              eksikPuanlamalar.length > 0
-                ? `${eksikPuanlamalar.length} kayıtta${
-                    enEskiBekleyen
-                      ? ` · en eskisi ${tarihBicimle(enEskiBekleyen)}`
-                      : ""
-                  }`
-                : "Yapılmış bütün atölyelerin formu dolduruldu."
-            }
-            yol="/koordinator/puanlamalar?suzgec=eksik&kapsam=aktif"
-          />
+          {puanlamaGorebilir ? (
+            <IsKarti
+              baslik="Eksik puanlama"
+              deger={bekleyenFormSayisi}
+              birim="form"
+              altBilgi={
+                eksikPuanlamalar.length > 0
+                  ? `${eksikPuanlamalar.length} kayıtta${
+                      enEskiBekleyen
+                        ? ` · en eskisi ${tarihBicimle(enEskiBekleyen)}`
+                        : ""
+                    }`
+                  : "Yapılmış bütün atölyelerin formu dolduruldu."
+              }
+              yol="/koordinator/puanlamalar?suzgec=eksik&kapsam=aktif"
+            />
+          ) : null}
           <IsKarti
             baslik="Stajyeri atanmamış kayıt"
             deger={atanmamisKayitSayisi}
@@ -196,22 +209,24 @@ export default async function KoordinatorDashboard() {
             }
             yol="/koordinator/gruplar?kapsam=aktif&durum=dolu"
           />
-          <IsKarti
-            baslik="Güncelliğini yitiren rapor"
-            deger={guncelOlmayanRaporlar.length}
-            birim="rapor"
-            altBilgi={
-              guncelOlmayanRaporlar.length > 0
-                ? "Rapor üretildikten sonra puanlar değişti."
-                : "Bütün raporlar güncel."
-            }
-            // Raporların ayrı bir listesi yok — rapor öğrenciye ait bir belge
-            // ve öğrencinin sayfasında yönetiliyor. Bu yüzden kart aşağıdaki
-            // bölüme iniyor; iş yoksa gidilecek yer de yok.
-            yol={
-              guncelOlmayanRaporlar.length > 0 ? "#eski-raporlar" : undefined
-            }
-          />
+          {raporGorebilir ? (
+            <IsKarti
+              baslik="Güncelliğini yitiren rapor"
+              deger={guncelOlmayanRaporlar.length}
+              birim="rapor"
+              altBilgi={
+                guncelOlmayanRaporlar.length > 0
+                  ? "Rapor üretildikten sonra puanlar değişti."
+                  : "Bütün raporlar güncel."
+              }
+              // Raporların ayrı bir listesi yok — rapor öğrenciye ait bir
+              // belge ve öğrencinin sayfasında yönetiliyor. Bu yüzden kart
+              // aşağıdaki bölüme iniyor; iş yoksa gidilecek yer de yok.
+              yol={
+                guncelOlmayanRaporlar.length > 0 ? "#eski-raporlar" : undefined
+              }
+            />
+          ) : null}
         </div>
       </section>
 
@@ -291,11 +306,14 @@ export default async function KoordinatorDashboard() {
             yol="/koordinator/ogrenciler?kapsam=aktif"
           />
           {/* Raporların tek listesi yok; sayı bağlam bilgisi olarak duruyor. */}
-          <DurumOgesi baslik="Toplam rapor" deger={toplamRaporSayisi} />
+          {raporGorebilir ? (
+            <DurumOgesi baslik="Toplam rapor" deger={toplamRaporSayisi} />
+          ) : null}
         </Kart>
       </section>
 
       {/* --- Eksik puanlamalar --- */}
+      {puanlamaGorebilir ? (
       <section className="space-y-3">
         <BolumBasligi
           baslik="En çok gecikmiş puanlamalar"
@@ -342,6 +360,7 @@ export default async function KoordinatorDashboard() {
           </Kart>
         )}
       </section>
+      ) : null}
 
       {/* --- Kontenjanı dolan gruplar --- */}
       {dolanGruplar.length > 0 ? (
@@ -416,6 +435,7 @@ export default async function KoordinatorDashboard() {
       ) : null}
 
       {/* --- Son raporlar --- */}
+      {raporGorebilir ? (
       <section className="space-y-3">
         {/* Bütün raporların listesi yok: rapor öğrenciye ait bir belge ve
             öğrencinin sayfasında yönetiliyor. Eskiden buradaki "Tümü"
@@ -455,6 +475,7 @@ export default async function KoordinatorDashboard() {
           </Kart>
         )}
       </section>
+      ) : null}
     </div>
   );
 }
