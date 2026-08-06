@@ -178,6 +178,7 @@ model User {
   enteredScores       Score[]      @relation("PuanlamayiGiren")
   editedReports       Report[]     @relation("RaporuDuzenleyen")
   addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
+  addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   @@index([role, active])
@@ -439,6 +440,7 @@ model Student {
   enrollments        Enrollment[]
   reports            Report[]
   counselingSessions CounselingSession[]
+  parentMeetings     ParentMeeting[]
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
   @@index([branchId, searchName])
@@ -486,7 +488,10 @@ model HealthInfo {
   updatedAt DateTime @updatedAt
 }
 
-/// Psikolog/koordinatör görüşmeleri.
+/// Öğrenci görüşmeleri — psikolog (veya koordinatör) ile öğrenci arasında
+/// yapılan görüşmelerin kaydı. Veli görüşmeleri AYRI modelde (`ParentMeeting`):
+/// yaşam döngüleri zıt — bu kayıt geçmişe dönüktür ve gelecek tarih kabul
+/// etmez, veli görüşmesi ise görüşmeden ÖNCE brief hazırlamak için açılır.
 ///
 /// GİZLİLİK (§3.2 ile aynı kural): görüşme notları sağlık bilgisi gibi
 /// hassastır ve stajyerden TAMAMEN gizlidir. Bu, arayüzde saklamakla değil,
@@ -511,6 +516,50 @@ model CounselingSession {
 
   createdByUserId String?
   createdBy       User?   @relation("GorusmeyiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([studentId, date])
+}
+
+/// Veli görüşmesi — dönem sürecinde veli ile yapılan "nasıl gidiyor" görüşmesi.
+///
+/// Öğrenci görüşmesinden (`CounselingSession`) farkı: kayıt görüşmeden ÖNCE,
+/// görüşmeyi yapacak kişiye brief hazırlamak için açılır; gelecek tarih bu
+/// yüzden geçerlidir. Serbest görüşme notu görüşmeden SONRA eklenir (`note`,
+/// başta boş) — "sil + yeniden ekle" burada uymaz, not güncellenebilir.
+///
+/// GİZLİLİK (§3.2 ile aynı kural): veli görüşmeleri de sağlık bilgisi gibi
+/// hassastır ve stajyerden TAMAMEN gizlidir; stajyer sorgularının
+/// select/include listesine bu ilişki hiç alınmaz.
+model ParentMeeting {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Görüşmenin (planlanan) günü. Brief'in atölye özeti bu tarihe KADAR
+  /// (dahil) yapılmış oturumlardan üretilir.
+  date DateTime @db.Date
+
+  /// Görüşmeyi yapacak kişi — serbest metin (`counselorName` ilkesi: veliyle
+  /// görüşen herkes sistemde kullanıcı değil).
+  interviewerName String
+
+  /// Mini test cevapları: `[{anahtar, soruMetni, deger}]`. Soru metni o günkü
+  /// hâliyle donmuş (`questionTextSnapshot` ilkesi) — sorular kodda/DB'de
+  /// değişse de geçmiş kayıt bozulmaz.
+  answersJson Json
+
+  /// Üretilen brief (`VeliBriefi`): mini test yorumu + atölye özeti +
+  /// analiz, `Report.bodyJson` deseni. `metinKaynagi` P13'te "ai" olacak.
+  briefJson Json
+
+  /// Görüşme sonrası serbest not — kayıt anında boş, sonradan eklenir ve
+  /// üzerine yazılabilir. Damgasız not olamaz (CHECK: `ParentMeeting_not_damgasi`).
+  note          String?
+  noteUpdatedAt DateTime?
+
+  createdByUserId String?
+  createdBy       User?    @relation("VeliGorusmesiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
 
   @@index([studentId, date])

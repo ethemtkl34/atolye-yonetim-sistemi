@@ -214,7 +214,13 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       select: {
         firstName: true,
         lastName: true,
-        _count: { select: { reports: true, counselingSessions: true } },
+        _count: {
+          select: {
+            reports: true,
+            counselingSessions: true,
+            parentMeetings: true,
+          },
+        },
         enrollments: { select: { _count: { select: { scores: true } } } },
       },
     });
@@ -247,6 +253,13 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       return {
         silindi: false,
         hata: `${ad} silinemez: ${ogrenci._count.counselingSessions} görüşme kaydı var ve bu geçmiş korunmalı.`,
+      };
+    }
+
+    if (ogrenci._count.parentMeetings > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${ogrenci._count.parentMeetings} veli görüşmesi kaydı var ve bu geçmiş korunmalı.`,
       };
     }
 

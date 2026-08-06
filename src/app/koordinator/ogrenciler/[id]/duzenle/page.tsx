@@ -26,7 +26,13 @@ export default async function OgrenciDuzenleSayfasi(
       healthInfo: true,
       // Silme engelinin sebebi arayüzde de görünsün diye: puanlaması, raporu
       // veya görüşme kaydı olan öğrenci silinemez (bkz. `ogrenciSil`).
-      _count: { select: { reports: true, counselingSessions: true } },
+      _count: {
+        select: {
+          reports: true,
+          counselingSessions: true,
+          parentMeetings: true,
+        },
+      },
       enrollments: { select: { _count: { select: { scores: true } } } },
     },
   });
@@ -45,7 +51,9 @@ export default async function OgrenciDuzenleSayfasi(
         ? `Bu öğrenci silinemez: üretilmiş ${ogrenci._count.reports} raporu var.`
         : ogrenci._count.counselingSessions > 0
           ? `Bu öğrenci silinemez: ${ogrenci._count.counselingSessions} görüşme kaydı var ve bu geçmiş korunmalı.`
-          : undefined;
+          : ogrenci._count.parentMeetings > 0
+            ? `Bu öğrenci silinemez: ${ogrenci._count.parentMeetings} veli görüşmesi kaydı var ve bu geçmiş korunmalı.`
+            : undefined;
 
   const anne = ogrenci.guardians.find((v) => v.type === "ANNE");
   const baba = ogrenci.guardians.find((v) => v.type === "BABA");

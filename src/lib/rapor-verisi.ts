@@ -67,11 +67,16 @@ export async function raporKapsamSecenekleri(
  *
  * Atölye bazlı gruplama burada yapılır: aynı atölye farklı kayıtlarda da
  * geçebilir (dönem + kulüp), rapor tek bir "Bilim Atölyesi" bölümü gösterir.
+ *
+ * `enGecTarih` veli görüşmesi brief'i için: yalnızca o güne KADAR (dahil)
+ * yapılmış oturumların puanlamaları alınır — görüşme günü sabah yapılan
+ * atölye de sayılır. Raporlar süzgeçsiz çağırır, davranışları değişmez.
  */
 export async function raporGirdisiHazirla(
   ogrenciId: string,
   kayitIdleri: readonly string[],
   subeId: string,
+  secenekler?: { enGecTarih?: Date },
 ): Promise<RaporGirdisi | null> {
   const ogrenci = await db.student.findFirst({
     where: { id: ogrenciId, branchId: subeId },
@@ -95,6 +100,9 @@ export async function raporGirdisiHazirla(
         },
       },
       scores: {
+        ...(secenekler?.enGecTarih
+          ? { where: { session: { date: { lte: secenekler.enGecTarih } } } }
+          : {}),
         select: {
           attended: true,
           session: {

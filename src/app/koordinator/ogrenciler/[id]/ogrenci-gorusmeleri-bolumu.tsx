@@ -21,7 +21,10 @@ import {
 } from "./gorusme-eylemleri";
 
 /**
- * Psikolog görüşmeleri bölümü.
+ * Öğrenci görüşmeleri bölümü — psikolog (veya koordinatör) ile öğrenci
+ * arasındaki görüşmelerin kaydı. Veli görüşmeleri ayrı bölümde
+ * (`veli-gorusmeleri-bolumu.tsx`): akışları farklı, biri not defteri,
+ * diğeri test + brief'li hazırlık aracı.
  *
  * GİZLİLİK: Bu bileşen yalnızca koordinatör profil sayfasında kullanılır;
  * görüşme verisi stajyer ekranlarının hiçbirine gitmez (sağlık bilgisi
@@ -58,7 +61,7 @@ function KaydetButonu() {
   );
 }
 
-export function GorusmelerBolumu({
+export function OgrenciGorusmeleriBolumu({
   ogrenciId,
   gorusmeler,
   bugunMetni,
@@ -124,7 +127,7 @@ export function GorusmelerBolumu({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-zinc-900">
-          Görüşmeler
+          Öğrenci görüşmeleri
           {gorusmeler.length > 0 ? (
             <span className="ml-2 text-sm font-normal text-zinc-500">
               {gorusmeler.length} görüşme
@@ -214,7 +217,7 @@ export function GorusmelerBolumu({
 
       {gorusmeler.length === 0 && !acik ? (
         <BosDurum
-          baslik="Henüz görüşme kaydı yok."
+          baslik="Henüz öğrenci görüşmesi kaydı yok."
           aciklama="Psikolog veya koordinatör görüşmelerini buradan ekleyebilirsiniz. Notlar stajyerlere görünmez."
         />
       ) : (

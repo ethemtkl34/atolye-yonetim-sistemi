@@ -40,6 +40,7 @@ const SUBEYE_AIT = new Set([
   "healthInfo",
   "termIntern",
   "counselingSession",
+  "parentMeeting",
 ]);
 
 /**
@@ -74,7 +75,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * tam olarak buydu: sayı şişiyordu, çünkü süzülemeyen bir sayım.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions)\s*:/;
+  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

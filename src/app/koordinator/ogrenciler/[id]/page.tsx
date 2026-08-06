@@ -12,7 +12,15 @@ import {
 import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
 import { RaporBolumu } from "./rapor-bolumu";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
-import { GorusmelerBolumu, type GorusmeSatiri } from "./gorusmeler-bolumu";
+import {
+  OgrenciGorusmeleriBolumu,
+  type GorusmeSatiri,
+} from "./ogrenci-gorusmeleri-bolumu";
+import {
+  VeliGorusmeleriBolumu,
+  type VeliGorusmesiSatiri,
+} from "./veli-gorusmeleri-bolumu";
+import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
 import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
@@ -101,8 +109,14 @@ export default async function OgrenciProfilSayfasi(
 
   if (!ogrenci) notFound();
 
-  const [raporlar, pdfler, kapsamKayitlari, aktifStajyerler, gorusmeKayitlari] =
-    await Promise.all([
+  const [
+    raporlar,
+    pdfler,
+    kapsamKayitlari,
+    aktifStajyerler,
+    gorusmeKayitlari,
+    veliGorusmeKayitlari,
+  ] = await Promise.all([
       raporOzetleri({ subeId, ogrenciId: id }),
       pdfGecmisi({ subeId, ogrenciId: id }),
       // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
@@ -120,6 +134,13 @@ export default async function OgrenciProfilSayfasi(
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
         include: { createdBy: { select: { name: true } } },
       }),
+      // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir — yalnızca bu
+      // koordinatör sayfasında okunur, stajyer sorgularına hiç girmez.
+      db.parentMeeting.findMany({
+        where: { studentId: id, student: { branchId: subeId } },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        include: { createdBy: { select: { name: true } } },
+      }),
     ]);
 
   const gorusmeler: GorusmeSatiri[] = gorusmeKayitlari.map((gorusme) => ({
@@ -131,6 +152,20 @@ export default async function OgrenciProfilSayfasi(
     ekleyen: gorusme.createdBy?.name ?? null,
     eklenmeTarihi: gorusme.createdAt,
   }));
+
+  const veliGorusmeleri: VeliGorusmesiSatiri[] = veliGorusmeKayitlari.map(
+    (gorusme) => ({
+      id: gorusme.id,
+      tarih: gorusme.date,
+      gorusmeciAdi: gorusme.interviewerName,
+      cevaplar: gorusme.answersJson as unknown as MiniTestCevabi[],
+      brief: gorusme.briefJson as unknown as VeliBriefi,
+      not: gorusme.note,
+      notGuncellemeZamani: gorusme.noteUpdatedAt,
+      ekleyen: gorusme.createdBy?.name ?? null,
+      eklenmeTarihi: gorusme.createdAt,
+    }),
+  );
 
   /**
    * §8 — Atama satırları. Dönem kadrosu tanımlıysa seçenekler kadroyla
@@ -236,7 +271,10 @@ export default async function OgrenciProfilSayfasi(
             etiket="Aktif kayıt"
             deger={String(aktifKayitlar.length)}
           />
-          <OzetHucresi etiket="Görüşme" deger={String(gorusmeler.length)} />
+          <OzetHucresi
+            etiket="Görüşme"
+            deger={String(gorusmeler.length + veliGorusmeleri.length)}
+          />
         </dl>
 
         {saglik?.internSafetyNote ? (
@@ -282,8 +320,16 @@ export default async function OgrenciProfilSayfasi(
         }
       />
 
-      {/* --- Görüşmeler (psikolog/koordinatör) — stajyerden gizli --- */}
-      <GorusmelerBolumu
+      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden gizli.
+          Veli görüşmesi geleceğe dönük hazırlık aracı (mini test + brief),
+          öğrenci görüşmesi geçmişe dönük psikolog notu; akışları karışmasın
+          diye tek bölümde tür rozetiyle birleştirilmedi. --- */}
+      <VeliGorusmeleriBolumu
+        ogrenciId={ogrenci.id}
+        gorusmeler={veliGorusmeleri}
+        bugunMetni={tarihMetni(bugun())}
+      />
+      <OgrenciGorusmeleriBolumu
         ogrenciId={ogrenci.id}
         gorusmeler={gorusmeler}
         bugunMetni={tarihMetni(bugun())}
