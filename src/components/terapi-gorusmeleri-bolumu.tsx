@@ -27,7 +27,7 @@ import {
  * oyun ve danışan terapisi kayıtları.
  *
  * İki modda çalışır:
- *   - "yonetim": Danışmanlık sayfası — ekleme, silme, süzme; öğrenci formdaki
+ *   - "yonetim": Danışmanlık sayfası — ekleme ve silme; öğrenci formdaki
  *     seçiciden gelir ve satırlarda öğrenci adı görünür.
  *   - "okuma":  Öğrenci profili — yalnızca o öğrencinin listesi ve detay
  *     penceresi; bütün yazma işlemleri Danışmanlık sayfasına yönlendirilir.
@@ -42,7 +42,6 @@ import {
 
 export type TerapiGorusmesiSatiri = {
   id: string;
-  ogrenciId: string;
   ogrenciAdi: string;
   tarih: Date;
   gorusmeciAdi: string;
@@ -80,13 +79,17 @@ export function TerapiGorusmeleriBolumu({
   gorusmeler,
   ogrenciSecenekleri = [],
   bugunMetni = "",
+  suzgecEtkin = false,
 }: {
   mod: "yonetim" | "okuma";
+  /** Gösterilecek görüşmeler — süzme SAYFADA yapılır (adres tabanlı süzgeçler). */
   gorusmeler: TerapiGorusmesiSatiri[];
-  /** Yalnızca yönetim modunda: ekleme formundaki ve süzgeçteki öğrenciler. */
+  /** Yalnızca yönetim modunda: ekleme formundaki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
   bugunMetni?: string;
+  /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
+  suzgecEtkin?: boolean;
 }) {
   const yonetim = mod === "yonetim";
 
@@ -112,16 +115,6 @@ export function TerapiGorusmeleriBolumu({
   const [silmeDurumu, setSilmeDurumu] = useState<GorusmeEylemDurumu>({});
   const [siliniyor, silmeyeBasla] = useTransition();
 
-  // Süzgeçler yalnızca yönetim modunda; liste küçük olduğu için istemcide
-  // süzülüyor, adres satırına taşımaya değecek bir derin bağlantı ihtiyacı yok.
-  const [ogrenciSuzgeci, setOgrenciSuzgeci] = useState("");
-  const [turSuzgeci, setTurSuzgeci] = useState("");
-  const suzulmus = gorusmeler.filter(
-    (gorusme) =>
-      (!ogrenciSuzgeci || gorusme.ogrenciId === ogrenciSuzgeci) &&
-      (!turSuzgeci || gorusme.terapiTuru === turSuzgeci),
-  );
-
   /**
    * Detay penceresi. Kapalıyken içerik render edilmez; `secili` hem pencerenin
    * açık olup olmadığını hem gösterilen görüşmeyi taşır.
@@ -135,6 +128,22 @@ export function TerapiGorusmeleriBolumu({
     if (secili && !pencere.open) pencere.showModal();
     if (!secili && pencere.open) pencere.close();
   }, [secili]);
+
+  const bosDurum = suzgecEtkin ? (
+    <BosDurum
+      baslik="Süzgece uyan terapi görüşmesi yok."
+      aciklama="Üstteki süzgeçleri değiştirin."
+    />
+  ) : (
+    <BosDurum
+      baslik="Henüz terapi görüşmesi kaydı yok."
+      aciklama={
+        yonetim
+          ? "Oyun ve danışan terapisi görüşmelerini buradan ekleyebilirsiniz. Notlar stajyerlere görünmez."
+          : "Terapi görüşmeleri Danışmanlık sayfasından eklenir."
+      }
+    />
+  );
 
   function sil(gorusme: TerapiGorusmesiSatiri) {
     if (
@@ -275,51 +284,14 @@ export function TerapiGorusmeleriBolumu({
         </Kart>
       ) : null}
 
-      {yonetim && gorusmeler.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={ogrenciSuzgeci}
-            onChange={(olay) => setOgrenciSuzgeci(olay.target.value)}
-            className={`${secimStili} w-auto`}
-            aria-label="Öğrenciye göre süz"
-          >
-            <option value="">Bütün öğrenciler</option>
-            {ogrenciSecenekleri.map((ogrenci) => (
-              <option key={ogrenci.id} value={ogrenci.id}>
-                {ogrenci.ad}
-              </option>
-            ))}
-          </select>
-          <select
-            value={turSuzgeci}
-            onChange={(olay) => setTurSuzgeci(olay.target.value)}
-            className={`${secimStili} w-auto`}
-            aria-label="Terapi türüne göre süz"
-          >
-            <option value="">Bütün türler</option>
-            <option value="OYUN_TERAPISI">Oyun terapisi</option>
-            <option value="DANISAN_TERAPISI">Danışan terapisi</option>
-          </select>
-        </div>
-      ) : null}
-
       {gorusmeler.length === 0 && !acik ? (
-        <BosDurum
-          baslik="Henüz terapi görüşmesi kaydı yok."
-          aciklama={
-            yonetim
-              ? "Oyun ve danışan terapisi görüşmelerini buradan ekleyebilirsiniz. Notlar stajyerlere görünmez."
-              : "Terapi görüşmeleri Danışmanlık sayfasından eklenir."
-          }
-        />
-      ) : gorusmeler.length > 0 && suzulmus.length === 0 ? (
-        <BosDurum baslik="Süzgece uyan görüşme yok." />
+        bosDurum
       ) : (
         <div className="space-y-2">
           {/* Satırda yalnızca kimlik bilgisi; notun tamamı pencerede.
               Satırın kendisi düğme — telefonda kartın neresine dokunulursa
               dokunulsun detay açılır. */}
-          {suzulmus.map((gorusme) => (
+          {gorusmeler.map((gorusme) => (
             <button
               key={gorusme.id}
               type="button"

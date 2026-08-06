@@ -55,7 +55,6 @@ import {
 
 export type VeliGorusmesiSatiri = {
   id: string;
-  ogrenciId: string;
   ogrenciAdi: string;
   tarih: Date;
   gorusmeciAdi: string;
@@ -215,13 +214,17 @@ export function VeliGorusmeleriBolumu({
   gorusmeler,
   ogrenciSecenekleri = [],
   bugunMetni = "",
+  suzgecEtkin = false,
 }: {
   mod: "yonetim" | "okuma";
+  /** Gösterilecek görüşmeler — süzme SAYFADA yapılır (adres tabanlı süzgeçler). */
   gorusmeler: VeliGorusmesiSatiri[];
-  /** Yalnızca yönetim modunda: ekleme formundaki ve süzgeçteki öğrenciler. */
+  /** Yalnızca yönetim modunda: ekleme formundaki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
   bugunMetni?: string;
+  /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
+  suzgecEtkin?: boolean;
 }) {
   const yonetim = mod === "yonetim";
 
@@ -245,17 +248,6 @@ export function VeliGorusmeleriBolumu({
 
   const [islemDurumu, setIslemDurumu] = useState<VeliGorusmesiEylemDurumu>({});
   const [isleniyor, islemeBasla] = useTransition();
-
-  // Süzgeçler yalnızca yönetim modunda; istemcide süzülüyor (terapi
-  // bölümündeki gerekçeyle aynı).
-  const [ogrenciSuzgeci, setOgrenciSuzgeci] = useState("");
-  const [durumSuzgeci, setDurumSuzgeci] = useState("");
-  const suzulmus = gorusmeler.filter(
-    (gorusme) =>
-      (!ogrenciSuzgeci || gorusme.ogrenciId === ogrenciSuzgeci) &&
-      (!durumSuzgeci ||
-        (durumSuzgeci === "bekliyor" ? !gorusme.not : Boolean(gorusme.not))),
-  );
 
   const [secili, setSecili] = useState<VeliGorusmesiSatiri | null>(null);
   const pencereRef = useRef<HTMLDialogElement>(null);
@@ -281,6 +273,22 @@ export function VeliGorusmeleriBolumu({
       if (sonuc.basari) setSecili(null);
     });
   }
+
+  const bosDurum = suzgecEtkin ? (
+    <BosDurum
+      baslik="Süzgece uyan veli görüşmesi yok."
+      aciklama="Üstteki süzgeçleri değiştirin."
+    />
+  ) : (
+    <BosDurum
+      baslik="Henüz veli görüşmesi kaydı yok."
+      aciklama={
+        yonetim
+          ? "Görüşmeden önce mini testi doldurup brief hazırlayabilir, görüşme sonrası notunu ekleyebilirsiniz. Kayıtlar stajyerlere görünmez."
+          : "Veli görüşmeleri Danışmanlık sayfasından eklenir."
+      }
+    />
+  );
 
   // Not kaydı silmeyle aynı desende (useTransition + doğrudan çağrı): eylemin
   // hedefi o an açık olan görüşme, `useActionState`e önceden bağlanamıyor.
@@ -412,48 +420,11 @@ export function VeliGorusmeleriBolumu({
         </Kart>
       ) : null}
 
-      {yonetim && gorusmeler.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={ogrenciSuzgeci}
-            onChange={(olay) => setOgrenciSuzgeci(olay.target.value)}
-            className={`${secimStili} w-auto`}
-            aria-label="Öğrenciye göre süz"
-          >
-            <option value="">Bütün öğrenciler</option>
-            {ogrenciSecenekleri.map((ogrenci) => (
-              <option key={ogrenci.id} value={ogrenci.id}>
-                {ogrenci.ad}
-              </option>
-            ))}
-          </select>
-          <select
-            value={durumSuzgeci}
-            onChange={(olay) => setDurumSuzgeci(olay.target.value)}
-            className={`${secimStili} w-auto`}
-            aria-label="Duruma göre süz"
-          >
-            <option value="">Bütün durumlar</option>
-            <option value="bekliyor">Not bekliyor</option>
-            <option value="tamamlandi">Tamamlandı</option>
-          </select>
-        </div>
-      ) : null}
-
       {gorusmeler.length === 0 && !acik ? (
-        <BosDurum
-          baslik="Henüz veli görüşmesi kaydı yok."
-          aciklama={
-            yonetim
-              ? "Görüşmeden önce mini testi doldurup brief hazırlayabilir, görüşme sonrası notunu ekleyebilirsiniz. Kayıtlar stajyerlere görünmez."
-              : "Veli görüşmeleri Danışmanlık sayfasından eklenir."
-          }
-        />
-      ) : gorusmeler.length > 0 && suzulmus.length === 0 ? (
-        <BosDurum baslik="Süzgece uyan görüşme yok." />
+        bosDurum
       ) : (
         <div className="space-y-2">
-          {suzulmus.map((gorusme) => (
+          {gorusmeler.map((gorusme) => (
             <button
               key={gorusme.id}
               type="button"

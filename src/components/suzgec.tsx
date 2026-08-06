@@ -16,6 +16,11 @@ export type SuzgecSecenegi = {
   etiket: string;
 };
 
+// Ailenin açılır liste varyantı — ayrı dosyada, çünkü "use client" gerektirir
+// (bkz. suzgec-secici.tsx). Buradan yeniden dışa aktarılır ki çağıran sayfalar
+// süzgeç ailesini tek modülden görsün.
+export { SuzgecSecici } from "@/components/suzgec-secici";
+
 export function SuzgecCubugu({ children }: { children: React.ReactNode }) {
   return (
     <Kart className="flex flex-wrap items-center gap-4 p-3">{children}</Kart>

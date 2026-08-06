@@ -185,7 +185,6 @@ export default async function OgrenciProfilSayfasi(
   const gorusmeler: TerapiGorusmesiSatiri[] = gorusmeKayitlari.map(
     (gorusme) => ({
       id: gorusme.id,
-      ogrenciId: gorusme.studentId,
       ogrenciAdi,
       tarih: gorusme.date,
       gorusmeciAdi: gorusme.counselorName,
@@ -200,7 +199,6 @@ export default async function OgrenciProfilSayfasi(
   const veliGorusmeleri: VeliGorusmesiSatiri[] = veliGorusmeKayitlari.map(
     (gorusme) => ({
       id: gorusme.id,
-      ogrenciId: gorusme.studentId,
       ogrenciAdi,
       tarih: gorusme.date,
       gorusmeciAdi: gorusme.interviewerName,
