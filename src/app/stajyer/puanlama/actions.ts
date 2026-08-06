@@ -37,6 +37,15 @@ export async function puanlamaKaydet(
   const kullanici = await subeliOturum();
   const subeId = kullanici.aktifSubeId;
 
+  // §10.5 — Puan yazabilenler: stajyer (aşağıda ayrıca "bana atanmış mı"
+  // süzgecinden geçer) ve puanlama modülünde TAM yetkisi olan yönetim
+  // rolleri. Rol katmanı genişleyince bu kapı gerekli oldu: danışma
+  // görevlisi de `subeliOturum`'dan geçebiliyor ama puan yazamamalı.
+  const stajyerMi = kullanici.roller.includes("STAJYER");
+  if (!stajyerMi && kullanici.yetkiler.puanlamalar !== "TAM") {
+    return { hata: "Puanlama girme yetkiniz yok." };
+  }
+
   const oturumId = String(formVerisi.get("oturumId") ?? "");
   const kayitId = String(formVerisi.get("kayitId") ?? "");
   if (!oturumId || !kayitId) return { hata: "Form eksik gönderildi." };
@@ -85,7 +94,7 @@ export async function puanlamaKaydet(
   }
 
   // §3.2 — Stajyer yalnızca kendisine atanmış öğrencileri puanlar.
-  if (kullanici.role === "STAJYER" && kayit.internId !== kullanici.id) {
+  if (stajyerMi && kayit.internId !== kullanici.id) {
     return { hata: "Bu öğrenci size atanmamış." };
   }
 

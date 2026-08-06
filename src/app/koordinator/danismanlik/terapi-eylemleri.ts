@@ -76,7 +76,7 @@ export async function terapiGorusmesiEkle(
   _oncekiDurum: GorusmeEylemDurumu,
   formVerisi: FormData,
 ): Promise<GorusmeEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = gorusmeSemasi.safeParse({
@@ -153,7 +153,7 @@ export async function terapiGorusmesiEkle(
 export async function terapiGorusmesiSil(
   gorusmeId: string,
 ): Promise<GorusmeEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const gorusme = await db.counselingSession.findFirst({

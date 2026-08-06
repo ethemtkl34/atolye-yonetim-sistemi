@@ -72,7 +72,7 @@ export async function zekaTestiEkle(
   _oncekiDurum: ZekaTestiEylemDurumu,
   formVerisi: FormData,
 ): Promise<ZekaTestiEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("zekaTestleri", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const girilenler = formDegerleri(formVerisi, ZEKA_TESTI_FORM_ALANLARI);
@@ -175,7 +175,7 @@ export async function zekaTestiEkle(
 export async function zekaTestiSil(
   testId: string,
 ): Promise<ZekaTestiEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("zekaTestleri", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const test = await db.intelligenceTest.findFirst({

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  * sayfasında yapılıyor; buraya "aradım, bulamadım" diyerek gelinir.
  */
 export default async function YeniOgrenciSayfasi() {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
   const programlar = await kayitAlanProgramlar(kullanici.aktifSubeId);
 
   return (

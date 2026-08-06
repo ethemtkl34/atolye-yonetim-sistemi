@@ -30,7 +30,7 @@ export const metadata: Metadata = {
  * koordinatör/yönetici rolüne açıktır, stajyer sorgularına hiç girmez.
  */
 export default async function DanismanlikSayfasi() {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik");
   const subeId = kullanici.aktifSubeId;
 
   const [ogrenciler, veliKayitlari, terapiKayitlari] = await Promise.all([

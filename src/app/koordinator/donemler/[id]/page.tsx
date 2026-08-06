@@ -29,7 +29,7 @@ export async function generateMetadata(
 export default async function DonemDetaySayfasi(
   props: PageProps<"/koordinator/donemler/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler");
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
@@ -65,7 +65,7 @@ export default async function DonemDetaySayfasi(
       },
     }),
     db.user.findMany({
-      where: { role: "STAJYER", active: true, branchId: subeId },
+      where: { roles: { has: "STAJYER" }, active: true, branchId: subeId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

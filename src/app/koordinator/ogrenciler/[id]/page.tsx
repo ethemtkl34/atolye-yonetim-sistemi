@@ -40,7 +40,7 @@ export async function generateMetadata(
   // Sekme başlığı da şubeye kapalı: başka şubenin öğrenci id'si yapıştırılınca
   // sayfa 404 verirken başlıkta çocuğun adının görünmesi sızıntıdır.
   // `yonetimZorunlu` istek başına önbellekli, ek sorgu maliyeti yok.
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler");
   const { id } = await props.params;
   const ogrenci = await db.student.findFirst({
     where: { id, branchId: kullanici.aktifSubeId },
@@ -64,9 +64,18 @@ export async function generateMetadata(
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler");
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
+
+  // SORGU DİSİPLİNİ (stajyer gizliliğindeki kuralın aynısı): yetkisi olmayan
+  // bölümün verisi arayüzde gizlenmez, SORGUSU HİÇ ATILMAZ. Danışma görevlisi
+  // bu sayfayı açabilir (öğrenciler TAM) ama görüşmeler, raporlar ve zeka
+  // testi belgeleri onun için select/include listesine hiç girmez.
+  const gorusmeGorebilir = kullanici.yetkiler.danismanlik !== "YOK";
+  const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
+  const zekaTestiYetkisi = kullanici.yetkiler.zekaTestleri;
+  const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
   // dashboard'dan ve eski rapor adreslerinden gelen bağlantılar bunu kullanır.
@@ -122,48 +131,53 @@ export default async function OgrenciProfilSayfasi(
     veliGorusmeKayitlari,
     zekaTestiKayitlari,
   ] = await Promise.all([
-      raporOzetleri({ subeId, ogrenciId: id }),
-      pdfGecmisi({ subeId, ogrenciId: id }),
+      raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
+      raporGorebilir ? pdfGecmisi({ subeId, ogrenciId: id }) : [],
       // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
       // pencere açılmasa da peşinen okunuyor.
-      raporKapsamSecenekleri(id, subeId),
+      raporGorebilir ? raporKapsamSecenekleri(id, subeId) : [],
       db.user.findMany({
-        where: { role: "STAJYER", active: true, branchId: subeId },
+        where: { roles: { has: "STAJYER" }, active: true, branchId: subeId },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       }),
-      // GİZLİLİK: görüşmeler yalnızca bu koordinatör sayfasında okunur;
-      // stajyer sorgularının hiçbirine girmez (sağlık bilgisi kuralı).
-      db.counselingSession.findMany({
-        where: { studentId: id, student: { branchId: subeId } },
-        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        include: { createdBy: { select: { name: true } } },
-      }),
-      // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir — yalnızca bu
-      // koordinatör sayfasında okunur, stajyer sorgularına hiç girmez.
-      db.parentMeeting.findMany({
-        where: { studentId: id, student: { branchId: subeId } },
-        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        include: { createdBy: { select: { name: true } } },
-      }),
+      // GİZLİLİK: görüşmeler stajyerden VE danışmanlık yetkisi olmayan
+      // rollerden gizlidir; yetki yoksa sorgu hiç atılmaz.
+      gorusmeGorebilir
+        ? db.counselingSession.findMany({
+            where: { studentId: id, student: { branchId: subeId } },
+            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+            include: { createdBy: { select: { name: true } } },
+          })
+        : [],
+      // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir.
+      gorusmeGorebilir
+        ? db.parentMeeting.findMany({
+            where: { studentId: id, student: { branchId: subeId } },
+            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+            include: { createdBy: { select: { name: true } } },
+          })
+        : [],
       // GİZLİLİK: zeka testleri de sağlık bilgisi kuralına tabi. `fileData`
       // seçilmiyor — belge yalnızca indirme rotasından okunur.
-      db.intelligenceTest.findMany({
-        where: { studentId: id, student: { branchId: subeId } },
-        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        select: {
-          id: true,
-          studentId: true,
-          date: true,
-          testName: true,
-          notes: true,
-          fileName: true,
-          mimeType: true,
-          fileSize: true,
-          createdAt: true,
-          createdBy: { select: { name: true } },
-        },
-      }),
+      zekaTestiYetkisi !== "YOK"
+        ? db.intelligenceTest.findMany({
+            where: { studentId: id, student: { branchId: subeId } },
+            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+            select: {
+              id: true,
+              studentId: true,
+              date: true,
+              testName: true,
+              notes: true,
+              fileName: true,
+              mimeType: true,
+              fileSize: true,
+              createdAt: true,
+              createdBy: { select: { name: true } },
+            },
+          })
+        : [],
     ]);
 
   const ogrenciAdi = `${ogrenci.firstName} ${ogrenci.lastName}`;
@@ -317,10 +331,14 @@ export default async function OgrenciProfilSayfasi(
             etiket="Aktif kayıt"
             deger={String(aktifKayitlar.length)}
           />
-          <OzetHucresi
-            etiket="Görüşme"
-            deger={String(gorusmeler.length + veliGorusmeleri.length)}
-          />
+          {/* Görüşme sayısı da görüşme verisidir; yetkisi olmayana hücre
+              hiç çizilmez (sayı bile sızıntı olur). */}
+          {gorusmeGorebilir ? (
+            <OzetHucresi
+              etiket="Görüşme"
+              deger={String(gorusmeler.length + veliGorusmeleri.length)}
+            />
+          ) : null}
         </dl>
 
         {saglik?.internSafetyNote ? (
@@ -350,12 +368,14 @@ export default async function OgrenciProfilSayfasi(
             >
               Katılım geçmişi
             </Link>
-            <Link
-              href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
-              className={baglantiStili}
-            >
-              Puanlamalar
-            </Link>
+            {puanlamaGorebilir ? (
+              <Link
+                href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
+                className={baglantiStili}
+              >
+                Puanlamalar
+              </Link>
+            ) : null}
             <Link
               href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
               className={baglantiStili}
@@ -366,29 +386,41 @@ export default async function OgrenciProfilSayfasi(
         }
       />
 
-      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden gizli ve
-          burada SALT OKUNUR: ekleme, silme ve not işlemleri Danışmanlık
-          sayfasında (bölüm başlıklarındaki bağlantı oraya götürür). --- */}
-      <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
-      <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden ve danışmanlık
+          yetkisi olmayan rollerden gizli; burada SALT OKUNUR: ekleme, silme
+          ve not işlemleri Danışmanlık sayfasında. --- */}
+      {gorusmeGorebilir ? (
+        <>
+          <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
+          <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+        </>
+      ) : null}
 
-      {/* --- Zeka testleri — salt okunur, belgeler pencerede önizlenir;
-          yükleme ve silme Zeka testleri sayfasında. Stajyerden gizli. --- */}
-      <ZekaTestleriBolumu mod="okuma" testler={zekaTestleri} />
+      {/* --- Zeka testleri — belgeler yetkiye göre önizlenir (GORUNTULE) ya
+          da yalnızca listelenir (LISTE); yükleme ve silme Zeka testleri
+          sayfasında. Stajyerden gizli. --- */}
+      {zekaTestiYetkisi !== "YOK" ? (
+        <ZekaTestleriBolumu
+          mod={zekaTestiYetkisi === "LISTE" ? "liste" : "okuma"}
+          testler={zekaTestleri}
+        />
+      ) : null}
 
       {/* --- Raporlar ve PDF geçmişi.
 
           Rapor öğrenciye ait bir belge olduğu için listesi de içeriği de
           burada duruyor: karta tıklayınca sayfadan çıkmadan bir pencere
           açılıyor, düzenleme ve PDF üretimi de o pencerede yapılıyor. */}
-      <RaporBolumu
-        ogrenciId={ogrenci.id}
-        ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
-        raporlar={raporlar}
-        kapsamKayitlari={kapsamKayitlari}
-        pdfler={pdfler}
-        acilisParametresi={acilisRaporu}
-      />
+      {raporGorebilir ? (
+        <RaporBolumu
+          ogrenciId={ogrenci.id}
+          ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
+          raporlar={raporlar}
+          kapsamKayitlari={kapsamKayitlari}
+          pdfler={pdfler}
+          acilisParametresi={acilisRaporu}
+        />
+      ) : null}
 
       {/* --- Arşiv katı: kapalı başlayan bölümler. Sık bakılmayan ayrıntılar
           buraya indi; sayfa artık günlük işte tek ekran boyunda. --- */}

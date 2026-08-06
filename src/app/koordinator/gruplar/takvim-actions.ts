@@ -82,7 +82,7 @@ export async function grupGunuTasi(
   eskiTarihMetni: string,
   yeniTarihMetni: string,
 ): Promise<TakvimDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("gruplar", "TAM");
 
   const eski = tarihiCoz(eskiTarihMetni);
   const yeni = tarihiCoz(yeniTarihMetni);
@@ -134,7 +134,7 @@ export async function grupGunuEkle(
   grupId: string,
   tarihMetni: string,
 ): Promise<TakvimDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("gruplar", "TAM");
 
   const tarih = tarihiCoz(tarihMetni);
   if (!tarih) return { hata: "Tarih okunamadı." };
@@ -181,7 +181,7 @@ export async function grupGunuSil(
   grupId: string,
   tarihMetni: string,
 ): Promise<TakvimDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("gruplar", "TAM");
 
   const tarih = tarihiCoz(tarihMetni);
   if (!tarih) return { hata: "Tarih okunamadı." };

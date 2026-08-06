@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function OgrenciDuzenleSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/duzenle">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
   const { id } = await props.params;
 
   const ogrenci = await db.student.findFirst({

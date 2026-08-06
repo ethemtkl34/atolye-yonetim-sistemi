@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
+import { yetkiYeter } from "@/lib/yetkiler";
 
 /**
  * Zeka testi belgesinin indirilmesi / tarayıcıda önizlenmesi.
@@ -27,19 +28,23 @@ export async function GET(
 
   const kullanici = await db.user.findUnique({
     where: { id: oturum.user.id },
-    select: { role: true, active: true, branchId: true },
+    select: { roles: true, active: true, branchId: true },
   });
 
+  // Belge İÇERİĞİ için GORUNTULE gerekir; LISTE yetmez. Danışma görevlisi
+  // liste sayfasını görür ama belgeyi bu rotadan da açamaz — "sadece liste"
+  // sınırının asıl durduğu yer burası, arayüzdeki gizleme değil.
   if (
     !kullanici?.active ||
-    (kullanici.role !== "KOORDINATOR" && kullanici.role !== "ADMIN")
+    !yetkiYeter(kullanici.roles, "zekaTestleri", "GORUNTULE")
   ) {
     return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
   }
 
-  // Yönetici iki şubeyi de görüyor; koordinatörün şubesi zorunlu. Şube null
+  // Yönetici bütün şubeleri görüyor; diğerlerinin şubesi zorunlu. Şube null
   // gelirse belge verilmez — "süzgeç yok" hâline düşmek sızıntı olurdu.
-  if (kullanici.role !== "ADMIN" && !kullanici.branchId) {
+  const yonetici = kullanici.roles.includes("ADMIN");
+  if (!yonetici && !kullanici.branchId) {
     return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
   }
 

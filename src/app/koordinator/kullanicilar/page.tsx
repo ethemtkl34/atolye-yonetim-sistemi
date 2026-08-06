@@ -63,7 +63,7 @@ export default async function KullanicilarSayfasi(
       id: true,
       name: true,
       email: true,
-      role: true,
+      roles: true,
       active: true,
       branchId: true,
       branch: { select: { name: true } },
@@ -76,27 +76,32 @@ export default async function KullanicilarSayfasi(
     },
   });
 
-  // Yetkiden aza doğru: yönetici, koordinatör, stajyer. Sıra veritabanına
-  // bırakılamıyor — `role` enum'unda ADMIN sonradan eklendiği için en SONA
-  // yazılı (`ALTER TYPE ... ADD VALUE` değeri listenin sonuna koyar) ve
-  // `orderBy: { role: "asc" }` yöneticiyi listenin dibine atıyordu.
+  // Yetkiden aza doğru. Sıra veritabanına bırakılamıyor — enum'da sonradan
+  // eklenen değerler listenin sonuna yazılır (`ALTER TYPE ... ADD VALUE`) ve
+  // enum sırasına göre sıralamak yöneticiyi listenin dibine atıyordu.
+  // Çoklu rolde satırın sırası EN YETKİLİ rolünden gelir.
   const ROL_SIRASI: Record<Role, number> = {
     ADMIN: 0,
     KOORDINATOR: 1,
-    STAJYER: 2,
+    ATOLYE_PSIKOLOGU: 2,
+    TEST_UYGULAYICISI: 3,
+    DANISMA_GOREVLISI: 4,
+    STAJYER: 5,
   };
+  const satirSirasi = (roller: readonly Role[]) =>
+    Math.min(...roller.map((rol) => ROL_SIRASI[rol]));
 
   const satirlar: KullaniciSatiri[] = kullanicilar
     .sort(
       (a, b) =>
-        ROL_SIRASI[a.role] - ROL_SIRASI[b.role] ||
+        satirSirasi(a.roles) - satirSirasi(b.roles) ||
         a.name.localeCompare(b.name, "tr"),
     )
     .map((kullanici) => ({
       id: kullanici.id,
       name: kullanici.name,
       email: kullanici.email,
-      role: kullanici.role,
+      roller: kullanici.roles,
       active: kullanici.active,
       subeId: kullanici.branchId,
       subeAdi: kullanici.branch?.name ?? null,

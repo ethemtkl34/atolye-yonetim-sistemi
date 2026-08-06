@@ -1,4 +1,5 @@
 import type { Role } from "@/generated/prisma/enums";
+import { etkinYetki, type Modul } from "@/lib/yetkiler";
 
 /**
  * §12.2 — Koordinatör panelinin ana modülleri.
@@ -19,13 +20,16 @@ export type MenuOgesi = {
   /** components/yan-menu.tsx içindeki ikon adı. */
   simge?: string;
   /**
-   * Maddeyi görebilecek roller. Boşsa herkes görür.
+   * Maddenin bağlı olduğu yetki modülü (bkz. lib/yetkiler.ts). Boşsa panele
+   * girebilen herkes görür (dashboard). Kullanıcının bu modüldeki etkin
+   * yetkisi YOK ise madde menüde görünmez; LISTE dahil her seviye gösterir.
    *
    * Menüden gizlemek YETKİ DEĞİLDİR: sayfanın kendi `adminZorunlu()` /
-   * `yonetimZorunlu()` kontrolü esastır (bkz. lib/auth-guard.ts). Buradaki
-   * süzgeç yalnızca kullanıcıya giremeyeceği bir bağlantıyı göstermemek için.
+   * `yonetimZorunlu(modul, seviye)` kontrolü esastır (bkz. lib/auth-guard.ts).
+   * Buradaki süzgeç yalnızca kullanıcıya giremeyeceği bir bağlantıyı
+   * göstermemek için.
    */
-  roller?: readonly Role[];
+  modul?: Modul;
 };
 
 export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
@@ -39,6 +43,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Dönemler",
     yol: "/koordinator/donemler",
+    modul: "donemler",
     hazir: true,
     paket: "P4",
     bolum: "Programlar",
@@ -47,6 +52,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Kulüpler",
     yol: "/koordinator/kulupler",
+    modul: "kulupler",
     hazir: true,
     paket: "P8",
     bolum: "Programlar",
@@ -55,6 +61,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Gruplar",
     yol: "/koordinator/gruplar",
+    modul: "gruplar",
     hazir: true,
     paket: "P4",
     bolum: "Programlar",
@@ -63,6 +70,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Atölye çeşitleri",
     yol: "/koordinator/atolyeler",
+    modul: "atolyeler",
     hazir: true,
     paket: "P3",
     bolum: "Atölyeler",
@@ -71,6 +79,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Değerlendirme soruları",
     yol: "/koordinator/sorular",
+    modul: "sorular",
     hazir: true,
     paket: "P3",
     bolum: "Atölyeler",
@@ -79,6 +88,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Öğrenciler",
     yol: "/koordinator/ogrenciler",
+    modul: "ogrenciler",
     hazir: true,
     paket: "P5",
     bolum: "Kişiler",
@@ -87,6 +97,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Öğrenci kayıtları",
     yol: "/koordinator/kayitlar",
+    modul: "kayitlar",
     hazir: true,
     paket: "P6",
     bolum: "Kişiler",
@@ -95,6 +106,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Stajyerler",
     yol: "/koordinator/stajyerler",
+    modul: "stajyerler",
     hazir: true,
     paket: "P6",
     bolum: "Kişiler",
@@ -107,6 +119,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Danışmanlık",
     yol: "/koordinator/danismanlik",
+    modul: "danismanlik",
     hazir: true,
     paket: "P15",
     bolum: "Kişiler",
@@ -118,6 +131,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Zeka testleri",
     yol: "/koordinator/zeka-testleri",
+    modul: "zekaTestleri",
     hazir: true,
     paket: "P16",
     bolum: "Kişiler",
@@ -129,11 +143,11 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Kullanıcılar",
     yol: "/koordinator/kullanicilar",
+    modul: "kullanicilar",
     hazir: true,
     paket: "P14",
     bolum: "Kişiler",
     simge: "anahtar",
-    roller: ["ADMIN"],
   },
   // Ayrı bir "Stajyer atamaları" ekranı yok: atama, stajyerin kendi
   // sayfasında (program seç → öğrencileri ata) ve öğrenci profilinde
@@ -143,6 +157,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Puanlamalar",
     yol: "/koordinator/puanlamalar",
+    modul: "puanlamalar",
     hazir: true,
     paket: "P7",
     bolum: "Değerlendirme",
@@ -154,6 +169,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   {
     etiket: "Arşiv",
     yol: "/koordinator/arsiv",
+    modul: "arsiv",
     hazir: true,
     paket: "P11",
     bolum: "Değerlendirme",
@@ -187,22 +203,26 @@ export const STAJYER_MENUSU: readonly MenuOgesi[] = [
 ];
 
 /**
- * Rolüne göre kullanıcının göreceği menü.
+ * Rollerine göre kullanıcının göreceği menü.
  *
  * Panel seçimini tek yerde tutuyor: önceden her yerde
  * `role === "KOORDINATOR" ? KOORDINATOR_MENUSU : STAJYER_MENUSU` yazılıydı ve
  * bu ternary, yönetici eklenince ona sessizce STAJYER menüsünü veriyordu.
+ *
+ * Süzgeç yetki matrisinden beslenir: modüldeki etkin yetkisi YOK olan madde
+ * gizlenir. LISTE dahil her seviye maddeyi gösterir — danışma görevlisi zeka
+ * testlerinin listesini görebildiği için menüde bağlantısı da olmalı.
  */
-export function panelMenusu(role: Role): readonly MenuOgesi[] {
-  if (role === "STAJYER") return STAJYER_MENUSU;
+export function panelMenusu(roller: readonly Role[]): readonly MenuOgesi[] {
+  if (roller.includes("STAJYER")) return STAJYER_MENUSU;
   return KOORDINATOR_MENUSU.filter(
-    (oge) => !oge.roller || oge.roller.includes(role),
+    (oge) => !oge.modul || etkinYetki(roller, oge.modul) !== "YOK",
   );
 }
 
 /** Panelin sol üstte yazan adı. */
-export function panelBasligi(role: Role): string {
-  if (role === "STAJYER") return "Stajyer paneli";
-  if (role === "ADMIN") return "Yönetici paneli";
+export function panelBasligi(roller: readonly Role[]): string {
+  if (roller.includes("STAJYER")) return "Stajyer paneli";
+  if (roller.includes("ADMIN")) return "Yönetici paneli";
   return "Koordinatör paneli";
 }

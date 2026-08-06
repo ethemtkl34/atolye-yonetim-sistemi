@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
-import { ANA_SAYFA_YOLLARI } from "@/lib/roller";
+import { anaSayfaYolu } from "@/lib/roller";
 
 /**
  * Rota koruması — Next.js 16'da bu dosyanın adı `middleware` değil `proxy`.
@@ -19,7 +19,7 @@ export const proxy = auth((istek) => {
   const { nextUrl } = istek;
   const oturum = istek.auth;
   const girisYapmis = Boolean(oturum?.user);
-  const rol = oturum?.user?.role;
+  const roller = oturum?.user?.roller;
 
   const koordinatorAlani = nextUrl.pathname.startsWith("/koordinator");
   const stajyerAlani = nextUrl.pathname.startsWith("/stajyer");
@@ -39,26 +39,26 @@ export const proxy = auth((istek) => {
 
   // Oturum var ama rol yoksa belirteç bozuk demektir; asıl karar sunucu
   // guard'ının, burada yalnızca girişe yollanır.
-  if (!rol) {
+  if (!roller || roller.length === 0) {
     return NextResponse.redirect(new URL("/giris", nextUrl));
   }
 
-  // Rolün kendi alanı tek kaynaktan okunur (`lib/roller.ts`). Burada
-  // "koordinatör değilse stajyerdir" varsayımı vardı; yönetici eklenince o
-  // varsayım yöneticiyi `/stajyer`'e yollayıp guard'ın geri atmasına, yani
-  // her gezintide gereksiz bir tura yol açıyordu.
-  const kendiAlani = ANA_SAYFA_YOLLARI[rol];
+  // Rolün kendi alanı tek kaynaktan okunur (`lib/roller.ts`). STAJYER tek
+  // başına bir roldür (veritabanı CHECK'i başka rolle birleşmesini engeller);
+  // karma bir "hem stajyer hem yönetici" belirteci bu yüzden olamaz.
+  const stajyerMi = roller.includes("STAJYER");
+  const kendiAlani = anaSayfaYolu(roller);
 
   // Giriş yapmış kullanıcı giriş sayfasına dönerse kendi paneline gider.
   if (girisSayfasi) {
     return NextResponse.redirect(new URL(kendiAlani, nextUrl));
   }
 
-  if (rol === "STAJYER" && koordinatorAlani) {
+  if (stajyerMi && koordinatorAlani) {
     return NextResponse.redirect(new URL("/stajyer", nextUrl));
   }
 
-  if (rol !== "STAJYER" && stajyerAlani) {
+  if (!stajyerMi && stajyerAlani) {
     return NextResponse.redirect(new URL("/koordinator", nextUrl));
   }
 

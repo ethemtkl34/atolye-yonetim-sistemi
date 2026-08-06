@@ -42,7 +42,7 @@ export async function raporOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const kayitIdleri = formVerisi.getAll("kayitlar").map(String).filter(Boolean);
@@ -99,7 +99,7 @@ export async function raporOlustur(
  * cevaplanabilir.
  */
 export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const eski = await db.report.findFirst({
@@ -146,7 +146,7 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
  * düzenlense bile eski PDF'in içeriği değişmez (§13.17).
  */
 export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
     where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
@@ -193,7 +193,7 @@ export async function raporMetniDuzenle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
     where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
@@ -257,7 +257,7 @@ export type RaporPenceresiVerisi = {
 export async function raporPenceresiVerisi(
   raporId: string,
 ): Promise<RaporPenceresiVerisi | null> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const [detay, pdfler] = await Promise.all([

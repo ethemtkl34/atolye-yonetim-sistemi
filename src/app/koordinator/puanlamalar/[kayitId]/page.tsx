@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function KoordinatorKayitPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("puanlamalar");
   const { kayitId } = await props.params;
 
   // Sahiplik kontrolü sorgunun içinde: başka şubenin kayıt id'si adres

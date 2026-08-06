@@ -110,33 +110,43 @@ kayıt olabilir.
 
 ## 3. Kullanıcı rolleri ve yetkiler
 
-## 3.1 Koordinatör
+Rol seti kodda sabittir; yönetici kişilere rol atar. Bir kullanıcı birden çok
+rol taşıyabilir (örn. Atölye Psikoloğu + Test Uygulayıcısı) ve etkin yetkisi
+rollerinin birleşimidir. Modül bazlı yetki matrisi `src/lib/yetkiler.ts`
+dosyasında tanımlıdır; seviyeler YOK < LİSTE < GÖRÜNTÜLE < TAM.
 
-Admin, eğitmen ve koordinatör aynı rol olarak değerlendirilir. Koordinatör sistemde tam yetkilidir.
+## 3.1 Yetki matrisi
 
-Koordinatör şunları yapabilir:
+| Modül | Kurum Yöneticisi | Atölye Koordinatörü | Atölye Psikoloğu | Test Uygulayıcısı | Danışma Görevlisi |
+|---|---|---|---|---|---|
+| Dönemler | TAM | TAM | TAM | — | GÖRÜNTÜLE |
+| Kulüpler | TAM | TAM | TAM | — | GÖRÜNTÜLE |
+| Gruplar | TAM | TAM | TAM | — | GÖRÜNTÜLE |
+| Atölye çeşitleri | TAM | TAM | TAM | — | — |
+| Değerlendirme soruları | TAM | TAM | TAM | — | — |
+| Öğrenciler (sağlık dahil) | TAM | TAM | TAM | — | TAM |
+| Öğrenci kayıtları | TAM | TAM | TAM | — | TAM |
+| Stajyerler | TAM | TAM | TAM | — | — |
+| Danışmanlık (görüşmeler) | TAM | TAM | TAM | — | — (tamamen gizli) |
+| Zeka testleri | TAM | GÖRÜNTÜLE | GÖRÜNTÜLE | TAM | LİSTE |
+| Puanlamalar | TAM | TAM | TAM | — | — |
+| Raporlar | TAM | TAM | TAM | — | — |
+| Arşiv | TAM | TAM | TAM | — | — |
+| Kullanıcılar | TAM | — | — | — | — |
+| Şube değiştirme | ✓ | — | — | — | — |
 
-- Dashboardun bütün bölümlerini görüntüleme,
-- Dönem oluşturma, düzenleme ve arşivleme,
-- Döneme grup ekleme,
-- Kulüp programı ve kulüp grubu oluşturma,
-- Atölye çeşitlerini yönetme,
-- Atölye değerlendirme sorularını yönetme,
-- Öğrenci ekleme ve düzenleme,
-- Anne ve baba bilgilerini yönetme,
-- Sağlık ve özel durum bilgilerini görüntüleme,
-- Öğrenciye dönem veya kulüp kaydı oluşturma,
-- Kayıt için grup seçme,
-- Stajyer ekleme ve düzenleme,
-- Kayıt bazında öğrenci–stajyer ataması yapma,
-- Bütün puanlamaları görüntüleme ve düzenleme,
-- Öğrenci raporu oluşturma ve düzenleme,
-- PDF rapor oluşturma,
-- Geçmiş raporları görüntüleme.
+- Kurum Yöneticisi şubesizdir; üst şeritten şube seçerek çalışır ve başka
+  rolle birleşemez. Diğer bütün roller bir şubeye bağlıdır.
+- "LİSTE" yalnızca zeka testlerinde anlamlıdır: danışma görevlisi hangi
+  öğrenciye hangi tarihte hangi testin yapıldığını görür, belge içeriğini
+  açamaz ve indiremez (indirme rotası da reddeder).
+- Test Uygulayıcısı unvanı tek başına yalnızca zeka testi sonuçlarını
+  yükleme/silme yetkisi verir; pratikte psikolog rolüyle birlikte kullanılır.
 
 ## 3.2 Stajyer
 
-Stajyerin erişimi yalnızca puanlama görevleriyle sınırlıdır.
+Stajyerin erişimi yalnızca puanlama görevleriyle sınırlıdır ve kendi paneli
+(`/stajyer`) üzerinden çalışır; başka rolle birleşemez.
 
 Stajyer şunları yapabilir:
 
@@ -152,6 +162,7 @@ Stajyer şunları göremez veya yapamaz:
 - Başka stajyerlere atanmış öğrenciler,
 - Anne ve baba telefon numaraları,
 - Detaylı sağlık açıklamaları,
+- Veli ve terapi görüşmeleri, zeka testi sonuçları,
 - Dönem, grup ve kulüp oluşturma,
 - Öğrenci kaydı oluşturma,
 - Atölye veya soru yönetimi,

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default async function GrupTakvimiSayfasi(
   props: PageProps<"/koordinator/gruplar/[id]/takvim">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("gruplar");
   const { id } = await props.params;
 
   const grup = await db.group.findFirst({

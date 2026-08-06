@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function YeniKayitSayfasi(
   props: PageProps<"/koordinator/kayitlar/yeni">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
@@ -52,7 +52,7 @@ export default async function YeniKayitSayfasi(
     }),
     kayitAlanProgramlar(subeId),
     db.user.findMany({
-      where: { role: "STAJYER", active: true, branchId: subeId },
+      where: { roles: { has: "STAJYER" }, active: true, branchId: subeId },
       orderBy: { name: "asc" },
       select: {
         id: true,

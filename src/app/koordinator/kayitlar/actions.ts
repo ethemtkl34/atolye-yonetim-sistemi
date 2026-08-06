@@ -67,7 +67,7 @@ export async function kayitOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = kayitSemasi.safeParse({
@@ -185,10 +185,10 @@ export async function kayitOlustur(
   if (internId) {
     const stajyer = await db.user.findFirst({
       where: { id: internId, branchId: subeId },
-      select: { role: true, active: true },
+      select: { roles: true, active: true },
     });
 
-    if (!stajyer || stajyer.role !== "STAJYER" || !stajyer.active) {
+    if (!stajyer || !stajyer.roles.includes("STAJYER") || !stajyer.active) {
       return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
     }
 
@@ -252,7 +252,7 @@ export async function kayitOlustur(
         internId
           ? tx.user.findFirst({
               where: { id: internId, branchId: subeId },
-              select: { role: true, active: true },
+              select: { roles: true, active: true },
             })
           : null,
         tx.enrollment.findUnique({
@@ -278,7 +278,7 @@ export async function kayitOlustur(
     if (internId) {
       if (
         !guncelStajyer ||
-        guncelStajyer.role !== "STAJYER" ||
+        !guncelStajyer.roles.includes("STAJYER") ||
         !guncelStajyer.active
       ) {
         return { alanHatalari: { internId: "Geçerli bir stajyer seçin." } };
@@ -337,7 +337,7 @@ export async function topluKayitOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const groupId = String(formVerisi.get("groupId") ?? "");
@@ -591,7 +591,7 @@ export async function topluKayitCikar(
   groupId: string,
   ogrenciIdleri: string[],
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   if (!groupId) return { hata: "Grup seçin." };
@@ -669,17 +669,17 @@ export async function kayitStajyerDegistir(
   kayitId: string,
   internId: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   if (!internId) return { hata: "Stajyer seçin." };
 
   const stajyer = await db.user.findFirst({
     where: { id: internId, branchId: subeId },
-    select: { role: true, active: true, name: true },
+    select: { roles: true, active: true, name: true },
   });
 
-  if (!stajyer || stajyer.role !== "STAJYER" || !stajyer.active) {
+  if (!stajyer || !stajyer.roles.includes("STAJYER") || !stajyer.active) {
     return { hata: "Geçerli bir stajyer seçin." };
   }
 
@@ -746,7 +746,7 @@ export async function kayitIptalEt(
   kayitId: string,
   veri: { sebep: string; aciklama: string; sonGun: string },
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = iptalSemasi.safeParse(veri);
@@ -836,7 +836,7 @@ export async function kayitIptalEt(
 export async function kayitYenidenEtkinlestir(
   kayitId: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const hedef = await db.enrollment.findFirst({

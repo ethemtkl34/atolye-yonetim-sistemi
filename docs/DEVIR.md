@@ -293,7 +293,27 @@ Hesaplar ve parolalar için kullanıcıya sorun; parolalar bu belgeye yazılmad�
 
 ## Sıradaki iş
 
-**Bilinen açık iş yok.** Eklenen her şey canlıda gerçek veriyle sınandı; çok
+**Rol katmanı temizlik deploy'u (1–2 hafta sonra, sistem canlıda doğrulanınca):**
+çoklu role geçişte `User.role` sütunu geriye dönük uyumluluk için nullable
+bırakıldı ve kod artık okumuyor/yazmıyor. Sistem yeni rollerle sorunsuz
+çalıştığı doğrulanınca:
+
+1. Yeni migration: `DROP INDEX "User_role_active_idx"`,
+   `DROP INDEX "User_branchId_role_active_idx"`,
+   `ALTER TABLE "User" DROP COLUMN "role"`,
+   `CREATE INDEX "User_branchId_active_idx" ON "User"("branchId", "active")`.
+2. `schema.prisma`'dan `role Role?` alanı ve iki eski indeks silinir.
+3. `auth.config.ts` jwt callback'indeki eski-token shim'i (`token.role` dalı)
+   ve `types/next-auth.d.ts`'teki opsiyonel `role` alanı silinir (12 saatlik
+   eski belirteçler çoktan dolmuş olur).
+
+**Rol mimarisi notları:** yetki matrisi `src/lib/yetkiler.ts` (tek kaynak);
+guard deseni `yonetimZorunlu(modul, seviye)` — sayfa GORUNTULE/LISTE, mutasyon
+action TAM ister. Ümraniye kadrosunun hesapları `prisma/hesaplar-umraniye.ts`
+ile açılır (tek seferlik, yalnızca-create, geçici parolaları ekrana basar;
+herkes ilk girişte `/parola-degistir`'den kendi parolasını koyar).
+
+Bunun dışında **bilinen açık iş yok.** Eklenen her şey canlıda gerçek veriyle sınandı; çok
 haftalı kulüp uçtan uca denendi (4 gün seçildi → 12 oturum, hafta numaraları
 1–4) ve deneme verisi silindi. Mobil dokunma hedefleri ve şube sızıntısı
 koruması da bitti (yukarıya bakın).

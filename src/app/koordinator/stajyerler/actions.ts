@@ -53,7 +53,7 @@ export async function stajyerEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler", "TAM");
 
   const cozumlenen = stajyerSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -90,7 +90,7 @@ export async function stajyerEkle(
       name: cozumlenen.data.name,
       email,
       passwordHash: await hash(cozumlenen.data.password, 12),
-      role: "STAJYER",
+      roles: ["STAJYER"],
       // Yeni stajyer her zaman ekleyenin şubesine yazılır; form şube alanı
       // içermiyor ve içermemeli (`lib/sube.ts`).
       branchId: kullanici.aktifSubeId,
@@ -108,7 +108,7 @@ export async function stajyerAdiGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler", "TAM");
 
   const ad = String(formVerisi.get("name") ?? "").trim();
   if (ad.length < 2) {
@@ -122,7 +122,7 @@ export async function stajyerAdiGuncelle(
   // koruyordu; `branchId` eklenince aynı desen şubeler arası sızıntıyı da
   // kapatıyor.
   const sonuc = await db.user.updateMany({
-    where: { id: stajyerId, role: "STAJYER", branchId: kullanici.aktifSubeId },
+    where: { id: stajyerId, roles: { has: "STAJYER" }, branchId: kullanici.aktifSubeId },
     data: { name: ad },
   });
   if (sonuc.count === 0) return { hata: "Stajyer bulunamadı." };
@@ -139,7 +139,7 @@ export async function stajyerAdiGuncelle(
 export async function stajyerDurumDegistir(
   stajyerId: string,
 ): Promise<EylemDurumu> {
-  const koordinator = await yonetimZorunlu();
+  const koordinator = await yonetimZorunlu("stajyerler", "TAM");
 
   if (stajyerId === koordinator.id) {
     return { hata: "Kendi hesabınızı pasife alamazsınız." };
@@ -147,11 +147,11 @@ export async function stajyerDurumDegistir(
 
   const stajyer = await db.user.findFirst({
     where: { id: stajyerId, branchId: koordinator.aktifSubeId },
-    select: { active: true, name: true, role: true },
+    select: { active: true, name: true, roles: true },
   });
 
   if (!stajyer) return { hata: "Stajyer bulunamadı." };
-  if (stajyer.role !== "STAJYER") {
+  if (!stajyer.roles.includes("STAJYER")) {
     return { hata: "Bu hesap bir stajyer hesabı değil." };
   }
 
@@ -181,7 +181,7 @@ export async function stajyerKadroDurumuDegistir(
   donemId: string,
   stajyerId: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   // Dönem ortak olduğu için süzülmez; stajyer ve kayıtlar şubeye kapalı.
@@ -189,7 +189,7 @@ export async function stajyerKadroDurumuDegistir(
     db.term.findUnique({ where: { id: donemId }, select: { name: true } }),
     db.user.findFirst({
       where: { id: stajyerId, branchId: subeId },
-      select: { role: true, active: true, name: true },
+      select: { roles: true, active: true, name: true },
     }),
     db.termIntern.findUnique({
       where: { termId_userId: { termId: donemId, userId: stajyerId } },
@@ -198,7 +198,7 @@ export async function stajyerKadroDurumuDegistir(
   ]);
 
   if (!donem) return { hata: "Dönem bulunamadı." };
-  if (!stajyer || stajyer.role !== "STAJYER") {
+  if (!stajyer || !stajyer.roles.includes("STAJYER")) {
     return { hata: "Stajyer bulunamadı." };
   }
 
@@ -244,7 +244,7 @@ export async function stajyerParolaSifirla(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler", "TAM");
 
   const parola = String(formVerisi.get("password") ?? "");
   if (parola.length < 8) {
@@ -255,7 +255,7 @@ export async function stajyerParolaSifirla(
   }
 
   const sonuc = await db.user.updateMany({
-    where: { id: stajyerId, role: "STAJYER", branchId: kullanici.aktifSubeId },
+    where: { id: stajyerId, roles: { has: "STAJYER" }, branchId: kullanici.aktifSubeId },
     data: { passwordHash: await hash(parola, 12) },
   });
   if (sonuc.count === 0) return { hata: "Stajyer bulunamadı." };

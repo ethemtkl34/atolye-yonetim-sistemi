@@ -731,7 +731,7 @@ async function subeVerisiUret(
         data: {
           email: tanim.eposta,
           name: tanim.ad,
-          role: "STAJYER",
+          roles: ["STAJYER"],
           branchId: set.subeId,
           passwordHash: await hash(stajyerParolasi(), 12),
         },

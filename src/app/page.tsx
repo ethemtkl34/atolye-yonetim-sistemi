@@ -13,5 +13,5 @@ export default async function AnaSayfa() {
     redirect("/giris");
   }
 
-  redirect(anaSayfaYolu(oturum.user.role));
+  redirect(anaSayfaYolu(oturum.user.roller));
 }

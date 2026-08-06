@@ -21,7 +21,7 @@ const TEMEL_YOL = "/koordinator/puanlamalar";
 export default async function PuanlamalarSayfasi(
   props: PageProps<"/koordinator/puanlamalar">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("puanlamalar");
 
   const parametreler = await props.searchParams;
   const suzgec = parametreler.suzgec === "tumu" ? "tumu" : "eksik";

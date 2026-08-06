@@ -28,7 +28,7 @@ const TEMEL_YOL = "/koordinator/gruplar";
 export default async function GruplarSayfasi(
   props: PageProps<"/koordinator/gruplar">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("gruplar");
   const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;

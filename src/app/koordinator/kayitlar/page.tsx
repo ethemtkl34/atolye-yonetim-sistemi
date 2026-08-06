@@ -25,7 +25,7 @@ const TEMEL_YOL = "/koordinator/kayitlar";
 export default async function KayitlarSayfasi(
   props: PageProps<"/koordinator/kayitlar">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kayitlar");
   const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;

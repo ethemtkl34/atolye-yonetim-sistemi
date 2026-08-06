@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminZorunlu } from "@/lib/auth-guard";
 import { formDegerleri } from "@/lib/formlar";
-import { ROL_ADLARI } from "@/lib/roller";
+import { rolEtiketi } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
 
 /**
@@ -17,11 +17,12 @@ import type { Role } from "@/generated/prisma/enums";
  * koordinatör yalnızca stajyer açıp kapatabilir, yönetici rol ve şube de
  * değiştirebilir.
  *
- * ROL–ŞUBE KURALI tek yerde: `subeyiCoz`. Yönetici hiçbir şubeye bağlı
- * değildir (null), koordinatör ve stajyer her zaman bir şubeye bağlıdır.
- * Aynı kural veritabanında CHECK ile de duruyor (`User_admin_sube_kurali`);
- * buradaki kontrol kullanıcıya anlaşılır bir hata vermek için, veritabanı
- * kısıtı ise son savunma hattı.
+ * Bir kullanıcı birden çok rol taşıyabilir (örn. psikolog + test uygulayıcısı).
+ * KOMBİNASYON KURALLARI tek yerde: `rolleriCoz`. ADMIN tek başınadır ve
+ * şubesizdir, STAJYER tek başınadır, kalan roller birleşebilir ve şube
+ * zorunludur. Aynı kurallar veritabanında CHECK ile de duruyor (migration
+ * `coklu_rol`); buradaki kontrol kullanıcıya anlaşılır bir hata vermek için,
+ * veritabanı kısıtı ise son savunma hattı.
  */
 
 export type EylemDurumu = {
@@ -31,7 +32,14 @@ export type EylemDurumu = {
   degerler?: Record<string, string>;
 };
 
-const ROLLER = ["ADMIN", "KOORDINATOR", "STAJYER"] as const;
+const ROLLER = [
+  "ADMIN",
+  "KOORDINATOR",
+  "ATOLYE_PSIKOLOGU",
+  "TEST_UYGULAYICISI",
+  "DANISMA_GOREVLISI",
+  "STAJYER",
+] as const;
 
 const kullaniciSemasi = z.object({
   name: z
@@ -48,7 +56,7 @@ const kullaniciSemasi = z.object({
     .string()
     .min(8, "Parola en az 8 karakter olmalı")
     .max(100, "Parola en fazla 100 karakter olabilir"),
-  role: z.enum(ROLLER, { message: "Rol seçin" }),
+  roles: z.array(z.enum(ROLLER)).min(1, "En az bir rol seçin"),
   branchId: z.string().trim(),
 });
 
@@ -61,20 +69,41 @@ function alanHatalari(hata: z.ZodError): Record<string, string> {
   return sonuc;
 }
 
+/** Formdaki çoklu rol seçimi — `getAll` bilinmeyen değerleri de getirir,
+ *  şema doğrulaması onları eler. */
+function formRolleri(formVerisi: FormData): string[] {
+  return formVerisi.getAll("roles").map(String);
+}
+
 /**
- * Rolün gerektirdiği şubeyi çözer; uyuşmazlıkta alan hatası döner.
+ * Rol kombinasyonunu ve rolün gerektirdiği şubeyi çözer; uyuşmazlıkta alan
+ * hatası döner.
  *
  * Yöneticide form ne gönderirse göndersin şube null'a çekilir — ekranda
  * seçici gizli ama gizli bir alan elle doldurulabilir.
  */
-async function subeyiCoz(
-  role: Role,
+async function rolleriCoz(
+  roles: Role[],
   subeId: string,
-): Promise<{ hata: Record<string, string> } | { branchId: string | null }> {
-  if (role === "ADMIN") return { branchId: null };
+): Promise<
+  { hata: Record<string, string> } | { roles: Role[]; branchId: string | null }
+> {
+  if (roles.includes("ADMIN") && roles.length > 1) {
+    return {
+      hata: { roles: "Kurum Yöneticisi başka bir rolle birleştirilemez." },
+    };
+  }
+
+  if (roles.includes("STAJYER") && roles.length > 1) {
+    return {
+      hata: { roles: "Stajyer başka bir rolle birleştirilemez." },
+    };
+  }
+
+  if (roles.includes("ADMIN")) return { roles, branchId: null };
 
   if (!subeId) {
-    return { hata: { branchId: "Bu rol için şube seçmelisiniz." } };
+    return { hata: { branchId: "Bu roller için şube seçmelisiniz." } };
   }
 
   const sube = await db.branch.findFirst({
@@ -86,7 +115,7 @@ async function subeyiCoz(
     return { hata: { branchId: "Seçilen şube bulunamadı." } };
   }
 
-  return { branchId: sube.id };
+  return { roles, branchId: sube.id };
 }
 
 /**
@@ -104,22 +133,26 @@ async function sonYoneticiMi(kullaniciId: string): Promise<boolean> {
   // `adminZorunlu()` geçmiş eylemler giriyor.
   const hedef = await db.user.findUnique({
     where: { id: kullaniciId },
-    select: { role: true, active: true },
+    select: { roles: true, active: true },
   });
 
-  if (hedef?.role !== "ADMIN" || !hedef.active) return false;
+  if (!hedef?.roles.includes("ADMIN") || !hedef.active) return false;
 
   // şube-muaf: aynı değişmez — sistemde kaç aktif yönetici kaldığı sorusunun
   // şubeye göre cevabı yok.
   const kalan = await db.user.count({
-    where: { role: "ADMIN", active: true, id: { not: kullaniciId } },
+    where: {
+      roles: { has: "ADMIN" },
+      active: true,
+      id: { not: kullaniciId },
+    },
   });
 
   return kalan === 0;
 }
 
 const SON_YONETICI_HATASI =
-  "Sistemdeki tek aktif yönetici bu hesap. Önce başka bir yönetici hesabı açın.";
+  "Sistemdeki tek aktif Kurum Yöneticisi bu hesap. Önce başka bir yönetici hesabı açın.";
 
 export async function kullaniciEkle(
   _oncekiDurum: EylemDurumu,
@@ -127,18 +160,16 @@ export async function kullaniciEkle(
 ): Promise<EylemDurumu> {
   await adminZorunlu();
 
-  const girilenler = formDegerleri(formVerisi, [
-    "name",
-    "email",
-    "role",
-    "branchId",
-  ]);
+  const girilenler = formDegerleri(formVerisi, ["name", "email", "branchId"]);
+  // Çoklu seçim `formDegerleri`nin tekil düzenine sığmıyor; hata durumunda
+  // formun seçimleri geri yükleyebilmesi için virgüllü tek değer olarak taşınır.
+  girilenler.roles = formRolleri(formVerisi).join(",");
 
   const cozumlenen = kullaniciSemasi.safeParse({
     name: formVerisi.get("name"),
     email: formVerisi.get("email"),
     password: formVerisi.get("password"),
-    role: formVerisi.get("role"),
+    roles: formRolleri(formVerisi),
     branchId: formVerisi.get("branchId") ?? "",
   });
 
@@ -151,9 +182,9 @@ export async function kullaniciEkle(
 
   const veri = cozumlenen.data;
 
-  const sube = await subeyiCoz(veri.role, veri.branchId);
-  if ("hata" in sube) {
-    return { alanHatalari: sube.hata, degerler: girilenler };
+  const cozum = await rolleriCoz(veri.roles, veri.branchId);
+  if ("hata" in cozum) {
+    return { alanHatalari: cozum.hata, degerler: girilenler };
   }
 
   // Giriş sırasında e-posta yerelden bağımsız küçültülerek aranıyor; kayıt da
@@ -173,20 +204,23 @@ export async function kullaniciEkle(
       name: veri.name,
       email,
       passwordHash: await hash(veri.password, 12),
-      role: veri.role,
-      branchId: sube.branchId,
+      roles: cozum.roles,
+      branchId: cozum.branchId,
+      // Başlangıç parolası yöneticinin elinden geçiyor; kullanıcı ilk
+      // girişte kendi parolasını koymadan panele giremez.
+      mustChangePassword: true,
     },
   });
 
   revalidatePath("/koordinator/kullanicilar");
   revalidatePath("/koordinator/stajyerler");
   return {
-    basari: `${veri.name} eklendi (${ROL_ADLARI[veri.role]}). Giriş bilgilerini iletin ve ilk girişten sonra parolayı değiştirmesini isteyin.`,
+    basari: `${veri.name} eklendi (${rolEtiketi(cozum.roles)}). Giriş bilgilerini iletin; ilk girişte parolasını değiştirmesi istenecek.`,
   };
 }
 
 /**
- * Rol ve şubeyi birlikte günceller.
+ * Rolleri ve şubeyi birlikte günceller.
  *
  * İkisi tek eylemde çünkü tek başlarına geçersiz bir ara duruma düşürüyorlar:
  * bir stajyeri önce yöneticiye çevirip sonra şubesini boşaltmak, arada CHECK
@@ -203,32 +237,35 @@ export async function kullaniciRolVeSubeGuncelle(
   // hesabı kendini koordinatöre çevirip sistemde hiç yönetici bırakmayabilir
   // ve kullanıcı yönetimi ekranına bir daha girilemezdi.
   if (kullaniciId === yonetici.id) {
-    return { hata: "Kendi rolünüzü ve şubenizi değiştiremezsiniz." };
+    return { hata: "Kendi rollerinizi ve şubenizi değiştiremezsiniz." };
   }
 
-  const rolDegeri = String(formVerisi.get("role") ?? "");
-  if (!ROLLER.includes(rolDegeri as Role)) {
-    return { hata: "Geçerli bir rol seçin." };
+  const rolDegerleri = formRolleri(formVerisi);
+  if (
+    rolDegerleri.length === 0 ||
+    !rolDegerleri.every((deger) => ROLLER.includes(deger as Role))
+  ) {
+    return { hata: "En az bir geçerli rol seçin." };
   }
-  const role = rolDegeri as Role;
+  const roles = rolDegerleri as Role[];
 
-  const sube = await subeyiCoz(role, String(formVerisi.get("branchId") ?? ""));
-  if ("hata" in sube) return { alanHatalari: sube.hata };
+  const cozum = await rolleriCoz(roles, String(formVerisi.get("branchId") ?? ""));
+  if ("hata" in cozum) return { alanHatalari: cozum.hata };
 
   const hedef = await db.user.findUnique({
     where: { id: kullaniciId },
-    select: { name: true, role: true, branchId: true },
+    select: { name: true, roles: true, branchId: true },
   });
   if (!hedef) return { hata: "Kullanıcı bulunamadı." };
 
-  if (role !== "ADMIN" && (await sonYoneticiMi(kullaniciId))) {
+  if (!roles.includes("ADMIN") && (await sonYoneticiMi(kullaniciId))) {
     return { hata: SON_YONETICI_HATASI };
   }
 
   // Şube değiştiren bir stajyerin eski şubede aktif kaydı kalırsa o kayıtlar
   // sahipsizleşir: kayıt eski şubede kalır, stajyer artık orayı görmez ve
   // formlarını dolduramaz. Bu yüzden önce devir isteniyor.
-  if (hedef.branchId && sube.branchId !== hedef.branchId) {
+  if (hedef.branchId && cozum.branchId !== hedef.branchId) {
     const aktifKayitSayisi = await db.enrollment.count({
       where: {
         internId: kullaniciId,
@@ -246,12 +283,12 @@ export async function kullaniciRolVeSubeGuncelle(
 
   await db.user.update({
     where: { id: kullaniciId },
-    data: { role, branchId: sube.branchId },
+    data: { roles: cozum.roles, branchId: cozum.branchId },
   });
 
   revalidatePath("/koordinator/kullanicilar");
   revalidatePath("/koordinator/stajyerler");
-  return { basari: `${hedef.name} güncellendi: ${ROL_ADLARI[role]}.` };
+  return { basari: `${hedef.name} güncellendi: ${rolEtiketi(cozum.roles)}.` };
 }
 
 export async function kullaniciAdiGuncelle(
@@ -299,7 +336,7 @@ export async function kullaniciDurumDegistir(
 
   const hedef = await db.user.findUnique({
     where: { id: kullaniciId },
-    select: { active: true, name: true, role: true },
+    select: { active: true, name: true },
   });
   if (!hedef) return { hata: "Kullanıcı bulunamadı." };
 
@@ -340,10 +377,15 @@ export async function kullaniciParolaSifirla(
 
   const sonuc = await db.user.updateMany({
     where: { id: kullaniciId },
-    data: { passwordHash: await hash(parola, 12) },
+    // Geçici parola yöneticinin elinden geçiyor; kullanıcı ilk girişte
+    // kendi parolasını koymadan panele giremez.
+    data: { passwordHash: await hash(parola, 12), mustChangePassword: true },
   });
   if (sonuc.count === 0) return { hata: "Kullanıcı bulunamadı." };
 
   revalidatePath("/koordinator/kullanicilar");
-  return { basari: "Parola yenilendi. Yeni parolayı kullanıcıya iletin." };
+  return {
+    basari:
+      "Parola yenilendi. Yeni parolayı kullanıcıya iletin; ilk girişte değiştirmesi istenecek.",
+  };
 }

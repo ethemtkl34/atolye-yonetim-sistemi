@@ -168,7 +168,7 @@ async function stajyerleriDogrula(
   const bulunan = await db.user.count({
     where: {
       id: { in: stajyerIdleri },
-      role: "STAJYER",
+      roles: { has: "STAJYER" },
       active: true,
       branchId: subeId,
     },
@@ -191,7 +191,7 @@ export async function donemOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   const donem = donemSemasi.safeParse({
     dayMode: formVerisi.get("dayMode"),
@@ -334,7 +334,7 @@ export async function donemDurumDegistir(
   donemId: string,
   yeniDurum: (typeof DURUMLAR)[number],
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  await yonetimZorunlu("donemler", "TAM");
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz dönem durumu." };
@@ -384,7 +384,7 @@ export async function grupEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   const grup = grupSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -503,7 +503,7 @@ export async function donemStajyerleriniGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const secilenIdler = formVerisi.getAll("stajyerler").map(String).filter(Boolean);
@@ -619,7 +619,7 @@ export async function grupAdiGuncelle(
   grupId: string,
   ad: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   const cozumlenen = GRUP_SEMASI.shape.name.safeParse(ad);
   if (!cozumlenen.success) {
@@ -652,7 +652,7 @@ export async function grupAdiGuncelle(
 export async function grupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   const grup = await db.group.findFirst({
     where: { id: grupId, branchId: kullanici.aktifSubeId },

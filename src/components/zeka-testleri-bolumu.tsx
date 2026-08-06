@@ -26,14 +26,19 @@ import {
 /**
  * Zeka testleri bölümü — yüklenen sonuç belgeleri (PDF/görsel).
  *
- * İki modda çalışır (görüşme bölümleriyle aynı desen):
- *   - "yonetim": Zeka testleri sayfası — yükleme, silme, süzme; öğrenci
+ * Üç modda çalışır (görüşme bölümleriyle aynı desen, + yetki katmanının
+ * LISTE seviyesi):
+ *   - "yonetim": tam yetki — yükleme, silme, süzme, önizleme; öğrenci
  *     formdaki seçiciden gelir ve satırlarda öğrenci adı görünür.
- *   - "okuma":  Öğrenci profili — yalnızca o öğrencinin listesi ve önizleme
- *     penceresi; yükleme/silme Zeka testleri sayfasına yönlendirilir.
+ *   - "okuma":  görüntüleme — önizleme var, yükleme/silme yok (öğrenci
+ *     profili ve zeka testlerinde yalnızca GORUNTULE yetkisi olan roller).
+ *   - "liste":  yalnızca üstveri — hangi öğrenciye hangi tarihte hangi test;
+ *     satır TIKLANAMAZ, önizleme ve indirme bağlantısı hiç render edilmez
+ *     (danışma görevlisi). Asıl sınır arayüz değil: `/api/zeka-testi/[id]`
+ *     rotası GORUNTULE ister ve adres elle yazılsa da 403 döner.
  *
- * GİZLİLİK: Test sonuçları sağlık bilgisi gibi hassastır; bu bileşen yalnızca
- * koordinatör ekranlarında kullanılır, stajyer ekranlarına hiç gitmez.
+ * GİZLİLİK: Test sonuçları sağlık bilgisi gibi hassastır; bu bileşen stajyer
+ * ekranlarına hiç gitmez.
  *
  * Önizleme detay penceresinde: belge `/api/zeka-testi/[id]` rotasından
  * `inline` olarak servis edilir — PDF `<iframe>`, görsel `<img>` ile
@@ -73,14 +78,23 @@ function YukleButonu() {
 
 export function ZekaTestleriBolumu({
   mod,
+  baglam = "profil",
   testler,
   ogrenciSecenekleri = [],
   testAdiSecenekleri = [],
   bugunMetni = "",
 }: {
-  mod: "yonetim" | "okuma";
+  /** Yetki kademesi: yonetim = yükle/sil, okuma = önizle, liste = üstveri. */
+  mod: "yonetim" | "okuma" | "liste";
+  /**
+   * Nerede çizildiği: "sayfa" = Zeka testleri sayfası (öğrenci adı sütunu ve
+   * öğrenci süzgeci var), "profil" = öğrenci profilindeki gömülü bölüm
+   * (öğrenci zaten belli). Yetkiden bağımsız bir eksen: koordinatör sayfada
+   * okuma modundadır ama öğrenci adlarını görmelidir.
+   */
+  baglam?: "sayfa" | "profil";
   testler: ZekaTestiSatiri[];
-  /** Yalnızca yönetim modunda: yükleme formundaki ve süzgeçteki öğrenciler. */
+  /** Sayfa bağlamında: yükleme formundaki ve süzgeçteki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
   /** Yalnızca yönetim modunda: "Testin adı" açılır listesi (katalogdan). */
   testAdiSecenekleri?: string[];
@@ -88,6 +102,9 @@ export function ZekaTestleriBolumu({
   bugunMetni?: string;
 }) {
   const yonetim = mod === "yonetim";
+  const sayfada = baglam === "sayfa";
+  // Belge içeriği açılabilir mi — LISTE seviyesinin çizgisi tam burası.
+  const belgeAcilabilir = mod !== "liste";
 
   const [acik, setAcik] = useState(false);
   const [durum, eylem] = useActionState<ZekaTestiEylemDurumu, FormData>(
@@ -158,7 +175,7 @@ export function ZekaTestleriBolumu({
             + Test belgesi yükle
           </Buton>
         ) : null}
-        {!yonetim ? (
+        {!sayfada && belgeAcilabilir ? (
           <Link href="/koordinator/zeka-testleri" className={baglantiStili}>
             Zeka testleri sayfasında yönetilir
           </Link>
@@ -266,7 +283,7 @@ export function ZekaTestleriBolumu({
         </Kart>
       ) : null}
 
-      {yonetim && testler.length > 0 ? (
+      {sayfada && testler.length > 0 ? (
         <select
           value={ogrenciSuzgeci}
           onChange={(olay) => setOgrenciSuzgeci(olay.target.value)}
@@ -288,45 +305,70 @@ export function ZekaTestleriBolumu({
           aciklama={
             yonetim
               ? "Uygulanan testlerin sonuç belgelerini (PDF/görsel) buradan yükleyebilirsiniz. Belgeler stajyerlere görünmez."
-              : "Test belgeleri Zeka testleri sayfasından yüklenir."
+              : "Test belgeleri Test Uygulayıcısı tarafından yüklenir."
           }
         />
       ) : testler.length > 0 && suzulmus.length === 0 ? (
         <BosDurum baslik="Süzgece uyan belge yok." />
       ) : (
         <div className="space-y-2">
-          {suzulmus.map((test) => (
-            <button
-              key={test.id}
-              type="button"
-              onClick={() => setSecili(test)}
-              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
-            >
-              <span className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-900">
-                  {tarihBicimle(test.tarih)}
-                </span>
-                {yonetim ? (
+          {suzulmus.map((test) => {
+            const icerik = (
+              <>
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-medium text-zinc-900">
-                    {test.ogrenciAdi}
+                    {tarihBicimle(test.tarih)}
+                  </span>
+                  {sayfada ? (
+                    <span className="font-medium text-zinc-900">
+                      {test.ogrenciAdi}
+                    </span>
+                  ) : null}
+                  <span className="text-sm text-zinc-700">{test.testAdi}</span>
+                  <Rozet
+                    tur={test.mime === "application/pdf" ? "notr" : "pasif"}
+                  >
+                    {test.mime === "application/pdf" ? "PDF" : "Görsel"}
+                  </Rozet>
+                  <span className="text-xs text-zinc-500">
+                    {boyutBicimle(test.boyut)}
+                  </span>
+                </span>
+                {belgeAcilabilir ? (
+                  <span
+                    aria-hidden
+                    className="shrink-0 text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
+                  >
+                    →
                   </span>
                 ) : null}
-                <span className="text-sm text-zinc-700">{test.testAdi}</span>
-                <Rozet tur={test.mime === "application/pdf" ? "notr" : "pasif"}>
-                  {test.mime === "application/pdf" ? "PDF" : "Görsel"}
-                </Rozet>
-                <span className="text-xs text-zinc-500">
-                  {boyutBicimle(test.boyut)}
-                </span>
-              </span>
-              <span
-                aria-hidden
-                className="shrink-0 text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
+              </>
+            );
+
+            // LISTE seviyesinde satır tıklanamaz: önizleme penceresi ve
+            // belge adresi hiç render edilmez.
+            if (!belgeAcilabilir) {
+              return (
+                <div
+                  key={test.id}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)]"
+                >
+                  {icerik}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={test.id}
+                type="button"
+                onClick={() => setSecili(test)}
+                className="group flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
               >
-                →
-              </span>
-            </button>
-          ))}
+                {icerik}
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cikisYap } from "@/app/cikis/actions";
-import { rolAdi, type SubeliKullanici } from "@/lib/auth-guard";
+import { rolEtiketi, type SubeliKullanici } from "@/lib/auth-guard";
 import type { MenuOgesi } from "@/lib/navigasyon";
 import { MobilMenu } from "./mobil-menu";
 import { SubeGostergesi } from "./sube-gostergesi";
@@ -87,7 +87,7 @@ export function PanelKabuk({
                   {kullanici.name}
                 </span>
                 <span className="block whitespace-nowrap text-xs text-zinc-500">
-                  {rolAdi(kullanici.role)} · Hesabım
+                  {rolEtiketi(kullanici.roller)} · Hesabım
                 </span>
               </span>
             </Link>

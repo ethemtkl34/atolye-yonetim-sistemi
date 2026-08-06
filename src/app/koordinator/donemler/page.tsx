@@ -29,7 +29,7 @@ const TEMEL_YOL = "/koordinator/donemler";
 export default async function DonemlerSayfasi(
   props: PageProps<"/koordinator/donemler">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler");
   const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
@@ -82,12 +82,16 @@ export default async function DonemlerSayfasi(
         aciklama="Her dönem 10 eğitim haftasından ve 5 atölyeden oluşur. Dönemin takvimi ve atölyeleri iki şubede ortaktır; gruplar, kadro ve öğrenci sayıları yalnızca sizin şubenizindir."
         ustBilgi={<Rozet tur="notr">Takvim bütün şubelerde ortak</Rozet>}
         aksiyon={
-          <Link
-            href="/koordinator/donemler/yeni"
-            className={butonStili()}
-          >
-            Yeni dönem
-          </Link>
+          // Salt görüntüleme yetkisinde (danışma görevlisi) düğme çizilmez;
+          // sayfanın kendisi zaten TAM ister (`donemler/yeni` guard'ı).
+          kullanici.yetkiler.donemler === "TAM" ? (
+            <Link
+              href="/koordinator/donemler/yeni"
+              className={butonStili()}
+            >
+              Yeni dönem
+            </Link>
+          ) : undefined
         }
       />
 

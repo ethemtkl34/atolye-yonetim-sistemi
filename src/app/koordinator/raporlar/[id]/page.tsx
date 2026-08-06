@@ -13,7 +13,7 @@ import { yonetimZorunlu } from "@/lib/auth-guard";
 export default async function EskiRaporAdresi(
   props: PageProps<"/koordinator/raporlar/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("raporlar");
   const { id } = await props.params;
 
   const rapor = await db.report.findFirst({

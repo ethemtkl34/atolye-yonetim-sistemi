@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default async function KoordinatorGunPuanlamasi(
   props: PageProps<"/koordinator/puanlamalar/[kayitId]/[tarih]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("puanlamalar");
   const { kayitId, tarih } = await props.params;
 
   const veri = await kayitPuanlamasi(kayitId, kullanici.aktifSubeId);

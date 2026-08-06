@@ -3,6 +3,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { anaSayfaYolu, yonetimRoluMu } from "@/lib/roller";
+import {
+  yetkiYeter,
+  yetkileriHesapla,
+  type Modul,
+  type Seviye,
+} from "@/lib/yetkiler";
 import { aktifSubeyiCoz, secilenSubeCerezi } from "@/lib/sube";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -13,13 +19,21 @@ import type { Role } from "@/generated/prisma/enums";
  * uyarısı: proxy tam bir yetkilendirme çözümü değildir). Gerçek koruma her
  * sayfa ve her Server Action'ın kendi içinde bu fonksiyonları çağırmasıyla
  * sağlanır. Yeni bir sayfa veya işlem yazan herkes buradan başlamalı.
+ *
+ * Modül bazlı yetki deseni (bkz. lib/yetkiler.ts):
+ *   sayfa               → yonetimZorunlu("donemler")            (GORUNTULE)
+ *   mutasyon action'ı   → yonetimZorunlu("donemler", "TAM")
+ *   zeka testi listesi  → yonetimZorunlu("zekaTestleri", "LISTE")
+ * Parametresiz `yonetimZorunlu()` yalnızca panel kapısıdır (dashboard,
+ * layout): herhangi bir yönetim rolü yeter, modül kontrolü yapılmaz.
  */
 
 export type OturumKullanicisi = {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  /** Kullanıcının rolleri — yetki bunların birleşiminden hesaplanır. */
+  roller: Role[];
   /** ADMIN'de null; diğer rollerde veritabanı CHECK'i gereği hep dolu. */
   subeId: string | null;
 };
@@ -27,7 +41,7 @@ export type OturumKullanicisi = {
 /** Şube bağlamı çözülmüş kullanıcı — panel sayfalarının ve eylemlerin tipi. */
 export type SubeliKullanici = OturumKullanicisi & {
   /**
-   * Üzerinde çalışılan şube: koordinatör/stajyerde kendi şubesi, yöneticide
+   * Üzerinde çalışılan şube: şubeli rollerde kendi şubesi, yöneticide
    * üst şeritten seçtiği şube. Asla null — bütün sorgu süzgeçleri bunu
    * kullanıyor, null olabilseydi her çağrı yerinde ayrıca kontrol gerekirdi.
    */
@@ -37,6 +51,11 @@ export type SubeliKullanici = OturumKullanicisi & {
   subeDegistirebilir: boolean;
   /** Üst şeritteki seçicinin listesi; yönetici dışında tek elemanlı. */
   secilebilirSubeler: readonly { id: string; ad: string }[];
+  /**
+   * Modül başına etkin yetki (rollerin birleşimi). Sayfalar arayüz modunu
+   * buradan seçer: `kullanici.yetkiler.zekaTestleri === "TAM"` gibi.
+   */
+  yetkiler: Record<Modul, Seviye>;
 };
 
 /**
@@ -53,8 +72,9 @@ const kullaniciyiOku = cache(async (kullaniciId: string) =>
       id: true,
       name: true,
       email: true,
-      role: true,
+      roles: true,
       active: true,
+      mustChangePassword: true,
       branchId: true,
       branch: { select: { id: true, name: true } },
     },
@@ -80,8 +100,12 @@ const subeleriOku = cache(async () =>
  * oturum çerezi duran kullanıcıyı `/giris`'ten kendi paneline geri yollar ve
  * bu bir yönlendirme döngüsü oluştururdu.
  *
- * Ad, rol ve şube belirteçten değil veritabanından okunur; yöneticinin
+ * Ad, roller ve şube belirteçten değil veritabanından okunur; yöneticinin
  * yaptığı rol veya şube değişikliği yeni girişi beklemeden geçerli olur.
+ *
+ * Parola değişimi zorunluysa (`mustChangePassword`) hiçbir panel sayfası
+ * açılmaz; kullanıcı önce `/parola-degistir`'den geçer. O sayfanın kendisi
+ * bu fonksiyonu KULLANMAZ (döngü olurdu), oturumu kendi çözer.
  */
 export async function girisZorunlu(): Promise<OturumKullanicisi> {
   const oturum = await auth();
@@ -96,11 +120,15 @@ export async function girisZorunlu(): Promise<OturumKullanicisi> {
     redirect("/hesap-pasif");
   }
 
+  if (kullanici.mustChangePassword) {
+    redirect("/parola-degistir");
+  }
+
   return {
     id: kullanici.id,
     name: kullanici.name,
     email: kullanici.email,
-    role: kullanici.role,
+    roller: kullanici.roles,
     subeId: kullanici.branchId,
   };
 }
@@ -108,7 +136,7 @@ export async function girisZorunlu(): Promise<OturumKullanicisi> {
 /**
  * Kullanıcıya şube bağlamını ekler.
  *
- * Koordinatör ve stajyerde şube kendi kaydından gelir; çerez okunmaz bile —
+ * Şubeli rollerde şube kendi kaydından gelir; çerez okunmaz bile —
  * istemcinin elindeki bir değer hiçbir zaman görüş alanını genişletmemeli.
  * Yönetici içinse çerezdeki seçim veritabanına karşı doğrulanır.
  */
@@ -125,9 +153,10 @@ async function subeBaglamiEkle(
     );
   }
 
-  const cerez = kullanici.role === "ADMIN" ? await secilenSubeCerezi() : undefined;
+  const yonetici = kullanici.roller.includes("ADMIN");
+  const cerez = yonetici ? await secilenSubeCerezi() : undefined;
   const aktifSubeId = aktifSubeyiCoz(
-    kullanici.role,
+    yonetici,
     kullanici.subeId,
     cerez,
     subeler,
@@ -140,7 +169,6 @@ async function subeBaglamiEkle(
   }
 
   const aktifSube = subeler.find((sube) => sube.id === aktifSubeId)!;
-  const yonetici = kullanici.role === "ADMIN";
 
   return {
     ...kullanici,
@@ -150,36 +178,42 @@ async function subeBaglamiEkle(
     secilebilirSubeler: yonetici
       ? subeler.map((sube) => ({ id: sube.id, ad: sube.name }))
       : [{ id: aktifSube.id, ad: aktifSube.name }],
+    yetkiler: yetkileriHesapla(kullanici.roller),
   };
 }
 
 /**
  * Rol ayrımı yapmadan şube bağlamı çözer.
  *
- * Hem stajyerin hem koordinatörün kullandığı ortak eylemler için (puanlama
- * kaydetme gibi): orada rol kontrolü zaten eylemin kendi içinde yapılıyor,
- * eksik olan tek şey şubeydi.
+ * Hem stajyerin hem yönetim rollerinin kullandığı ortak eylemler için
+ * (puanlama kaydetme gibi): orada rol kontrolü zaten eylemin kendi içinde
+ * yapılıyor, eksik olan tek şey şubeydi.
  */
 export async function subeliOturum(): Promise<SubeliKullanici> {
   return subeBaglamiEkle(await girisZorunlu());
 }
 
 /**
- * Koordinatör panelinin kapısı: koordinatör VEYA yönetici.
+ * Koordinatör panelinin kapısı: STAJYER dışındaki herhangi bir rol.
  *
- * Yönetici aynı paneli kullanıyor — üst şeritten şube seçip o şubede
- * koordinatörün yaptığı her işi yapıyor. Bu yüzden fonksiyonun adı artık
- * `yonetimZorunlu`: "yonetimZorunlu" adı, koordinatör olmayan birini de
- * geçirdiği için yanıltıcı olurdu.
- *
- * Dönüş tipi şubeyi de taşıyor; sorgu süzgeçleri `kullanici.aktifSubeId`
- * okur, ayrıca bağlam çözmeye gerek kalmaz.
+ * `modul` verildiğinde ayrıca yetki matrisi kontrolü yapılır: kullanıcının
+ * rollerinin o modüldeki etkin yetkisi `gereken` seviyeye ulaşmıyorsa
+ * panelin ana sayfasına yönlendirilir. Menüde görünmeyen bir adrese elle
+ * giden (veya yetkisi sonradan daraltılan) kullanıcı böylece sayfayı hiç
+ * açamaz — menüden gizlemek yetki değildir, asıl sınır burasıdır.
  */
-export async function yonetimZorunlu(): Promise<SubeliKullanici> {
+export async function yonetimZorunlu(
+  modul?: Modul,
+  gereken: Seviye = "GORUNTULE",
+): Promise<SubeliKullanici> {
   const kullanici = await girisZorunlu();
 
-  if (!yonetimRoluMu(kullanici.role)) {
-    redirect(anaSayfaYolu(kullanici.role));
+  if (!yonetimRoluMu(kullanici.roller)) {
+    redirect(anaSayfaYolu(kullanici.roller));
+  }
+
+  if (modul && !yetkiYeter(kullanici.roller, modul, gereken)) {
+    redirect("/koordinator");
   }
 
   return subeBaglamiEkle(kullanici);
@@ -189,8 +223,8 @@ export async function yonetimZorunlu(): Promise<SubeliKullanici> {
 export async function stajyerZorunlu(): Promise<SubeliKullanici> {
   const kullanici = await girisZorunlu();
 
-  if (kullanici.role !== "STAJYER") {
-    redirect(anaSayfaYolu(kullanici.role));
+  if (!kullanici.roller.includes("STAJYER")) {
+    redirect(anaSayfaYolu(kullanici.roller));
   }
 
   return subeBaglamiEkle(kullanici);
@@ -203,11 +237,11 @@ export async function stajyerZorunlu(): Promise<SubeliKullanici> {
 export async function adminZorunlu(): Promise<OturumKullanicisi> {
   const kullanici = await girisZorunlu();
 
-  if (kullanici.role !== "ADMIN") {
-    redirect(anaSayfaYolu(kullanici.role));
+  if (!kullanici.roller.includes("ADMIN")) {
+    redirect(anaSayfaYolu(kullanici.roller));
   }
 
   return kullanici;
 }
 
-export { rolAdi, anaSayfaYolu } from "@/lib/roller";
+export { rolAdi, rolEtiketi, anaSayfaYolu } from "@/lib/roller";

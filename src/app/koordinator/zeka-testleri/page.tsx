@@ -20,12 +20,19 @@ export const metadata: Metadata = {
  * Yükleme ve silmenin tek adresi burasıdır; öğrenci profili aynı belgeleri
  * yalnızca gösterir (Danışmanlık deseni).
  *
- * GİZLİLİK: Test sonuçları sağlık bilgisi kuralına tabidir — sayfa yalnızca
- * koordinatör/yönetici rolüne açıktır, stajyer sorgularına hiç girmez.
+ * YETKİ KADEMELERİ (bkz. lib/yetkiler.ts): sayfa LISTE ile açılır, arayüz
+ * modu etkin yetkiden seçilir — TAM (test uygulayıcısı, yönetici) yükler ve
+ * siler; GORUNTULE (koordinatör, psikolog) belgeleri önizler; LISTE (danışma
+ * görevlisi) yalnızca üstveriyi görür, belge içeriği rota katmanında da
+ * kapalıdır.
+ *
+ * GİZLİLİK: Test sonuçları sağlık bilgisi kuralına tabidir — stajyer
+ * sorgularına hiç girmez.
  */
 export default async function ZekaTestleriSayfasi() {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("zekaTestleri", "LISTE");
   const subeId = kullanici.aktifSubeId;
+  const yetki = kullanici.yetkiler.zekaTestleri;
 
   const [ogrenciler, testTurleri, testKayitlari] = await Promise.all([
     // Yükleme formundaki öğrenci seçici — şubenin bütün öğrencileri.
@@ -88,11 +95,18 @@ export default async function ZekaTestleriSayfasi() {
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Zeka testleri"
-        aciklama="Uygulanan testlerin sonuç belgeleri buradan yüklenir ve önizlenir; öğrenci profili belgeleri yalnızca gösterir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
+        aciklama={
+          yetki === "TAM"
+            ? "Uygulanan testlerin sonuç belgeleri buradan yüklenir ve önizlenir; öğrenci profili belgeleri yalnızca gösterir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
+            : yetki === "GORUNTULE"
+              ? "Uygulanan testlerin sonuç belgeleri. Yükleme ve silme Test Uygulayıcısı yetkisindedir."
+              : "Uygulanan testlerin listesi. Belge içerikleri Test Uygulayıcısı ve atölye ekibine açıktır."
+        }
       />
 
       <ZekaTestleriBolumu
-        mod="yonetim"
+        mod={yetki === "TAM" ? "yonetim" : yetki === "GORUNTULE" ? "okuma" : "liste"}
+        baglam="sayfa"
         testler={testler}
         ogrenciSecenekleri={ogrenciSecenekleri}
         testAdiSecenekleri={testTurleri.map((tur) => tur.name)}

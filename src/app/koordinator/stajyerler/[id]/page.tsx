@@ -11,7 +11,7 @@ import { AtamaPaneli, type AtanabilirKayit } from "./atama-paneli";
 export async function generateMetadata(
   props: PageProps<"/koordinator/stajyerler/[id]">,
 ): Promise<Metadata> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler");
   const { id } = await props.params;
   const stajyer = await db.user.findFirst({
     where: { id, branchId: kullanici.aktifSubeId },
@@ -34,7 +34,7 @@ export async function generateMetadata(
 export default async function StajyerDetaySayfasi(
   props: PageProps<"/koordinator/stajyerler/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("stajyerler");
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
   const parametreler = await props.searchParams;
@@ -55,7 +55,7 @@ export default async function StajyerDetaySayfasi(
         name: true,
         email: true,
         active: true,
-        role: true,
+        roles: true,
         _count: {
           select: {
             assignedEnrollments: { where: { status: "AKTIF" } },
@@ -85,7 +85,7 @@ export default async function StajyerDetaySayfasi(
     }),
   ]);
 
-  if (!stajyer || stajyer.role !== "STAJYER") notFound();
+  if (!stajyer || !stajyer.roles.includes("STAJYER")) notFound();
 
   const secilenDonem = donemSecili
     ? (donemler.find((donem) => donem.id === secilenId) ?? null)

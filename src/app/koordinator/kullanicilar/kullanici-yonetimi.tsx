@@ -20,7 +20,7 @@ export type KullaniciSatiri = {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  roller: Role[];
   active: boolean;
   subeId: string | null;
   subeAdi: string | null;
@@ -28,7 +28,18 @@ export type KullaniciSatiri = {
   puanlamaSayisi: number;
 };
 
-const ROL_SECENEKLERI: readonly Role[] = ["ADMIN", "KOORDINATOR", "STAJYER"];
+/** Seçim sırası = ekrandaki sıra: yetkiden aza doğru. */
+const ROL_SECENEKLERI: readonly Role[] = [
+  "ADMIN",
+  "KOORDINATOR",
+  "ATOLYE_PSIKOLOGU",
+  "TEST_UYGULAYICISI",
+  "DANISMA_GOREVLISI",
+  "STAJYER",
+];
+
+/** Tek başına kalmak zorunda olan roller (sunucu ve CHECK de zorluyor). */
+const TEKIL_ROLLER: readonly Role[] = ["ADMIN", "STAJYER"];
 
 function GonderButonu({ etiket }: { etiket: string }) {
   const { pending } = useFormStatus();
@@ -39,11 +50,11 @@ function GonderButonu({ etiket }: { etiket: string }) {
   );
 }
 
-/** Rol rozetinin tonu: yönetici ayırt edilsin, pasif hesap geri çekilsin. */
+/** Rol rozetinin tonu: yönetici ayırt edilsin, stajyer geri çekilsin. */
 function rolRozetTuru(role: Role): "notr" | "uyari" | "pasif" {
   if (role === "ADMIN") return "uyari";
-  if (role === "KOORDINATOR") return "notr";
-  return "pasif";
+  if (role === "STAJYER") return "pasif";
+  return "notr";
 }
 
 export function KullaniciYonetimi({
@@ -82,9 +93,13 @@ export function KullaniciYonetimi({
                     <span className="font-medium text-zinc-900">
                       {kullanici.name}
                     </span>
-                    <Rozet tur={rolRozetTuru(kullanici.role)}>
-                      {ROL_ADLARI[kullanici.role]}
-                    </Rozet>
+                    {/* Her unvan ayrı rozet: "Atölye Psikoloğu / Test
+                        Uygulayıcısı" tek rozette okunaksız kalıyordu. */}
+                    {kullanici.roller.map((rol) => (
+                      <Rozet key={rol} tur={rolRozetTuru(rol)}>
+                        {ROL_ADLARI[rol]}
+                      </Rozet>
+                    ))}
                     {/* Yöneticinin şubesi yok; boş rozet yerine ne olduğu
                         açıkça yazılıyor. */}
                     <Rozet tur="notr">
@@ -96,7 +111,7 @@ export function KullaniciYonetimi({
                   <p className="mt-0.5 text-sm text-zinc-600">
                     {kullanici.email}
                   </p>
-                  {kullanici.role === "STAJYER" ? (
+                  {kullanici.roller.includes("STAJYER") ? (
                     <p className="mt-1 text-xs text-zinc-500">
                       {kullanici.aktifOgrenciSayisi} aktif öğrenci ·{" "}
                       {kullanici.puanlamaSayisi} puanlama
@@ -185,43 +200,75 @@ export function KullaniciYonetimi({
 }
 
 /**
+ * Bir rolün eklenmesi/çıkarılması sonrası geçerli kombinasyon.
+ *
+ * Tekil roller (yönetici, stajyer) işaretlenince diğer her şeyi düşürür;
+ * bir başka rol işaretlenince tekil roller düşer. Sunucu ve veritabanı
+ * aynı kuralı ayrıca zorluyor — burası yalnızca geçersiz bir seçimin hiç
+ * kurulamamasını sağlıyor.
+ */
+function rolSecimiUygula(mevcut: Role[], rol: Role, secili: boolean): Role[] {
+  if (!secili) return mevcut.filter((r) => r !== rol);
+  if (TEKIL_ROLLER.includes(rol)) return [rol];
+  return [...mevcut.filter((r) => !TEKIL_ROLLER.includes(r)), rol];
+}
+
+/**
  * Rol ve şube seçimi bir arada.
  *
- * Yönetici seçilince şube seçici gizleniyor — yöneticinin şubesi yok ve
- * seçilebilir bırakmak "yönetici + şube" gibi geçersiz bir kombinasyonu
- * mümkünmüş gibi gösterirdi. Sunucu tarafı da aynı kuralı uyguluyor.
+ * Roller onay kutuları: bir kişi birden çok unvan taşıyabiliyor (psikolog +
+ * test uygulayıcısı). Yönetici seçilince şube seçici gizleniyor — yöneticinin
+ * şubesi yok ve seçilebilir bırakmak "yönetici + şube" gibi geçersiz bir
+ * kombinasyonu mümkünmüş gibi gösterirdi. Sunucu tarafı da aynı kuralı
+ * uyguluyor.
  */
 function RolSubeAlanlari({
-  role,
-  setRole,
+  roller,
+  setRoller,
   varsayilanSube,
   subeler,
   hatalar,
 }: {
-  role: Role;
-  setRole: (yeni: Role) => void;
+  roller: Role[];
+  setRoller: (yeni: Role[]) => void;
   varsayilanSube: string;
   subeler: SubeSecenegi[];
   hatalar?: Record<string, string>;
 }) {
+  const yonetici = roller.includes("ADMIN");
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Alan etiket="Rol" hata={hatalar?.role}>
-        <select
-          name="role"
-          value={role}
-          onChange={(olay) => setRole(olay.target.value as Role)}
-          className={secimStili}
-        >
+      <Alan etiket="Roller" hata={hatalar?.roles}>
+        <div className="space-y-1.5 rounded-md border border-yuzey-200 px-3 py-2">
           {ROL_SECENEKLERI.map((secenek) => (
-            <option key={secenek} value={secenek}>
+            <label
+              key={secenek}
+              className="flex items-center gap-2 text-sm text-zinc-800"
+            >
+              <input
+                type="checkbox"
+                name="roles"
+                value={secenek}
+                checked={roller.includes(secenek)}
+                onChange={(olay) =>
+                  setRoller(
+                    rolSecimiUygula(roller, secenek, olay.target.checked),
+                  )
+                }
+                className="size-4 accent-marka-600"
+              />
               {ROL_ADLARI[secenek]}
-            </option>
+            </label>
           ))}
-        </select>
+          <p className="pt-1 text-xs text-zinc-500">
+            Kurum Yöneticisi ve Stajyer başka rolle birleşemez; diğer unvanlar
+            birlikte verilebilir.
+          </p>
+        </div>
       </Alan>
 
-      {role === "ADMIN" ? (
+      {yonetici ? (
         <Alan etiket="Şube">
           <p className="rounded-md border border-dashed border-yuzey-200 px-3 py-2 text-sm text-zinc-500">
             Yönetici bütün şubeleri görür; şube seçilmez.
@@ -253,7 +300,7 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
     {},
   );
   const [acik, setAcik] = useState(false);
-  const [role, setRole] = useState<Role>("STAJYER");
+  const [roller, setRoller] = useState<Role[]>(["STAJYER"]);
   const [gorulen, setGorulen] = useState(durum.basari);
 
   // Başarılı kayıttan sonra form kapanır. React 19 form'u kendisi sıfırlıyor;
@@ -297,8 +344,8 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
         </div>
 
         <RolSubeAlanlari
-          role={role}
-          setRole={setRole}
+          roller={roller}
+          setRoller={setRoller}
           varsayilanSube={durum.degerler?.branchId ?? ""}
           subeler={subeler}
           hatalar={durum.alanHatalari}
@@ -306,7 +353,7 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
 
         <Alan
           etiket="Başlangıç parolası"
-          ipucu="En az 8 karakter. Kullanıcıya iletin ve ilk girişten sonra değiştirmesini isteyin."
+          ipucu="En az 8 karakter. Kullanıcıya iletin; ilk girişte kendi parolasını belirlemesi istenecek."
           hata={durum.alanHatalari?.password}
         >
           <Girdi name="password" type="text" required minLength={8} />
@@ -338,13 +385,13 @@ function RolFormu({
     kullaniciRolVeSubeGuncelle.bind(null, kullanici.id),
     {},
   );
-  const [role, setRole] = useState<Role>(kullanici.role);
+  const [roller, setRoller] = useState<Role[]>(kullanici.roller);
 
   return (
     <form action={eylem} className="space-y-3">
       <RolSubeAlanlari
-        role={role}
-        setRole={setRole}
+        roller={roller}
+        setRoller={setRoller}
         varsayilanSube={kullanici.subeId ?? ""}
         subeler={subeler}
         hatalar={durum.alanHatalari}
@@ -405,7 +452,7 @@ function ParolaFormu({
     <form action={eylem} className="space-y-3">
       <Alan
         etiket="Yeni parola"
-        ipucu="En az 8 karakter."
+        ipucu="En az 8 karakter. Kullanıcı ilk girişte kendi parolasını belirleyecek."
         hata={durum.alanHatalari?.password}
       >
         <Girdi name="password" type="text" autoFocus required minLength={8} />

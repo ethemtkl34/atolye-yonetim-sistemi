@@ -29,7 +29,7 @@ export async function generateMetadata(
 export default async function KulupDetaySayfasi(
   props: PageProps<"/koordinator/kulupler/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kulupler");
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 

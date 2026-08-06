@@ -116,19 +116,19 @@ const KULLANICILAR = [
   {
     email: "yonetici@tuzder.local",
     name: "Kurum Yöneticisi",
-    role: "ADMIN" as const,
+    roles: ["ADMIN" as const],
     branchId: null,
   },
   {
     email: "umraniye@tuzder.local",
     name: "Ümraniye Koordinatörü",
-    role: "KOORDINATOR" as const,
+    roles: ["KOORDINATOR" as const],
     branchId: "sube_umraniye",
   },
   {
     email: "gunesli@tuzder.local",
     name: "Güneşli Koordinatörü",
-    role: "KOORDINATOR" as const,
+    roles: ["KOORDINATOR" as const],
     branchId: "sube_gunesli",
   },
 ];
@@ -144,19 +144,19 @@ const YEREL_STAJYERLER = [
   {
     email: "ayse@tuzder.local",
     name: "Ayşe Yılmaz",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_umraniye",
   },
   {
     email: "mehmet@tuzder.local",
     name: "Mehmet Kaya",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_umraniye",
   },
   {
     email: "zeynep@tuzder.local",
     name: "Zeynep Demir",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_umraniye",
   },
   // Güneşli stajyerleri — şube izolasyonunun denenebilmesi için bu şubede de
@@ -164,19 +164,19 @@ const YEREL_STAJYERLER = [
   {
     email: "elif@tuzder.local",
     name: "Elif Şahin",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_gunesli",
   },
   {
     email: "burak@tuzder.local",
     name: "Burak Yıldırım",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_gunesli",
   },
   {
     email: "selin@tuzder.local",
     name: "Selin Aktaş",
-    role: "STAJYER" as const,
+    roles: ["STAJYER" as const],
     branchId: "sube_gunesli",
   },
 ];
@@ -208,7 +208,7 @@ async function main() {
       // seed'in tekrar çalışması onu düzeltmeli.
       update: {
         name: kullanici.name,
-        role: kullanici.role,
+        roles: kullanici.roles,
         branchId: kullanici.branchId,
       },
       create: { ...kullanici, passwordHash },

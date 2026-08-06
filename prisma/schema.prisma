@@ -20,14 +20,27 @@ datasource db {
 /// §3 — Roller.
 ///
 /// Sistem tek merkez için yazıldığında admin ve koordinatör tek rolde
-/// birleştirilmişti; kurum iki şubeye çıkınca bu karar geri alındı.
-/// KOORDINATOR ve STAJYER bir şubeye bağlıdır ve yalnızca kendi şubesinin
-/// verisini görür; ADMIN hiçbir şubeye bağlı değildir, üst şeritten şube
-/// seçerek bütün şubelerde çalışır ve hesap/rol yönetimini yapar.
+/// birleştirilmişti; kurum iki şubeye çıkınca bu karar geri alındı. Ümraniye
+/// kadrosunun yetkilendirme matrisiyle rol seti altıya çıktı ve bir kullanıcı
+/// birden çok rol taşıyabilir oldu (`User.roles`, örn. psikolog + test
+/// uygulayıcısı). Her rolün modül bazlı yetkileri `src/lib/yetkiler.ts`
+/// içindeki matriste tanımlıdır; etkin yetki rollerin birleşimidir.
+///
+/// Enum değerleri ilk üç rolde ESKİ adlarıyla duruyor (ADMIN ≙ "Kurum
+/// Yöneticisi", KOORDINATOR ≙ "Atölye Koordinatörü"): üretim veritabanında
+/// enum değeri yeniden adlandırmak backfill ve CHECK yeniden yazımı gerektirir,
+/// görünen ad zaten `ROL_ADLARI`'ndan geliyor.
+///
+/// Kombinasyon kuralları (CHECK ile de zorlanır, bkz. migration `coklu_rol`):
+/// ADMIN tek başınadır ve şubesizdir; STAJYER tek başınadır (kendi paneli);
+/// kalan dört rol serbestçe birleşir ve her zaman bir şubeye bağlıdır.
 enum Role {
   KOORDINATOR
   STAJYER
   ADMIN
+  ATOLYE_PSIKOLOGU
+  TEST_UYGULAYICISI
+  DANISMA_GOREVLISI
 }
 
 /// §4.3
@@ -164,21 +177,36 @@ model Branch {
 // Kullanıcılar
 // ---------------------------------------------------------------------------
 
-/// Koordinatör ve stajyer aynı tabloda tutulur; ayrım `role` alanındadır.
+/// Bütün kullanıcılar aynı tabloda tutulur; ayrım `roles` dizisindedir.
 /// Stajyerin kendi hesabı olması gerekiyor çünkü puanlamayı kendisi giriyor.
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   name         String
-  role         Role
+
+  /// Yetkinin TEK kaynağı. Birden çok rol taşınabilir (örn. psikolog + test
+  /// uygulayıcısı); etkin yetki `yetkileriHesapla()` ile rollerin birleşimi
+  /// olarak hesaplanır. Boş dizi olamaz (`User_rol_dolu` CHECK).
+  roles Role[]
+
+  /// GEÇİŞ ARTIĞI — kod okumaz ve yazmaz. Çoklu role geçişte `roles`'a
+  /// kopyalandı; eski kod deploy penceresinde kırılmasın diye nullable
+  /// bırakıldı. Temizlik migration'ı bu sütunu ve eski indekslerini düşürecek.
+  role Role?
+
+  /// İlk girişte (veya yönetici parola sıfırladığında) parola değişimi
+  /// zorunlu mu. Doluysa `girisZorunlu()` kullanıcıyı `/parola-degistir`
+  /// sayfasına yönlendirir; başka hiçbir sayfa açılmaz.
+  mustChangePassword Boolean @default(false)
+
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  /// ADMIN hiçbir şubeye bağlı değildir (null); koordinatör ve stajyer her
-  /// zaman bir şubeye bağlıdır. Kural veritabanında CHECK ile de zorlanıyor
-  /// (bkz. migration: `User_admin_sube_kurali`).
+  /// ADMIN (Kurum Yöneticisi) hiçbir şubeye bağlı değildir (null); diğer
+  /// bütün roller her zaman bir şubeye bağlıdır. Kural veritabanında CHECK
+  /// ile de zorlanıyor (bkz. migration `coklu_rol`: `User_yonetici_sube_kurali`).
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
@@ -191,8 +219,10 @@ model User {
   addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
+  // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
   @@index([role, active])
   @@index([branchId, role, active])
+  @@index([roles], type: Gin)
 }
 
 // ---------------------------------------------------------------------------

@@ -106,7 +106,7 @@ export async function ogrenciEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
@@ -201,7 +201,7 @@ export async function ogrenciEkle(
  * silinmesi bu ekranda kabul edilemez bir kayıp olurdu.
  */
 export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   type SilmeSonucu =
@@ -300,7 +300,7 @@ export async function ogrenciGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
 
   const cozumlenen = ogrenciSemasi.safeParse(formdanOku(formVerisi));
   if (!cozumlenen.success) {

@@ -20,20 +20,25 @@ export const authConfig = {
     maxAge: 12 * 60 * 60,
   },
   callbacks: {
-    /** Kullanıcının kimliği ve rolü token'a yazılır; her istekte veritabanına
-     *  gitmeden rol kontrolü yapılabilsin diye. */
+    /** Kullanıcının kimliği ve rolleri token'a yazılır; her istekte
+     *  veritabanına gitmeden rol kontrolü yapılabilsin diye. */
     jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
-        token.role = user.role as Role;
+        token.roller = user.roller as Role[];
+      } else if (!token.roller && token.role) {
+        // Çoklu role geçiş deploy'undan önce kesilmiş belirteç: tek `role`
+        // taşıyor. 12 saatlik oturumlar deploy anında kopmasın diye diziye
+        // çevrilir. Belirteç ömrü dolunca (temizlik deploy'unda) bu dal silinir.
+        token.roller = [token.role];
       }
       return token;
     },
-    /** Token'daki kimlik ve rol oturum nesnesine aktarılır. */
+    /** Token'daki kimlik ve roller oturum nesnesine aktarılır. */
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id;
-        session.user.role = token.role;
+        session.user.roller = token.roller;
       }
       return session;
     },

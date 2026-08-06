@@ -22,7 +22,7 @@ export async function generateMetadata(
 export default async function AtolyeDetaySayfasi(
   props: PageProps<"/koordinator/atolyeler/[id]">,
 ) {
-  await yonetimZorunlu();
+  await yonetimZorunlu("atolyeler");
   const { id } = await props.params;
 
   const atolye = await db.workshopType.findUnique({

@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import type { Role } from "@/generated/prisma/enums";
 
 /**
  * Şube bağlamı.
@@ -44,20 +43,24 @@ export async function secilenSubeCerezi(): Promise<string | undefined> {
  * Hangi şubede çalışılacağını belirler. Saf fonksiyon — testten çağrılabilsin
  * diye veritabanı ve çerez okuma dışarıda bırakıldı.
  *
- * - Koordinatör/stajyer: kendi şubesi. Çerez YOK SAYILIR; istemcinin
- *   gönderdiği bir değer görüş alanını genişletemez.
- * - Yönetici: çerezdeki şube, aktif şubeler arasındaysa o; değilse (çerez
- *   yok, bozuk ya da şube pasife alınmış) listedeki ilk şube. Hata vermek
- *   yerine ilkine düşmek, "şube seçilmedi" diye kilitlenen bir panel
- *   oluşmasını engelliyor.
+ * - Şubeli roller (yönetici olmayan herkes): kendi şubesi. Çerez YOK
+ *   SAYILIR; istemcinin gönderdiği bir değer görüş alanını genişletemez.
+ * - Yönetici (`yoneticiMi`): çerezdeki şube, aktif şubeler arasındaysa o;
+ *   değilse (çerez yok, bozuk ya da şube pasife alınmış) listedeki ilk şube.
+ *   Hata vermek yerine ilkine düşmek, "şube seçilmedi" diye kilitlenen bir
+ *   panel oluşmasını engelliyor.
+ *
+ * Parametre rol değil boolean: çoklu rolde soru "ADMIN mi" sorusuna indi ve
+ * bu dosyanın `Role` tipine bağımlılığı kalksın diye çağıran taraf cevabı
+ * kendisi veriyor.
  */
 export function aktifSubeyiCoz(
-  rol: Role,
+  yoneticiMi: boolean,
   kullaniciSubeId: string | null,
   cerezDegeri: string | undefined,
   subeler: readonly { id: string }[],
 ): string | null {
-  if (rol !== "ADMIN") {
+  if (!yoneticiMi) {
     return kullaniciSubeId;
   }
 

@@ -12,8 +12,8 @@ export default async function StajyerLayout({
   return (
     <PanelKabuk
       kullanici={kullanici}
-      menu={panelMenusu(kullanici.role)}
-      baslik={panelBasligi(kullanici.role)}
+      menu={panelMenusu(kullanici.roller)}
+      baslik={panelBasligi(kullanici.roller)}
     >
       {children}
     </PanelKabuk>

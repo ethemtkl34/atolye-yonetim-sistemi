@@ -5,6 +5,7 @@ import { RaporBelgesi } from "@/lib/pdf/rapor-belgesi";
 import type { RaporGovdesi } from "@/lib/report-engine";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
+import { yetkiYeter } from "@/lib/yetkiler";
 
 /**
  * §11.5 — Üretilmiş bir PDF raporunun indirilmesi.
@@ -35,20 +36,23 @@ export async function GET(
 
   const kullanici = await db.user.findUnique({
     where: { id: oturum.user.id },
-    select: { role: true, active: true, branchId: true },
+    select: { roles: true, active: true, branchId: true },
   });
 
+  // Raporu görebilen herkes PDF'ini de indirebilir; sabit rol listesi yerine
+  // yetki matrisi (danışma görevlisi ve stajyerde raporlar YOK → 403).
   if (
     !kullanici?.active ||
-    (kullanici.role !== "KOORDINATOR" && kullanici.role !== "ADMIN")
+    !yetkiYeter(kullanici.roles, "raporlar", "GORUNTULE")
   ) {
     return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
   }
 
-  // Yönetici iki şubeyi de görüyor, onun için şube kısıtı yok. Koordinatörün
+  // Yönetici bütün şubeleri görüyor, onun için şube kısıtı yok. Diğerlerinin
   // şubesi ise zorunlu: veritabanı CHECK'i null bırakmıyor, yine de null
   // gelirse belge verilmez — "süzgeç yok" hâline düşmek sızıntı olurdu.
-  if (kullanici.role !== "ADMIN" && !kullanici.branchId) {
+  const yonetici = kullanici.roles.includes("ADMIN");
+  if (!yonetici && !kullanici.branchId) {
     return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
   }
 

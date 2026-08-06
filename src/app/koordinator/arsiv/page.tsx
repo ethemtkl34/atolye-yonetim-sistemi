@@ -28,7 +28,7 @@ export const metadata: Metadata = {
  * listeleri meşgul etmemesi.
  */
 export default async function ArsivSayfasi() {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("arsiv");
   const subeId = kullanici.aktifSubeId;
 
   const [donemler, kulupler] = await Promise.all([

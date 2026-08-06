@@ -23,7 +23,7 @@ const TEMEL_YOL = "/koordinator/kulupler";
 export default async function KuluplerSayfasi(
   props: PageProps<"/koordinator/kulupler">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kulupler");
 
   const parametreler = await props.searchParams;
   const kapsam = parametreler.kapsam === "aktif" ? "aktif" : "tumu";
@@ -61,12 +61,16 @@ export default async function KuluplerSayfasi(
         aciklama="Kulüp, dönemden bağımsız tek yarım günlük hazır programdır: 3 atölye, kendi grubu ve kontenjanı. Kulübün tanımı iki şubede ortaktır; gruplar ve kayıtlar yalnızca sizin şubenizindir. Kulüp öğrencileri dönem gruplarına dahil edilmez."
         ustBilgi={<Rozet tur="notr">Tanım bütün şubelerde ortak</Rozet>}
         aksiyon={
-          <Link
-            href="/koordinator/kulupler/yeni"
-            className={butonStili()}
-          >
-            Yeni kulüp
-          </Link>
+          // Salt görüntüleme yetkisinde (danışma görevlisi) düğme çizilmez;
+          // sayfanın kendisi zaten TAM ister (`kulupler/yeni` guard'ı).
+          kullanici.yetkiler.kulupler === "TAM" ? (
+            <Link
+              href="/koordinator/kulupler/yeni"
+              className={butonStili()}
+            >
+              Yeni kulüp
+            </Link>
+          ) : undefined
         }
       />
 

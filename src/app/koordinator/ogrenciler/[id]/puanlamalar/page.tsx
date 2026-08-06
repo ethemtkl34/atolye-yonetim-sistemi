@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export default async function OgrenciPuanlamalariSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]/puanlamalar">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("puanlamalar");
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 

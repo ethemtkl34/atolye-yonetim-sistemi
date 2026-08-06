@@ -80,9 +80,14 @@ export async function parolamiDegistir(
   }
 
   // şube-muaf: kendi parolasını değiştiriyor; kimlik oturumdan geliyor.
+  // Bayrak da temizlenir: kendi parolasını koyan kullanıcıdan bir daha
+  // zorunlu değişim istenmez.
   await db.user.update({
     where: { id: kullanici.id },
-    data: { passwordHash: await hash(cozumlenen.data.yeni, 12) },
+    data: {
+      passwordHash: await hash(cozumlenen.data.yeni, 12),
+      mustChangePassword: false,
+    },
   });
 
   // Oturum JWT tabanlı ve parolayı taşımıyor; parola değişince mevcut oturum

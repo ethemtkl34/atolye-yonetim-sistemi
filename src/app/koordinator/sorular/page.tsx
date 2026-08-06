@@ -16,7 +16,7 @@ export const metadata: Metadata = {
  * ancak yan yana görülünce anlaşılır.
  */
 export default async function SorularSayfasi() {
-  await yonetimZorunlu();
+  await yonetimZorunlu("sorular");
 
   const atolyeler = await db.workshopType.findMany({
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],

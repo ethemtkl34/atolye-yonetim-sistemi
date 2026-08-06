@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function YeniKulupSayfasi() {
-  await yonetimZorunlu();
+  await yonetimZorunlu("kulupler", "TAM");
 
   const atolyeler = await db.workshopType.findMany({
     where: { active: true },

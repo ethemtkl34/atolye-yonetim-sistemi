@@ -29,7 +29,7 @@ const LISTE_SINIRI = 200;
 export default async function OgrencilerSayfasi(
   props: PageProps<"/koordinator/ogrenciler">,
 ) {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("ogrenciler");
 
   const parametreler = await props.searchParams;
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { rolAdi, subeliOturum } from "@/lib/auth-guard";
+import { rolEtiketi, subeliOturum } from "@/lib/auth-guard";
 import { Kart, SayfaBasligi } from "@/components/ui";
 import { PanelKabuk } from "@/components/panel-kabuk";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
@@ -23,8 +23,8 @@ export default async function HesabimSayfasi() {
   return (
     <PanelKabuk
       kullanici={kullanici}
-      menu={panelMenusu(kullanici.role)}
-      baslik={panelBasligi(kullanici.role)}
+      menu={panelMenusu(kullanici.roller)}
+      baslik={panelBasligi(kullanici.roller)}
     >
       <div className="mx-auto w-full max-w-lg">
         <SayfaBasligi
@@ -41,7 +41,7 @@ export default async function HesabimSayfasi() {
             <div>
               <dt className="text-sm text-zinc-500">Rol</dt>
               <dd className="mt-0.5 text-sm text-zinc-800">
-                {rolAdi(kullanici.role)}
+                {rolEtiketi(kullanici.roller)}
               </dd>
             </div>
             <div>
@@ -49,7 +49,7 @@ export default async function HesabimSayfasi() {
               <dd className="mt-0.5 text-sm text-zinc-800">
                 {/* Yöneticinin şubesi yok; burada yazan, o an ÇALIŞTIĞI
                     şubedir. İkisi karışmasın diye ifade ayrı. */}
-                {kullanici.role === "ADMIN"
+                {kullanici.roller.includes("ADMIN")
                   ? `Bütün şubeler (şu an ${kullanici.aktifSubeAdi})`
                   : kullanici.aktifSubeAdi}
               </dd>

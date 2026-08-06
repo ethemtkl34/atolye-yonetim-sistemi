@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 /** §2.1 — Kurumun tekrar kullandığı atölye tanımlarının yönetimi. */
 export default async function AtolyelerSayfasi() {
-  await yonetimZorunlu();
+  await yonetimZorunlu("atolyeler");
 
   const atolyeler = await db.workshopType.findMany({
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],

@@ -128,7 +128,7 @@ export async function kulupOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const kulup = kulupSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -241,7 +241,7 @@ export async function kulupDurumDegistir(
   kulupId: string,
   yeniDurum: ClubStatus,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu();
+  await yonetimZorunlu("kulupler", "TAM");
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz kulüp durumu." };
@@ -290,7 +290,7 @@ export async function kulupGrupEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const grup = kulupGrubuSemasi.safeParse({
     name: formVerisi.get("name"),
@@ -362,7 +362,7 @@ export async function kulupGrupEkle(
 export async function kulupGrupDurumDegistir(
   grupId: string,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const grup = await db.group.findFirst({
     where: { id: grupId, branchId: kullanici.aktifSubeId },

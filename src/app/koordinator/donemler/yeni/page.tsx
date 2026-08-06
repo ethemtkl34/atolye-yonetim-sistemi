@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function YeniDonemSayfasi() {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   const [atolyeler, stajyerler] = await Promise.all([
     db.workshopType.findMany({
@@ -19,7 +19,7 @@ export default async function YeniDonemSayfasi() {
       select: { id: true, name: true },
     }),
     db.user.findMany({
-      where: { role: "STAJYER", active: true, branchId: kullanici.aktifSubeId },
+      where: { roles: { has: "STAJYER" }, active: true, branchId: kullanici.aktifSubeId },
       orderBy: { name: "asc" },
       select: {
         id: true,

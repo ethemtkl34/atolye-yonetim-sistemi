@@ -2,16 +2,38 @@
 
 ## Roller
 
-Sistemde iki rol bulunur:
+Rol seti KODDA sabittir (dinamik rol oluşturucu yok); yönetici yalnızca
+kişilere rol atar. Bir kullanıcı birden çok rol taşıyabilir (`User.roles`,
+örn. "Atölye Psikoloğu / Test Uygulayıcısı"); etkin yetki rollerin
+birleşimidir ve modül bazlı yetki matrisi `src/lib/yetkiler.ts` içindedir.
+Yetki seviyeleri sıralıdır: YOK < LISTE < GORUNTULE < TAM ("LISTE" yalnızca
+zeka testlerinde anlamlı: üstveri görünür, belge içeriği açılamaz).
 
-1. **Koordinatör**
-   - Admin, eğitmen ve koordinatör aynı tam yetkili rol altında birleşir.
-   - Dönem, grup, kulüp, öğrenci, kayıt, stajyer, atölye, soru ve rapor yönetimini yapar.
+1. **Kurum Yöneticisi** (`ADMIN`) — her şey + kullanıcı yönetimi; şubesizdir,
+   üst şeritten şube seçerek bütün şubelerde çalışır. Başka rolle birleşemez.
+2. **Atölye Koordinatörü** (`KOORDINATOR`) — koordinatör panelinin tamamı tam
+   yetki; tek istisna zeka testleri (yalnız görüntüler, yükleyemez).
+3. **Atölye Psikoloğu** (`ATOLYE_PSIKOLOGU`) — koordinatörle birebir aynı
+   yetki, ayrı unvan.
+4. **Test Uygulayıcısı** (`TEST_UYGULAYICISI`) — zeka testi sonuç belgelerini
+   yükler/siler; tek başına başka yetkisi yok, pratikte psikologla birleşir.
+5. **Danışma Görevlisi** (`DANISMA_GOREVLISI`) — öğrenci ve kayıt işlemleri
+   tam; dönem/kulüp/grup salt görüntüleme; zeka testlerinde yalnız liste;
+   görüşmeler (danışmanlık) TAMAMEN gizli (stajyer kuralı); puanlama, rapor,
+   arşiv ve müfredat yönetimi kapalı.
+6. **Stajyer** (`STAJYER`) — yalnızca kendisine atanmış öğrencilerin puanlama
+   görevleri (kendi paneli); başka rolle birleşemez.
 
-2. **Stajyer**
-   - Yalnızca kendisine atanmış öğrencileri ve bu öğrencilere ait puanlama görevlerini görür.
-   - Her atölye için ayrı değerlendirme formu doldurur.
-   - Kendi girdiği puanları daha sonra düzenleyebilir.
+Karar gerekçeleri:
+- Enum'da eski değerler (`ADMIN`, `KOORDINATOR`) korunmuştur — üretim
+  veritabanında enum yeniden adlandırmak gereksiz risk; görünen unvanlar
+  `ROL_ADLARI`'ndan gelir.
+- Çoklu rol `Role[]` dizisidir (`Group.days` deseni); join tablosu yok çünkü
+  role bağlı ek veri yok.
+- Dashboard modülsüzdür: panele girebilen herkes özeti görür.
+- Randevu yönetimi bilinçli olarak kapsam dışı bırakıldı (ileride ayrı iş).
+- Yeni açılan ve parolası sıfırlanan hesaplar ilk girişte parola değiştirmeye
+  zorlanır (`mustChangePassword` + `/parola-degistir`).
 
 ## Dönem
 

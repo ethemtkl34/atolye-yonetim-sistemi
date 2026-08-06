@@ -163,7 +163,7 @@ export async function veliGorusmesiGonder(
   _oncekiDurum: VeliGorusmesiEylemDurumu,
   formVerisi: FormData,
 ): Promise<VeliGorusmesiEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const sonuc = formuCozumle(formVerisi);
@@ -223,7 +223,7 @@ export async function veliGorusmesiNotuKaydet(
   _oncekiDurum: VeliGorusmesiEylemDurumu,
   formVerisi: FormData,
 ): Promise<VeliGorusmesiEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const ham = formVerisi.get("not");
@@ -260,7 +260,7 @@ export async function veliGorusmesiNotuKaydet(
 export async function veliGorusmesiSil(
   gorusmeId: string,
 ): Promise<VeliGorusmesiEylemDurumu> {
-  const kullanici = await yonetimZorunlu();
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
   const subeId = kullanici.aktifSubeId;
 
   const gorusme = await db.parentMeeting.findFirst({
