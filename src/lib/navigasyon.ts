@@ -100,6 +100,18 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Kişiler",
     simge: "rozet",
   },
+  // Veli görüşmeleri (mini test + brief) ve terapi görüşmeleri (oyun /
+  // danışan). Görüşmelerin tek yazma adresi bu ekran; öğrenci profili
+  // kayıtları yalnızca gösterir. Stajyer menüsünde asla yer almaz —
+  // görüşmeler sağlık bilgisi gibi stajyerden gizlidir.
+  {
+    etiket: "Danışmanlık",
+    yol: "/koordinator/danismanlik",
+    hazir: true,
+    paket: "P15",
+    bolum: "Kişiler",
+    simge: "sohbet",
+  },
   // Yalnızca yöneticide. Koordinatörün Stajyerler ekranı yerinde duruyor ve
   // kendi şubesiyle sınırlı; burası bütün şubelerin hesaplarına bakan, rol ve
   // şube değiştirebilen ekran.

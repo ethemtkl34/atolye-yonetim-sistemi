@@ -103,6 +103,15 @@ enum CounselorType {
   KOORDINATOR
 }
 
+/// Terapi görüşmesinin türü — kurum iki tür yürütüyor ve "bu dönem kaç oyun
+/// terapisi yapıldı" sorusu ancak sayılabilir bir alandan cevaplanır.
+/// Görüşmeci türünden (CounselorType) ayrı bir eksen: oyun terapisini de
+/// danışan terapisini de psikolog veya koordinatör yürütebilir.
+enum TherapyType {
+  OYUN_TERAPISI
+  DANISAN_TERAPISI
+}
+
 /// Kaydın neden iptal edildiği.
 ///
 /// Serbest metin yerine etiket: "bu dönem kaç çocuk taşındığı için ayrıldı"
@@ -512,6 +521,9 @@ model CounselingSession {
 
   counselorName String
   counselorType CounselorType
+  /// Oyun terapisi mi, danışan terapisi mi. Sonradan eklendi; migration
+  /// mevcut satırları DANISAN_TERAPISI ile doldurur.
+  therapyType   TherapyType
   notes         String
 
   createdByUserId String?

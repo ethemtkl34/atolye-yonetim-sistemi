@@ -8,14 +8,15 @@ import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
 
 /**
- * Psikolog görüşmeleri — ekleme ve silme.
+ * Terapi görüşmeleri (öğrenci ile psikolog/koordinatör) — ekleme ve silme.
+ *
+ * Bütün yazma işlemleri Danışmanlık sayfasından yapılır; öğrenci profili bu
+ * kayıtları yalnızca gösterir. Öğrenci bu yüzden bind ile değil formdaki
+ * seçiciden gelir ve şube kapısından geçirilir.
  *
  * GİZLİLİK: Görüşme notları sağlık bilgisi gibi hassastır ve stajyerden
- * tamamen gizlidir; bu eylemler ve okuma sorgusu yalnızca koordinatör
+ * tamamen gizlidir; bu eylemler ve okuma sorguları yalnızca koordinatör
  * ekranlarından çağrılır (`yonetimZorunlu`).
- *
- * ŞUBE: Öğrenci ve görüşme id'leri istemciden geliyor; her işlem
- * `branchId`/`student.branchId` ile aktif şubeye kilitli doğrulanır.
  */
 
 export type GorusmeEylemDurumu = {
@@ -30,9 +31,17 @@ export type GorusmeEylemDurumu = {
   degerler?: Record<string, string>;
 };
 
-const GORUSME_FORM_ALANLARI = ["tarih", "gorusmeciAdi", "tur", "not"] as const;
+const GORUSME_FORM_ALANLARI = [
+  "ogrenciId",
+  "tarih",
+  "gorusmeciAdi",
+  "tur",
+  "terapiTuru",
+  "not",
+] as const;
 
 const gorusmeSemasi = z.object({
+  ogrenciId: z.string().min(1, "Öğrenci seçin"),
   /**
    * Boş bırakılabilir — o zaman bugün sayılır. Ayrı bir "bugün" onay kutusu
    * yok: tarih alanı zaten bugünle dolu geliyor, boş gelmesi yalnızca alanın
@@ -47,6 +56,9 @@ const gorusmeSemasi = z.object({
   tur: z.enum(["PSIKOLOG", "KOORDINATOR"], {
     message: "Görüşmeci türünü seçin",
   }),
+  terapiTuru: z.enum(["OYUN_TERAPISI", "DANISAN_TERAPISI"], {
+    message: "Terapi türünü seçin",
+  }),
   not: z
     .string()
     .trim()
@@ -54,8 +66,13 @@ const gorusmeSemasi = z.object({
     .max(5000, "Not en fazla 5000 karakter olabilir"),
 });
 
-export async function gorusmeEkle(
-  ogrenciId: string,
+/** Görüşme değişince iki ekran birden tazelenir: Danışmanlık ve profil. */
+function gorusmeleriTazele(ogrenciId: string) {
+  revalidatePath("/koordinator/danismanlik");
+  revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
+}
+
+export async function terapiGorusmesiEkle(
   _oncekiDurum: GorusmeEylemDurumu,
   formVerisi: FormData,
 ): Promise<GorusmeEylemDurumu> {
@@ -63,9 +80,11 @@ export async function gorusmeEkle(
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = gorusmeSemasi.safeParse({
+    ogrenciId: formVerisi.get("ogrenciId"),
     tarih: formVerisi.get("tarih"),
     gorusmeciAdi: formVerisi.get("gorusmeciAdi"),
     tur: formVerisi.get("tur"),
+    terapiTuru: formVerisi.get("terapiTuru"),
     not: formVerisi.get("not"),
   });
 
@@ -95,7 +114,8 @@ export async function gorusmeEkle(
 
   // Gelecek tarih kabul edilmez: bu yapılmış bir görüşmenin kaydıdır,
   // randevu defteri değil. İleri tarihli kayıt "yapıldı mı yapılmadı mı"
-  // belirsizliği doğururdu.
+  // belirsizliği doğururdu. (Veli görüşmesinde tersi geçerli — o kayıt
+  // görüşmeden önce, brief için açılıyor.)
   if (tarih.getTime() > bugun().getTime()) {
     return {
       alanHatalari: { tarih: "Görüşme tarihi ileride olamaz." },
@@ -104,32 +124,33 @@ export async function gorusmeEkle(
   }
 
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: veri.ogrenciId, branchId: subeId },
     select: { id: true },
   });
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
 
   await db.counselingSession.create({
     data: {
-      studentId: ogrenciId,
+      studentId: veri.ogrenciId,
       date: tarih,
       counselorName: veri.gorusmeciAdi,
       counselorType: veri.tur,
+      therapyType: veri.terapiTuru,
       notes: veri.not,
       createdByUserId: kullanici.id,
     },
   });
 
-  revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
-  return { basari: "Görüşme kaydedildi." };
+  gorusmeleriTazele(veri.ogrenciId);
+  return { basari: "Terapi görüşmesi kaydedildi." };
 }
 
 /**
- * Yanlış girilen görüşme silinir; düzenleme yok. Dört alanlık bir kayıt için
+ * Yanlış girilen görüşme silinir; düzenleme yok. Beş alanlık bir kayıt için
  * "sil + yeniden ekle" yeterli, düzenleme formu ve "kim düzenledi" izi
  * gereksiz karmaşıklık olurdu. Onay istemcide soruluyor (window.confirm).
  */
-export async function gorusmeSil(
+export async function terapiGorusmesiSil(
   gorusmeId: string,
 ): Promise<GorusmeEylemDurumu> {
   const kullanici = await yonetimZorunlu();
@@ -143,7 +164,7 @@ export async function gorusmeSil(
 
   await db.counselingSession.delete({ where: { id: gorusme.id } });
 
-  revalidatePath(`/koordinator/ogrenciler/${gorusme.studentId}`);
+  gorusmeleriTazele(gorusme.studentId);
   return {
     basari: `${tarihBicimle(gorusme.date)} tarihli görüşme silindi.`,
   };

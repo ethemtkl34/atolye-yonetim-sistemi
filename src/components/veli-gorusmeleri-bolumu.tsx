@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import {
   Alan,
   Bildirim,
@@ -11,6 +12,8 @@ import {
   Girdi,
   Kart,
   Rozet,
+  baglantiStili,
+  secimStili,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { tarihBicimle } from "@/lib/tarih";
@@ -25,28 +28,35 @@ import {
   veliGorusmesiNotuKaydet,
   veliGorusmesiSil,
   type VeliGorusmesiEylemDurumu,
-} from "./veli-gorusme-eylemleri";
+} from "@/app/koordinator/danismanlik/veli-gorusme-eylemleri";
 
 /**
  * Veli görüşmeleri bölümü.
  *
- * GİZLİLİK: Öğrenci görüşmeleriyle aynı kural — bu bileşen yalnızca
- * koordinatör profil sayfasında kullanılır; veli görüşmesi verisi stajyer
- * ekranlarının hiçbirine gitmez.
+ * İki modda çalışır:
+ *   - "yonetim": Danışmanlık sayfası — mini test + brief hazırlama, kayıt,
+ *     not ekleme ve silme; öğrenci formdaki seçiciden gelir.
+ *   - "okuma":  Öğrenci profili — yalnızca o öğrencinin listesi ve detay
+ *     penceresi (brief ve not okunur); bütün yazma işlemleri Danışmanlık
+ *     sayfasına yönlendirilir.
  *
- * Akış: koordinatör tarih + görüşmeci + 3 soruluk mini testi doldurur,
- * "Cevapla" ile brief ÖNİZLEMESİ formun altında açılır (hiçbir şey
- * yazılmaz), "Kaydet" görüşmeyi brief'iyle birlikte saklar. Görüşme
- * yapıldıktan sonra serbest not detay penceresinden eklenir; not gelene
- * kadar satır "Not bekliyor" rozetiyle durur.
+ * GİZLİLİK: Her iki mod da yalnızca koordinatör ekranlarında kullanılır;
+ * veli görüşmesi verisi stajyer ekranlarının hiçbirine gitmez.
+ *
+ * Akış (yönetim): koordinatör öğrenci + tarih + görüşmeci + 3 soruluk mini
+ * testi doldurur, "Cevapla" ile brief ÖNİZLEMESİ formun altında açılır
+ * (hiçbir şey yazılmaz), "Kaydet" görüşmeyi brief'iyle birlikte saklar.
+ * Görüşme yapıldıktan sonra serbest not detay penceresinden eklenir; not
+ * gelene kadar satır "Not bekliyor" rozetiyle durur.
  *
  * Tek form, iki gönderme düğmesi: ikisi de aynı server action'a gider,
- * niyet düğmenin `name="niyet"` değerinden okunur. İki ayrı `useActionState`
- * kullanılsaydı alanların hangi durumdan geri doldurulacağı belirsizleşirdi.
+ * niyet düğmenin `name="niyet"` değerinden okunur.
  */
 
 export type VeliGorusmesiSatiri = {
   id: string;
+  ogrenciId: string;
+  ogrenciAdi: string;
   tarih: Date;
   gorusmeciAdi: string;
   cevaplar: MiniTestCevabi[];
@@ -201,22 +211,27 @@ function BriefGorunumu({ brief }: { brief: VeliBriefi }) {
 }
 
 export function VeliGorusmeleriBolumu({
-  ogrenciId,
+  mod,
   gorusmeler,
-  bugunMetni,
+  ogrenciSecenekleri = [],
+  bugunMetni = "",
 }: {
-  ogrenciId: string;
+  mod: "yonetim" | "okuma";
   gorusmeler: VeliGorusmesiSatiri[];
+  /** Yalnızca yönetim modunda: ekleme formundaki ve süzgeçteki öğrenciler. */
+  ogrenciSecenekleri?: { id: string; ad: string }[];
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
-  bugunMetni: string;
+  bugunMetni?: string;
 }) {
+  const yonetim = mod === "yonetim";
+
   const [acik, setAcik] = useState(false);
   const [durum, eylem] = useActionState<VeliGorusmesiEylemDurumu, FormData>(
-    veliGorusmesiGonder.bind(null, ogrenciId),
+    veliGorusmesiGonder,
     {},
   );
 
-  // Başarıdan sonra form kapanır (öğrenci görüşmeleri bölümündeki desen).
+  // Başarıdan sonra form kapanır (terapi bölümündeki desen).
   const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
   if (durum.basari !== gorulenBasari) {
     setGorulenBasari(durum.basari);
@@ -225,11 +240,22 @@ export function VeliGorusmeleriBolumu({
 
   // React 19, eylem bitince formu sıfırlıyor — önizlemede de. Eylem
   // girilenleri geri döndürüyor; metin alanları buradan, mini test cevapları
-  // ise denetimli oldukları için kendi durumlarından geri gelir.
+  // ise `defaultChecked` üzerinden geri gelir.
   const deger = (alan: string) => durum.degerler?.[alan];
 
   const [islemDurumu, setIslemDurumu] = useState<VeliGorusmesiEylemDurumu>({});
   const [isleniyor, islemeBasla] = useTransition();
+
+  // Süzgeçler yalnızca yönetim modunda; istemcide süzülüyor (terapi
+  // bölümündeki gerekçeyle aynı).
+  const [ogrenciSuzgeci, setOgrenciSuzgeci] = useState("");
+  const [durumSuzgeci, setDurumSuzgeci] = useState("");
+  const suzulmus = gorusmeler.filter(
+    (gorusme) =>
+      (!ogrenciSuzgeci || gorusme.ogrenciId === ogrenciSuzgeci) &&
+      (!durumSuzgeci ||
+        (durumSuzgeci === "bekliyor" ? !gorusme.not : Boolean(gorusme.not))),
+  );
 
   const [secili, setSecili] = useState<VeliGorusmesiSatiri | null>(null);
   const pencereRef = useRef<HTMLDialogElement>(null);
@@ -244,7 +270,7 @@ export function VeliGorusmeleriBolumu({
   function sil(gorusme: VeliGorusmesiSatiri) {
     if (
       !window.confirm(
-        `${tarihBicimle(gorusme.tarih)} tarihli veli görüşmesi (${gorusme.gorusmeciAdi}) brief'i ve notuyla birlikte silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
+        `${tarihBicimle(gorusme.tarih)} tarihli veli görüşmesi (${gorusme.ogrenciAdi} · ${gorusme.gorusmeciAdi}) brief'i ve notuyla birlikte silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
       )
     ) {
       return;
@@ -280,10 +306,15 @@ export function VeliGorusmeleriBolumu({
             </span>
           ) : null}
         </h2>
-        {!acik ? (
+        {yonetim && !acik ? (
           <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
             + Veli görüşmesi ekle
           </Buton>
+        ) : null}
+        {!yonetim ? (
+          <Link href="/koordinator/danismanlik" className={baglantiStili}>
+            Danışmanlık sayfasında yönetilir
+          </Link>
         ) : null}
       </div>
 
@@ -295,7 +326,7 @@ export function VeliGorusmeleriBolumu({
         <Bildirim tur="hata">{islemDurumu.hata}</Bildirim>
       ) : null}
 
-      {acik ? (
+      {yonetim && acik ? (
         <Kart className="space-y-4 p-4">
           <p className="text-sm text-zinc-600">
             Mini testi görüşmeyi yapacak kişi doldurur; sistem cevaplardan ve
@@ -305,7 +336,23 @@ export function VeliGorusmeleriBolumu({
           </p>
 
           <form action={eylem} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Alan etiket="Öğrenci" hata={durum.alanHatalari?.ogrenciId}>
+                <select
+                  name="ogrenciId"
+                  defaultValue={deger("ogrenciId") ?? ""}
+                  className={secimStili}
+                  autoFocus
+                >
+                  <option value="">Öğrenci seçin…</option>
+                  {ogrenciSecenekleri.map((ogrenci) => (
+                    <option key={ogrenci.id} value={ogrenci.id}>
+                      {ogrenci.ad}
+                    </option>
+                  ))}
+                </select>
+              </Alan>
+
               <Alan
                 etiket="Görüşme tarihi"
                 ipucu="İleri bir tarih seçilebilir — brief o tarihe kadarki puanlamaları özetler."
@@ -326,7 +373,6 @@ export function VeliGorusmeleriBolumu({
                   name="gorusmeciAdi"
                   defaultValue={deger("gorusmeciAdi")}
                   placeholder="Örn. Ayşe Yılmaz"
-                  autoFocus
                 />
               </Alan>
             </div>
@@ -366,14 +412,48 @@ export function VeliGorusmeleriBolumu({
         </Kart>
       ) : null}
 
+      {yonetim && gorusmeler.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={ogrenciSuzgeci}
+            onChange={(olay) => setOgrenciSuzgeci(olay.target.value)}
+            className={`${secimStili} w-auto`}
+            aria-label="Öğrenciye göre süz"
+          >
+            <option value="">Bütün öğrenciler</option>
+            {ogrenciSecenekleri.map((ogrenci) => (
+              <option key={ogrenci.id} value={ogrenci.id}>
+                {ogrenci.ad}
+              </option>
+            ))}
+          </select>
+          <select
+            value={durumSuzgeci}
+            onChange={(olay) => setDurumSuzgeci(olay.target.value)}
+            className={`${secimStili} w-auto`}
+            aria-label="Duruma göre süz"
+          >
+            <option value="">Bütün durumlar</option>
+            <option value="bekliyor">Not bekliyor</option>
+            <option value="tamamlandi">Tamamlandı</option>
+          </select>
+        </div>
+      ) : null}
+
       {gorusmeler.length === 0 && !acik ? (
         <BosDurum
           baslik="Henüz veli görüşmesi kaydı yok."
-          aciklama="Görüşmeden önce mini testi doldurup brief hazırlayabilir, görüşme sonrası notunu ekleyebilirsiniz. Kayıtlar stajyerlere görünmez."
+          aciklama={
+            yonetim
+              ? "Görüşmeden önce mini testi doldurup brief hazırlayabilir, görüşme sonrası notunu ekleyebilirsiniz. Kayıtlar stajyerlere görünmez."
+              : "Veli görüşmeleri Danışmanlık sayfasından eklenir."
+          }
         />
+      ) : gorusmeler.length > 0 && suzulmus.length === 0 ? (
+        <BosDurum baslik="Süzgece uyan görüşme yok." />
       ) : (
         <div className="space-y-2">
-          {gorusmeler.map((gorusme) => (
+          {suzulmus.map((gorusme) => (
             <button
               key={gorusme.id}
               type="button"
@@ -384,6 +464,11 @@ export function VeliGorusmeleriBolumu({
                 <span className="font-medium text-zinc-900">
                   {tarihBicimle(gorusme.tarih)}
                 </span>
+                {yonetim ? (
+                  <span className="font-medium text-zinc-900">
+                    {gorusme.ogrenciAdi}
+                  </span>
+                ) : null}
                 <Rozet tur={gorusme.not ? "olumlu" : "notr"}>
                   {gorusme.not ? "Tamamlandı" : "Not bekliyor"}
                 </Rozet>
@@ -421,7 +506,7 @@ export function VeliGorusmeleriBolumu({
                   </Rozet>
                 </div>
                 <p className="mt-0.5 text-sm text-zinc-600">
-                  Görüşmeyi yapan: {secili.gorusmeciAdi}
+                  {secili.ogrenciAdi} · Görüşmeyi yapan: {secili.gorusmeciAdi}
                 </p>
               </div>
               <button
@@ -472,30 +557,37 @@ export function VeliGorusmeleriBolumu({
                       </p>
                     ) : null}
                   </>
+                ) : !yonetim ? (
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Henüz not eklenmedi.
+                  </p>
                 ) : null}
 
                 {/* Not görüşmeden SONRA yazılır; varsa da üzerine yazılabilir
-                    (dört alanlık kaydın kendisi düzenlenmez, yalnızca not). */}
-                <form action={notKaydet} className="mt-2 space-y-2">
-                  <CokSatirli
-                    name="not"
-                    rows={3}
-                    defaultValue={secili.not ?? ""}
-                    placeholder="Görüşmede konuşulanlar, velinin ilettikleri, kararlar…"
-                  />
-                  {islemDurumu.alanHatalari?.not ? (
-                    <p className="text-xs text-red-600">
-                      {islemDurumu.alanHatalari.not}
-                    </p>
-                  ) : null}
-                  <Buton type="submit" tur="ikincil" disabled={isleniyor}>
-                    {isleniyor
-                      ? "Kaydediliyor…"
-                      : secili.not
-                        ? "Notu güncelle"
-                        : "Notu kaydet"}
-                  </Buton>
-                </form>
+                    (kaydın kendisi düzenlenmez, yalnızca not). Okuma modunda
+                    form yok — not Danışmanlık sayfasından girilir. */}
+                {yonetim ? (
+                  <form action={notKaydet} className="mt-2 space-y-2">
+                    <CokSatirli
+                      name="not"
+                      rows={3}
+                      defaultValue={secili.not ?? ""}
+                      placeholder="Görüşmede konuşulanlar, velinin ilettikleri, kararlar…"
+                    />
+                    {islemDurumu.alanHatalari?.not ? (
+                      <p className="text-xs text-red-600">
+                        {islemDurumu.alanHatalari.not}
+                      </p>
+                    ) : null}
+                    <Buton type="submit" tur="ikincil" disabled={isleniyor}>
+                      {isleniyor
+                        ? "Kaydediliyor…"
+                        : secili.not
+                          ? "Notu güncelle"
+                          : "Notu kaydet"}
+                    </Buton>
+                  </form>
+                ) : null}
               </div>
             </div>
 
@@ -504,14 +596,16 @@ export function VeliGorusmeleriBolumu({
                 Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
                 {tarihBicimle(secili.eklenmeTarihi)}
               </span>
-              <Buton
-                type="button"
-                tur="tehlike"
-                disabled={isleniyor}
-                onClick={() => sil(secili)}
-              >
-                {isleniyor ? "İşleniyor…" : "Sil"}
-              </Buton>
+              {yonetim ? (
+                <Buton
+                  type="button"
+                  tur="tehlike"
+                  disabled={isleniyor}
+                  onClick={() => sil(secili)}
+                >
+                  {isleniyor ? "İşleniyor…" : "Sil"}
+                </Buton>
+              ) : null}
             </footer>
           </div>
         ) : null}

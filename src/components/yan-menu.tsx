@@ -92,6 +92,13 @@ const SIMGE_YOLLARI: Record<string, React.ReactNode> = {
       <path d="M19.3 15.3L22 18v2.5h-2.5" />
     </>
   ),
+  // Danışmanlık: konuşma balonu + kalp — görüşme ve terapi kayıtları.
+  sohbet: (
+    <>
+      <path d="M21 11.5a8.5 7.5 0 0 1-8.5 7.5c-1 0-2-.15-2.9-.45L4 20l1.5-4.1A7.2 7.2 0 0 1 4 11.5 8.5 7.5 0 0 1 12.5 4 8.5 7.5 0 0 1 21 11.5z" />
+      <path d="M12.5 13.6l-2.3-2.3a1.5 1.5 0 0 1 2.1-2.1l.2.2.2-.2a1.5 1.5 0 0 1 2.1 2.1l-2.3 2.3z" />
+    </>
+  ),
   puan: (
     <path d="M12 4l2.2 4.6 5 .7-3.6 3.6.8 5-4.4-2.3-4.4 2.3.8-5L4.8 9.3l5-.7L12 4zM12 4v11.6" />
   ),

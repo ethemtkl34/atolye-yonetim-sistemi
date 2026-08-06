@@ -13,13 +13,13 @@ import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
 import { RaporBolumu } from "./rapor-bolumu";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
 import {
-  OgrenciGorusmeleriBolumu,
-  type GorusmeSatiri,
-} from "./ogrenci-gorusmeleri-bolumu";
+  TerapiGorusmeleriBolumu,
+  type TerapiGorusmesiSatiri,
+} from "@/components/terapi-gorusmeleri-bolumu";
 import {
   VeliGorusmeleriBolumu,
   type VeliGorusmesiSatiri,
-} from "./veli-gorusmeleri-bolumu";
+} from "@/components/veli-gorusmeleri-bolumu";
 import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
 import {
   AKTIF_DONEM_DURUMLARI,
@@ -28,7 +28,7 @@ import {
   KULUP_DURUMLARI,
 } from "@/lib/durumlar";
 import type { CancelReason, ClubStatus, Day, TermStatus } from "@/generated/prisma/enums";
-import { bugun, grupZamani, tarihBicimle, tarihMetni } from "@/lib/tarih";
+import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -143,19 +143,28 @@ export default async function OgrenciProfilSayfasi(
       }),
     ]);
 
-  const gorusmeler: GorusmeSatiri[] = gorusmeKayitlari.map((gorusme) => ({
-    id: gorusme.id,
-    tarih: gorusme.date,
-    gorusmeciAdi: gorusme.counselorName,
-    tur: gorusme.counselorType,
-    not: gorusme.notes,
-    ekleyen: gorusme.createdBy?.name ?? null,
-    eklenmeTarihi: gorusme.createdAt,
-  }));
+  const ogrenciAdi = `${ogrenci.firstName} ${ogrenci.lastName}`;
+
+  const gorusmeler: TerapiGorusmesiSatiri[] = gorusmeKayitlari.map(
+    (gorusme) => ({
+      id: gorusme.id,
+      ogrenciId: gorusme.studentId,
+      ogrenciAdi,
+      tarih: gorusme.date,
+      gorusmeciAdi: gorusme.counselorName,
+      tur: gorusme.counselorType,
+      terapiTuru: gorusme.therapyType,
+      not: gorusme.notes,
+      ekleyen: gorusme.createdBy?.name ?? null,
+      eklenmeTarihi: gorusme.createdAt,
+    }),
+  );
 
   const veliGorusmeleri: VeliGorusmesiSatiri[] = veliGorusmeKayitlari.map(
     (gorusme) => ({
       id: gorusme.id,
+      ogrenciId: gorusme.studentId,
+      ogrenciAdi,
       tarih: gorusme.date,
       gorusmeciAdi: gorusme.interviewerName,
       cevaplar: gorusme.answersJson as unknown as MiniTestCevabi[],
@@ -320,20 +329,11 @@ export default async function OgrenciProfilSayfasi(
         }
       />
 
-      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden gizli.
-          Veli görüşmesi geleceğe dönük hazırlık aracı (mini test + brief),
-          öğrenci görüşmesi geçmişe dönük psikolog notu; akışları karışmasın
-          diye tek bölümde tür rozetiyle birleştirilmedi. --- */}
-      <VeliGorusmeleriBolumu
-        ogrenciId={ogrenci.id}
-        gorusmeler={veliGorusmeleri}
-        bugunMetni={tarihMetni(bugun())}
-      />
-      <OgrenciGorusmeleriBolumu
-        ogrenciId={ogrenci.id}
-        gorusmeler={gorusmeler}
-        bugunMetni={tarihMetni(bugun())}
-      />
+      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden gizli ve
+          burada SALT OKUNUR: ekleme, silme ve not işlemleri Danışmanlık
+          sayfasında (bölüm başlıklarındaki bağlantı oraya götürür). --- */}
+      <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
+      <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
 
       {/* --- Raporlar ve PDF geçmişi.
 

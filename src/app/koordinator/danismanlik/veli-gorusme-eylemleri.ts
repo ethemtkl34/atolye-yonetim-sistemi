@@ -17,7 +17,11 @@ import { veliBriefGirdisiHazirla } from "@/lib/veli-gorusmesi-verisi";
 /**
  * Veli görüşmeleri — brief önizleme, kayıt, not ve silme.
  *
- * GİZLİLİK: Veli görüşmeleri de öğrenci görüşmeleri gibi stajyerden tamamen
+ * Bütün yazma işlemleri Danışmanlık sayfasından yapılır; öğrenci profili bu
+ * kayıtları yalnızca gösterir. Öğrenci bu yüzden bind ile değil formdaki
+ * seçiciden gelir ve şube kapısından geçirilir.
+ *
+ * GİZLİLİK: Veli görüşmeleri de terapi görüşmeleri gibi stajyerden tamamen
  * gizlidir; bu eylemler ve okuma sorgusu yalnızca koordinatör ekranlarından
  * çağrılır (`yonetimZorunlu`).
  *
@@ -49,13 +53,15 @@ export type VeliGorusmesiEylemDurumu = {
 const cevapAlani = (anahtar: string) => `cevap-${anahtar}`;
 
 const VELI_FORM_ALANLARI = [
+  "ogrenciId",
   "tarih",
   "gorusmeciAdi",
   ...MINI_TEST_SORULARI.map((soru) => cevapAlani(soru.anahtar)),
 ] as const;
 
 const veliGorusmesiSemasi = z.object({
-  /** Boş bırakılabilir — o zaman bugün sayılır (öğrenci görüşmesi deseni). */
+  ogrenciId: z.string().min(1, "Öğrenci seçin"),
+  /** Boş bırakılabilir — o zaman bugün sayılır (terapi görüşmesi deseni). */
   tarih: z.string().trim(),
   gorusmeciAdi: z
     .string()
@@ -65,6 +71,7 @@ const veliGorusmesiSemasi = z.object({
 });
 
 type CozumlenmisForm = {
+  ogrenciId: string;
   tarih: Date;
   gorusmeciAdi: string;
   cevaplar: MiniTestCevabi[];
@@ -82,6 +89,7 @@ function formuCozumle(
   const alanHatalari: Record<string, string> = {};
 
   const cozumlenen = veliGorusmesiSemasi.safeParse({
+    ogrenciId: formVerisi.get("ogrenciId"),
     tarih: formVerisi.get("tarih"),
     gorusmeciAdi: formVerisi.get("gorusmeciAdi"),
   });
@@ -112,6 +120,7 @@ function formuCozumle(
   }
 
   const gorusmeciAdi = cozumlenen.success ? cozumlenen.data.gorusmeciAdi : "";
+  const ogrenciId = cozumlenen.success ? cozumlenen.data.ogrenciId : "";
   const tarihMetni = cozumlenen.success ? cozumlenen.data.tarih : "";
 
   const tarih = tarihMetni ? tarihCozumle(tarihMetni) : bugun();
@@ -124,11 +133,11 @@ function formuCozumle(
     };
   }
 
-  // Gelecek tarih BİLİNÇLİ olarak serbest (öğrenci görüşmesinin tersi):
+  // Gelecek tarih BİLİNÇLİ olarak serbest (terapi görüşmesinin tersi):
   // kayıt görüşmeden önce, brief hazırlamak için açılıyor — randevu gibi
   // ileri tarihli olması işin doğası. Atölye özeti o tarihe kadarki
   // oturumları kapsar.
-  return { veri: { tarih, gorusmeciAdi, cevaplar } };
+  return { veri: { ogrenciId, tarih, gorusmeciAdi, cevaplar } };
 }
 
 /** Öğrenciyi aktif şubeye kilitli doğrular; brief girdisi için adını da alır. */
@@ -151,7 +160,6 @@ async function ogrenciyiBul(ogrenciId: string, subeId: string) {
  * durumun güncel olduğu istemcide takip edilmek zorunda kalırdı.
  */
 export async function veliGorusmesiGonder(
-  ogrenciId: string,
   _oncekiDurum: VeliGorusmesiEylemDurumu,
   formVerisi: FormData,
 ): Promise<VeliGorusmesiEylemDurumu> {
@@ -161,6 +169,7 @@ export async function veliGorusmesiGonder(
   const sonuc = formuCozumle(formVerisi);
   if ("durum" in sonuc) return sonuc.durum;
 
+  const ogrenciId = sonuc.veri.ogrenciId;
   const ogrenci = await ogrenciyiBul(ogrenciId, subeId);
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
 
@@ -194,8 +203,14 @@ export async function veliGorusmesiGonder(
     },
   });
 
-  revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
+  gorusmeleriTazele(ogrenciId);
   return { basari: "Veli görüşmesi ve brief kaydedildi." };
+}
+
+/** Görüşme değişince iki ekran birden tazelenir: Danışmanlık ve profil. */
+function gorusmeleriTazele(ogrenciId: string) {
+  revalidatePath("/koordinator/danismanlik");
+  revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
 }
 
 /**
@@ -234,7 +249,7 @@ export async function veliGorusmesiNotuKaydet(
     data: { note: not, noteUpdatedAt: new Date() },
   });
 
-  revalidatePath(`/koordinator/ogrenciler/${gorusme.studentId}`);
+  gorusmeleriTazele(gorusme.studentId);
   return { basari: "Görüşme notu kaydedildi." };
 }
 
@@ -256,7 +271,7 @@ export async function veliGorusmesiSil(
 
   await db.parentMeeting.delete({ where: { id: gorusme.id } });
 
-  revalidatePath(`/koordinator/ogrenciler/${gorusme.studentId}`);
+  gorusmeleriTazele(gorusme.studentId);
   return {
     basari: `${tarihBicimle(gorusme.date)} tarihli veli görüşmesi silindi.`,
   };
