@@ -55,11 +55,7 @@ const zekaTestiSemasi = z.object({
   ogrenciId: z.string().min(1, "Öğrenci seçin"),
   /** Boş bırakılabilir — o zaman bugün sayılır (görüşme formları deseni). */
   tarih: z.string().trim(),
-  testAdi: z
-    .string()
-    .trim()
-    .min(1, "Testin adını yazın")
-    .max(100, "Test adı en fazla 100 karakter olabilir"),
+  testAdi: z.string().trim().min(1, "Listeden bir test seçin"),
   not: z
     .string()
     .trim()
@@ -135,6 +131,21 @@ export async function zekaTestiEkle(
     select: { id: true },
   });
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
+
+  // Test adı katalogdan seçilir; formdan gelen değere güvenilmez. Kayda ise
+  // katalog satırı değil ADIN KENDİSİ yazılır (snapshot) — katalog sonradan
+  // değişse de geçmiş kayıt o günkü adı gösterir.
+  const katalogKaydi = await db.intelligenceTestType.findFirst({
+    // şube-muaf: test kataloğu şubeden bağımsız (atölye kataloğu gibi).
+    where: { name: veri.testAdi, active: true },
+    select: { id: true },
+  });
+  if (!katalogKaydi) {
+    return {
+      alanHatalari: { testAdi: "Listeden bir test seçin." },
+      degerler: girilenler,
+    };
+  }
 
   const belge = dosya as File;
   const icerik = new Uint8Array(await belge.arrayBuffer());

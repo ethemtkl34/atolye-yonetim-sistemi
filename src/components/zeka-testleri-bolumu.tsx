@@ -75,12 +75,15 @@ export function ZekaTestleriBolumu({
   mod,
   testler,
   ogrenciSecenekleri = [],
+  testAdiSecenekleri = [],
   bugunMetni = "",
 }: {
   mod: "yonetim" | "okuma";
   testler: ZekaTestiSatiri[];
   /** Yalnızca yönetim modunda: yükleme formundaki ve süzgeçteki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
+  /** Yalnızca yönetim modunda: "Testin adı" açılır listesi (katalogdan). */
+  testAdiSecenekleri?: string[];
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
   bugunMetni?: string;
 }) {
@@ -209,11 +212,21 @@ export function ZekaTestleriBolumu({
               </Alan>
 
               <Alan etiket="Testin adı" hata={durum.alanHatalari?.testAdi}>
-                <Girdi
+                {/* Katalogdan seçilir (IntelligenceTestType); kayda adın
+                    kendisi yazılır, katalog sonradan değişse de geçmiş
+                    kayıtlar bozulmaz. */}
+                <select
                   name="testAdi"
-                  defaultValue={deger("testAdi")}
-                  placeholder="Örn. WISC-4"
-                />
+                  defaultValue={deger("testAdi") ?? ""}
+                  className={secimStili}
+                >
+                  <option value="">Test seçin…</option>
+                  {testAdiSecenekleri.map((ad) => (
+                    <option key={ad} value={ad}>
+                      {ad}
+                    </option>
+                  ))}
+                </select>
               </Alan>
 
               <Alan etiket="Sonuç belgesi" hata={durum.alanHatalari?.dosya}>

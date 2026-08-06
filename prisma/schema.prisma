@@ -579,6 +579,24 @@ model ParentMeeting {
   @@index([studentId, date])
 }
 
+/// Zeka testi kataloğu — yükleme formundaki "Testin adı" açılır listesi.
+///
+/// Şubeden BAĞIMSIZDIR (atölye kataloğu gibi): kurum aynı test yelpazesini
+/// iki şubede de uygular. Yönetim ekranı yok; liste şimdilik veritabanından
+/// güncellenir (kurum isterse ekran sonra eklenir). Silme yerine
+/// `active: false` — pasife alınan test yeni kayıtta seçilemez ama geçmiş
+/// kayıtlar adını kendi satırında taşıdığı için bozulmaz
+/// (`IntelligenceTest.testName` bir snapshot'tır).
+model IntelligenceTestType {
+  id        String   @id
+  name      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([active, sortOrder])
+}
+
 /// Zeka testi sonuç belgeleri — kuruma uygulanan testlerin (örn. WISC)
 /// yüklenen PDF veya görsel dosyaları.
 ///
@@ -601,8 +619,10 @@ model IntelligenceTest {
   /// Testin uygulandığı gün.
   date DateTime @db.Date
 
-  /// Testin adı — serbest metin (örn. "WISC-4"). Kurumun uyguladığı test
-  /// yelpazesi sabit olmadığı için etiket listesi tutulmuyor.
+  /// Testin adı — kayıt anında katalogdan (`IntelligenceTestType`) seçilir
+  /// ama burada METİN olarak donar (`questionTextSnapshot` ilkesi): katalog
+  /// sonradan değişse veya test pasife alınsa da geçmiş kayıt o günkü adı
+  /// gösterir.
   testName String
 
   /// İsteğe bağlı kısa değerlendirme notu.

@@ -27,11 +27,18 @@ export default async function ZekaTestleriSayfasi() {
   const kullanici = await yonetimZorunlu();
   const subeId = kullanici.aktifSubeId;
 
-  const [ogrenciler, testKayitlari] = await Promise.all([
+  const [ogrenciler, testTurleri, testKayitlari] = await Promise.all([
     // Yükleme formundaki öğrenci seçici — şubenin bütün öğrencileri.
     db.student.findMany({
       where: { branchId: subeId },
       select: { id: true, firstName: true, lastName: true },
+    }),
+    // "Testin adı" açılır listesi — şubeden bağımsız katalog; yönetim ekranı
+    // yok, liste veritabanından güncelleniyor (bkz. IntelligenceTestType).
+    db.intelligenceTestType.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true },
     }),
     // `fileData` bilinçli olarak SEÇİLMİYOR: liste ekranı megabaytlarca
     // belge verisini taşımamalı, belge yalnızca indirme rotasından okunur.
@@ -88,6 +95,7 @@ export default async function ZekaTestleriSayfasi() {
         mod="yonetim"
         testler={testler}
         ogrenciSecenekleri={ogrenciSecenekleri}
+        testAdiSecenekleri={testTurleri.map((tur) => tur.name)}
         bugunMetni={tarihMetni(bugun())}
       />
     </div>
