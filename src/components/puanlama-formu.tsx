@@ -235,15 +235,33 @@ export function PuanlamaFormu({
             >
               <legend className="sr-only">Değerlendirme soruları</legend>
 
-              {form.satirlar.map((satir, sira) => (
-                <SoruSatiri
-                  key={satir.anahtar}
-                  alanId={soruAlanId(form.oturumId, satir.anahtar)}
-                  satir={satir}
-                  sira={sira + 1}
-                  eksik={eksikler.has(satir.anahtar)}
-                />
-              ))}
+              {form.satirlar.map((satir, sira) => {
+                // Konu başlığı değiştiğinde araya bölüm başlığı girer;
+                // numaralama bölümden bağımsız 1'den devam eder (eksik soruya
+                // kaydırma mantığı satır sırasına bağlı).
+                const oncekiKategori =
+                  sira > 0 ? form.satirlar[sira - 1].kategori : null;
+                const kategoriBasligi =
+                  satir.kategori && satir.kategori !== oncekiKategori
+                    ? satir.kategori
+                    : null;
+
+                return (
+                  <div key={satir.anahtar} className="space-y-3">
+                    {kategoriBasligi ? (
+                      <h4 className="pt-1 text-xs font-semibold tracking-wide text-marka-700 uppercase">
+                        {kategoriBasligi}
+                      </h4>
+                    ) : null}
+                    <SoruSatiri
+                      alanId={soruAlanId(form.oturumId, satir.anahtar)}
+                      satir={satir}
+                      sira={sira + 1}
+                      eksik={eksikler.has(satir.anahtar)}
+                    />
+                  </div>
+                );
+              })}
             </fieldset>
           ) : null}
 
@@ -337,13 +355,23 @@ function SoruSatiri({
       )}
     >
       <legend className="px-1 text-sm text-zinc-800">
-        <span className="text-zinc-400">{sira}.</span> {satir.metin}
+        <span className="text-zinc-400">{sira}.</span>{" "}
+        {satir.baslik ? (
+          <span className="font-medium">{satir.baslik}</span>
+        ) : (
+          satir.metin
+        )}
         {!satir.aktif ? (
           <span className="ml-2 text-xs text-zinc-500">
             (soru pasife alındı, geçmiş cevap korunuyor)
           </span>
         ) : null}
       </legend>
+
+      {/* Başlıklı soruda soru cümlesi başlığın altında açıklama olarak durur. */}
+      {satir.baslik ? (
+        <p className="mt-1 text-sm text-zinc-600">{satir.metin}</p>
+      ) : null}
 
       {satir.guncelMetin ? (
         <p className="mt-1 text-xs text-zinc-500">

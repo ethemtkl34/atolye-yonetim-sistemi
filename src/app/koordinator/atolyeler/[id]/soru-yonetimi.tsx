@@ -2,7 +2,15 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
-import { Alan, Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
+import {
+  Alan,
+  Bildirim,
+  Buton,
+  CokSatirli,
+  Girdi,
+  Kart,
+  Rozet,
+} from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 import {
   soruDurumDegistir,
@@ -15,10 +23,18 @@ import {
 export type SoruSatiri = {
   id: string;
   text: string;
+  title: string | null;
+  category: string | null;
   active: boolean;
   sortOrder: number;
   kullanimSayisi: number;
 };
+
+/** Kategori girdisinin önerdiği standart konu başlıkları. */
+const STANDART_KATEGORILER = [
+  "Dersin İlgi ve Merak Alanları",
+  "Dersin Yetenek Gelişim Alanları",
+];
 
 /**
  * §9.2 — Bir atölyenin değerlendirme soru setinin yönetimi.
@@ -37,6 +53,16 @@ export function SoruYonetimi({
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [bekliyor, basla] = useTransition();
   const [duzenlenenId, setDuzenlenenId] = useState<string | null>(null);
+
+  // Öneri listesi: standart başlıklar + bu atölyede zaten kullanılanlar.
+  const kategoriSecenekleri = [
+    ...new Set([
+      ...STANDART_KATEGORILER,
+      ...sorular
+        .map((soru) => soru.category)
+        .filter((kategori): kategori is string => kategori !== null),
+    ]),
+  ];
 
   function calistir(eylem: () => Promise<EylemDurumu>) {
     basla(async () => setMesaj(await eylem()));
@@ -76,6 +102,7 @@ export function SoruYonetimi({
                 {duzenlenenId === soru.id ? (
                   <SoruDuzenleFormu
                     soru={soru}
+                    kategoriler={kategoriSecenekleri}
                     kapat={() => setDuzenlenenId(null)}
                   />
                 ) : (
@@ -85,6 +112,17 @@ export function SoruYonetimi({
                     </span>
 
                     <div className="min-w-0 flex-1">
+                      {soru.title ? (
+                        <p
+                          className={
+                            soru.active
+                              ? "text-sm font-medium text-zinc-900"
+                              : "text-sm font-medium text-zinc-400 line-through"
+                          }
+                        >
+                          {soru.title}
+                        </p>
+                      ) : null}
                       <p
                         className={
                           soru.active
@@ -95,6 +133,9 @@ export function SoruYonetimi({
                         {soru.text}
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {soru.category ? (
+                          <Rozet tur="notr">{soru.category}</Rozet>
+                        ) : null}
                         {soru.active ? null : <Rozet tur="pasif">Pasif</Rozet>}
                         {soru.kullanimSayisi > 0 ? (
                           <span className="text-xs text-zinc-500">
@@ -177,12 +218,65 @@ export function SoruYonetimi({
         </ol>
       )}
 
-      <SoruEkleFormu atolyeId={atolyeId} />
+      <SoruEkleFormu atolyeId={atolyeId} kategoriler={kategoriSecenekleri} />
     </div>
   );
 }
 
-function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
+/**
+ * Başlık ve kategori girdileri — ekleme ve düzenleme formlarının ortak bloğu.
+ * Kategori serbest metin; `<datalist>` standart başlıkları ve atölyede zaten
+ * kullanılan kategorileri önerir.
+ */
+function SoruEkAlanlari({
+  listeId,
+  kategoriler,
+  durum,
+  varsayilan,
+}: {
+  listeId: string;
+  kategoriler: string[];
+  durum: EylemDurumu;
+  varsayilan?: { title: string | null; category: string | null };
+}) {
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Alan
+          etiket="Kısa başlık (isteğe bağlı)"
+          hata={durum.alanHatalari?.title}
+        >
+          <Girdi
+            name="title"
+            placeholder="Örnek: Duygu Düzenleme"
+            defaultValue={varsayilan?.title ?? ""}
+          />
+        </Alan>
+        <Alan etiket="Kategori (isteğe bağlı)" hata={durum.alanHatalari?.category}>
+          <Girdi
+            name="category"
+            list={listeId}
+            placeholder="Örnek: Dersin İlgi ve Merak Alanları"
+            defaultValue={varsayilan?.category ?? ""}
+          />
+        </Alan>
+      </div>
+      <datalist id={listeId}>
+        {kategoriler.map((kategori) => (
+          <option key={kategori} value={kategori} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+function SoruEkleFormu({
+  atolyeId,
+  kategoriler,
+}: {
+  atolyeId: string;
+  kategoriler: string[];
+}) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     soruEkle.bind(null, atolyeId),
     {},
@@ -204,6 +298,11 @@ function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
             required
           />
         </Alan>
+        <SoruEkAlanlari
+          listeId="kategori-listesi-ekle"
+          kategoriler={kategoriler}
+          durum={durum}
+        />
         <GonderButonu>Soru ekle</GonderButonu>
       </form>
     </Kart>
@@ -212,9 +311,11 @@ function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
 
 function SoruDuzenleFormu({
   soru,
+  kategoriler,
   kapat,
 }: {
   soru: SoruSatiri;
+  kategoriler: string[];
   kapat: () => void;
 }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
@@ -231,6 +332,13 @@ function SoruDuzenleFormu({
       <Alan etiket="Soru metni" hata={durum.alanHatalari?.text}>
         <CokSatirli name="text" rows={2} defaultValue={soru.text} autoFocus />
       </Alan>
+
+      <SoruEkAlanlari
+        listeId={`kategori-listesi-${soru.id}`}
+        kategoriler={kategoriler}
+        durum={durum}
+        varsayilan={{ title: soru.title, category: soru.category }}
+      />
 
       {soru.kullanimSayisi > 0 ? (
         <p className="text-xs text-zinc-500">

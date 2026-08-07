@@ -150,7 +150,13 @@ export async function kayitPuanlamasi(
           questions: {
             where: { active: true },
             orderBy: { sortOrder: "asc" },
-            select: { id: true, text: true, sortOrder: true },
+            select: {
+              id: true,
+              text: true,
+              title: true,
+              category: true,
+              sortOrder: true,
+            },
           },
         },
       },
@@ -166,6 +172,8 @@ export async function kayitPuanlamasi(
               id: true,
               questionId: true,
               questionTextSnapshot: true,
+              titleSnapshot: true,
+              categorySnapshot: true,
               value: true,
               sortOrder: true,
             },

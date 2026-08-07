@@ -64,17 +64,39 @@ export function RaporIcerigi({ veri }: { veri: RaporPenceresiVerisi }) {
 
             {atolye.soruOrtalamalari.length > 0 ? (
               <ul className="mt-3 space-y-1">
-                {atolye.soruOrtalamalari.map((soru) => (
-                  <li
-                    key={soru.anahtar}
-                    className="flex justify-between gap-4 text-sm"
-                  >
-                    <span className="text-zinc-700">{soru.soruMetni}</span>
-                    <span className="shrink-0 tabular-nums text-zinc-600">
-                      {ortalamaBicimle(soru.ortalama)}
-                    </span>
-                  </li>
-                ))}
+                {atolye.soruOrtalamalari.map((soru, soruSira) => {
+                  // Konu başlığı değişince araya bölüm başlığı girer. Eski
+                  // raporların gövdesinde kategori alanı yok (bodyJson eski
+                  // şekliyle saklanır); `?? null` o raporları düz liste bırakır.
+                  const kategori = soru.kategori ?? null;
+                  const oncekiKategori =
+                    soruSira > 0
+                      ? (atolye.soruOrtalamalari[soruSira - 1].kategori ?? null)
+                      : null;
+                  const kategoriBasligi =
+                    kategori && kategori !== oncekiKategori ? kategori : null;
+
+                  return (
+                    <li key={soru.anahtar} className="text-sm">
+                      {kategoriBasligi ? (
+                        <p className="mt-2 mb-1 text-xs font-semibold tracking-wide text-marka-700 uppercase">
+                          {kategoriBasligi}
+                        </p>
+                      ) : null}
+                      <div className="flex justify-between gap-4">
+                        <span
+                          className="text-zinc-700"
+                          title={soru.baslik ? soru.soruMetni : undefined}
+                        >
+                          {soru.baslik ?? soru.soruMetni}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-zinc-600">
+                          {ortalamaBicimle(soru.ortalama)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
 

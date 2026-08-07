@@ -72,6 +72,12 @@ export type RaporGirdisi = {
 
 export type Bulgu = {
   soruMetni: string;
+  /**
+   * Kısa başlık (örn. "Duygu Düzenleme"). Yeni sorular soru cümlesi
+   * ("... gösteriyor mu?") biçiminde olduğundan düzyazıya soru metni değil bu
+   * gömülür; eski (başlıksız) veride null kalır ve metin soru cümlesine düşer.
+   */
+  baslik: string | null;
   ortalama: number;
   gozlemSayisi: number;
 };
@@ -106,6 +112,7 @@ function bulguyaCevir(soru: SoruOrtalamasi): Bulgu | null {
   if (soru.ortalama === null) return null;
   return {
     soruMetni: soru.soruMetni,
+    baslik: soru.baslik,
     ortalama: soru.ortalama,
     gozlemSayisi: soru.puanlananOturumSayisi,
   };
@@ -159,20 +166,33 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
   // bir soru için iki ortalamanın eşit ağırlıkla ortalanması, tek gözlemi
   // 9 gözlemle aynı güçte sayar ve yanlış bir "güçlü/desteklenecek alan"
   // yargısı üretebilirdi.
+  // Birleşim anahtarı kısa başlık, yoksa soru metni: aynı başlıklı soru
+  // atölyeden atölyeye küçük cümle farklarıyla yazılabildiği için metinle
+  // birleştirmek aynı beceriyi iki ayrı bulgu olarak gösterirdi.
   const soruHavuzu = new Map<
     string,
-    { puanToplami: number; gozlem: number }
+    {
+      soruMetni: string;
+      baslik: string | null;
+      kategori: string | null;
+      puanToplami: number;
+      gozlem: number;
+    }
   >();
 
   for (const atolye of atolyeler) {
     for (const soru of atolye.soruOrtalamalari) {
       if (soru.ortalama === null) continue;
-      const mevcut = soruHavuzu.get(soru.soruMetni);
+      const anahtar = soru.baslik ?? soru.soruMetni;
+      const mevcut = soruHavuzu.get(anahtar);
       if (mevcut) {
         mevcut.puanToplami += soru.puanToplami;
         mevcut.gozlem += soru.puanlananOturumSayisi;
       } else {
-        soruHavuzu.set(soru.soruMetni, {
+        soruHavuzu.set(anahtar, {
+          soruMetni: soru.soruMetni,
+          baslik: soru.baslik,
+          kategori: soru.kategori,
           puanToplami: soru.puanToplami,
           gozlem: soru.puanlananOturumSayisi,
         });
@@ -181,9 +201,11 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
   }
 
   const genelSorular: SoruOrtalamasi[] = [...soruHavuzu.entries()].map(
-    ([soruMetni, veri], sira) => ({
-      anahtar: soruMetni,
-      soruMetni,
+    ([anahtar, veri], sira) => ({
+      anahtar,
+      soruMetni: veri.soruMetni,
+      baslik: veri.baslik,
+      kategori: veri.kategori,
       ortalama: veri.gozlem > 0 ? veri.puanToplami / veri.gozlem : null,
       puanlananOturumSayisi: veri.gozlem,
       puanToplami: veri.puanToplami,
@@ -249,12 +271,17 @@ export type RaporGovdesi = {
 };
 
 /**
- * Bulguları "şunu, şunu ve şunu" biçiminde birleştirir. Soru metinleri cümle
- * olarak yazıldığı için sondaki nokta ve ilk harf küçültülerek cümleye
- * gömülür.
+ * Bulguları "şunu, şunu ve şunu" biçiminde birleştirir. Kısa başlığı olan
+ * bulgular başlığıyla anılır ("duygu düzenleme"); başlıksız (eski veya tek
+ * parçalı) bulguların soru metni, sondaki nokta atılıp ilk harf küçültülerek
+ * cümleye gömülür.
  */
 function bulgulariBirlestir(bulgular: readonly Bulgu[], enFazla = 3): string {
   const parcalar = bulgular.slice(0, enFazla).map((bulgu) => {
+    // Başlıklar Büyük Harfli Kelimelerle yazılır ("Duygu Düzenleme"); cümle
+    // içinde bütünü küçültülür. Soru cümlesinde yalnızca ilk harf küçültülür.
+    if (bulgu.baslik) return bulgu.baslik.trim().toLocaleLowerCase("tr-TR");
+
     const metin = bulgu.soruMetni.trim().replace(/\.$/, "");
     return metin.charAt(0).toLocaleLowerCase("tr-TR") + metin.slice(1);
   });

@@ -120,8 +120,20 @@ describe("cevapCozumle", () => {
 
 describe("formSatirlariOlustur", () => {
   const sorular = [
-    { id: "s1", text: "İlgi gösterir.", sortOrder: 0 },
-    { id: "s2", text: "Katılım sağlar.", sortOrder: 1 },
+    {
+      id: "s1",
+      text: "İlgi gösterir.",
+      title: "İlgi",
+      category: "Dersin İlgi ve Merak Alanları",
+      sortOrder: 0,
+    },
+    {
+      id: "s2",
+      text: "Katılım sağlar.",
+      title: null,
+      category: null,
+      sortOrder: 1,
+    },
   ];
 
   function cevap(ozel: Partial<MevcutCevap>): MevcutCevap {
@@ -129,6 +141,8 @@ describe("formSatirlariOlustur", () => {
       id: "c1",
       questionId: "s1",
       questionTextSnapshot: "İlgi gösterir.",
+      titleSnapshot: null,
+      categorySnapshot: null,
       value: 4,
       sortOrder: 0,
       ...ozel,
@@ -167,6 +181,32 @@ describe("formSatirlariOlustur", () => {
     const satirlar = formSatirlariOlustur(sorular, []);
     expect(satirlar[0].kaydedilecekMetin).toBe("İlgi gösterir.");
     expect(satirlar[0].guncelMetin).toBeNull();
+  });
+
+  it("yeni açılan satır sorunun başlığını ve kategorisini taşır", () => {
+    const satirlar = formSatirlariOlustur(sorular, []);
+
+    expect(satirlar[0].baslik).toBe("İlgi");
+    expect(satirlar[0].kategori).toBe("Dersin İlgi ve Merak Alanları");
+    expect(satirlar[0].kaydedilecekBaslik).toBe("İlgi");
+    expect(satirlar[0].kaydedilecekKategori).toBe(
+      "Dersin İlgi ve Merak Alanları",
+    );
+    // Tek parçalı soru başlık/kategori taşımaz.
+    expect(satirlar[1].baslik).toBeNull();
+    expect(satirlar[1].kategori).toBeNull();
+  });
+
+  it("cevaplanmış satırda başlık/kategori snapshot'ı korunur", () => {
+    // §13.14'ün başlık/kategori eşi: soru sonradan başlık kazansa bile
+    // eski cevabın kaydı (null) değişmez.
+    const satirlar = formSatirlariOlustur(sorular, [
+      cevap({ titleSnapshot: null, categorySnapshot: null }),
+    ]);
+
+    expect(satirlar[0].baslik).toBeNull();
+    expect(satirlar[0].kaydedilecekBaslik).toBeNull();
+    expect(satirlar[0].kaydedilecekKategori).toBeNull();
   });
 
   it("pasife alınmış sorunun geçmiş cevabını sonda korur", () => {

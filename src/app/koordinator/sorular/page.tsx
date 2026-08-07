@@ -32,7 +32,7 @@ export default async function SorularSayfasi(
       questions: {
         where: { active: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, text: true },
+        select: { id: true, text: true, title: true, category: true },
       },
     },
   });
@@ -93,14 +93,41 @@ export default async function SorularSayfasi(
                 </p>
               ) : (
                 <ol className="mt-3 space-y-1">
-                  {atolye.questions.map((soru, sira) => (
-                    <li key={soru.id} className="flex gap-2 text-sm">
-                      <span className="w-5 shrink-0 tabular-nums text-zinc-400">
-                        {sira + 1}.
-                      </span>
-                      <span className="text-zinc-700">{soru.text}</span>
-                    </li>
-                  ))}
+                  {atolye.questions.map((soru, sira) => {
+                    // Kategori değişince ara başlık; sorular sortOrder ile
+                    // geldiği için aynı kategorinin satırları ardışıktır.
+                    const oncekiKategori =
+                      sira > 0 ? atolye.questions[sira - 1].category : null;
+                    const kategoriBasligi =
+                      soru.category && soru.category !== oncekiKategori
+                        ? soru.category
+                        : null;
+
+                    return (
+                      <li key={soru.id} className="text-sm">
+                        {kategoriBasligi ? (
+                          <p className="mt-2 mb-1 text-xs font-semibold tracking-wide text-marka-700 uppercase">
+                            {kategoriBasligi}
+                          </p>
+                        ) : null}
+                        <div className="flex gap-2">
+                          <span className="w-5 shrink-0 tabular-nums text-zinc-400">
+                            {sira + 1}.
+                          </span>
+                          <span className="text-zinc-700">
+                            {soru.title ? (
+                              <>
+                                <span className="font-medium">{soru.title}</span>{" "}
+                                <span className="text-zinc-500">— {soru.text}</span>
+                              </>
+                            ) : (
+                              soru.text
+                            )}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </Kart>

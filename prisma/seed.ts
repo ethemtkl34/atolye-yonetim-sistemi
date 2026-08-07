@@ -21,7 +21,14 @@ const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-/** §2.1 — Başlangıç atölye envanteri. */
+/**
+ * §2.1 — Başlangıç atölye envanteri.
+ *
+ * Adlar `soru_kategorileri` migration'ındaki kanonik adlarla aynı; sorular
+ * artık seed'den değil o migration'dan gelir (taze kurulumda migration'lar
+ * seed'den önce oynatıldığı için soru seti hazır olur). Seed yalnızca
+ * atölyenin adını/açıklamasını günceller.
+ */
 const ATOLYELER = [
   {
     name: "Bilim Atölyesi",
@@ -47,23 +54,26 @@ const ATOLYELER = [
     name: "Sosyal Duygusal Beceriler Atölyesi (Drama)",
     description: "Drama yoluyla duygu tanıma, ifade ve iş birliği çalışmaları.",
   },
-];
-
-/**
- * §9.3 — Başlangıçta bütün atölyelere aynı örnek soru seti atanır.
- * Sonrasında her atölyenin seti bağımsız olarak düzenlenebilir.
- */
-const BASLANGIC_SORULARI = [
-  "Atölye ve etkinliklere ilgi gösterir.",
-  "Atölye ve etkinliklere katılım sağlar ve etkileşim kurar.",
-  "Yeni şeyler öğrenmeye yönelik merak ve keşif isteği gösterir.",
-  "Atölye veya etkinlik sırasında sorulan sorulara cevap verir.",
-  "İnce motor becerilerini etkin şekilde kullanır.",
-  "Özgün tasarımlar oluşturabilir.",
-  "Zamanı doğru ve etkin kullanır.",
-  "Oran-orantı, uyum ve ahenk ilişkisine dikkat eder.",
-  "Çalışmalarını özenle ve estetik duyarlılıkla gerçekleştirir.",
-  "Etkinliğe sebatla devam eder ve çalışmasını tamamlar.",
+  {
+    name: "STEM Maker Atölyesi",
+    description: "Elektronik devreler ve maker uygulamaları.",
+  },
+  {
+    name: "Masal ve Hikâye Atölyesi",
+    description: "Masal ve hikâye temelli yaratıcı etkinlikler.",
+  },
+  {
+    name: "Düşünme Becerileri Atölyesi",
+    description: "Kritik ve yaratıcı düşünme çalışmaları.",
+  },
+  {
+    name: "Gastronomi Atölyesi",
+    description: "Mutfak kültürü ve uygulamalı mutfak etkinlikleri.",
+  },
+  {
+    name: "Ahşap Modelleme Atölyesi",
+    description: "Ahşapla tasarım ve modelleme çalışmaları.",
+  },
 ];
 
 /**
@@ -216,39 +226,16 @@ async function main() {
   }
   console.log(`✓ ${acilacakHesaplar.length} kullanıcı hesabı`);
 
-  let toplamSoru = 0;
-
   for (const [sira, atolye] of ATOLYELER.entries()) {
-    const kayit = await db.workshopType.upsert({
+    await db.workshopType.upsert({
       where: { name: atolye.name },
       update: { description: atolye.description, sortOrder: sira },
       create: { ...atolye, sortOrder: sira },
     });
-
-    // Sorular yalnızca atölyenin hiç sorusu yoksa eklenir. Kurum soruları
-    // düzenledikten sonra seed tekrar çalıştırılırsa silinenler geri gelmemeli.
-    const mevcutSoruSayisi = await db.question.count({
-      where: { workshopTypeId: kayit.id },
-    });
-
-    if (mevcutSoruSayisi === 0) {
-      await db.question.createMany({
-        data: BASLANGIC_SORULARI.map((text, i) => ({
-          workshopTypeId: kayit.id,
-          text,
-          sortOrder: i,
-        })),
-      });
-      toplamSoru += BASLANGIC_SORULARI.length;
-    }
   }
 
   console.log(`✓ ${ATOLYELER.length} atölye çeşidi`);
-  console.log(
-    toplamSoru > 0
-      ? `✓ ${toplamSoru} değerlendirme sorusu`
-      : "· Sorular zaten mevcut, dokunulmadı",
-  );
+  console.log("· Değerlendirme soruları soru_kategorileri migration'ından gelir");
 
   if (yerelVeritabaniMi() && !process.env.SEED_PASSWORD) {
     console.log(`\nGeliştirme girişi:\n  ${KULLANICILAR[0].email} / ${sifre}`);

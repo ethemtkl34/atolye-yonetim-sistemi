@@ -38,7 +38,28 @@ const soruSemasi = z.object({
     .trim()
     .min(5, "Soru metni en az 5 karakter olmalı")
     .max(300, "Soru metni en fazla 300 karakter olabilir"),
+  title: z
+    .string()
+    .trim()
+    .max(150, "Başlık en fazla 150 karakter olabilir")
+    .optional()
+    .transform((deger) => (deger ? deger : null)),
+  category: z
+    .string()
+    .trim()
+    .max(150, "Kategori en fazla 150 karakter olabilir")
+    .optional()
+    .transform((deger) => (deger ? deger : null)),
 });
+
+/** Formdan soru alanlarını tek biçimde toplar (ekle + güncelle ortak). */
+function soruAlanlari(formVerisi: FormData) {
+  return {
+    text: formVerisi.get("text"),
+    title: formVerisi.get("title") ?? undefined,
+    category: formVerisi.get("category") ?? undefined,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Atölye çeşidi
@@ -169,7 +190,7 @@ export async function soruEkle(
 ): Promise<EylemDurumu> {
   await yonetimZorunlu("atolyeler", "TAM");
 
-  const cozumlenen = soruSemasi.safeParse({ text: formVerisi.get("text") });
+  const cozumlenen = soruSemasi.safeParse(soruAlanlari(formVerisi));
 
   if (!cozumlenen.success) {
     return { alanHatalari: alanHatalari(cozumlenen.error) };
@@ -183,7 +204,7 @@ export async function soruEkle(
   await db.question.create({
     data: {
       workshopTypeId: atolyeId,
-      text: cozumlenen.data.text,
+      ...cozumlenen.data,
       sortOrder: (sonSira._max.sortOrder ?? -1) + 1,
     },
   });
@@ -203,7 +224,7 @@ export async function soruGuncelle(
 ): Promise<EylemDurumu> {
   await yonetimZorunlu("atolyeler", "TAM");
 
-  const cozumlenen = soruSemasi.safeParse({ text: formVerisi.get("text") });
+  const cozumlenen = soruSemasi.safeParse(soruAlanlari(formVerisi));
 
   if (!cozumlenen.success) {
     return { alanHatalari: alanHatalari(cozumlenen.error) };
@@ -211,7 +232,7 @@ export async function soruGuncelle(
 
   const soru = await db.question.update({
     where: { id: soruId },
-    data: { text: cozumlenen.data.text },
+    data: cozumlenen.data,
     select: { workshopTypeId: true },
   });
 

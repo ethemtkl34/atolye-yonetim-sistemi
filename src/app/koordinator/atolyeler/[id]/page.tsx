@@ -40,6 +40,8 @@ export default async function AtolyeDetaySayfasi(
   const sorular: SoruSatiri[] = atolye.questions.map((soru) => ({
     id: soru.id,
     text: soru.text,
+    title: soru.title,
+    category: soru.category,
     active: soru.active,
     sortOrder: soru.sortOrder,
     kullanimSayisi: soru._count.answers,

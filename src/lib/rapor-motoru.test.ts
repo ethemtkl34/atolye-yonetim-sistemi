@@ -143,6 +143,103 @@ describe("raporAnaliziUret", () => {
   });
 });
 
+describe("başlıklı sorular", () => {
+  /** Yeni tip soru: soru cümlesi + kısa başlık + kategori snapshot'ı. */
+  function baslikliKatildi(deger: number): PuanlamaGirdisi {
+    return {
+      attended: true,
+      answers: [
+        {
+          questionId: "soru-b1",
+          questionTextSnapshot:
+            "Zorlayıcı durumlarda duygularını kontrol etme becerisi gösteriyor mu?",
+          titleSnapshot: "Duygu Düzenleme",
+          categorySnapshot: "Dersin Yetenek Gelişim Alanları",
+          value: deger,
+          sortOrder: 0,
+        },
+      ],
+    };
+  }
+
+  it("düzyazıda soru cümlesi yerine kısa başlığı kullanır", () => {
+    const govde = raporUret(
+      girdi([
+        {
+          atolyeAdi: "Bilim Atölyesi",
+          puanlamalar: [baslikliKatildi(5), baslikliKatildi(5)],
+        },
+      ]),
+    );
+
+    const paragraf = govde.metin.atolyeler[0].paragraf;
+    expect(paragraf).toContain("duygu düzenleme");
+    expect(paragraf).not.toContain("gösteriyor mu");
+  });
+
+  it("başlık ve kategoriyi soru ortalamalarına taşır", () => {
+    const analiz = raporAnaliziUret(
+      girdi([
+        {
+          atolyeAdi: "Bilim Atölyesi",
+          puanlamalar: [baslikliKatildi(4)],
+        },
+      ]),
+    );
+
+    const soru = analiz.atolyeler[0].soruOrtalamalari[0];
+    expect(soru.baslik).toBe("Duygu Düzenleme");
+    expect(soru.kategori).toBe("Dersin Yetenek Gelişim Alanları");
+  });
+
+  it("aynı başlıklı soruları farklı cümlelerle de atölyeler arası birleştirir", () => {
+    // Havuz anahtarı başlık: atölyeden atölyeye küçük cümle farkları aynı
+    // beceriyi iki ayrı bulguya bölmemeli.
+    const digerCumle: PuanlamaGirdisi = {
+      attended: true,
+      answers: [
+        {
+          questionId: "soru-b2",
+          questionTextSnapshot:
+            "Duygularını kontrol etmeyi robotik çalışmalarında da gösteriyor mu?",
+          titleSnapshot: "Duygu Düzenleme",
+          categorySnapshot: "Dersin Yetenek Gelişim Alanları",
+          value: 5,
+          sortOrder: 0,
+        },
+      ],
+    };
+
+    const analiz = raporAnaliziUret(
+      girdi([
+        { atolyeAdi: "Bilim Atölyesi", puanlamalar: [baslikliKatildi(5)] },
+        { atolyeAdi: "Robotik Atölyesi", puanlamalar: [digerCumle] },
+      ]),
+    );
+
+    expect(
+      analiz.genel.guclu.filter((b) => b.baslik === "Duygu Düzenleme"),
+    ).toHaveLength(1);
+    expect(analiz.genel.guclu[0].gozlemSayisi).toBe(2);
+  });
+
+  it("başlıksız eski cevaplar eski davranışı korur", () => {
+    const govde = raporUret(
+      girdi([
+        {
+          atolyeAdi: "Bilim Atölyesi",
+          puanlamalar: [katildi(5, 5, 3), katildi(5, 4, 3)],
+        },
+      ]),
+    );
+
+    // Eski tip soru metni düzyazıya aynen (ilk harfi küçültülüp) gömülür.
+    expect(govde.metin.atolyeler[0].paragraf).toContain(
+      "atölye ve etkinliklere ilgi gösterir",
+    );
+  });
+});
+
 describe("raporUret", () => {
   it("metni öğrencinin adıyla ve doğru ekle kurar", () => {
     const rapor = raporUret(

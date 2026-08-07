@@ -76,7 +76,13 @@ export async function puanlamaKaydet(
             questions: {
               where: { active: true },
               orderBy: { sortOrder: "asc" },
-              select: { id: true, text: true, sortOrder: true },
+              select: {
+                id: true,
+                text: true,
+                title: true,
+                category: true,
+                sortOrder: true,
+              },
             },
           },
         },
@@ -127,6 +133,8 @@ export async function puanlamaKaydet(
           id: true,
           questionId: true,
           questionTextSnapshot: true,
+          titleSnapshot: true,
+          categorySnapshot: true,
           value: true,
           sortOrder: true,
         },
@@ -199,6 +207,8 @@ export async function puanlamaKaydet(
   const yazilacakCevaplar: {
     questionId: string | null;
     questionTextSnapshot: string;
+    titleSnapshot: string | null;
+    categorySnapshot: string | null;
     sortOrder: number;
     value: number | null;
   }[] = [];
@@ -215,6 +225,8 @@ export async function puanlamaKaydet(
       questionId: satir.questionId,
       // §13.14 — Zaten cevaplanmış satırın o günkü metni korunur.
       questionTextSnapshot: satir.kaydedilecekMetin,
+      titleSnapshot: satir.kaydedilecekBaslik,
+      categorySnapshot: satir.kaydedilecekKategori,
       sortOrder: satir.sortOrder,
       value: cozum.deger,
     });

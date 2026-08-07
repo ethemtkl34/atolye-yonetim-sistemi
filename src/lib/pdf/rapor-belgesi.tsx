@@ -82,6 +82,15 @@ const stil = StyleSheet.create({
   },
   atolyeBasligi: { fontSize: 11, fontWeight: "bold", marginBottom: 2 },
   kucukMetin: { fontSize: 8, color: "#71717a", marginBottom: 6 },
+  // Soru listesi içindeki konu başlığı ("Dersin İlgi ve Merak Alanları") —
+  // bolumBasligi'nin küçük varyantı.
+  kategoriBasligi: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#52525b",
+    marginTop: 4,
+    marginBottom: 2,
+  },
   satir: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -142,12 +151,29 @@ export function RaporBelgesi({
               {ortalamaBicimle(atolye.genelOrtalama)}
             </Text>
 
-            {atolye.soruOrtalamalari.map((soru) => (
-              <View key={soru.anahtar} style={stil.satir}>
-                <Text style={stil.soru}>{soru.soruMetni}</Text>
-                <Text style={stil.puan}>{ortalamaBicimle(soru.ortalama)}</Text>
-              </View>
-            ))}
+            {atolye.soruOrtalamalari.map((soru, soruSira) => {
+              // Konu başlığı değişince ara başlık girer; eski raporların
+              // gövdesinde kategori alanı yok, `?? null` onları düz bırakır.
+              const kategori = soru.kategori ?? null;
+              const oncekiKategori =
+                soruSira > 0
+                  ? (atolye.soruOrtalamalari[soruSira - 1].kategori ?? null)
+                  : null;
+
+              return (
+                <View key={soru.anahtar}>
+                  {kategori && kategori !== oncekiKategori ? (
+                    <Text style={stil.kategoriBasligi}>{kategori}</Text>
+                  ) : null}
+                  <View style={stil.satir}>
+                    <Text style={stil.soru}>{soru.baslik ?? soru.soruMetni}</Text>
+                    <Text style={stil.puan}>
+                      {ortalamaBicimle(soru.ortalama)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
 
             <Text style={stil.paragraf}>
               {govde.metin.atolyeler[sira]?.paragraf ?? ""}

@@ -113,6 +113,10 @@ export function cevapCozumle(ham: unknown): CevapCozumu {
 export type SoruGirdisi = {
   id: string;
   text: string;
+  /** Kısa başlık (örn. "Duygu Düzenleme"); tek parçalı sorularda null. */
+  title: string | null;
+  /** Konu başlığı (örn. "Dersin İlgi ve Merak Alanları"). */
+  category: string | null;
   sortOrder: number;
 };
 
@@ -120,6 +124,8 @@ export type MevcutCevap = {
   id: string;
   questionId: string | null;
   questionTextSnapshot: string;
+  titleSnapshot: string | null;
+  categorySnapshot: string | null;
   value: number | null;
   sortOrder: number;
 };
@@ -130,10 +136,16 @@ export type FormSatiri = {
   questionId: string | null;
   /** Ekranda gösterilecek metin: geçmiş cevap varsa o günkü soru metni. */
   metin: string;
+  /** Kısa başlık: geçmiş cevap varsa o günkü, yoksa güncel. */
+  baslik: string | null;
+  /** Konu başlığı; form bu alana göre bölümlere ayrılır. */
+  kategori: string | null;
   /** Soru sonradan düzenlendiyse güncel metin, yoksa null. */
   guncelMetin: string | null;
   /** Kaydedilecek snapshot — mevcut cevabınki korunur (§13.14). */
   kaydedilecekMetin: string;
+  kaydedilecekBaslik: string | null;
+  kaydedilecekKategori: string | null;
   sortOrder: number;
   mevcutDeger: number | null;
   cevaplandi: boolean;
@@ -172,9 +184,13 @@ export function formSatirlariOlustur(
       anahtar: `q:${soru.id}`,
       questionId: soru.id,
       metin: cevap?.questionTextSnapshot ?? soru.text,
+      baslik: cevap ? cevap.titleSnapshot : soru.title,
+      kategori: cevap ? cevap.categorySnapshot : soru.category,
       guncelMetin:
         cevap && cevap.questionTextSnapshot !== soru.text ? soru.text : null,
       kaydedilecekMetin: cevap?.questionTextSnapshot ?? soru.text,
+      kaydedilecekBaslik: cevap ? cevap.titleSnapshot : soru.title,
+      kaydedilecekKategori: cevap ? cevap.categorySnapshot : soru.category,
       sortOrder: soru.sortOrder,
       mevcutDeger: cevap?.value ?? null,
       cevaplandi: Boolean(cevap),
@@ -191,8 +207,12 @@ export function formSatirlariOlustur(
       anahtar: cevap.questionId ? `q:${cevap.questionId}` : `a:${cevap.id}`,
       questionId: cevap.questionId,
       metin: cevap.questionTextSnapshot,
+      baslik: cevap.titleSnapshot,
+      kategori: cevap.categorySnapshot,
       guncelMetin: null,
       kaydedilecekMetin: cevap.questionTextSnapshot,
+      kaydedilecekBaslik: cevap.titleSnapshot,
+      kaydedilecekKategori: cevap.categorySnapshot,
       sortOrder: cevap.sortOrder,
       mevcutDeger: cevap.value,
       cevaplandi: true,

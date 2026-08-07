@@ -164,10 +164,17 @@ export function atolyeOzetiMetniUret(analiz: RaporAnalizi): string[] {
       ortalamaMetni,
   );
 
+  // Başlığı olan bulgular kısa başlığıyla anılır; soru cümlesi ("... mu?")
+  // veli brifinde de düzyazıya gömülmeye uygun değil. Başlık Büyük Harfli
+  // Kelimelerle yazıldığı için bütünüyle küçültülür.
   const bulgulariYaz = (bulgular: readonly Bulgu[], enFazla: number) =>
     bulgular
       .slice(0, enFazla)
-      .map((bulgu) => cumleyeGom(bulgu.soruMetni))
+      .map((bulgu) =>
+        bulgu.baslik
+          ? bulgu.baslik.trim().toLocaleLowerCase("tr-TR")
+          : cumleyeGom(bulgu.soruMetni),
+      )
       .join(", ");
 
   if (analiz.genel.guclu.length > 0) {

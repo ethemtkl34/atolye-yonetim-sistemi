@@ -255,6 +255,12 @@ model Question {
   workshopTypeId String
   workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Cascade)
   text           String
+  /// Kısa başlık (örn. "Duygu Düzenleme"). Rapor düzyazısı ve kompakt
+  /// listeler soru cümlesi yerine bunu kullanır; tek parçalı sorularda boş.
+  title          String?
+  /// Konu başlığı (örn. "Dersin İlgi ve Merak Alanları"). Puanlama formunda
+  /// ve raporlarda bölüm başlığı olarak basılır; salt sunumsal.
+  category       String?
   sortOrder      Int          @default(0)
   active         Boolean      @default(true)
   createdAt      DateTime     @default(now())
@@ -881,6 +887,11 @@ model ScoreAnswer {
 
   /// Puanlama anındaki soru metni. Soru sonradan düzenlense bile değişmez.
   questionTextSnapshot String
+
+  /// questionTextSnapshot ilkesinin başlık ve kategori eşleri: puanlama
+  /// anındaki değerler; raporlar soru tablosuna dönmeden bunları okur.
+  titleSnapshot    String?
+  categorySnapshot String?
 
   sortOrder Int @default(0)
 

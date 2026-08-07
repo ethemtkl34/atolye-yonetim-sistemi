@@ -26,6 +26,12 @@ export type CevapGirdisi = {
   questionId: string | null;
   /** §13.14 — Puanlama anındaki soru metni. */
   questionTextSnapshot: string;
+  /**
+   * Puanlama anındaki kısa başlık ve konu başlığı. Eski cevaplarda yoktur;
+   * ortalama hesabını etkilemezler, yalnızca rapor/ekran etiketlerine taşınır.
+   */
+  titleSnapshot?: string | null;
+  categorySnapshot?: string | null;
   /** §10.3 — 1–5 arası puan; null = Değerlendirilemedi. */
   value: number | null;
   sortOrder: number;
@@ -65,6 +71,10 @@ export type SoruOrtalamasi = {
   /** Soru silinmiş olabileceği için anahtar metne de düşebilir. */
   anahtar: string;
   soruMetni: string;
+  /** Kısa başlık; raporlar soru cümlesi yerine bunu basar. Eski veride null. */
+  baslik: string | null;
+  /** Konu başlığı; rapor listeleri bu alana göre bölümlenir. Eski veride null. */
+  kategori: string | null;
   ortalama: number | null;
   /** Bu soruya kaç oturumda gerçek puan verildi (Değerlendirilemedi hariç). */
   puanlananOturumSayisi: number;
@@ -103,7 +113,13 @@ export function atolyeOzetiHesapla(
 
   const soruGruplari = new Map<
     string,
-    { metin: string; degerler: (number | null)[]; sortOrder: number }
+    {
+      metin: string;
+      baslik: string | null;
+      kategori: string | null;
+      degerler: (number | null)[];
+      sortOrder: number;
+    }
   >();
 
   for (const puanlama of katilinan) {
@@ -115,6 +131,8 @@ export function atolyeOzetiHesapla(
       } else {
         soruGruplari.set(anahtar, {
           metin: cevap.questionTextSnapshot,
+          baslik: cevap.titleSnapshot ?? null,
+          kategori: cevap.categorySnapshot ?? null,
           degerler: [cevap.value],
           sortOrder: cevap.sortOrder,
         });
@@ -128,6 +146,8 @@ export function atolyeOzetiHesapla(
       return {
         anahtar,
         soruMetni: grup.metin,
+        baslik: grup.baslik,
+        kategori: grup.kategori,
         ortalama: ortalama(grup.degerler),
         puanlananOturumSayisi: gecerli.length,
         puanToplami: gecerli.reduce((a, b) => a + b, 0),

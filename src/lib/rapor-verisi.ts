@@ -115,6 +115,8 @@ export async function raporGirdisiHazirla(
             select: {
               questionId: true,
               questionTextSnapshot: true,
+              titleSnapshot: true,
+              categorySnapshot: true,
               value: true,
               sortOrder: true,
             },
