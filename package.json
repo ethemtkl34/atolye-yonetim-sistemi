@@ -9,7 +9,7 @@
     "baslat": "./baslat.command",
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma migrate deploy && vitest run && next build",
+    "vercel-build": "prisma migrate deploy && (ORNEK_VERI_ONAY=evet tsx prisma/ornek-veri.ts || echo 'ornek-veri adimi atlandi') && vitest run && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
