@@ -2,13 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { ZodError } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { kayitEngeli } from "@/lib/kayit-kurallari";
 import { tarihCozumle } from "@/lib/tarih";
-import { formDegerleri } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 import {
   OGRENCI_FORM_ALANLARI,
   formdanOku,
@@ -16,22 +20,6 @@ import {
   type OgrenciGirdisi,
 } from "./sema";
 
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
-  degerler?: Record<string, string>;
-};
-
-function alanHatalari(hata: ZodError): Record<string, string> {
-  const sonuc: Record<string, string> = {};
-  for (const sorun of hata.issues) {
-    const alan = sorun.path.join(".");
-    if (alan && !sonuc[alan]) sonuc[alan] = sorun.message;
-  }
-  return sonuc;
-}
 
 /** Öğrencinin ana bilgilerini veritabanı biçimine çevirir. */
 function ogrenciAlanlari(veri: OgrenciGirdisi) {

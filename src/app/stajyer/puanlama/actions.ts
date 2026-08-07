@@ -10,6 +10,7 @@ import {
 } from "@/lib/puanlama";
 import { takvimKilidiAl } from "@/lib/takvim-kilidi";
 import { bugun, tarihBicimle, tarihMetni } from "@/lib/tarih";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * §10 — Puanlama formunun kaydedilmesi.
@@ -24,9 +25,7 @@ import { bugun, tarihBicimle, tarihMetni } from "@/lib/tarih";
  * §10.3'ü atlamak mümkün olurdu.
  */
 
-export type PuanlamaEylemDurumu = {
-  basari?: string;
-  hata?: string;
+export type PuanlamaEylemDurumu = EylemDurumu & {
   /** Cevaplanmadığı için işaretlenecek satır anahtarları. */
   eksikSatirlar?: string[];
 };

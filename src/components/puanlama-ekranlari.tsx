@@ -3,7 +3,7 @@ import { BosDurum, Kart, Rozet, baglantiStili, kartBasligiStili } from "@/compon
 import {
   PuanlamaFormu,
   PuanlamaOlcegi,
-} from "@/app/stajyer/puanlama/puanlama-formu";
+} from "@/components/puanlama-formu";
 import type {
   GunFormlari,
   KayitIlerlemesi,

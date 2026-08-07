@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
 import {
   soruDurumDegistir,
@@ -182,15 +182,6 @@ export function SoruYonetimi({
   );
 }
 
-function GonderButonu({ etiket }: { etiket: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : etiket}
-    </Buton>
-  );
-}
-
 function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     soruEkle.bind(null, atolyeId),
@@ -213,7 +204,7 @@ function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
             required
           />
         </Alan>
-        <GonderButonu etiket="Soru ekle" />
+        <GonderButonu>Soru ekle</GonderButonu>
       </form>
     </Kart>
   );
@@ -250,7 +241,7 @@ function SoruDuzenleFormu({
       ) : null}
 
       <div className="flex gap-2">
-        <GonderButonu etiket="Kaydet" />
+        <GonderButonu>Kaydet</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Vazgeç
         </Buton>

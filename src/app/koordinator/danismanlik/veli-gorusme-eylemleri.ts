@@ -13,6 +13,7 @@ import {
   type VeliBriefi,
 } from "@/lib/veli-gorusmesi";
 import { veliBriefGirdisiHazirla } from "@/lib/veli-gorusmesi-verisi";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Veli görüşmeleri — brief önizleme, kayıt, not ve silme.
@@ -35,16 +36,7 @@ import { veliBriefGirdisiHazirla } from "@/lib/veli-gorusmesi-verisi";
  * varsayım bozulur; o gün önizlenen metnin kendisi saklanmalı.
  */
 
-export type VeliGorusmesiEylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /**
-   * Girilenler — React 19 form eylemi bitince alanları sıfırlıyor; hem
-   * doğrulama hatasında hem ÖNİZLEMEDE alanlar buradan geri doldurulur,
-   * yoksa "Brief hazırla" düğmesi bütün formu silerdi.
-   */
-  degerler?: Record<string, string>;
+export type VeliGorusmesiEylemDurumu = EylemDurumu & {
   /** Önizleme sonucu — form kaydedilmeden formun altında gösterilir. */
   brief?: VeliBriefi;
 };

@@ -14,7 +14,7 @@ import {
   ortalamaBicimle,
 } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
-import { puanlamaKaydet, type PuanlamaEylemDurumu } from "./actions";
+import { puanlamaKaydet, type PuanlamaEylemDurumu } from "@/app/stajyer/puanlama/actions";
 
 /**
  * §10 — Tek bir atölye oturumunun değerlendirme formu.

@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
+import {
+  alanHatalari,
+  type EylemDurumu as TemelEylemDurumu,
+} from "@/lib/formlar";
 import { kontenjanDurumu } from "@/lib/scoring";
 import { grupZamani, tarihCozumle } from "@/lib/tarih";
 import {
@@ -15,16 +19,13 @@ import {
 
 /** §7 — Öğrenci kayıt akışı ve stajyer ataması. */
 
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
+export type EylemDurumu = TemelEylemDurumu & {
   /**
    * §7.4 — Çakışma uyarısı. Uyarı işlemi ENGELLEMEZ; koordinatör gerekli
    * görürse `onaylandi` işaretiyle aynı formu tekrar gönderip devam eder.
   */
   uyari?: string;
   uyariGroupId?: string;
-  alanHatalari?: Record<string, string>;
   /**
    * Toplu eklemede tek tek anlatılması gereken sonuçlar: eklenemeyen öğrenciler
    * ve sebepleri, bir de yeni oluşan zaman çakışmaları. Tek satırlık bir başarı
@@ -77,12 +78,7 @@ export async function kayitOlustur(
   });
 
   if (!cozumlenen.success) {
-    const hatalar: Record<string, string> = {};
-    for (const sorun of cozumlenen.error.issues) {
-      const alan = sorun.path.join(".");
-      if (alan && !hatalar[alan]) hatalar[alan] = sorun.message;
-    }
-    return { alanHatalari: hatalar };
+    return { alanHatalari: alanHatalari(cozumlenen.error) };
   }
 
   const { studentId, groupId } = cozumlenen.data;
@@ -751,12 +747,7 @@ export async function kayitIptalEt(
 
   const cozumlenen = iptalSemasi.safeParse(veri);
   if (!cozumlenen.success) {
-    const hatalar: Record<string, string> = {};
-    for (const sorun of cozumlenen.error.issues) {
-      const alan = sorun.path.join(".");
-      if (alan && !hatalar[alan]) hatalar[alan] = sorun.message;
-    }
-    return { alanHatalari: hatalar };
+    return { alanHatalari: alanHatalari(cozumlenen.error) };
   }
 
   const { sebep, aciklama, sonGun } = cozumlenen.data;

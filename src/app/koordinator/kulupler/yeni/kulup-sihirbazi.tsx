@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
+import { GonderButonu } from "@/components/ui-istemci";
+import { Alan, Bildirim, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   EN_AZ_HAFTA,
@@ -33,15 +33,14 @@ function KaydetButonu({
   etkin: boolean;
   engelSebebi?: string;
 }) {
-  const { pending } = useFormStatus();
   return (
-    <Buton
-      type="submit"
-      disabled={pending || !etkin}
+    <GonderButonu
+      bekleyenEtiket="Oluşturuluyor…"
+      disabled={!etkin}
       engelSebebi={etkin ? undefined : engelSebebi}
     >
-      {pending ? "Oluşturuluyor…" : "Kulübü oluştur"}
-    </Buton>
+      Kulübü oluştur
+    </GonderButonu>
   );
 }
 

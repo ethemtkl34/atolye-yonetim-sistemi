@@ -8,7 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
 import { normalizeArama } from "@/lib/turkce";
 import { cn } from "@/lib/utils";
@@ -38,19 +38,14 @@ export type PanelOgrencisi = {
 };
 
 function EkleButonu({ sayi, engel }: { sayi: number; engel?: string }) {
-  const { pending } = useFormStatus();
   return (
-    <Buton
-      type="submit"
-      disabled={pending || sayi === 0 || Boolean(engel)}
+    <GonderButonu
+      bekleyenEtiket="Ekleniyor…"
+      disabled={sayi === 0 || Boolean(engel)}
       engelSebebi={engel ?? (sayi === 0 ? "Önce öğrenci seçin." : undefined)}
     >
-      {pending
-        ? "Ekleniyor…"
-        : sayi === 0
-          ? "Öğrenci ekle"
-          : `${sayi} öğrenciyi ekle`}
-    </Buton>
+      {sayi === 0 ? "Öğrenci ekle" : `${sayi} öğrenciyi ekle`}
+    </GonderButonu>
   );
 }
 

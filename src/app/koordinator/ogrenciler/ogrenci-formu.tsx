@@ -1,12 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import {
   Alan,
   Bildirim,
-  Buton,
   CokSatirli,
   Girdi,
   Kart,
@@ -35,15 +34,6 @@ export type OgrenciVarsayilanlari = {
   acilDurum?: string;
   stajyerUyarisi?: string;
 };
-
-function KaydetButonu({ etiket }: { etiket: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : etiket}
-    </Buton>
-  );
-}
 
 /**
  * §6.1 — Öğrenci kayıt formu. Ekleme ve düzenleme aynı bileşeni kullanır;
@@ -385,7 +375,7 @@ export function OgrenciFormu({
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
       <div className="flex items-center gap-2">
-        <KaydetButonu etiket={kaydetEtiketi} />
+        <GonderButonu>{kaydetEtiketi}</GonderButonu>
         <Link
           href={iptalYolu}
           className={butonStili("ikincil")}

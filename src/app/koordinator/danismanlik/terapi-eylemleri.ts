@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Terapi görüşmeleri (öğrenci ile psikolog/koordinatör) — ekleme ve silme.
@@ -19,17 +20,7 @@ import { formDegerleri } from "@/lib/formlar";
  * ekranlarından çağrılır (`yonetimZorunlu`).
  */
 
-export type GorusmeEylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /**
-   * Doğrulama hatasında girilenler — React 19 form eylemi bitince alanları
-   * sıfırlıyor; not 5000 karaktere kadar olabildiği için yazılanın kaybolması
-   * kabul edilemez. Öğrenci formundaki desenle aynı.
-   */
-  degerler?: Record<string, string>;
-};
+export type GorusmeEylemDurumu = EylemDurumu;
 
 const GORUSME_FORM_ALANLARI = [
   "ogrenciId",

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { takvimKilidiAl } from "@/lib/takvim-kilidi";
 import { tarihBicimle, tarihCozumle } from "@/lib/tarih";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Grup takvimi — bir grubun oturum günlerini taşıma, ekleme ve silme.
@@ -31,7 +32,7 @@ import { tarihBicimle, tarihCozumle } from "@/lib/tarih";
  * deseninin aynısı.
  */
 
-export type TakvimDurumu = { basari?: string; hata?: string };
+export type TakvimDurumu = EylemDurumu;
 
 /** Grubu şubeye kapalı okur ve programının atölyelerini de getirir. */
 async function grubuOku(grupId: string, subeId: string) {

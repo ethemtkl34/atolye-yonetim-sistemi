@@ -1,21 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
 import { GUN_ADLARI } from "@/lib/tarih";
 import { cn } from "@/lib/utils";
 import type { Day } from "@/generated/prisma/enums";
 import { grupEkle, type EylemDurumu } from "../actions";
-
-function KaydetButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Ekleniyor…" : "Grubu ekle"}
-    </Buton>
-  );
-}
 
 /**
  * §4.2 — Döneme yeni grup ekler.
@@ -155,7 +146,7 @@ export function GrupEkleFormu({
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
         <div className="flex gap-2">
-          <KaydetButonu />
+          <GonderButonu bekleyenEtiket="Ekleniyor…">Grubu ekle</GonderButonu>
           <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
             Vazgeç
           </Buton>

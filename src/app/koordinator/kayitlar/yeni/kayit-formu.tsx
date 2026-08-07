@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
-import { Alan, Bildirim, Buton, Kart, butonStili, secimStili } from "@/components/ui";
+import { Alan, Bildirim, Kart, butonStili, secimStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { kayitOlustur, type EylemDurumu } from "../actions";
 import type { ProgramSecenegi } from "@/lib/kayit-secenekleri";
@@ -21,15 +21,10 @@ function KaydetButonu({
   uyariVar: boolean;
   secimEksik: boolean;
 }) {
-  const { pending } = useFormStatus();
   return (
-    <Buton type="submit" disabled={pending || secimEksik}>
-      {pending
-        ? "Kaydediliyor…"
-        : uyariVar
-          ? "Uyarıya rağmen kaydı oluştur"
-          : "Kaydı tamamla"}
-    </Buton>
+    <GonderButonu disabled={secimEksik}>
+      {uyariVar ? "Uyarıya rağmen kaydı oluştur" : "Kaydı tamamla"}
+    </GonderButonu>
   );
 }
 

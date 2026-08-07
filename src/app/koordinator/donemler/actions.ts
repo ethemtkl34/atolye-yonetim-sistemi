@@ -22,18 +22,16 @@ import {
   EN_AZ_HAFTA,
   EN_FAZLA_HAFTA,
 } from "@/lib/kurallar";
-import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  GRUP_SEMASI,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
 
 /** §4 — Dönem ve grup işlemleri. */
-
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
-  degerler?: Record<string, string>;
-};
 
 /** Dönem sihirbazının metin/seçim alanları (hafta ve atölye seçimi hariç). */
 const DONEM_FORM_ALANLARI = [

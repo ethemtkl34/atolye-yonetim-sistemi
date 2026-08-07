@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { Bildirim, Buton, Kart, Rozet } from "@/components/ui";
+import { GonderButonu } from "@/components/ui-istemci";
+import { Bildirim, Kart, Rozet } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { donemStajyerleriniGuncelle, type EylemDurumu } from "../actions";
 
@@ -17,16 +17,14 @@ export type KadroStajyeri = {
 };
 
 function KaydetButonu({ degisti }: { degisti: boolean }) {
-  const { pending } = useFormStatus();
   return (
-    <Buton
-      type="submit"
+    <GonderButonu
       tur="ikincil"
-      disabled={pending || !degisti}
+      disabled={!degisti}
       engelSebebi={degisti ? undefined : "Kadroda değişiklik yapılmadı."}
     >
-      {pending ? "Kaydediliyor…" : "Kadroyu kaydet"}
-    </Buton>
+      Kadroyu kaydet
+    </GonderButonu>
   );
 }
 

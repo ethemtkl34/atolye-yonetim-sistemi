@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { formDegerleri } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 
 /**
  * Atölye çeşitleri ve değerlendirme sorularının işlemleri (§2.1, §9.2).
@@ -13,14 +18,6 @@ import { formDegerleri } from "@/lib/formlar";
  * kontrolü yapıyor ama bir Server Action doğrudan çağrılabilir; yetki
  * kontrolünün her işlemin kendi içinde olması şart.
  */
-
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
-  degerler?: Record<string, string>;
-};
 
 const atolyeSemasi = z.object({
   name: z
@@ -43,15 +40,6 @@ const soruSemasi = z.object({
     .min(5, "Soru metni en az 5 karakter olmalı")
     .max(300, "Soru metni en fazla 300 karakter olabilir"),
 });
-
-function alanHatalari(hata: z.ZodError): Record<string, string> {
-  const sonuc: Record<string, string> = {};
-  for (const sorun of hata.issues) {
-    const alan = sorun.path.join(".");
-    if (alan && !sonuc[alan]) sonuc[alan] = sorun.message;
-  }
-  return sonuc;
-}
 
 // ---------------------------------------------------------------------------
 // Atölye çeşidi

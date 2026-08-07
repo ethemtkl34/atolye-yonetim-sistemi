@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import {
   Alan,
@@ -72,23 +72,21 @@ const DOKUNMA_HEDEFI =
   "sm:inline-flex sm:min-h-0 sm:py-1.5";
 
 function GondermeButonlari({ vazgec }: { vazgec: () => void }) {
-  const { pending } = useFormStatus();
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Önizleme isteğe bağlı bir ara adım: brief hazırlanmadan da
           kaydedilebilir, kayıt brief'i zaten sunucuda üretiyor. */}
-      <Buton
-        type="submit"
+      <GonderButonu
         name="niyet"
         value="onizleme"
         tur="ikincil"
-        disabled={pending}
+        bekleyenEtiket="Hazırlanıyor…"
       >
-        {pending ? "Hazırlanıyor…" : "Cevapla — brief hazırla"}
-      </Buton>
-      <Buton type="submit" name="niyet" value="kaydet" disabled={pending}>
-        {pending ? "Kaydediliyor…" : "Görüşmeyi ve brief'i kaydet"}
-      </Buton>
+        Cevapla — brief hazırla
+      </GonderButonu>
+      <GonderButonu name="niyet" value="kaydet">
+        {"Görüşmeyi ve brief'i kaydet"}
+      </GonderButonu>
       <Buton type="button" tur="sade" onClick={vazgec}>
         Vazgeç
       </Buton>

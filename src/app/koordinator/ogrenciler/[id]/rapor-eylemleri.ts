@@ -11,6 +11,7 @@ import {
   type RaporDetayi,
 } from "@/lib/rapor-verisi";
 import type { RaporGovdesi } from "@/lib/report-engine";
+import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
 
 /**
  * §11 — Rapor oluşturma, yeniden üretme, metin düzenleme ve PDF üretimi.
@@ -26,9 +27,7 @@ import type { RaporGovdesi } from "@/lib/report-engine";
  * gönderilirse eylem "bulunamadı" der.
  */
 
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
+export type EylemDurumu = TemelEylemDurumu & {
   /** Yeni üretilen rapor — pencere bu rapora geçer. */
   raporId?: string;
 };

@@ -1,18 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi } from "@/components/ui";
 import { atolyeGuncelle, type EylemDurumu } from "../actions";
-
-function KaydetButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : "Kaydet"}
-    </Buton>
-  );
-}
 
 export function AtolyeDuzenleFormu({
   atolye,
@@ -74,7 +65,7 @@ export function AtolyeDuzenleFormu({
       </Alan>
 
       <div className="flex gap-2">
-        <KaydetButonu />
+        <GonderButonu>Kaydet</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
           Vazgeç
         </Buton>

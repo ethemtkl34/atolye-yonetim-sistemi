@@ -1,18 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { Alan, Bildirim, Buton, Girdi } from "@/components/ui";
+import { Alan, Bildirim, Girdi } from "@/components/ui";
+import { GonderButonu } from "@/components/ui-istemci";
 import { zorunluParolaDegistir, type EylemDurumu } from "./actions";
-
-function KaydetButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : "Parolayı belirle ve devam et"}
-    </Buton>
-  );
-}
 
 export function ParolaDegistirFormu() {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
@@ -58,7 +49,7 @@ export function ParolaDegistirFormu() {
         />
       </Alan>
 
-      <KaydetButonu />
+      <GonderButonu>Parolayı belirle ve devam et</GonderButonu>
     </form>
   );
 }

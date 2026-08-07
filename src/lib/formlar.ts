@@ -43,6 +43,26 @@ export const GRUP_SEMASI = z.object({
     .max(200, "Kontenjan en fazla 200 olabilir"),
 });
 
+/**
+ * Server Action'ların ortak dönüş tipi.
+ *
+ * Her eylem dosyası bunu kendisi tanımlıyordu (10+ birebir kopya). Ek alan
+ * gerektiren eylemler bu tipi genişletir (`EylemDurumu & { raporId?: ... }`);
+ * gerektirmeyenler olduğu gibi yeniden dışa aktarır — istemci bileşenleri
+ * tipi kendi eylem dosyasından almaya devam eder.
+ */
+export type EylemDurumu = {
+  basari?: string;
+  hata?: string;
+  alanHatalari?: Record<string, string>;
+  /**
+   * Doğrulama hatasında girilen değerler — React 19 form eylemi bitince
+   * alanları sıfırlıyor; form bunları `defaultValue` olarak geri yazar
+   * (bkz. `formDegerleri`).
+   */
+  degerler?: Record<string, string>;
+};
+
 /** Zod hatalarını `alan → mesaj` sözlüğüne çevirir; ilk hata korunur. */
 export function alanHatalari(hata: z.ZodError): Record<string, string> {
   const sonuc: Record<string, string> = {};

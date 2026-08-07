@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import {
   Alan,
@@ -64,15 +64,6 @@ function boyutBicimle(bayt: number): string {
     return `${(bayt / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
   }
   return `${Math.max(1, Math.round(bayt / 1024))} KB`;
-}
-
-function YukleButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Yükleniyor…" : "Belgeyi kaydet"}
-    </Buton>
-  );
 }
 
 export function ZekaTestleriBolumu({
@@ -269,7 +260,7 @@ export function ZekaTestleriBolumu({
             {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
             <div className="flex flex-wrap items-center gap-2">
-              <YukleButonu />
+              <GonderButonu bekleyenEtiket="Yükleniyor…">Belgeyi kaydet</GonderButonu>
               <Buton type="button" tur="sade" onClick={() => setAcik(false)}>
                 Vazgeç
               </Buton>

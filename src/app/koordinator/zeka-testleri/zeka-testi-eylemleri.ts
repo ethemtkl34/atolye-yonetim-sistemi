@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
 import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Zeka testleri — sonuç belgesi yükleme ve silme.
@@ -23,17 +24,11 @@ import { formDegerleri } from "@/lib/formlar";
  * çekildi, Vercel'in ~4,5MB istek sınırı bunun üstüne izin vermiyor.
  */
 
-export type ZekaTestiEylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /**
-   * Girilenler — React 19 form eylemi bitince alanları sıfırlıyor; metin
-   * alanları buradan geri doldurulur. Dosya seçimi tarayıcı güvenliği gereği
-   * geri yüklenemez, hata sonrası yeniden seçilmesi gerekir.
-   */
-  degerler?: Record<string, string>;
-};
+/**
+ * Dosya seçimi tarayıcı güvenliği gereği `degerler` ile geri yüklenemez;
+ * hata sonrası yeniden seçilmesi gerekir.
+ */
+export type ZekaTestiEylemDurumu = EylemDurumu;
 
 /** Kabul edilen dosya türleri — önizleme rotası da bunlara güvenir. */
 const IZINLI_TURLER: Record<string, string> = {

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { anaSayfaYolu } from "@/lib/roller";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Zorunlu ilk parola değişimi.
@@ -19,10 +20,7 @@ import { anaSayfaYolu } from "@/lib/roller";
  * halde gönderilen kimlikle başka bir hesabın parolası değiştirilebilirdi.
  */
 
-export type EylemDurumu = {
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-};
+export type { EylemDurumu };
 
 const parolaSemasi = z
   .object({

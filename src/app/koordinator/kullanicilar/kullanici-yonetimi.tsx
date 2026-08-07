@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, secimStili } from "@/components/ui";
 import { ROL_ADLARI } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
@@ -40,15 +40,6 @@ const ROL_SECENEKLERI: readonly Role[] = [
 
 /** Tek başına kalmak zorunda olan roller (sunucu ve CHECK de zorluyor). */
 const TEKIL_ROLLER: readonly Role[] = ["ADMIN", "STAJYER"];
-
-function GonderButonu({ etiket }: { etiket: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : etiket}
-    </Buton>
-  );
-}
 
 /** Rol rozetinin tonu: yönetici ayırt edilsin, stajyer geri çekilsin. */
 function rolRozetTuru(role: Role): "notr" | "uyari" | "pasif" {
@@ -362,7 +353,7 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
         <div className="flex gap-2">
-          <GonderButonu etiket="Kullanıcıyı ekle" />
+          <GonderButonu>Kullanıcıyı ekle</GonderButonu>
           <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
             Vazgeç
           </Buton>
@@ -399,7 +390,7 @@ function RolFormu({
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
       <div className="flex gap-2">
-        <GonderButonu etiket="Kaydet" />
+        <GonderButonu>Kaydet</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Kapat
         </Buton>
@@ -427,7 +418,7 @@ function AdFormu({
       </Alan>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       <div className="flex gap-2">
-        <GonderButonu etiket="Kaydet" />
+        <GonderButonu>Kaydet</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Kapat
         </Buton>
@@ -459,7 +450,7 @@ function ParolaFormu({
       </Alan>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       <div className="flex gap-2">
-        <GonderButonu etiket="Parolayı yenile" />
+        <GonderButonu>Parolayı yenile</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Kapat
         </Buton>

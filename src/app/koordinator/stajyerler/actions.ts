@@ -5,7 +5,12 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { formDegerleri } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 
 /**
  * §3.2 ve §8 — Stajyer hesaplarının yönetimi.
@@ -14,14 +19,6 @@ import { formDegerleri } from "@/lib/formlar";
  * kendisi girdiği için giriş yapabilmesi gerekiyor. Hesabı koordinatör açar,
  * kendi kaydını açan kullanıcı yok.
  */
-
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
-  degerler?: Record<string, string>;
-};
 
 const stajyerSemasi = z.object({
   name: z
@@ -39,15 +36,6 @@ const stajyerSemasi = z.object({
     .min(8, "Parola en az 8 karakter olmalı")
     .max(100, "Parola en fazla 100 karakter olabilir"),
 });
-
-function alanHatalari(hata: z.ZodError): Record<string, string> {
-  const sonuc: Record<string, string> = {};
-  for (const sorun of hata.issues) {
-    const alan = sorun.path.join(".");
-    if (alan && !sonuc[alan]) sonuc[alan] = sorun.message;
-  }
-  return sonuc;
-}
 
 export async function stajyerEkle(
   _oncekiDurum: EylemDurumu,

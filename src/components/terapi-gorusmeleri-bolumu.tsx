@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import {
   Alan,
@@ -64,15 +64,6 @@ export const TERAPI_TURU_ETIKETLERI: Record<
   OYUN_TERAPISI: "Oyun terapisi",
   DANISAN_TERAPISI: "Danışan terapisi",
 };
-
-function KaydetButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : "Görüşmeyi kaydet"}
-    </Buton>
-  );
-}
 
 export function TerapiGorusmeleriBolumu({
   mod,
@@ -275,7 +266,7 @@ export function TerapiGorusmeleriBolumu({
             {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
             <div className="flex flex-wrap items-center gap-2">
-              <KaydetButonu />
+              <GonderButonu>Görüşmeyi kaydet</GonderButonu>
               <Buton type="button" tur="sade" onClick={() => setAcik(false)}>
                 Vazgeç
               </Buton>

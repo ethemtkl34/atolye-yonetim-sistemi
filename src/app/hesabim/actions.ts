@@ -4,6 +4,7 @@ import { compare, hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { girisZorunlu } from "@/lib/auth-guard";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Kullanıcının kendi parolasını değiştirmesi.
@@ -18,11 +19,7 @@ import { girisZorunlu } from "@/lib/auth-guard";
  * değiştirilebilirdi.
  */
 
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-};
+export type { EylemDurumu };
 
 const parolaSemasi = z
   .object({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, butonStili, kartBasligiStili } from "@/components/ui";
 import {
@@ -20,15 +20,6 @@ export type StajyerSatiri = {
   aktifOgrenciSayisi: number;
   puanlamaSayisi: number;
 };
-
-function GonderButonu({ etiket }: { etiket: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Kaydediliyor…" : etiket}
-    </Buton>
-  );
-}
 
 export function StajyerYonetimi({ stajyerler }: { stajyerler: StajyerSatiri[] }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
@@ -194,7 +185,7 @@ function StajyerEkleFormu() {
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
         <div className="flex gap-2">
-          <GonderButonu etiket="Stajyeri ekle" />
+          <GonderButonu>Stajyeri ekle</GonderButonu>
           <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
             Vazgeç
           </Buton>
@@ -223,7 +214,7 @@ function AdDuzenleFormu({
       </Alan>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       <div className="flex gap-2">
-        <GonderButonu etiket="Kaydet" />
+        <GonderButonu>Kaydet</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Kapat
         </Buton>
@@ -255,7 +246,7 @@ function ParolaFormu({
       </Alan>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       <div className="flex gap-2">
-        <GonderButonu etiket="Parolayı yenile" />
+        <GonderButonu>Parolayı yenile</GonderButonu>
         <Buton type="button" tur="ikincil" onClick={kapat}>
           Kapat
         </Buton>

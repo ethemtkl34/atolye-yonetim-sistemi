@@ -1,18 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart } from "@/components/ui";
 import { atolyeEkle, type EylemDurumu } from "./actions";
-
-function KaydetButonu() {
-  const { pending } = useFormStatus();
-  return (
-    <Buton type="submit" disabled={pending}>
-      {pending ? "Ekleniyor…" : "Atölye ekle"}
-    </Buton>
-  );
-}
 
 export function AtolyeEkleFormu() {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(atolyeEkle, {});
@@ -61,7 +52,7 @@ export function AtolyeEkleFormu() {
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
         <div className="flex gap-2">
-          <KaydetButonu />
+          <GonderButonu bekleyenEtiket="Ekleniyor…">Atölye ekle</GonderButonu>
           <Buton type="button" tur="ikincil" onClick={() => setAcik(false)}>
             Vazgeç
           </Buton>

@@ -5,7 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
-import { alanHatalari, formDegerleri, GRUP_SEMASI } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  GRUP_SEMASI,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 import {
   EN_AZ_HAFTA,
   EN_FAZLA_HAFTA,
@@ -17,14 +23,6 @@ import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import type { ClubStatus } from "@/generated/prisma/enums";
 
 /** §5 — Kulüp programı, kulüp grupları ve durum geçişleri. */
-
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  /** Doğrulama hatasında girilen değerler — form sıfırlanınca geri yazılır. */
-  degerler?: Record<string, string>;
-};
 
 /** Kulüp sihirbazının metin/seçim alanları (atölye seçimi hariç). */
 const KULUP_FORM_ALANLARI = [

@@ -5,7 +5,12 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminZorunlu } from "@/lib/auth-guard";
-import { formDegerleri } from "@/lib/formlar";
+import {
+  alanHatalari,
+  formDegerleri,
+  type EylemDurumu,
+} from "@/lib/formlar";
+export type { EylemDurumu };
 import { rolEtiketi } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -24,13 +29,6 @@ import type { Role } from "@/generated/prisma/enums";
  * `coklu_rol`); buradaki kontrol kullanıcıya anlaşılır bir hata vermek için,
  * veritabanı kısıtı ise son savunma hattı.
  */
-
-export type EylemDurumu = {
-  basari?: string;
-  hata?: string;
-  alanHatalari?: Record<string, string>;
-  degerler?: Record<string, string>;
-};
 
 const ROLLER = [
   "ADMIN",
@@ -59,15 +57,6 @@ const kullaniciSemasi = z.object({
   roles: z.array(z.enum(ROLLER)).min(1, "En az bir rol seçin"),
   branchId: z.string().trim(),
 });
-
-function alanHatalari(hata: z.ZodError): Record<string, string> {
-  const sonuc: Record<string, string> = {};
-  for (const sorun of hata.issues) {
-    const alan = sorun.path.join(".");
-    if (alan && !sonuc[alan]) sonuc[alan] = sorun.message;
-  }
-  return sonuc;
-}
 
 /** Formdaki çoklu rol seçimi — `getAll` bilinmeyen değerleri de getirir,
  *  şema doğrulaması onları eler. */
