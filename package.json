@@ -9,7 +9,7 @@
     "baslat": "./baslat.command",
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma migrate deploy && vitest run && next build",
+    "vercel-build": "vitest run && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

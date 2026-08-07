@@ -8,6 +8,7 @@ import {
   formSatirlariOlustur,
   oturumPuanlanabilirMi,
 } from "@/lib/puanlama";
+import { takvimKilidiAl } from "@/lib/takvim-kilidi";
 import { bugun, tarihBicimle, tarihMetni } from "@/lib/tarih";
 
 /**
@@ -142,7 +143,18 @@ export async function puanlamaKaydet(
    * satırın kalması ortalamayı değil ama okumayı yanıltırdı.
    */
   if (!katildi) {
-    await db.$transaction(async (tx) => {
+    const sonuc = await db.$transaction(async (tx) => {
+      // Takvim kilidi: koordinatör aynı anda bu günü takvimden silmeye
+      // çalışırsa iki yazma sıraya girer (bkz. lib/takvim-kilidi.ts).
+      await takvimKilidiAl(tx, kayit.groupId);
+
+      const oturumDuruyor = await tx.session.count({
+        where: { id: oturumId },
+      });
+      if (oturumDuruyor === 0) {
+        return { hata: "Bu gün az önce takvimden silindi; form kaydedilemez." };
+      }
+
       const puanlama = await tx.score.upsert({
         where: {
           sessionId_enrollmentId: {
@@ -161,7 +173,10 @@ export async function puanlamaKaydet(
       });
 
       await tx.scoreAnswer.deleteMany({ where: { scoreId: puanlama.id } });
+      return {};
     });
+
+    if ("hata" in sonuc) return sonuc;
 
     ekranlariTazele(kayit.studentId, kayitId, oturum.date);
     return {
@@ -213,7 +228,16 @@ export async function puanlamaKaydet(
     };
   }
 
-  await db.$transaction(async (tx) => {
+  const sonuc = await db.$transaction(async (tx) => {
+    // Takvim kilidi: koordinatör aynı anda bu günü takvimden silmeye
+    // çalışırsa iki yazma sıraya girer (bkz. lib/takvim-kilidi.ts).
+    await takvimKilidiAl(tx, kayit.groupId);
+
+    const oturumDuruyor = await tx.session.count({ where: { id: oturumId } });
+    if (oturumDuruyor === 0) {
+      return { hata: "Bu gün az önce takvimden silindi; form kaydedilemez." };
+    }
+
     const puanlama = await tx.score.upsert({
       where: {
         sessionId_enrollmentId: { sessionId: oturumId, enrollmentId: kayitId },
@@ -238,7 +262,10 @@ export async function puanlamaKaydet(
         ...cevap,
       })),
     });
+    return {};
   });
+
+  if ("hata" in sonuc) return sonuc;
 
   ekranlariTazele(kayit.studentId, kayitId, oturum.date);
   return { basari: `${oturum.workshopType.name} formu kaydedildi.` };

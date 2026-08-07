@@ -231,6 +231,36 @@ export async function stajyerZorunlu(): Promise<SubeliKullanici> {
 }
 
 /**
+ * İkili belge veren API rotalarının kapısı (rapor PDF'i, zeka testi belgesi).
+ *
+ * Buradaki diğer fonksiyonlar yönlendirme yapar; indirme isteğine ise 403
+ * dönmek gerekir. Kontrol iki katmanlı: rol veritabanından okunur (belirteç
+ * 12 saat bayat kalabilir) ve dönen şube kimliği çağıranın sorgusunda süzgeç
+ * olarak kullanılır — yöneticide null'dır (bütün şubeler), diğer rollerde
+ * zorunludur; boşsa "süzgeç yok" hâline düşmek sızıntı olurdu.
+ */
+export async function belgeYetkisi(
+  modul: Modul,
+  gereken: Seviye = "GORUNTULE",
+): Promise<{ subeId: string | null } | Response> {
+  const erisimYok = () =>
+    new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
+
+  const oturum = await auth();
+  if (!oturum?.user?.id) return erisimYok();
+
+  const kullanici = await kullaniciyiOku(oturum.user.id);
+  if (!kullanici?.active || !yetkiYeter(kullanici.roles, modul, gereken)) {
+    return erisimYok();
+  }
+
+  const yonetici = kullanici.roles.includes("ADMIN");
+  if (!yonetici && !kullanici.branchId) return erisimYok();
+
+  return { subeId: kullanici.branchId };
+}
+
+/**
  * Yalnızca yönetici. Hesap ve rol yönetimi ekranları için — orası tek
  * şubeye değil bütün şubelere bakar, o yüzden şube bağlamı döndürmüyor.
  */

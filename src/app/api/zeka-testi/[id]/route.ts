@@ -1,8 +1,7 @@
-import { auth } from "@/auth";
+import { belgeYetkisi } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
-import { yetkiYeter } from "@/lib/yetkiler";
 
 /**
  * Zeka testi belgesinin indirilmesi / tarayıcıda önizlenmesi.
@@ -12,49 +11,26 @@ import { yetkiYeter } from "@/lib/yetkiler";
  * tarayıcı PDF ve görselleri indirme yerine pencerede gösterir — detay
  * penceresindeki önizleme de bu adresi kullanır.
  *
- * YETKİ: `rapor-pdf` rotasıyla aynı iki katmanlı kontrol — rol veritabanından
- * okunur (belirteç 12 saat bayat kalabilir) ve belgenin şubesi doğrulanır.
- * Test sonuçları sağlık bilgisi gibi hassastır: stajyer bu rotadan da veri
- * alamaz.
+ * YETKİ: `belgeYetkisi` (rapor-pdf rotasıyla ortak). Belge İÇERİĞİ için
+ * GORUNTULE gerekir; LISTE yetmez. Danışma görevlisi liste sayfasını görür
+ * ama belgeyi bu rotadan da açamaz — "sadece liste" sınırının asıl durduğu
+ * yer burası, arayüzdeki gizleme değil. Test sonuçları sağlık bilgisi gibi
+ * hassastır: stajyer bu rotadan da veri alamaz.
  */
 export async function GET(
   _istek: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const oturum = await auth();
-  if (!oturum?.user?.id) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
-
-  const kullanici = await db.user.findUnique({
-    where: { id: oturum.user.id },
-    select: { roles: true, active: true, branchId: true },
-  });
-
-  // Belge İÇERİĞİ için GORUNTULE gerekir; LISTE yetmez. Danışma görevlisi
-  // liste sayfasını görür ama belgeyi bu rotadan da açamaz — "sadece liste"
-  // sınırının asıl durduğu yer burası, arayüzdeki gizleme değil.
-  if (
-    !kullanici?.active ||
-    !yetkiYeter(kullanici.roles, "zekaTestleri", "GORUNTULE")
-  ) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
-
-  // Yönetici bütün şubeleri görüyor; diğerlerinin şubesi zorunlu. Şube null
-  // gelirse belge verilmez — "süzgeç yok" hâline düşmek sızıntı olurdu.
-  const yonetici = kullanici.roles.includes("ADMIN");
-  if (!yonetici && !kullanici.branchId) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
+  const yetki = await belgeYetkisi("zekaTestleri", "GORUNTULE");
+  if (yetki instanceof Response) return yetki;
 
   const { id } = await params;
 
   const test = await db.intelligenceTest.findFirst({
     where: {
       id,
-      ...(kullanici.branchId
-        ? { student: { branchId: kullanici.branchId } }
+      ...(yetki.subeId
+        ? { student: { branchId: yetki.subeId } }
         : {}),
     },
     select: {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/auth-guard";
+import { takvimKilidiAl } from "@/lib/takvim-kilidi";
 import { tarihBicimle, tarihCozumle } from "@/lib/tarih";
 
 /**
@@ -21,6 +22,13 @@ import { tarihBicimle, tarihCozumle } from "@/lib/tarih";
  * PUANLAR KORUNUR: puanlama oturuma (`Score.sessionId`) bağlı, tarihe değil.
  * Bir gün ertelendiğinde girilmiş puanlamalar oturumla birlikte taşınır.
  * Silme ise puanlamayı da götürür; bu yüzden puanlanmış gün silinemiyor.
+ *
+ * KİLİT: "puanlanmış gün silinemez" kontrolü ile silmenin arasına bir
+ * stajyerin puan kaydetmesi girerse `Score` cascade ile sessizce giderdi.
+ * Bu yüzden buradaki bütün yazmalar `pg_advisory_xact_lock("takvim:"+grupId)`
+ * altında çalışır ve puanlama kaydetme eylemi de aynı kilidi alır
+ * (bkz. stajyer/puanlama/actions.ts) — kayıt tarafındaki "kayit:"+groupId
+ * deseninin aynısı.
  */
 
 export type TakvimDurumu = { basari?: string; hata?: string };
@@ -94,28 +102,35 @@ export async function grupGunuTasi(
   const grup = await grubuOku(grupId, kullanici.aktifSubeId);
   if (!grup) return { hata: "Grup bulunamadı." };
 
-  // Aynı gruba aynı tarihte iki gün konamaz: veritabanındaki
-  // `@@unique([groupId, date, workshopTypeId])` zaten engelliyor ama hata
-  // mesajı anlaşılır olsun diye önceden bakılıyor.
-  const dolu = await db.session.count({
-    where: { groupId: grupId, date: yeni },
-  });
-  if (dolu > 0) {
-    return {
-      hata: `${tarihBicimle(yeni)} bu grubun takviminde zaten var. Önce o günü taşıyın veya silin.`,
-    };
-  }
+  const sonuc = await db.$transaction(async (tx) => {
+    await takvimKilidiAl(tx, grupId);
 
-  const sonuc = await db.session.updateMany({
-    where: { groupId: grupId, date: eski },
-    data: { date: yeni },
+    // Aynı gruba aynı tarihte iki gün konamaz: veritabanındaki
+    // `@@unique([groupId, date, workshopTypeId])` zaten engelliyor ama hata
+    // mesajı anlaşılır olsun diye önceden bakılıyor.
+    const dolu = await tx.session.count({
+      where: { groupId: grupId, date: yeni },
+    });
+    if (dolu > 0) {
+      return {
+        hata: `${tarihBicimle(yeni)} bu grubun takviminde zaten var. Önce o günü taşıyın veya silin.`,
+      };
+    }
+
+    const tasinan = await tx.session.updateMany({
+      where: { groupId: grupId, date: eski },
+      data: { date: yeni },
+    });
+    if (tasinan.count === 0) return { hata: "Taşınacak oturum bulunamadı." };
+
+    return { adet: tasinan.count };
   });
 
-  if (sonuc.count === 0) return { hata: "Taşınacak oturum bulunamadı." };
+  if ("hata" in sonuc) return sonuc;
 
   yollariTazele(grup);
   return {
-    basari: `${tarihBicimle(eski)} → ${tarihBicimle(yeni)} taşındı (${sonuc.count} atölye).`,
+    basari: `${tarihBicimle(eski)} → ${tarihBicimle(yeni)} taşındı (${sonuc.adet} atölye).`,
   };
 }
 
@@ -149,19 +164,28 @@ export async function grupGunuEkle(
     return { hata: "Programın atölyeleri bulunamadı." };
   }
 
-  const dolu = await db.session.count({ where: { groupId: grupId, date: tarih } });
-  if (dolu > 0) {
-    return { hata: `${tarihBicimle(tarih)} bu grubun takviminde zaten var.` };
-  }
+  const sonuc = await db.$transaction(async (tx) => {
+    await takvimKilidiAl(tx, grupId);
 
-  await db.session.createMany({
-    data: atolyeler.map((workshopTypeId) => ({
-      groupId: grupId,
-      workshopTypeId,
-      termWeekId: null,
-      date: tarih,
-    })),
+    const dolu = await tx.session.count({
+      where: { groupId: grupId, date: tarih },
+    });
+    if (dolu > 0) {
+      return { hata: `${tarihBicimle(tarih)} bu grubun takviminde zaten var.` };
+    }
+
+    await tx.session.createMany({
+      data: atolyeler.map((workshopTypeId) => ({
+        groupId: grupId,
+        workshopTypeId,
+        termWeekId: null,
+        date: tarih,
+      })),
+    });
+    return {};
   });
+
+  if ("hata" in sonuc) return sonuc;
 
   yollariTazele(grup);
   return {
@@ -189,20 +213,32 @@ export async function grupGunuSil(
   const grup = await grubuOku(grupId, kullanici.aktifSubeId);
   if (!grup) return { hata: "Grup bulunamadı." };
 
-  const puanlamaSayisi = await db.score.count({
-    where: { session: { groupId: grupId, date: tarih } },
-  });
-  if (puanlamaSayisi > 0) {
-    return {
-      hata: `${tarihBicimle(tarih)} gününde ${puanlamaSayisi} puanlama var; gün silinemez. Silmek için önce o günün formlarını temizleyin.`,
-    };
-  }
+  const sonuc = await db.$transaction(async (tx) => {
+    await takvimKilidiAl(tx, grupId);
 
-  const sonuc = await db.session.deleteMany({ where: { groupId: grupId, date: tarih } });
-  if (sonuc.count === 0) return { hata: "Silinecek oturum bulunamadı." };
+    // Kilit alındıktan sonra sayılıyor: kontrol ile silme arasına puan
+    // kaydı giremez (puanlama eylemi de aynı kilidi alıyor).
+    const puanlamaSayisi = await tx.score.count({
+      where: { session: { groupId: grupId, date: tarih } },
+    });
+    if (puanlamaSayisi > 0) {
+      return {
+        hata: `${tarihBicimle(tarih)} gününde ${puanlamaSayisi} puanlama var; gün silinemez. Silmek için önce o günün formlarını temizleyin.`,
+      };
+    }
+
+    const silinen = await tx.session.deleteMany({
+      where: { groupId: grupId, date: tarih },
+    });
+    if (silinen.count === 0) return { hata: "Silinecek oturum bulunamadı." };
+
+    return { adet: silinen.count };
+  });
+
+  if ("hata" in sonuc) return sonuc;
 
   yollariTazele(grup);
   return {
-    basari: `${tarihBicimle(tarih)} takvimden çıkarıldı (${sonuc.count} atölye).`,
+    basari: `${tarihBicimle(tarih)} takvimden çıkarıldı (${sonuc.adet} atölye).`,
   };
 }

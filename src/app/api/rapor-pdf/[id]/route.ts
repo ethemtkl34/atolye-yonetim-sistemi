@@ -1,11 +1,10 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import { auth } from "@/auth";
+import { belgeYetkisi } from "@/lib/auth-guard";
 import { db } from "@/lib/db";
 import { RaporBelgesi } from "@/lib/pdf/rapor-belgesi";
 import type { RaporGovdesi } from "@/lib/report-engine";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
-import { yetkiYeter } from "@/lib/yetkiler";
 
 /**
  * §11.5 — Üretilmiş bir PDF raporunun indirilmesi.
@@ -18,51 +17,25 @@ import { yetkiYeter } from "@/lib/yetkiler";
  * de aynı şekilde çalışıyor; P12'de nesne deposuna geçilmek istenirse
  * yalnızca `fileUrl` değişir.
  *
- * YETKİ: Bu rota bir Server Action değil, sayfa da değil — `auth-guard.ts`
- * fonksiyonları burada kullanılamaz (onlar yönlendirme yapar, indirme
- * isteğinde 403 gerekir). Bu yüzden kontrol elle yapılıyor ve iki katmanlı:
- * rol veritabanından okunuyor (belirteç 12 saat bayat kalabilir) ve belgenin
- * şubesi doğrulanıyor. Önceden yalnızca belirteçteki role bakılıyordu; id
+ * YETKİ: `belgeYetkisi` — raporu görebilen herkes PDF'ini de indirebilir;
+ * sabit rol listesi yerine yetki matrisi (danışma görevlisi ve stajyerde
+ * raporlar YOK → 403). Önceden yalnızca belirteçteki role bakılıyordu; id
  * tahmin edilebilirse başka şubenin raporu indirilebilirdi.
  */
 export async function GET(
   _istek: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const oturum = await auth();
-  if (!oturum?.user?.id) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
-
-  const kullanici = await db.user.findUnique({
-    where: { id: oturum.user.id },
-    select: { roles: true, active: true, branchId: true },
-  });
-
-  // Raporu görebilen herkes PDF'ini de indirebilir; sabit rol listesi yerine
-  // yetki matrisi (danışma görevlisi ve stajyerde raporlar YOK → 403).
-  if (
-    !kullanici?.active ||
-    !yetkiYeter(kullanici.roles, "raporlar", "GORUNTULE")
-  ) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
-
-  // Yönetici bütün şubeleri görüyor, onun için şube kısıtı yok. Diğerlerinin
-  // şubesi ise zorunlu: veritabanı CHECK'i null bırakmıyor, yine de null
-  // gelirse belge verilmez — "süzgeç yok" hâline düşmek sızıntı olurdu.
-  const yonetici = kullanici.roles.includes("ADMIN");
-  if (!yonetici && !kullanici.branchId) {
-    return new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
-  }
+  const yetki = await belgeYetkisi("raporlar", "GORUNTULE");
+  if (yetki instanceof Response) return yetki;
 
   const { id } = await params;
 
   const pdf = await db.reportPdf.findFirst({
     where: {
       id,
-      ...(kullanici.branchId
-        ? { report: { student: { branchId: kullanici.branchId } } }
+      ...(yetki.subeId
+        ? { report: { student: { branchId: yetki.subeId } } }
         : {}),
     },
     select: {
