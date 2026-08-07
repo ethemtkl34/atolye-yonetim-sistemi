@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Buton } from "@/components/ui";
-import type { EylemDurumu } from "./actions";
+import type { EylemDurumu } from "@/lib/formlar";
 
 /**
  * Aktif/pasif geçişi.

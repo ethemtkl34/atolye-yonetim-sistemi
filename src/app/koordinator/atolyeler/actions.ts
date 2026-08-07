@@ -9,7 +9,6 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 
 /**
  * Atölye çeşitleri ve değerlendirme sorularının işlemleri (§2.1, §9.2).

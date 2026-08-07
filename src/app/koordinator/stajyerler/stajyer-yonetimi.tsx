@@ -4,12 +4,12 @@ import { useActionState, useState, useTransition } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import Link from "next/link";
 import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, butonStili, kartBasligiStili } from "@/components/ui";
+import type { EylemDurumu } from "@/lib/formlar";
 import {
   stajyerAdiGuncelle,
   stajyerDurumDegistir,
   stajyerEkle,
   stajyerParolaSifirla,
-  type EylemDurumu,
 } from "./actions";
 
 export type StajyerSatiri = {

@@ -1,7 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { GonderButonu } from "@/components/ui-istemci";
+import { useState } from "react";
+import { GonderButonu, Pencere } from "@/components/ui-istemci";
+import {
+  BolumUstu,
+  DetaySatiri,
+  PencereAltBilgisi,
+  SilDugmesi,
+  useEklemePaneli,
+  useSunucuIslemi,
+} from "@/components/bolum-iskeleti";
 import Link from "next/link";
 import {
   Alan,
@@ -226,49 +234,20 @@ export function VeliGorusmeleriBolumu({
 }) {
   const yonetim = mod === "yonetim";
 
-  const [acik, setAcik] = useState(false);
-  const [durum, eylem] = useActionState<VeliGorusmesiEylemDurumu, FormData>(
-    veliGorusmesiGonder,
-    {},
-  );
+  // Ekleme paneli + form durumu iskeletten; mini test cevapları `degerler`
+  // üzerinden `defaultChecked` ile geri gelir (aşağıdaki MiniTestSatiri notu).
+  const { acik, setAcik, durum, eylem, deger } =
+    useEklemePaneli<VeliGorusmesiEylemDurumu>(veliGorusmesiGonder);
 
-  // Başarıdan sonra form kapanır (terapi bölümündeki desen).
-  const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
-  if (durum.basari !== gorulenBasari) {
-    setGorulenBasari(durum.basari);
-    if (durum.basari) setAcik(false);
-  }
-
-  // React 19, eylem bitince formu sıfırlıyor — önizlemede de. Eylem
-  // girilenleri geri döndürüyor; metin alanları buradan, mini test cevapları
-  // ise `defaultChecked` üzerinden geri gelir.
-  const deger = (alan: string) => durum.degerler?.[alan];
-
-  const [islemDurumu, setIslemDurumu] = useState<VeliGorusmesiEylemDurumu>({});
-  const [isleniyor, islemeBasla] = useTransition();
+  // Tek işlem durumu hem silmeyi hem not kaydetmeyi taşır (ikisi de pencerede).
+  const islem = useSunucuIslemi<VeliGorusmesiEylemDurumu>();
 
   const [secili, setSecili] = useState<VeliGorusmesiSatiri | null>(null);
-  const pencereRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const pencere = pencereRef.current;
-    if (!pencere) return;
-    if (secili && !pencere.open) pencere.showModal();
-    if (!secili && pencere.open) pencere.close();
-  }, [secili]);
 
   function sil(gorusme: VeliGorusmesiSatiri) {
-    if (
-      !window.confirm(
-        `${tarihBicimle(gorusme.tarih)} tarihli veli görüşmesi (${gorusme.ogrenciAdi} · ${gorusme.gorusmeciAdi}) brief'i ve notuyla birlikte silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
-      )
-    ) {
-      return;
-    }
-    islemeBasla(async () => {
-      const sonuc = await veliGorusmesiSil(gorusme.id);
-      setIslemDurumu(sonuc);
-      if (sonuc.basari) setSecili(null);
+    islem.calistir(() => veliGorusmesiSil(gorusme.id), {
+      onay: `${tarihBicimle(gorusme.tarih)} tarihli veli görüşmesi (${gorusme.ogrenciAdi} · ${gorusme.gorusmeciAdi}) brief'i ve notuyla birlikte silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
+      basarida: () => setSecili(null),
     });
   }
 
@@ -293,43 +272,37 @@ export function VeliGorusmeleriBolumu({
   function notKaydet(formVerisi: FormData) {
     const gorusme = secili;
     if (!gorusme) return;
-    islemeBasla(async () => {
-      const sonuc = await veliGorusmesiNotuKaydet(gorusme.id, {}, formVerisi);
-      setIslemDurumu(sonuc);
-      // Başarıda pencere kapanır; liste tazelenince rozet "Tamamlandı" olur.
-      if (sonuc.basari) setSecili(null);
+    // Başarıda pencere kapanır; liste tazelenince rozet "Tamamlandı" olur.
+    islem.calistir(() => veliGorusmesiNotuKaydet(gorusme.id, {}, formVerisi), {
+      basarida: () => setSecili(null),
     });
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Veli görüşmeleri
-          {gorusmeler.length > 0 ? (
-            <span className="ml-2 text-sm font-normal text-zinc-500">
-              {gorusmeler.length} görüşme
-            </span>
-          ) : null}
-        </h2>
-        {yonetim && !acik ? (
-          <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
-            + Veli görüşmesi ekle
-          </Buton>
-        ) : null}
-        {!yonetim ? (
-          <Link href="/koordinator/danismanlik" className={baglantiStili}>
-            Danışmanlık sayfasında yönetilir
-          </Link>
-        ) : null}
-      </div>
+      <BolumUstu
+        baslik="Veli görüşmeleri"
+        adet={gorusmeler.length}
+        adetEtiketi="görüşme"
+        aksiyon={
+          yonetim && !acik ? (
+            <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
+              + Veli görüşmesi ekle
+            </Buton>
+          ) : !yonetim ? (
+            <Link href="/koordinator/danismanlik" className={baglantiStili}>
+              Danışmanlık sayfasında yönetilir
+            </Link>
+          ) : null
+        }
+      />
 
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
-      {islemDurumu.basari ? (
-        <Bildirim tur="basari">{islemDurumu.basari}</Bildirim>
+      {islem.durum.basari ? (
+        <Bildirim tur="basari">{islem.durum.basari}</Bildirim>
       ) : null}
-      {islemDurumu.hata ? (
-        <Bildirim tur="hata">{islemDurumu.hata}</Bildirim>
+      {islem.durum.hata ? (
+        <Bildirim tur="hata">{islem.durum.hata}</Bildirim>
       ) : null}
 
       {yonetim && acik ? (
@@ -423,162 +396,145 @@ export function VeliGorusmeleriBolumu({
       ) : (
         <div className="space-y-2">
           {gorusmeler.map((gorusme) => (
-            <button
-              key={gorusme.id}
-              type="button"
-              onClick={() => setSecili(gorusme)}
-              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
-            >
-              <span className="flex min-w-0 flex-wrap items-center gap-2">
+            <DetaySatiri key={gorusme.id} onClick={() => setSecili(gorusme)}>
+              <span className="font-medium text-zinc-900">
+                {tarihBicimle(gorusme.tarih)}
+              </span>
+              {yonetim ? (
                 <span className="font-medium text-zinc-900">
-                  {tarihBicimle(gorusme.tarih)}
+                  {gorusme.ogrenciAdi}
                 </span>
-                {yonetim ? (
-                  <span className="font-medium text-zinc-900">
-                    {gorusme.ogrenciAdi}
-                  </span>
-                ) : null}
-                <Rozet tur={gorusme.not ? "olumlu" : "notr"}>
-                  {gorusme.not ? "Tamamlandı" : "Not bekliyor"}
-                </Rozet>
-                <span className="truncate text-sm text-zinc-600">
-                  {gorusme.gorusmeciAdi}
-                </span>
+              ) : null}
+              <Rozet tur={gorusme.not ? "olumlu" : "notr"}>
+                {gorusme.not ? "Tamamlandı" : "Not bekliyor"}
+              </Rozet>
+              <span className="truncate text-sm text-zinc-600">
+                {gorusme.gorusmeciAdi}
               </span>
-              <span
-                aria-hidden
-                className="shrink-0 text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
-              >
-                →
-              </span>
-            </button>
+            </DetaySatiri>
           ))}
         </div>
       )}
 
       {/* --- Detay penceresi --- */}
-      <dialog
-        ref={pencereRef}
-        onClose={() => setSecili(null)}
-        className="m-auto w-[min(38rem,calc(100vw-2rem))] rounded-lg bg-white p-0 shadow-2xl backdrop:bg-marka-950/50"
+      <Pencere
+        acik={Boolean(secili)}
+        onKapat={() => setSecili(null)}
+        genislik="38rem"
+        govdeSinifi="space-y-5 overflow-y-auto p-4"
+        baslik={
+          secili ? (
+            <>
+              <h3 className="text-base font-semibold text-zinc-900">
+                {tarihBicimle(secili.tarih)}
+              </h3>
+              <Rozet tur={secili.not ? "olumlu" : "notr"}>
+                {secili.not ? "Tamamlandı" : "Not bekliyor"}
+              </Rozet>
+            </>
+          ) : null
+        }
+        altBaslik={
+          secili
+            ? `${secili.ogrenciAdi} · Görüşmeyi yapan: ${secili.gorusmeciAdi}`
+            : null
+        }
+        altKisim={
+          secili ? (
+            <PencereAltBilgisi
+              bilgi={
+                <>
+                  Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
+                  {tarihBicimle(secili.eklenmeTarihi)}
+                </>
+              }
+              silmeDugmesi={
+                yonetim ? (
+                  <SilDugmesi
+                    calisiyor={islem.calisiyor}
+                    calisiyorEtiketi="İşleniyor…"
+                    onClick={() => sil(secili)}
+                  />
+                ) : undefined
+              }
+            />
+          ) : null
+        }
       >
         {secili ? (
-          <div className="flex max-h-[85vh] flex-col">
-            <header className="flex items-start justify-between gap-3 border-b border-yuzey-100 p-4">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-semibold text-zinc-900">
-                    {tarihBicimle(secili.tarih)}
-                  </h3>
-                  <Rozet tur={secili.not ? "olumlu" : "notr"}>
-                    {secili.not ? "Tamamlandı" : "Not bekliyor"}
-                  </Rozet>
-                </div>
-                <p className="mt-0.5 text-sm text-zinc-600">
-                  {secili.ogrenciAdi} · Görüşmeyi yapan: {secili.gorusmeciAdi}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSecili(null)}
-                aria-label="Pencereyi kapat"
-                className="flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-md text-lg text-zinc-400 hover:bg-marka-50 hover:text-zinc-700 sm:min-h-0 sm:min-w-0 sm:px-2"
-              >
-                ×
-              </button>
-            </header>
+          <>
+            <BriefGorunumu brief={secili.brief} />
 
-            <div className="space-y-5 overflow-y-auto p-4">
-              <BriefGorunumu brief={secili.brief} />
-
-              <div>
-                <h4 className="text-sm font-semibold text-zinc-900">
-                  Mini test cevapları
-                </h4>
-                <ul className="mt-1 space-y-1">
-                  {secili.cevaplar.map((cevap) => (
-                    <li
-                      key={cevap.anahtar}
-                      className="flex items-baseline justify-between gap-3 text-sm text-zinc-700"
-                    >
-                      <span>{cevap.soruMetni}</span>
-                      <span className="shrink-0 font-medium text-zinc-900">
-                        {cevap.deger}/5
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-semibold text-zinc-900">
-                  Görüşme notu
-                </h4>
-                {secili.not ? (
-                  <>
-                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
-                      {secili.not}
-                    </p>
-                    {secili.notGuncellemeZamani ? (
-                      <p className="mt-1 text-xs text-zinc-500">
-                        Not güncellemesi:{" "}
-                        {tarihBicimle(secili.notGuncellemeZamani)}
-                      </p>
-                    ) : null}
-                  </>
-                ) : !yonetim ? (
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Henüz not eklenmedi.
-                  </p>
-                ) : null}
-
-                {/* Not görüşmeden SONRA yazılır; varsa da üzerine yazılabilir
-                    (kaydın kendisi düzenlenmez, yalnızca not). Okuma modunda
-                    form yok — not Danışmanlık sayfasından girilir. */}
-                {yonetim ? (
-                  <form action={notKaydet} className="mt-2 space-y-2">
-                    <CokSatirli
-                      name="not"
-                      rows={3}
-                      defaultValue={secili.not ?? ""}
-                      placeholder="Görüşmede konuşulanlar, velinin ilettikleri, kararlar…"
-                    />
-                    {islemDurumu.alanHatalari?.not ? (
-                      <p className="text-xs text-red-600">
-                        {islemDurumu.alanHatalari.not}
-                      </p>
-                    ) : null}
-                    <Buton type="submit" tur="ikincil" disabled={isleniyor}>
-                      {isleniyor
-                        ? "Kaydediliyor…"
-                        : secili.not
-                          ? "Notu güncelle"
-                          : "Notu kaydet"}
-                    </Buton>
-                  </form>
-                ) : null}
-              </div>
+            <div>
+              <h4 className="text-sm font-semibold text-zinc-900">
+                Mini test cevapları
+              </h4>
+              <ul className="mt-1 space-y-1">
+                {secili.cevaplar.map((cevap) => (
+                  <li
+                    key={cevap.anahtar}
+                    className="flex items-baseline justify-between gap-3 text-sm text-zinc-700"
+                  >
+                    <span>{cevap.soruMetni}</span>
+                    <span className="shrink-0 font-medium text-zinc-900">
+                      {cevap.deger}/5
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-yuzey-100 p-4">
-              <span className="text-xs text-zinc-500">
-                Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
-                {tarihBicimle(secili.eklenmeTarihi)}
-              </span>
-              {yonetim ? (
-                <Buton
-                  type="button"
-                  tur="tehlike"
-                  disabled={isleniyor}
-                  onClick={() => sil(secili)}
-                >
-                  {isleniyor ? "İşleniyor…" : "Sil"}
-                </Buton>
+            <div>
+              <h4 className="text-sm font-semibold text-zinc-900">
+                Görüşme notu
+              </h4>
+              {secili.not ? (
+                <>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                    {secili.not}
+                  </p>
+                  {secili.notGuncellemeZamani ? (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Not güncellemesi:{" "}
+                      {tarihBicimle(secili.notGuncellemeZamani)}
+                    </p>
+                  ) : null}
+                </>
+              ) : !yonetim ? (
+                <p className="mt-1 text-sm text-zinc-500">
+                  Henüz not eklenmedi.
+                </p>
               ) : null}
-            </footer>
-          </div>
+
+              {/* Not görüşmeden SONRA yazılır; varsa da üzerine yazılabilir
+                  (kaydın kendisi düzenlenmez, yalnızca not). Okuma modunda
+                  form yok — not Danışmanlık sayfasından girilir. */}
+              {yonetim ? (
+                <form action={notKaydet} className="mt-2 space-y-2">
+                  <CokSatirli
+                    name="not"
+                    rows={3}
+                    defaultValue={secili.not ?? ""}
+                    placeholder="Görüşmede konuşulanlar, velinin ilettikleri, kararlar…"
+                  />
+                  {islem.durum.alanHatalari?.not ? (
+                    <p className="text-xs text-red-600">
+                      {islem.durum.alanHatalari.not}
+                    </p>
+                  ) : null}
+                  <Buton type="submit" tur="ikincil" disabled={islem.calisiyor}>
+                    {islem.calisiyor
+                      ? "Kaydediliyor…"
+                      : secili.not
+                        ? "Notu güncelle"
+                        : "Notu kaydet"}
+                  </Buton>
+                </form>
+              ) : null}
+            </div>
+          </>
         ) : null}
-      </dialog>
+      </Pencere>
     </div>
   );
 }

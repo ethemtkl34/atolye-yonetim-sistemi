@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart } from "@/components/ui";
-import { atolyeEkle, type EylemDurumu } from "./actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { atolyeEkle } from "./actions";
 
 export function AtolyeEkleFormu() {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(atolyeEkle, {});

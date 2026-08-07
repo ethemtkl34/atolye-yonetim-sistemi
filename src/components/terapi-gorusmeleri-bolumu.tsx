@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { GonderButonu } from "@/components/ui-istemci";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Alan,
@@ -15,6 +14,15 @@ import {
   baglantiStili,
   secimStili,
 } from "@/components/ui";
+import { GonderButonu, Pencere } from "@/components/ui-istemci";
+import {
+  BolumUstu,
+  DetaySatiri,
+  PencereAltBilgisi,
+  SilDugmesi,
+  useEklemePaneli,
+  useSunucuIslemi,
+} from "@/components/bolum-iskeleti";
 import { tarihBicimle } from "@/lib/tarih";
 import {
   terapiGorusmesiEkle,
@@ -38,6 +46,7 @@ import {
  *
  * Ekleme satır içi açılır form; OKUMA ise açılır pencerede (not 5000
  * karaktere kadar olabildiği için listede tam metin sayfayı şişirir).
+ * İskelet (panel/pencere/silme durumu) `bolum-iskeleti.tsx`'ten gelir.
  */
 
 export type TerapiGorusmesiSatiri = {
@@ -84,41 +93,15 @@ export function TerapiGorusmeleriBolumu({
 }) {
   const yonetim = mod === "yonetim";
 
-  const [acik, setAcik] = useState(false);
-  const [durum, eylem] = useActionState<GorusmeEylemDurumu, FormData>(
-    terapiGorusmesiEkle,
-    {},
-  );
-
-  // Başarıdan sonra form kapanır (render sırasında durum ayarlamadan —
-  // grup ekleme formundaki desenle aynı).
-  const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
-  if (durum.basari !== gorulenBasari) {
-    setGorulenBasari(durum.basari);
-    if (durum.basari) setAcik(false);
-  }
-
-  // React 19, eylem bitince formu sıfırlıyor — doğrulama hatasında da.
-  // Eylem girilenleri geri döndürüyor; alanlar buradan doldurulur ki uzun
-  // bir görüşme notu tek eksik alan yüzünden kaybolmasın.
-  const deger = (alan: string) => durum.degerler?.[alan];
-
-  const [silmeDurumu, setSilmeDurumu] = useState<GorusmeEylemDurumu>({});
-  const [siliniyor, silmeyeBasla] = useTransition();
+  const { acik, setAcik, durum, eylem, deger } =
+    useEklemePaneli<GorusmeEylemDurumu>(terapiGorusmesiEkle);
+  const silme = useSunucuIslemi<GorusmeEylemDurumu>();
 
   /**
    * Detay penceresi. Kapalıyken içerik render edilmez; `secili` hem pencerenin
    * açık olup olmadığını hem gösterilen görüşmeyi taşır.
    */
   const [secili, setSecili] = useState<TerapiGorusmesiSatiri | null>(null);
-  const pencereRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const pencere = pencereRef.current;
-    if (!pencere) return;
-    if (secili && !pencere.open) pencere.showModal();
-    if (!secili && pencere.open) pencere.close();
-  }, [secili]);
 
   const bosDurum = suzgecEtkin ? (
     <BosDurum
@@ -137,50 +120,38 @@ export function TerapiGorusmeleriBolumu({
   );
 
   function sil(gorusme: TerapiGorusmesiSatiri) {
-    if (
-      !window.confirm(
-        `${tarihBicimle(gorusme.tarih)} tarihli görüşme (${gorusme.ogrenciAdi} · ${gorusme.gorusmeciAdi}) silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
-      )
-    ) {
-      return;
-    }
-    silmeyeBasla(async () => {
-      const sonuc = await terapiGorusmesiSil(gorusme.id);
-      setSilmeDurumu(sonuc);
+    silme.calistir(() => terapiGorusmesiSil(gorusme.id), {
+      onay: `${tarihBicimle(gorusme.tarih)} tarihli görüşme (${gorusme.ogrenciAdi} · ${gorusme.gorusmeciAdi}) silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
       // Silme pencereden yapılıyor; kayıt gittiyse pencere açık kalamaz.
-      if (sonuc.basari) setSecili(null);
+      basarida: () => setSecili(null),
     });
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Terapi görüşmeleri
-          {gorusmeler.length > 0 ? (
-            <span className="ml-2 text-sm font-normal text-zinc-500">
-              {gorusmeler.length} görüşme
-            </span>
-          ) : null}
-        </h2>
-        {yonetim && !acik ? (
-          <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
-            + Terapi görüşmesi ekle
-          </Buton>
-        ) : null}
-        {!yonetim ? (
-          <Link href="/koordinator/danismanlik" className={baglantiStili}>
-            Danışmanlık sayfasında yönetilir
-          </Link>
-        ) : null}
-      </div>
+      <BolumUstu
+        baslik="Terapi görüşmeleri"
+        adet={gorusmeler.length}
+        adetEtiketi="görüşme"
+        aksiyon={
+          yonetim && !acik ? (
+            <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
+              + Terapi görüşmesi ekle
+            </Buton>
+          ) : !yonetim ? (
+            <Link href="/koordinator/danismanlik" className={baglantiStili}>
+              Danışmanlık sayfasında yönetilir
+            </Link>
+          ) : null
+        }
+      />
 
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
-      {silmeDurumu.basari ? (
-        <Bildirim tur="basari">{silmeDurumu.basari}</Bildirim>
+      {silme.durum.basari ? (
+        <Bildirim tur="basari">{silme.durum.basari}</Bildirim>
       ) : null}
-      {silmeDurumu.hata ? (
-        <Bildirim tur="hata">{silmeDurumu.hata}</Bildirim>
+      {silme.durum.hata ? (
+        <Bildirim tur="hata">{silme.durum.hata}</Bildirim>
       ) : null}
 
       {yonetim && acik ? (
@@ -279,109 +250,82 @@ export function TerapiGorusmeleriBolumu({
         bosDurum
       ) : (
         <div className="space-y-2">
-          {/* Satırda yalnızca kimlik bilgisi; notun tamamı pencerede.
-              Satırın kendisi düğme — telefonda kartın neresine dokunulursa
-              dokunulsun detay açılır. */}
+          {/* Satırda yalnızca kimlik bilgisi; notun tamamı pencerede. */}
           {gorusmeler.map((gorusme) => (
-            <button
-              key={gorusme.id}
-              type="button"
-              onClick={() => setSecili(gorusme)}
-              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
-            >
-              <span className="flex min-w-0 flex-wrap items-center gap-2">
+            <DetaySatiri key={gorusme.id} onClick={() => setSecili(gorusme)}>
+              <span className="font-medium text-zinc-900">
+                {tarihBicimle(gorusme.tarih)}
+              </span>
+              {yonetim ? (
                 <span className="font-medium text-zinc-900">
-                  {tarihBicimle(gorusme.tarih)}
+                  {gorusme.ogrenciAdi}
                 </span>
-                {yonetim ? (
-                  <span className="font-medium text-zinc-900">
-                    {gorusme.ogrenciAdi}
-                  </span>
-                ) : null}
-                <Rozet
-                  tur={gorusme.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"}
-                >
-                  {TERAPI_TURU_ETIKETLERI[gorusme.terapiTuru]}
-                </Rozet>
-                <span className="truncate text-sm text-zinc-600">
-                  {gorusme.gorusmeciAdi}
-                </span>
-              </span>
-              <span
-                aria-hidden
-                className="shrink-0 text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
+              ) : null}
+              <Rozet
+                tur={gorusme.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"}
               >
-                →
+                {TERAPI_TURU_ETIKETLERI[gorusme.terapiTuru]}
+              </Rozet>
+              <span className="truncate text-sm text-zinc-600">
+                {gorusme.gorusmeciAdi}
               </span>
-            </button>
+            </DetaySatiri>
           ))}
         </div>
       )}
 
       {/* --- Detay penceresi --- */}
-      <dialog
-        ref={pencereRef}
-        onClose={() => setSecili(null)}
-        className="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-lg bg-white p-0 shadow-2xl backdrop:bg-marka-950/50"
-      >
-        {secili ? (
-          <div className="flex max-h-[85vh] flex-col">
-            <header className="flex items-start justify-between gap-3 border-b border-yuzey-100 p-4">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-semibold text-zinc-900">
-                    {tarihBicimle(secili.tarih)}
-                  </h3>
-                  <Rozet
-                    tur={
-                      secili.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"
-                    }
-                  >
-                    {TERAPI_TURU_ETIKETLERI[secili.terapiTuru]}
-                  </Rozet>
-                </div>
-                <p className="mt-0.5 text-sm text-zinc-600">
-                  {secili.ogrenciAdi} · {secili.gorusmeciAdi} (
-                  {TUR_ETIKETLERI[secili.tur]})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSecili(null)}
-                aria-label="Pencereyi kapat"
-                className="flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-md text-lg text-zinc-400 hover:bg-marka-50 hover:text-zinc-700 sm:min-h-0 sm:min-w-0 sm:px-2"
+      <Pencere
+        acik={Boolean(secili)}
+        onKapat={() => setSecili(null)}
+        baslik={
+          secili ? (
+            <>
+              <h3 className="text-base font-semibold text-zinc-900">
+                {tarihBicimle(secili.tarih)}
+              </h3>
+              <Rozet
+                tur={secili.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"}
               >
-                ×
-              </button>
-            </header>
-
-            {/* Not tam metin: koordinatör okumak için giriyor, kırpılmaz.
-                Satır sonları korunur; uzun not pencere içinde kayar. */}
-            <div className="overflow-y-auto p-4">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
-                {secili.not}
-              </p>
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-yuzey-100 p-4">
-              <span className="text-xs text-zinc-500">
-                Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
-                {tarihBicimle(secili.eklenmeTarihi)}
-              </span>
-              {yonetim ? (
-                <Buton
-                  type="button"
-                  tur="tehlike"
-                  disabled={siliniyor}
-                  onClick={() => sil(secili)}
-                >
-                  {siliniyor ? "Siliniyor…" : "Sil"}
-                </Buton>
-              ) : null}
-            </footer>
-          </div>
+                {TERAPI_TURU_ETIKETLERI[secili.terapiTuru]}
+              </Rozet>
+            </>
+          ) : null
+        }
+        altBaslik={
+          secili
+            ? `${secili.ogrenciAdi} · ${secili.gorusmeciAdi} (${TUR_ETIKETLERI[secili.tur]})`
+            : null
+        }
+        altKisim={
+          secili ? (
+            <PencereAltBilgisi
+              bilgi={
+                <>
+                  Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
+                  {tarihBicimle(secili.eklenmeTarihi)}
+                </>
+              }
+              silmeDugmesi={
+                yonetim ? (
+                  <SilDugmesi
+                    calisiyor={silme.calisiyor}
+                    onClick={() => sil(secili)}
+                  />
+                ) : undefined
+              }
+            />
+          ) : null
+        }
+      >
+        {/* Not tam metin: koordinatör okumak için giriyor, kırpılmaz.
+            Satır sonları korunur; uzun not pencere içinde kayar. */}
+        {secili ? (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+            {secili.not}
+          </p>
         ) : null}
-      </dialog>
+      </Pencere>
     </div>
   );
 }

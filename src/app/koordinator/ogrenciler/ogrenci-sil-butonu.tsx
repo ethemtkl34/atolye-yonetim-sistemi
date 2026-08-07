@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Bildirim, Buton, Kart } from "@/components/ui";
-import { ogrenciSil, type EylemDurumu } from "./actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { ogrenciSil } from "./actions";
 
 /**
  * Öğrenciyi kalıcı silme — düzenleme ekranının sonunda, ayrı bir bölümde.

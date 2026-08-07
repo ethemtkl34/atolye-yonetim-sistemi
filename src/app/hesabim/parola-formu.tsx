@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { Alan, Bildirim, Girdi } from "@/components/ui";
 import { GonderButonu } from "@/components/ui-istemci";
-import { parolamiDegistir, type EylemDurumu } from "./actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { parolamiDegistir } from "./actions";
 
 export function ParolaFormu() {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(

@@ -3,13 +3,13 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
+import type { EylemDurumu } from "@/lib/formlar";
 import {
   soruDurumDegistir,
   soruEkle,
   soruGuncelle,
   soruSil,
   soruSiraDegistir,
-  type EylemDurumu,
 } from "../actions";
 
 export type SoruSatiri = {

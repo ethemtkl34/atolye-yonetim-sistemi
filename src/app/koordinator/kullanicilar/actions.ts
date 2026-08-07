@@ -10,7 +10,6 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 import { rolEtiketi } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
 

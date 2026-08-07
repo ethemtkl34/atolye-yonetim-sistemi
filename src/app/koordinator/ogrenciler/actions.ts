@@ -12,7 +12,6 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 import {
   OGRENCI_FORM_ALANLARI,
   formdanOku,

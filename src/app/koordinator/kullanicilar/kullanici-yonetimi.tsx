@@ -5,13 +5,13 @@ import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, Girdi, Kart, Rozet, secimStili } from "@/components/ui";
 import { ROL_ADLARI } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
+import type { EylemDurumu } from "@/lib/formlar";
 import {
   kullaniciAdiGuncelle,
   kullaniciDurumDegistir,
   kullaniciEkle,
   kullaniciParolaSifirla,
   kullaniciRolVeSubeGuncelle,
-  type EylemDurumu,
 } from "./actions";
 
 export type SubeSecenegi = { id: string; ad: string };

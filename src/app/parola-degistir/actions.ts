@@ -1,12 +1,11 @@
 "use server";
 
-import { compare, hash } from "bcryptjs";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { anaSayfaYolu } from "@/lib/roller";
 import type { EylemDurumu } from "@/lib/formlar";
+import { parolayiDogrulaVeDegistir } from "@/lib/parola";
 
 /**
  * Zorunlu ilk parola değişimi.
@@ -14,31 +13,9 @@ import type { EylemDurumu } from "@/lib/formlar";
  * `girisZorunlu()` BİLEREK kullanılmıyor: o fonksiyon `mustChangePassword`
  * dolu olan herkesi bu sayfaya yönlendiriyor; burada da onu çağırmak döngü
  * olurdu (hesap-pasif sayfasındaki desenin aynısı). Oturum ve hesap durumu
- * elle çözülür.
- *
- * Hangi hesabın değiştirileceği formdan gelmiyor, oturumdan okunuyor — aksi
- * halde gönderilen kimlikle başka bir hesabın parolası değiştirilebilirdi.
+ * elle çözülür. Doğrulama ve yazma akışı `lib/parola.ts`'te.
  */
 
-export type { EylemDurumu };
-
-const parolaSemasi = z
-  .object({
-    mevcut: z.string().min(1, "Size iletilen geçici parolayı girin"),
-    yeni: z
-      .string()
-      .min(8, "Yeni parola en az 8 karakter olmalı")
-      .max(100, "Yeni parola en fazla 100 karakter olabilir"),
-    tekrar: z.string().min(1, "Yeni parolayı tekrar girin"),
-  })
-  .refine((d) => d.yeni === d.tekrar, {
-    path: ["tekrar"],
-    message: "Parolalar birbiriyle aynı değil",
-  })
-  .refine((d) => d.yeni !== d.mevcut, {
-    path: ["yeni"],
-    message: "Yeni parola geçici parolayla aynı olamaz",
-  });
 
 export async function zorunluParolaDegistir(
   _oncekiDurum: EylemDurumu,
@@ -60,39 +37,17 @@ export async function zorunluParolaDegistir(
 
   if (!kullanici || !kullanici.active) redirect("/hesap-pasif");
 
-  const cozumlenen = parolaSemasi.safeParse({
-    mevcut: formVerisi.get("mevcut"),
-    yeni: formVerisi.get("yeni"),
-    tekrar: formVerisi.get("tekrar"),
-  });
-
-  if (!cozumlenen.success) {
-    const alanlar = cozumlenen.error.flatten().fieldErrors;
-    return {
-      alanHatalari: {
-        ...(alanlar.mevcut?.[0] ? { mevcut: alanlar.mevcut[0] } : {}),
-        ...(alanlar.yeni?.[0] ? { yeni: alanlar.yeni[0] } : {}),
-        ...(alanlar.tekrar?.[0] ? { tekrar: alanlar.tekrar[0] } : {}),
-      },
-    };
-  }
-
-  const mevcutDogru = await compare(
-    cozumlenen.data.mevcut,
-    kullanici.passwordHash,
-  );
-  if (!mevcutDogru) {
-    return { alanHatalari: { mevcut: "Geçici parola hatalı." } };
-  }
-
-  // şube-muaf: kendi parolasını değiştiriyor; kimlik oturumdan geliyor.
-  await db.user.update({
-    where: { id: oturum.user.id },
-    data: {
-      passwordHash: await hash(cozumlenen.data.yeni, 12),
-      mustChangePassword: false,
+  const hata = await parolayiDogrulaVeDegistir({
+    kullaniciId: oturum.user.id,
+    mevcutHash: kullanici.passwordHash,
+    formVerisi,
+    metinler: {
+      mevcutBos: "Size iletilen geçici parolayı girin",
+      mevcutAyni: "Yeni parola geçici parolayla aynı olamaz",
+      mevcutHatali: "Geçici parola hatalı.",
     },
   });
+  if (hata) return hata;
 
   redirect(anaSayfaYolu(kullanici.roles));
 }

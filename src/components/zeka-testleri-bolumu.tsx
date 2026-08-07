@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { GonderButonu } from "@/components/ui-istemci";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Alan,
@@ -16,6 +15,15 @@ import {
   butonStili,
   secimStili,
 } from "@/components/ui";
+import { GonderButonu, Pencere } from "@/components/ui-istemci";
+import {
+  BolumUstu,
+  DetaySatiri,
+  PencereAltBilgisi,
+  SilDugmesi,
+  useEklemePaneli,
+  useSunucuIslemi,
+} from "@/components/bolum-iskeleti";
 import { tarihBicimle } from "@/lib/tarih";
 import {
   zekaTestiEkle,
@@ -43,6 +51,7 @@ import {
  * Önizleme detay penceresinde: belge `/api/zeka-testi/[id]` rotasından
  * `inline` olarak servis edilir — PDF `<iframe>`, görsel `<img>` ile
  * gösterilir. Pencere kapalıyken hiçbir belge yüklenmez.
+ * İskelet (panel/pencere/silme durumu) `bolum-iskeleti.tsx`'ten gelir.
  */
 
 export type ZekaTestiSatiri = {
@@ -99,81 +108,44 @@ export function ZekaTestleriBolumu({
   // Belge içeriği açılabilir mi — LISTE seviyesinin çizgisi tam burası.
   const belgeAcilabilir = mod !== "liste";
 
-  const [acik, setAcik] = useState(false);
-  const [durum, eylem] = useActionState<ZekaTestiEylemDurumu, FormData>(
-    zekaTestiEkle,
-    {},
-  );
-
-  // Başarıdan sonra form kapanır (görüşme bölümlerindeki desen).
-  const [gorulenBasari, setGorulenBasari] = useState(durum.basari);
-  if (durum.basari !== gorulenBasari) {
-    setGorulenBasari(durum.basari);
-    if (durum.basari) setAcik(false);
-  }
-
-  // React 19, eylem bitince formu sıfırlıyor; metin alanları `degerler`den
-  // geri gelir. Dosya seçimi tarayıcı güvenliği gereği geri yüklenemez —
-  // hata mesajı bunu söyler, kullanıcı dosyayı yeniden seçer.
-  const deger = (alan: string) => durum.degerler?.[alan];
-
-  const [silmeDurumu, setSilmeDurumu] = useState<ZekaTestiEylemDurumu>({});
-  const [siliniyor, silmeyeBasla] = useTransition();
+  const { acik, setAcik, durum, eylem, deger } =
+    useEklemePaneli<ZekaTestiEylemDurumu>(zekaTestiEkle);
+  const silme = useSunucuIslemi<ZekaTestiEylemDurumu>();
 
   const [secili, setSecili] = useState<ZekaTestiSatiri | null>(null);
-  const pencereRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const pencere = pencereRef.current;
-    if (!pencere) return;
-    if (secili && !pencere.open) pencere.showModal();
-    if (!secili && pencere.open) pencere.close();
-  }, [secili]);
 
   function sil(test: ZekaTestiSatiri) {
-    if (
-      !window.confirm(
-        `${tarihBicimle(test.tarih)} tarihli "${test.testAdi}" belgesi (${test.ogrenciAdi}) silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
-      )
-    ) {
-      return;
-    }
-    silmeyeBasla(async () => {
-      const sonuc = await zekaTestiSil(test.id);
-      setSilmeDurumu(sonuc);
-      if (sonuc.basari) setSecili(null);
+    silme.calistir(() => zekaTestiSil(test.id), {
+      onay: `${tarihBicimle(test.tarih)} tarihli "${test.testAdi}" belgesi (${test.ogrenciAdi}) silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`,
+      basarida: () => setSecili(null),
     });
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Zeka testleri
-          {testler.length > 0 ? (
-            <span className="ml-2 text-sm font-normal text-zinc-500">
-              {testler.length} belge
-            </span>
-          ) : null}
-        </h2>
-        {yonetim && !acik ? (
-          <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
-            + Test belgesi yükle
-          </Buton>
-        ) : null}
-        {!sayfada && belgeAcilabilir ? (
-          <Link href="/koordinator/zeka-testleri" className={baglantiStili}>
-            Zeka testleri sayfasında yönetilir
-          </Link>
-        ) : null}
-      </div>
+      <BolumUstu
+        baslik="Zeka testleri"
+        adet={testler.length}
+        adetEtiketi="belge"
+        aksiyon={
+          yonetim && !acik ? (
+            <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
+              + Test belgesi yükle
+            </Buton>
+          ) : !sayfada && belgeAcilabilir ? (
+            <Link href="/koordinator/zeka-testleri" className={baglantiStili}>
+              Zeka testleri sayfasında yönetilir
+            </Link>
+          ) : null
+        }
+      />
 
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
-      {silmeDurumu.basari ? (
-        <Bildirim tur="basari">{silmeDurumu.basari}</Bildirim>
+      {silme.durum.basari ? (
+        <Bildirim tur="basari">{silme.durum.basari}</Bildirim>
       ) : null}
-      {silmeDurumu.hata ? (
-        <Bildirim tur="hata">{silmeDurumu.hata}</Bildirim>
+      {silme.durum.hata ? (
+        <Bildirim tur="hata">{silme.durum.hata}</Bildirim>
       ) : null}
 
       {yonetim && acik ? (
@@ -260,7 +232,9 @@ export function ZekaTestleriBolumu({
             {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
             <div className="flex flex-wrap items-center gap-2">
-              <GonderButonu bekleyenEtiket="Yükleniyor…">Belgeyi kaydet</GonderButonu>
+              <GonderButonu bekleyenEtiket="Yükleniyor…">
+                Belgeyi kaydet
+              </GonderButonu>
               <Buton type="button" tur="sade" onClick={() => setAcik(false)}>
                 Vazgeç
               </Buton>
@@ -287,161 +261,121 @@ export function ZekaTestleriBolumu({
         )
       ) : (
         <div className="space-y-2">
-          {testler.map((test) => {
-            const icerik = (
-              <>
-                <span className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="font-medium text-zinc-900">
-                    {tarihBicimle(test.tarih)}
-                  </span>
-                  {sayfada ? (
-                    <span className="font-medium text-zinc-900">
-                      {test.ogrenciAdi}
-                    </span>
-                  ) : null}
-                  <span className="text-sm text-zinc-700">{test.testAdi}</span>
-                  <Rozet
-                    tur={test.mime === "application/pdf" ? "notr" : "pasif"}
-                  >
-                    {test.mime === "application/pdf" ? "PDF" : "Görsel"}
-                  </Rozet>
-                  <span className="text-xs text-zinc-500">
-                    {boyutBicimle(test.boyut)}
-                  </span>
+          {/* LISTE seviyesinde satır tıklanamaz: önizleme penceresi ve
+              belge adresi hiç render edilmez. */}
+          {testler.map((test) => (
+            <DetaySatiri
+              key={test.id}
+              onClick={belgeAcilabilir ? () => setSecili(test) : undefined}
+            >
+              <span className="font-medium text-zinc-900">
+                {tarihBicimle(test.tarih)}
+              </span>
+              {sayfada ? (
+                <span className="font-medium text-zinc-900">
+                  {test.ogrenciAdi}
                 </span>
-                {belgeAcilabilir ? (
-                  <span
-                    aria-hidden
-                    className="shrink-0 text-lg text-zinc-300 transition-colors group-hover:text-marka-600"
-                  >
-                    →
-                  </span>
-                ) : null}
-              </>
-            );
-
-            // LISTE seviyesinde satır tıklanamaz: önizleme penceresi ve
-            // belge adresi hiç render edilmez.
-            if (!belgeAcilabilir) {
-              return (
-                <div
-                  key={test.id}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)]"
-                >
-                  {icerik}
-                </div>
-              );
-            }
-
-            return (
-              <button
-                key={test.id}
-                type="button"
-                onClick={() => setSecili(test)}
-                className="group flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50"
-              >
-                {icerik}
-              </button>
-            );
-          })}
+              ) : null}
+              <span className="text-sm text-zinc-700">{test.testAdi}</span>
+              <Rozet tur={test.mime === "application/pdf" ? "notr" : "pasif"}>
+                {test.mime === "application/pdf" ? "PDF" : "Görsel"}
+              </Rozet>
+              <span className="text-xs text-zinc-500">
+                {boyutBicimle(test.boyut)}
+              </span>
+            </DetaySatiri>
+          ))}
         </div>
       )}
 
       {/* --- Detay ve önizleme penceresi --- */}
-      <dialog
-        ref={pencereRef}
-        onClose={() => setSecili(null)}
-        className="m-auto w-[min(46rem,calc(100vw-2rem))] rounded-lg bg-white p-0 shadow-2xl backdrop:bg-marka-950/50"
+      <Pencere
+        acik={Boolean(secili)}
+        onKapat={() => setSecili(null)}
+        genislik="46rem"
+        baslik={
+          secili ? (
+            <>
+              <h3 className="text-base font-semibold text-zinc-900">
+                {secili.testAdi}
+              </h3>
+              <Rozet
+                tur={secili.mime === "application/pdf" ? "notr" : "pasif"}
+              >
+                {secili.mime === "application/pdf" ? "PDF" : "Görsel"}
+              </Rozet>
+            </>
+          ) : null
+        }
+        altBaslik={
+          secili
+            ? `${secili.ogrenciAdi} · ${tarihBicimle(secili.tarih)} · ${boyutBicimle(secili.boyut)}`
+            : null
+        }
+        altKisim={
+          secili ? (
+            <PencereAltBilgisi
+              bilgi={
+                <>
+                  Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
+                  {tarihBicimle(secili.eklenmeTarihi)}
+                </>
+              }
+              silmeDugmesi={
+                <span className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={`/api/zeka-testi/${secili.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={butonStili("ikincil")}
+                  >
+                    Yeni sekmede aç
+                  </a>
+                  {yonetim ? (
+                    <SilDugmesi
+                      calisiyor={silme.calisiyor}
+                      onClick={() => sil(secili)}
+                    />
+                  ) : null}
+                </span>
+              }
+            />
+          ) : null
+        }
       >
         {secili ? (
-          <div className="flex max-h-[90vh] flex-col">
-            <header className="flex items-start justify-between gap-3 border-b border-yuzey-100 p-4">
+          <>
+            {/* Önizleme: belge inline servis ediliyor; PDF iframe'de,
+                görsel img'de. Pencere kapalıyken bu bölüm render edilmez,
+                belge boşuna indirilmez. */}
+            {secili.mime === "application/pdf" ? (
+              <iframe
+                src={`/api/zeka-testi/${secili.id}`}
+                title={`${secili.testAdi} önizlemesi`}
+                className="h-[60vh] w-full rounded-md border border-yuzey-200"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- dinamik, yetkili rotadan gelen belge; next/image optimizasyonuna girmemeli
+              <img
+                src={`/api/zeka-testi/${secili.id}`}
+                alt={`${secili.testAdi} sonuç belgesi`}
+                className="max-h-[60vh] w-full rounded-md border border-yuzey-200 object-contain"
+              />
+            )}
+
+            {secili.not ? (
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-semibold text-zinc-900">
-                    {secili.testAdi}
-                  </h3>
-                  <Rozet
-                    tur={secili.mime === "application/pdf" ? "notr" : "pasif"}
-                  >
-                    {secili.mime === "application/pdf" ? "PDF" : "Görsel"}
-                  </Rozet>
-                </div>
-                <p className="mt-0.5 text-sm text-zinc-600">
-                  {secili.ogrenciAdi} · {tarihBicimle(secili.tarih)} ·{" "}
-                  {boyutBicimle(secili.boyut)}
+                <h4 className="text-sm font-semibold text-zinc-900">
+                  Değerlendirme notu
+                </h4>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                  {secili.not}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSecili(null)}
-                aria-label="Pencereyi kapat"
-                className="flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-md text-lg text-zinc-400 hover:bg-marka-50 hover:text-zinc-700 sm:min-h-0 sm:min-w-0 sm:px-2"
-              >
-                ×
-              </button>
-            </header>
-
-            <div className="space-y-4 overflow-y-auto p-4">
-              {/* Önizleme: belge inline servis ediliyor; PDF iframe'de,
-                  görsel img'de. Pencere kapalıyken bu bölüm render edilmez,
-                  belge boşuna indirilmez. */}
-              {secili.mime === "application/pdf" ? (
-                <iframe
-                  src={`/api/zeka-testi/${secili.id}`}
-                  title={`${secili.testAdi} önizlemesi`}
-                  className="h-[60vh] w-full rounded-md border border-yuzey-200"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- dinamik, yetkili rotadan gelen belge; next/image optimizasyonuna girmemeli
-                <img
-                  src={`/api/zeka-testi/${secili.id}`}
-                  alt={`${secili.testAdi} sonuç belgesi`}
-                  className="max-h-[60vh] w-full rounded-md border border-yuzey-200 object-contain"
-                />
-              )}
-
-              {secili.not ? (
-                <div>
-                  <h4 className="text-sm font-semibold text-zinc-900">
-                    Değerlendirme notu
-                  </h4>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
-                    {secili.not}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-yuzey-100 p-4">
-              <span className="text-xs text-zinc-500">
-                Ekleyen: {secili.ekleyen ?? "—"} ·{" "}
-                {tarihBicimle(secili.eklenmeTarihi)}
-              </span>
-              <span className="flex flex-wrap items-center gap-2">
-                <a
-                  href={`/api/zeka-testi/${secili.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={butonStili("ikincil")}
-                >
-                  Yeni sekmede aç
-                </a>
-                {yonetim ? (
-                  <Buton
-                    type="button"
-                    tur="tehlike"
-                    disabled={siliniyor}
-                    onClick={() => sil(secili)}
-                  >
-                    {siliniyor ? "Siliniyor…" : "Sil"}
-                  </Buton>
-                ) : null}
-              </span>
-            </footer>
-          </div>
+            ) : null}
+          </>
         ) : null}
-      </dialog>
+      </Pencere>
     </div>
   );
 }

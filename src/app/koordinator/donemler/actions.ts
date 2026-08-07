@@ -28,7 +28,6 @@ import {
   GRUP_SEMASI,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
 
 /** §4 — Dönem ve grup işlemleri. */

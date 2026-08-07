@@ -11,7 +11,6 @@ import {
   GRUP_SEMASI,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 import {
   EN_AZ_HAFTA,
   EN_FAZLA_HAFTA,

@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi } from "@/components/ui";
-import { atolyeGuncelle, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { atolyeGuncelle } from "../actions";
 
 export function AtolyeDuzenleFormu({
   atolye,

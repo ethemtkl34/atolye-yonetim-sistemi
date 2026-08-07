@@ -14,7 +14,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { ProgramSecenegi } from "@/lib/kayit-secenekleri";
-import type { EylemDurumu } from "./actions";
+import type { EylemDurumu } from "@/lib/formlar";
 
 export type OgrenciVarsayilanlari = {
   firstName?: string;

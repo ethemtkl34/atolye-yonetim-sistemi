@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui";
-import { kulupGrupEkle, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { kulupGrupEkle } from "../actions";
 
 /**
  * §5.2 — Kulübe yeni grup ekler.

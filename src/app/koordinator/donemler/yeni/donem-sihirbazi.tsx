@@ -21,7 +21,8 @@ import {
   EN_AZ_HAFTA,
   EN_FAZLA_HAFTA,
 } from "@/lib/kurallar";
-import { donemOlustur, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { donemOlustur } from "../actions";
 
 export type AtolyeSecenegi = { id: string; name: string };
 

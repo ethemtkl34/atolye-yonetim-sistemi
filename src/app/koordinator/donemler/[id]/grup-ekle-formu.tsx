@@ -6,7 +6,8 @@ import { Alan, Bildirim, Buton, Girdi, Kart, secimStili } from "@/components/ui"
 import { GUN_ADLARI } from "@/lib/tarih";
 import { cn } from "@/lib/utils";
 import type { Day } from "@/generated/prisma/enums";
-import { grupEkle, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { grupEkle } from "../actions";
 
 /**
  * §4.2 — Döneme yeni grup ekler.

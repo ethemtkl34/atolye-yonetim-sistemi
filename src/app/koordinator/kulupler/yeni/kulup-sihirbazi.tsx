@@ -10,7 +10,8 @@ import {
   KULUP_ATOLYE_SAYISI,
 } from "@/lib/kurallar";
 import { bugun, gunEkle, tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
-import { kulupOlustur, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { kulupOlustur } from "../actions";
 
 export type AtolyeSecenegi = { id: string; name: string };
 

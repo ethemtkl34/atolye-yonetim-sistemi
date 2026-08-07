@@ -10,7 +10,6 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
-export type { EylemDurumu };
 
 /**
  * §3.2 ve §8 — Stajyer hesaplarının yönetimi.

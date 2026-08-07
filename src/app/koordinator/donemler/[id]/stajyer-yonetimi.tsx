@@ -4,7 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { GonderButonu } from "@/components/ui-istemci";
 import { Bildirim, Kart, Rozet } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { donemStajyerleriniGuncelle, type EylemDurumu } from "../actions";
+import type { EylemDurumu } from "@/lib/formlar";
+import { donemStajyerleriniGuncelle } from "../actions";
 
 export type KadroStajyeri = {
   id: string;
