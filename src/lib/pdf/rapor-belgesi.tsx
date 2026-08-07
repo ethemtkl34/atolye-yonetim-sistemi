@@ -8,9 +8,9 @@ import {
   View,
 } from "@react-pdf/renderer";
 import { KURUM_ADI } from "@/lib/kurallar";
-import { ortalamaBicimle } from "@/lib/scoring";
+import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihBicimle } from "@/lib/tarih";
-import type { RaporGovdesi } from "@/lib/report-engine";
+import type { RaporGovdesi } from "@/lib/rapor-motoru";
 
 /**
  * §11.5 — Rapor PDF'i.

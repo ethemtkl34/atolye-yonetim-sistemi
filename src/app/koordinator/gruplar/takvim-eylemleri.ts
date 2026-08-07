@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { takvimKilidiAl } from "@/lib/takvim-kilidi";
 import { tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import type { EylemDurumu } from "@/lib/formlar";

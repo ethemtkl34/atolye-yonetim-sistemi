@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { aktifGrupKosulu } from "./durumlar";
 import { bugun, tarihMetni } from "./tarih";
-import { puanlamaOrtalamasi } from "./scoring";
+import { puanlamaOrtalamasi } from "./puan-hesaplari";
 import {
   formSatirlariOlustur,
   gorevOzeti,
@@ -18,7 +18,7 @@ import type { Day, TimeSlot } from "@/generated/prisma/enums";
  *
  * Stajyer paneli ve koordinatörün puanlama modülü aynı ekranı iki farklı
  * yetkiyle gösteriyor; sorgu ve dönüştürme mantığı burada tek yerde durur.
- * Karar üretmez — durum hesapları `puanlama.ts`, ortalama `scoring.ts`
+ * Karar üretmez — durum hesapları `puanlama.ts`, ortalama `puan-hesaplari.ts`
  * fonksiyonlarına bırakılır.
  *
  * GİZLİLİK (§3.2): Stajyerin gördüğü hiçbir yolda veli telefonu veya sağlık

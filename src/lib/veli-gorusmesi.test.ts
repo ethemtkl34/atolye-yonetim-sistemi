@@ -6,8 +6,8 @@ import {
   veliBriefiUret,
   type MiniTestCevabi,
 } from "./veli-gorusmesi";
-import { raporAnaliziUret, type RaporGirdisi } from "./report-engine";
-import type { PuanlamaGirdisi } from "./scoring";
+import { raporAnaliziUret, type RaporGirdisi } from "./rapor-motoru";
+import type { PuanlamaGirdisi } from "./puan-hesaplari";
 
 const SORULAR = [
   "Atölye ve etkinliklere ilgi gösterir.",

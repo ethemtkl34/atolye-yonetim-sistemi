@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { anaSayfaYolu } from "@/lib/auth-guard";
+import { anaSayfaYolu } from "@/lib/yetki-kapisi";
 
 /**
  * Kök adres tek başına bir sayfa değil, yönlendirme noktası: kullanıcı

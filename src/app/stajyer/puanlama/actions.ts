@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { subeliOturum } from "@/lib/auth-guard";
+import { subeliOturum } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import {
   cevapCozumle,

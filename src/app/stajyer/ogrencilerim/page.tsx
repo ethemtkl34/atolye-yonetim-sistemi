@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { stajyerZorunlu } from "@/lib/auth-guard";
+import { stajyerZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
 import { KayitListesi } from "@/components/puanlama-ekranlari";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";

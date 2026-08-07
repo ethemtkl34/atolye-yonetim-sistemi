@@ -9,7 +9,7 @@ import { anaSayfaYolu } from "@/lib/roller";
  * Buradaki kontrol İYİMSER'dir: yalnızca oturum çerezine bakar ve yanlış
  * paneldeki kullanıcıyı doğru panele yönlendirir. Next.js dokümanı proxy'yi
  * tam bir yetkilendirme çözümü olarak kullanmamayı açıkça söylüyor; asıl
- * yetki kontrolü her sayfa ve Server Action içinde `lib/auth-guard.ts`
+ * yetki kontrolü her sayfa ve Server Action içinde `lib/yetki-kapisi.ts`
  * fonksiyonlarıyla yapılır. Buradaki katman kullanıcıyı gereksiz yere yüklenen
  * bir sayfaya götürmemek içindir, güvenliğin tek dayanağı değildir.
  */

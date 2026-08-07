@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import {
   AKTIF_DONEM_KOSULU,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/durumlar";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
 import { raporOzetleri } from "@/lib/rapor-verisi";
-import { kontenjanDurumu } from "@/lib/scoring";
+import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import {
   bugun,
   gunEkle,

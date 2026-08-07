@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { adminZorunlu } from "@/lib/auth-guard";
+import { adminZorunlu } from "@/lib/yetki-kapisi";
 import {
   alanHatalari,
   formDegerleri,

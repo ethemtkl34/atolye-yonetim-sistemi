@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { bugun, grupZamani, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import {

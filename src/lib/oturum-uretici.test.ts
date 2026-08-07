@@ -4,7 +4,7 @@ import {
   kulupOturumlariniUret,
   mevcutHaftaNumarasi,
   type HaftaGirdisi,
-} from "./session-generator";
+} from "./oturum-uretici";
 import { tarihCozumle, tarihMetni } from "./tarih";
 
 /**

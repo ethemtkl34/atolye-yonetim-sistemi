@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   pdfGecmisi,
   raporDetayi,
@@ -10,7 +10,7 @@ import {
   type PdfKaydi,
   type RaporDetayi,
 } from "@/lib/rapor-verisi";
-import type { RaporGovdesi } from "@/lib/report-engine";
+import type { RaporGovdesi } from "@/lib/rapor-motoru";
 import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
 
 /**

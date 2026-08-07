@@ -1,12 +1,12 @@
-import { ortalamaBicimle } from "./scoring";
+import { ortalamaBicimle } from "./puan-hesaplari";
 import { tamlayanEkiyle } from "./turkce";
-import type { RaporAnalizi, Bulgu, RaporGirdisi } from "./report-engine";
-import { raporAnaliziUret } from "./report-engine";
+import type { RaporAnalizi, Bulgu, RaporGirdisi } from "./rapor-motoru";
+import { raporAnaliziUret } from "./rapor-motoru";
 
 /**
  * Veli görüşmesi brief'i — görüşmeyi yapacak kişiye hazırlanan konuşma özeti.
  *
- * Rapor motoruyla aynı ilke (bkz. `report-engine.ts`): buradaki her fonksiyon
+ * Rapor motoruyla aynı ilke (bkz. `rapor-motoru.ts`): buradaki her fonksiyon
  * SAF — veritabanı bilmez, tarih üretmez, rastgelelik kullanmaz. Aynı girdiden
  * her zaman aynı metin çıkar; sunucu eylemi bu sayede önizlemede üretilen
  * brief'i istemciden geri taşımak yerine kayıt anında yeniden üretebiliyor.
@@ -79,7 +79,7 @@ function cumleyeGom(soruMetni: string): string {
 
 /**
  * Aynı kalıbın art arda tekrar etmemesi için sıraya göre dönüşümlü seçim —
- * `report-engine.ts`teki `dongu` ile aynı; rastgelelik yok.
+ * `rapor-motoru.ts`teki `dongu` ile aynı; rastgelelik yok.
  */
 function dongu<T>(secenekler: readonly T[], sira: number): T {
   return secenekler[sira % secenekler.length];

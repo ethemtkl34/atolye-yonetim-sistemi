@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { AKTIF_DONEM_KOSULU, AKTIF_KULUP_KOSULU } from "@/lib/durumlar";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";

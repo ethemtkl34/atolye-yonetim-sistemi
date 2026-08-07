@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { aktifGrupKosulu } from "@/lib/durumlar";
-import { kontenjanDurumu } from "@/lib/scoring";
+import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import { grupZamani } from "@/lib/tarih";
 
 export const metadata: Metadata = {

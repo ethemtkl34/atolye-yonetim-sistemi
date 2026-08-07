@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { adminZorunlu } from "@/lib/auth-guard";
+import { adminZorunlu } from "@/lib/yetki-kapisi";
 import type { Role } from "@/generated/prisma/enums";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";

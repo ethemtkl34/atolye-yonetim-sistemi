@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";

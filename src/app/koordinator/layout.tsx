@@ -1,5 +1,5 @@
 import { PanelKabuk } from "@/components/panel-kabuk";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
 
 /**

@@ -1,10 +1,10 @@
 import { db } from "./db";
-import { raporGuncelMi } from "./scoring";
+import { raporGuncelMi } from "./rapor-motoru";
 import {
   raporUret,
   type RaporGirdisi,
   type RaporGovdesi,
-} from "./report-engine";
+} from "./rapor-motoru";
 
 /**
  * Rapor motorunun veri katmanı — §11.
@@ -189,7 +189,7 @@ export const RAPOR_LISTE_SINIRI = 200;
  * Raporları güncellik bilgisiyle birlikte listeler.
  *
  * Güncellik için kapsamdaki kayıtların en yeni puan güncellemesi okunur;
- * `raporGuncelMi` karşılaştırmayı yapan tek yerdir (`scoring.ts`).
+ * `raporGuncelMi` karşılaştırmayı yapan tek yerdir (`puan-hesaplari.ts`).
  */
 export async function raporOzetleri(kosul: {
   subeId: string;

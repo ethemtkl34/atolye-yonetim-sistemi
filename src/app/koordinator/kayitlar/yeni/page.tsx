@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import { kayitAlanProgramlar } from "@/lib/kayit-secenekleri";
 import { BosDurum, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";

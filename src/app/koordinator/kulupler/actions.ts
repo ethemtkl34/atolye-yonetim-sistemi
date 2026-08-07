@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   alanHatalari,
   formDegerleri,
@@ -17,7 +17,7 @@ import {
   EN_FAZLA_HAFTA,
   KULUP_ATOLYE_SAYISI,
 } from "@/lib/kurallar";
-import { kulupOturumlariniUret } from "@/lib/session-generator";
+import { kulupOturumlariniUret } from "@/lib/oturum-uretici";
 import { gunleriSirala, gunundenGun, tarihCozumle } from "@/lib/tarih";
 import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import type { ClubStatus } from "@/generated/prisma/enums";

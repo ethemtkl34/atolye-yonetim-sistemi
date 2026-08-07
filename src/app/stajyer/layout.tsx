@@ -1,5 +1,5 @@
 import { PanelKabuk } from "@/components/panel-kabuk";
-import { stajyerZorunlu } from "@/lib/auth-guard";
+import { stajyerZorunlu } from "@/lib/yetki-kapisi";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
 
 export default async function StajyerLayout({

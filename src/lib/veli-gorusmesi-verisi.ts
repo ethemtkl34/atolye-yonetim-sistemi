@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { raporGirdisiHazirla } from "./rapor-verisi";
-import type { RaporGirdisi } from "./report-engine";
+import type { RaporGirdisi } from "./rapor-motoru";
 
 /**
  * Veli görüşmesi brief'inin veri katmanı.

@@ -7,7 +7,7 @@ import {
   grupGunuSil,
   grupGunuTasi,
   type TakvimDurumu,
-} from "../../takvim-actions";
+} from "../../takvim-eylemleri";
 
 export type TakvimGunu = {
   /** `yyyy-aa-gg` — sunucuya bu biçimde gidiyor. */

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { kayitAlanProgramlar } from "@/lib/kayit-secenekleri";
 import { OgrenciFormu } from "../ogrenci-formu";
 import { ogrenciEkle } from "../actions";

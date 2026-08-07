@@ -1,8 +1,8 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import { belgeYetkisi } from "@/lib/auth-guard";
+import { belgeYetkisi } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import { RaporBelgesi } from "@/lib/pdf/rapor-belgesi";
-import type { RaporGovdesi } from "@/lib/report-engine";
+import type { RaporGovdesi } from "@/lib/rapor-motoru";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
 

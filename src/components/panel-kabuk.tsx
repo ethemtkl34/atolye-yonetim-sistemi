@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cikisYap } from "@/app/cikis/actions";
-import { rolEtiketi, type SubeliKullanici } from "@/lib/auth-guard";
+import { rolEtiketi, type SubeliKullanici } from "@/lib/yetki-kapisi";
 import type { MenuOgesi } from "@/lib/navigasyon";
 import { MobilMenu } from "./mobil-menu";
 import { SubeGostergesi } from "./sube-gostergesi";

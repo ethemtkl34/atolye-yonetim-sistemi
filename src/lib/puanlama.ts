@@ -3,7 +3,7 @@ import { EN_DUSUK_PUAN, EN_YUKSEK_PUAN } from "./kurallar";
 /**
  * Puanlama formunun kuralları — §10.
  *
- * `scoring.ts` puanlardan ortalama üretir; bu dosya ise bir formun doldurulmuş
+ * `puan-hesaplari.ts` puanlardan ortalama üretir; bu dosya ise bir formun doldurulmuş
  * sayılıp sayılmadığına ve gönderilen cevabın geçerliliğine karar verir. İkisi
  * de saf: veritabanı bilmezler, hem sunucu eylemlerinden hem testlerden aynı
  * şekilde çağrılırlar. Aynı kararı ikinci bir yerde tekrar yazmak yasak —

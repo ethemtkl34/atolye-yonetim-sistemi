@@ -5,7 +5,7 @@ import type { Role } from "@/generated/prisma/enums";
  *
  * Bu dosya bilerek bağımlılıksız: `proxy.ts` (Next.js 16'da middleware'in
  * yeni adı) bunu import edebilsin diye içinde ne veritabanı ne de Auth.js
- * var. `auth-guard.ts` Prisma çekiyor ve proxy'den import edilemez.
+ * var. `yetki-kapisi.ts` Prisma çekiyor ve proxy'den import edilemez.
  * Modül bazlı yetkiler ayrı dosyada (`yetkiler.ts`) — burası yönlendirme ve
  * etiket, orası yetki.
  *

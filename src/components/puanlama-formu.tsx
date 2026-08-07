@@ -12,7 +12,7 @@ import {
   DEGERLENDIRILEMEDI_ACIKLAMA,
   PUAN_ACIKLAMALARI,
   ortalamaBicimle,
-} from "@/lib/scoring";
+} from "@/lib/puan-hesaplari";
 import { cn } from "@/lib/utils";
 import { puanlamaKaydet, type PuanlamaEylemDurumu } from "@/app/stajyer/puanlama/actions";
 

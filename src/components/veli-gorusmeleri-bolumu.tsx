@@ -17,7 +17,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { tarihBicimle } from "@/lib/tarih";
-import { PUAN_ACIKLAMALARI } from "@/lib/scoring";
+import { PUAN_ACIKLAMALARI } from "@/lib/puan-hesaplari";
 import {
   MINI_TEST_SORULARI,
   type MiniTestCevabi,

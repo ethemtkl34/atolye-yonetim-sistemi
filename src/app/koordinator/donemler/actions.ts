@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   bugun,
   DUZEN_GUNLERI,
@@ -16,7 +16,7 @@ import {
 import {
   donemOturumlariniUret,
   mevcutHaftaNumarasi,
-} from "@/lib/session-generator";
+} from "@/lib/oturum-uretici";
 import {
   DONEM_ATOLYE_SAYISI,
   EN_AZ_HAFTA,

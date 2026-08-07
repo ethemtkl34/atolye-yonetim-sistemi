@@ -29,7 +29,7 @@ import { normalizeArama, normalizeTelefon } from "../src/lib/turkce";
 import {
   donemOturumlariniUret,
   kulupOturumlariniUret,
-} from "../src/lib/session-generator";
+} from "../src/lib/oturum-uretici";
 import { gunundenGun } from "../src/lib/tarih";
 
 const db = new PrismaClient({

@@ -1,5 +1,5 @@
 /**
- * Puanlama ve kontenjan hesaplarının tek kaynağı.
+ * Puan ortalamalarının ve biçimlemesinin tek kaynağı.
  *
  * Buradaki fonksiyonların hepsi saf (pure) — veritabanı bilmezler, yalnızca
  * verilen veriyi hesaplarlar. Böylece hem sunucu bileşenlerinden hem de
@@ -150,44 +150,6 @@ export function atolyeOzetiHesapla(
     soruOrtalamalari,
     genelOrtalama: ortalama(tumDegerler),
   };
-}
-
-export type KontenjanDurumu = {
-  kapasite: number;
-  doluluk: number;
-  kalan: number;
-  dolu: boolean;
-  /** Yüzde olarak doluluk — ilerleme çubuğu için. */
-  yuzde: number;
-};
-
-/** §7.2 — Kayıt akışında kontenjan durumu her adımda gösterilir. */
-export function kontenjanDurumu(
-  kapasite: number,
-  aktifKayitSayisi: number,
-): KontenjanDurumu {
-  const kalan = Math.max(0, kapasite - aktifKayitSayisi);
-  return {
-    kapasite,
-    doluluk: aktifKayitSayisi,
-    kalan,
-    dolu: aktifKayitSayisi >= kapasite,
-    yuzde: kapasite > 0 ? Math.min(100, (aktifKayitSayisi / kapasite) * 100) : 0,
-  };
-}
-
-/**
- * §13.16 — Rapor güncelliği saklanmaz, okuma anında türetilir.
- *
- * Kapsamdaki puanlardan herhangi biri rapor üretildikten sonra değiştiyse
- * rapor artık güncel değildir. Hiç puan yoksa rapor güncel sayılır.
- */
-export function raporGuncelMi(
-  raporUretimZamani: Date,
-  kapsamdakiEnYeniPuanGuncellemesi: Date | null,
-): boolean {
-  if (kapsamdakiEnYeniPuanGuncellemesi === null) return true;
-  return kapsamdakiEnYeniPuanGuncellemesi <= raporUretimZamani;
 }
 
 /**

@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   atolyeOzetiHesapla,
-  kontenjanDurumu,
   ortalama,
   ortalamaBicimle,
   puanlamaOrtalamasi,
-  raporGuncelMi,
   type CevapGirdisi,
   type PuanlamaGirdisi,
-} from "./scoring";
+} from "./puan-hesaplari";
 
 /** Test okunurluğu için kısa yardımcı: puan listesinden cevap satırı üretir. */
 function cevaplar(...degerler: (number | null)[]): CevapGirdisi[] {
@@ -128,40 +126,6 @@ describe("atolyeOzetiHesapla", () => {
     // Soru ortalamalarının ortalaması olsaydı: (5 + 1)/2 = 3 çıkardı.
     const ozet = atolyeOzetiHesapla([katildi(5, 1), katildi(5, null)]);
     expect(ozet.genelOrtalama).toBeCloseTo(11 / 3, 5);
-  });
-});
-
-describe("kontenjanDurumu", () => {
-  it("kontenjan dolduğunda dolu olarak işaretler", () => {
-    expect(kontenjanDurumu(12, 12).dolu).toBe(true);
-    expect(kontenjanDurumu(12, 11).dolu).toBe(false);
-    expect(kontenjanDurumu(12, 11).kalan).toBe(1);
-  });
-
-  it("kontenjan aşılmışsa kalan sayıyı negatife düşürmez", () => {
-    const durum = kontenjanDurumu(10, 13);
-    expect(durum.kalan).toBe(0);
-    expect(durum.dolu).toBe(true);
-    expect(durum.yuzde).toBe(100);
-  });
-});
-
-describe("raporGuncelMi", () => {
-  const uretim = new Date("2026-12-20T10:00:00Z");
-
-  it("puan rapordan sonra değiştiyse rapor güncel değildir", () => {
-    // §13.16 — Puanlar değiştiğinde ilgili rapor güncelliğini yitirir.
-    const sonrakiPuanDegisikligi = new Date("2026-12-21T09:00:00Z");
-    expect(raporGuncelMi(uretim, sonrakiPuanDegisikligi)).toBe(false);
-  });
-
-  it("puanlar rapordan önceyse rapor günceldir", () => {
-    const oncekiPuanDegisikligi = new Date("2026-12-19T09:00:00Z");
-    expect(raporGuncelMi(uretim, oncekiPuanDegisikligi)).toBe(true);
-  });
-
-  it("kapsamda hiç puan yoksa rapor güncel sayılır", () => {
-    expect(raporGuncelMi(uretim, null)).toBe(true);
   });
 });
 

@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   alanHatalari,
   type EylemDurumu as TemelEylemDurumu,
 } from "@/lib/formlar";
-import { kontenjanDurumu } from "@/lib/scoring";
+import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import { grupZamani, tarihCozumle } from "@/lib/tarih";
 import {
   kayitKapaliMesaji,

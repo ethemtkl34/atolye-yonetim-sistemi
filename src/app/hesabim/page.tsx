@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { rolEtiketi, subeliOturum } from "@/lib/auth-guard";
+import { rolEtiketi, subeliOturum } from "@/lib/yetki-kapisi";
 import { Kart, SayfaBasligi } from "@/components/ui";
 import { PanelKabuk } from "@/components/panel-kabuk";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";

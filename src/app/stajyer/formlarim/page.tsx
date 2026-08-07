@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { stajyerZorunlu } from "@/lib/auth-guard";
+import { stajyerZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 import { turkceKarsilastir } from "@/lib/turkce";
 import { doldurulmusFormlar } from "@/lib/puanlama-verisi";
-import { ortalamaBicimle } from "@/lib/scoring";
+import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihGunleBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {

@@ -3,8 +3,9 @@ import {
   raporAnaliziUret,
   raporUret,
   type RaporGirdisi,
-} from "./report-engine";
-import type { PuanlamaGirdisi } from "./scoring";
+  raporGuncelMi,
+} from "./rapor-motoru";
+import type { PuanlamaGirdisi } from "./puan-hesaplari";
 
 const SORULAR = [
   "Atölye ve etkinliklere ilgi gösterir.",
@@ -221,5 +222,24 @@ describe("raporUret", () => {
       "henüz değerlendirilmiş bir atölye oturumu bulunmamaktadır",
     );
     expect(rapor.analiz.genel.guclu).toHaveLength(0);
+  });
+});
+
+describe("raporGuncelMi", () => {
+  const uretim = new Date("2026-12-20T10:00:00Z");
+
+  it("puan rapordan sonra değiştiyse rapor güncel değildir", () => {
+    // §13.16 — Puanlar değiştiğinde ilgili rapor güncelliğini yitirir.
+    const sonrakiPuanDegisikligi = new Date("2026-12-21T09:00:00Z");
+    expect(raporGuncelMi(uretim, sonrakiPuanDegisikligi)).toBe(false);
+  });
+
+  it("puanlar rapordan önceyse rapor günceldir", () => {
+    const oncekiPuanDegisikligi = new Date("2026-12-19T09:00:00Z");
+    expect(raporGuncelMi(uretim, oncekiPuanDegisikligi)).toBe(true);
+  });
+
+  it("kapsamda hiç puan yoksa rapor güncel sayılır", () => {
+    expect(raporGuncelMi(uretim, null)).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 import { bugun, tarihMetni } from "@/lib/tarih";

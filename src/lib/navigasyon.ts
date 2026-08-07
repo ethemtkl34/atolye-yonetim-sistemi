@@ -25,7 +25,7 @@ export type MenuOgesi = {
    * yetkisi YOK ise madde menüde görünmez; LISTE dahil her seviye gösterir.
    *
    * Menüden gizlemek YETKİ DEĞİLDİR: sayfanın kendi `adminZorunlu()` /
-   * `yonetimZorunlu(modul, seviye)` kontrolü esastır (bkz. lib/auth-guard.ts).
+   * `yonetimZorunlu(modul, seviye)` kontrolü esastır (bkz. lib/yetki-kapisi.ts).
    * Buradaki süzgeç yalnızca kullanıcıya giremeyeceği bir bağlantıyı
    * göstermemek için.
    */

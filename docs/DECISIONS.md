@@ -86,3 +86,22 @@ Karar gerekçeleri:
 - Puanlar rapor oluşturulduktan sonra değiştirilebilir.
 - Puan değiştiğinde mevcut rapor güncelliğini yitirmiş olarak işaretlenir; koordinatör yeni rapor oluşturabilir.
 - Daha önce oluşturulmuş PDF raporlar geçmişte saklanır.
+
+## Adlandırma standardı (Ağustos 2026 revizyonu)
+
+- **Dosya adları ve tanımlayıcılar Türkçedir.** İngilizce adlı `lib` dosyaları
+  bu revizyonda çevrildi: `scoring.ts` → `puan-hesaplari.ts`,
+  `report-engine.ts` → `rapor-motoru.ts`, `session-generator.ts` →
+  `oturum-uretici.ts`, `auth-guard.ts` → `yetki-kapisi.ts`.
+- **Prisma modelleri ve alanları İngilizce kalır** (`Score`, `Enrollment`,
+  `branchId`). Üretim veritabanında tablo/enum yeniden adlandırmak gereksiz
+  risk; Türkçe↔İngilizce eşleme `lib/sube.ts` başındaki tabloda belgeli.
+- **Server Action dosyaları:** rota klasörünün ana eylem dosyası `actions.ts`
+  (Next.js geleneği), konuya adanmış ek dosyalar `<konu>-eylemleri.ts`
+  (örn. `takvim-eylemleri.ts`, `rapor-eylemleri.ts`). `takvim-actions.ts`
+  melezdi, bu revizyonda `takvim-eylemleri.ts` oldu.
+- **Teknik kısa adlar** (`db.ts`, `env.ts`, `utils.ts`, `ui.tsx`) oldukları
+  gibi kalır; bunlar ekosistem terimleridir, çevirisi okunurluğu düşürür.
+- `puan-hesaplari.ts` yalnızca saf ortalama/biçimleme hesapları içerir:
+  kontenjan `kayit-kurallari.ts`'e, rapor güncelliği `rapor-motoru.ts`'a
+  taşındı — dosya adı içeriğini anlatmak zorunda.

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 
 /**
  * Eski "yeni rapor" adresi — öğrenci biliniyorsa profiline gidip rapor

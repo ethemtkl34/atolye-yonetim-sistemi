@@ -3,7 +3,7 @@
 import { compare, hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { girisZorunlu } from "@/lib/auth-guard";
+import { girisZorunlu } from "@/lib/yetki-kapisi";
 import type { EylemDurumu } from "@/lib/formlar";
 
 /**

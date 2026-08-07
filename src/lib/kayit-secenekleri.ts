@@ -1,6 +1,6 @@
 import type { Day } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
-import { kontenjanDurumu } from "@/lib/scoring";
+import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 
 /**

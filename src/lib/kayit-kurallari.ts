@@ -1,5 +1,3 @@
-import { kontenjanDurumu } from "@/lib/scoring";
-
 /**
  * Gruba yeni kayıt açılabilmesinin şartları.
  *
@@ -70,4 +68,28 @@ export function kayitEngeli(grup: {
   _count: { enrollments: number };
 }): string | null {
   return programKayitEngeli(grup) ?? kontenjanEngeli(grup);
+}
+
+export type KontenjanDurumu = {
+  kapasite: number;
+  doluluk: number;
+  kalan: number;
+  dolu: boolean;
+  /** Yüzde olarak doluluk — ilerleme çubuğu için. */
+  yuzde: number;
+};
+
+/** §7.2 — Kayıt akışında kontenjan durumu her adımda gösterilir. */
+export function kontenjanDurumu(
+  kapasite: number,
+  aktifKayitSayisi: number,
+): KontenjanDurumu {
+  const kalan = Math.max(0, kapasite - aktifKayitSayisi);
+  return {
+    kapasite,
+    doluluk: aktifKayitSayisi,
+    kalan,
+    dolu: aktifKayitSayisi >= kapasite,
+    yuzde: kapasite > 0 ? Math.min(100, (aktifKayitSayisi / kapasite) * 100) : 0,
+  };
 }

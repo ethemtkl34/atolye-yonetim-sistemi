@@ -3,7 +3,7 @@ import {
   type AtolyeOzeti,
   type PuanlamaGirdisi,
   type SoruOrtalamasi,
-} from "./scoring";
+} from "./puan-hesaplari";
 import { tamlayanEkiyle } from "./turkce";
 
 /**
@@ -154,7 +154,7 @@ export function raporAnaliziUret(girdi: RaporGirdisi): RaporAnalizi {
 
   // Genel değerlendirme bütün atölyelerin soru ortalamalarını birlikte
   // değerlendirir: aynı soru farklı atölyelerde de sorulduğu için metin
-  // adına göre birleştirilir. Birleşim ağırlıklıdır — scoring.ts'teki genel
+  // adına göre birleştirilir. Birleşim ağırlıklıdır — puan-hesaplari.ts'teki genel
   // ortalama kuralıyla aynı ilke: bir atölyede 1, diğerinde 9 kez puanlanmış
   // bir soru için iki ortalamanın eşit ağırlıkla ortalanması, tek gözlemi
   // 9 gözlemle aynı güçte sayar ve yanlış bir "güçlü/desteklenecek alan"
@@ -424,4 +424,18 @@ export function raporUret(girdi: RaporGirdisi): RaporGovdesi {
     metin: raporMetniUret(analiz),
     metinKaynagi: "sablon",
   };
+}
+
+/**
+ * §13.16 — Rapor güncelliği saklanmaz, okuma anında türetilir.
+ *
+ * Kapsamdaki puanlardan herhangi biri rapor üretildikten sonra değiştiyse
+ * rapor artık güncel değildir. Hiç puan yoksa rapor güncel sayılır.
+ */
+export function raporGuncelMi(
+  raporUretimZamani: Date,
+  kapsamdakiEnYeniPuanGuncellemesi: Date | null,
+): boolean {
+  if (kapsamdakiEnYeniPuanGuncellemesi === null) return true;
+  return kapsamdakiEnYeniPuanGuncellemesi <= raporUretimZamani;
 }

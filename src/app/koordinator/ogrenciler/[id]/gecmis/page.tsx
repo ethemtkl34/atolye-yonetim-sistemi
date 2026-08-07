@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, kartBasligiStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
-import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/scoring";
+import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/puan-hesaplari";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 
 export const metadata: Metadata = {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { stajyerZorunlu } from "@/lib/auth-guard";
+import { stajyerZorunlu } from "@/lib/yetki-kapisi";
 import { SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { GunFormEkrani } from "@/components/puanlama-ekranlari";
 import { kayitPuanlamasi } from "@/lib/puanlama-verisi";

@@ -1,4 +1,4 @@
-import { belgeYetkisi } from "@/lib/auth-guard";
+import { belgeYetkisi } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";

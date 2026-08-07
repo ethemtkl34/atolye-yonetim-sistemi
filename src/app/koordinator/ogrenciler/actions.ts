@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/auth-guard";
+import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { kayitEngeli } from "@/lib/kayit-kurallari";
 import { tarihCozumle } from "@/lib/tarih";

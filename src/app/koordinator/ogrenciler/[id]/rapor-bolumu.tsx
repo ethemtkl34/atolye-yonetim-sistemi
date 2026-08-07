@@ -4,10 +4,10 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { usePathname, useRouter } from "next/navigation";
 import { Bildirim, Buton, CokSatirli, Kart, Rozet, baglantiStili, geriBaglantiStili } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { ortalamaBicimle } from "@/lib/scoring";
+import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihBicimle } from "@/lib/tarih";
 import type { KapsamKaydi, PdfKaydi, RaporOzeti } from "@/lib/rapor-verisi";
-import type { RaporMetni } from "@/lib/report-engine";
+import type { RaporMetni } from "@/lib/rapor-motoru";
 import {
   pdfOlustur,
   raporMetniDuzenle,

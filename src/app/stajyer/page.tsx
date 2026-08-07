@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { stajyerZorunlu } from "@/lib/auth-guard";
+import { stajyerZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, kartBasligiStili } from "@/components/ui";
 import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
 import {
@@ -8,7 +8,7 @@ import {
   kayitIlerlemeleri,
   type KayitIlerlemesi,
 } from "@/lib/puanlama-verisi";
-import { ortalamaBicimle } from "@/lib/scoring";
+import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { adminZorunlu } from "@/lib/auth-guard";
+import { adminZorunlu } from "@/lib/yetki-kapisi";
 import { SUBE_CEREZI, SUBE_CEREZ_OMRU } from "@/lib/sube";
 
 /**
