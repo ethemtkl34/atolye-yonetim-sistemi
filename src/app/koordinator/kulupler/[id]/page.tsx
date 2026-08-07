@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, baglantiStili, geriBaglantiStili } from "@/components/ui";
 import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import { kulupDurumDegistir } from "../actions";
 import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
@@ -166,9 +166,19 @@ export default async function KulupDetaySayfasi(
 
       {/* --- Atölyeler --- */}
       <Kart className="p-4">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Kulübün atölyeleri
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-zinc-900">
+            Kulübün atölyeleri
+          </h2>
+          {kullanici.yetkiler.mufredat !== "YOK" ? (
+            <Link
+              href={`/koordinator/kulupler/${kulup.id}/mufredat`}
+              className={baglantiStili}
+            >
+              Müfredat ve öğretmenler →
+            </Link>
+          ) : null}
+        </div>
         <p className="mt-1 text-sm text-zinc-600">
           Kulüp tek yarım gün sürer; bu {kulup.workshops.length} atölye kulübün
           bütün gruplarında uygulanır.
@@ -180,6 +190,9 @@ export default async function KulupDetaySayfasi(
                 {sira + 1}.
               </span>
               <span className="text-zinc-700">{atolye.workshopType.name}</span>
+              {atolye.teacherName ? (
+                <span className="text-zinc-500">· {atolye.teacherName}</span>
+              ) : null}
             </li>
           ))}
         </ol>

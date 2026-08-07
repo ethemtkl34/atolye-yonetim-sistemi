@@ -42,6 +42,13 @@ describe("YETKI_MATRISI değişmezleri", () => {
     }
   });
 
+  it("müfredat yönetimi koordinatörde açık, danışma masasında kapalı", () => {
+    // DECISIONS.md: müfredat yönetimi danışma görevlisinin işi değil.
+    expect(YETKI_MATRISI.KOORDINATOR.mufredat).toBe("TAM");
+    expect(YETKI_MATRISI.ADMIN.mufredat).toBe("TAM");
+    expect(YETKI_MATRISI.DANISMA_GOREVLISI.mufredat).toBe("YOK");
+  });
+
   it("kullanıcı yönetimi yalnızca yönetici satırında açık", () => {
     expect(YETKI_MATRISI.ADMIN.kullanicilar).toBe("TAM");
     expect(YETKI_MATRISI.KOORDINATOR.kullanicilar).toBe("YOK");

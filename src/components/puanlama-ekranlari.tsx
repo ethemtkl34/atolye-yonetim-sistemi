@@ -228,21 +228,44 @@ export function GunFormEkrani({
       <PuanlamaOlcegi />
 
       {gun.formlar.map((form) => (
-        <PuanlamaFormu
-          key={form.oturumId}
-          kayitId={kayit.id}
-          form={{
-            oturumId: form.oturumId,
-            atolyeAdi: form.atolyeAdi,
-            durum: form.durum,
-            attended: form.attended,
-            ortalama: form.ortalama,
-            satirlar: form.satirlar,
-            puanlanabilir: form.puanlanabilir,
-            puanlayan: form.puanlayan,
-          }}
-          duzenlenebilir={duzenlenebilir && kayit.aktif}
-        />
+        <div key={form.oturumId} className="space-y-2">
+          {/* O haftanın müfredat konusu — koordinatörün girdiği içerik,
+              stajyer için salt okunur. Telafi günlerinde ve konu girilmemiş
+              haftalarda blok hiç görünmez. */}
+          {form.mufredat ? (
+            <div className="rounded-md bg-yuzey-100 px-3 py-2">
+              <p className="text-xs font-medium text-zinc-500">
+                {kayit.programTuru === "Kulüp"
+                  ? "Bu günün konusu"
+                  : "Bu haftanın konusu"}{" "}
+                — {form.atolyeAdi}
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-zinc-900">
+                {form.mufredat.baslik}
+              </p>
+              {form.mufredat.aciklama ? (
+                <p className="mt-0.5 whitespace-pre-line text-sm text-zinc-600">
+                  {form.mufredat.aciklama}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <PuanlamaFormu
+            kayitId={kayit.id}
+            form={{
+              oturumId: form.oturumId,
+              atolyeAdi: form.atolyeAdi,
+              durum: form.durum,
+              attended: form.attended,
+              ortalama: form.ortalama,
+              satirlar: form.satirlar,
+              puanlanabilir: form.puanlanabilir,
+              puanlayan: form.puanlayan,
+            }}
+            duzenlenebilir={duzenlenebilir && kayit.aktif}
+          />
+        </div>
       ))}
     </div>
   );

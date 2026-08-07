@@ -240,10 +240,11 @@ model WorkshopType {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  questions     Question[]
-  termWorkshops TermWorkshop[]
-  clubWorkshops ClubWorkshop[]
-  sessions      Session[]
+  questions         Question[]
+  termWorkshops     TermWorkshop[]
+  clubWorkshops     ClubWorkshop[]
+  sessions          Session[]
+  curriculumEntries CurriculumEntry[]
 
   @@index([active, sortOrder])
 }
@@ -283,10 +284,11 @@ model Term {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  workshops TermWorkshop[]
-  weeks     TermWeek[]
-  groups    Group[]
-  interns   TermIntern[]
+  workshops         TermWorkshop[]
+  weeks             TermWeek[]
+  groups            Group[]
+  interns           TermIntern[]
+  curriculumEntries CurriculumEntry[]
 
   @@index([status])
 }
@@ -321,6 +323,11 @@ model TermWorkshop {
   /// Restrict: bir programda kullanılan atölye çeşidi silinemez.
   workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
   sortOrder      Int          @default(0)
+
+  /// Bu dönemde bu atölyeyi veren öğretmen — serbest metin (`counselorName`
+  /// ilkesi: öğretmenler sistemde kullanıcı hesabı değil). Her dönem farklı
+  /// öğretmen gelebildiği için ad döneme değil dönem-atölye satırına yazılır.
+  teacherName String?
 
   @@unique([termId, workshopTypeId])
   @@index([termId, sortOrder])
@@ -375,8 +382,9 @@ model Club {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  workshops ClubWorkshop[]
-  groups    Group[]
+  workshops         ClubWorkshop[]
+  groups            Group[]
+  curriculumEntries CurriculumEntry[]
 
   @@index([status])
 }
@@ -390,8 +398,71 @@ model ClubWorkshop {
   workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
   sortOrder      Int          @default(0)
 
+  /// Bu kulüpte bu atölyeyi veren öğretmen — serbest metin
+  /// (bkz. TermWorkshop.teacherName).
+  teacherName String?
+
   @@unique([clubId, workshopTypeId])
   @@index([clubId, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Müfredat
+// ---------------------------------------------------------------------------
+
+/// Haftalık müfredat — bir programın (dönem VEYA kulüp) belirli bir haftasında
+/// belirli bir atölyede işlenen/işlenecek konu. Doğrudan hafta bazında girilir;
+/// konu havuzu ya da şablon kütüphanesi bilinçli olarak yok: her dönem farklı
+/// öğretmen gelebildiği için müfredat döneme özgüdür (öğretmen adı
+/// `TermWorkshop.teacherName` / `ClubWorkshop.teacherName` üzerinde durur).
+///
+/// `termId` ve `clubId` alanlarından tam olarak biri dolu olur; kural
+/// migration içinde eklenen `CurriculumEntry_term_xor_club` CHECK kısıtıyla
+/// veritabanında da zorlanır (Group modelindeki desenin aynısı).
+///
+/// Hafta çapası SAYIDIR (`weekNumber`), `TermWeek` FK'sı değil: puanlama
+/// ekranları haftayı iki program türünde de `Session.weekNumber` üzerinden
+/// okuyor ve kulübün hafta tablosu yok (hafta = `Club.weekDates` dizisindeki
+/// 1 tabanlı sıra; dizi yalnızca kulüp oluşturulurken yazıldığı için sıra
+/// sabittir — ileride weekDates düzenleme özelliği gelirse müfredat tarihle
+/// değil sırayla kayar). Telafi günlerinin hafta numarası olmadığı için
+/// (`Session.weekNumber = null`) telafi gününde müfredat gösterilmez.
+///
+/// Üst sınır (dönemde hafta sayısı, kulüpte gün sayısı) programa göre
+/// değişken olduğundan uygulama katmanında doğrulanır ("tam 5 atölye"
+/// kuralıyla aynı gerekçe). Programdan atölye çıkarma arayüzü bugün yok;
+/// eklenirse o eylem bu tablodaki (program, atölye) satırlarını da silmeli.
+///
+/// Şubeden BAĞIMSIZDIR (dönem/kulüp gibi ortak): iki şube aynı programı aynı
+/// müfredatla uygular.
+model CurriculumEntry {
+  id     String  @id @default(cuid())
+  termId String?
+  term   Term?   @relation(fields: [termId], references: [id], onDelete: Cascade)
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  workshopTypeId String
+  /// Restrict: TermWorkshop/ClubWorkshop ile aynı kural — programda
+  /// kullanılan atölye çeşidi silinemez.
+  workshopType WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+
+  /// Programın kaçıncı haftası (1'den başlar; `CurriculumEntry_hafta_pozitif`
+  /// CHECK kısıtı). Dönemde `TermWeek.weekNumber`, kulüpte `weekDates`
+  /// dizisindeki 1 tabanlı sıra ile eşleşir.
+  weekNumber Int
+
+  title       String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Hafta × atölye başına TEK girdi (birden çok konu gerekirse başlığa
+  // yazılır). NULL sütun unique'e girmediği için dönem satırlarını ilk,
+  // kulüp satırlarını ikinci indeks kısıtlar.
+  @@unique([termId, weekNumber, workshopTypeId])
+  @@unique([clubId, weekNumber, workshopTypeId])
 }
 
 // ---------------------------------------------------------------------------

@@ -62,6 +62,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
   "termWeek",
   "club",
   "clubWorkshop",
+  "curriculumEntry",
   "intelligenceTestType",
 ]);
 

@@ -3,6 +3,11 @@ import { aktifGrupKosulu } from "./durumlar";
 import { bugun, tarihMetni } from "./tarih";
 import { puanlamaOrtalamasi } from "./puan-hesaplari";
 import {
+  mufredatHaritasi,
+  oturumKonusu,
+  type MufredatKonusu,
+} from "./mufredat";
+import {
   formSatirlariOlustur,
   gorevOzeti,
   oturumPuanlanabilirMi,
@@ -45,6 +50,12 @@ export type OturumFormu = {
   puanlanabilir: boolean;
   puanlayan: string | null;
   guncellenmeZamani: Date | null;
+  /**
+   * O haftanın müfredat konusu — girilmemişse ve telafi günlerinde null
+   * (telafi oturumunun hafta numarası yok, hangi haftanın içeriği olduğu
+   * bilinemez).
+   */
+  mufredat: MufredatKonusu | null;
 };
 
 export type GunFormlari = {
@@ -111,8 +122,8 @@ export async function kayitPuanlamasi(
           name: true,
           days: true,
           timeSlot: true,
-          term: { select: { name: true } },
-          club: { select: { name: true } },
+          term: { select: { id: true, name: true } },
+          club: { select: { id: true, name: true } },
         },
       },
     },
@@ -164,6 +175,29 @@ export async function kayitPuanlamasi(
     },
   });
 
+  // Müfredat şubeden bağımsız (program gibi ortak) ve grubun programına
+  // çapalı; harita "hafta × atölye → konu" eşlemesini bir kez kurar.
+  const mufredatGirdileri = await db.curriculumEntry.findMany({
+    where: kayit.group.term
+      ? { termId: kayit.group.term.id }
+      : { clubId: kayit.group.club!.id },
+    select: {
+      weekNumber: true,
+      workshopTypeId: true,
+      title: true,
+      description: true,
+    },
+  });
+
+  const mufredat = mufredatHaritasi(
+    mufredatGirdileri.map((girdi) => ({
+      weekNumber: girdi.weekNumber,
+      workshopTypeId: girdi.workshopTypeId,
+      baslik: girdi.title,
+      aciklama: girdi.description,
+    })),
+  );
+
   const bugunkuTarih = bugun();
   const gunHaritasi = new Map<string, GunFormlari>();
 
@@ -202,6 +236,11 @@ export async function kayitPuanlamasi(
       puanlanabilir: oturumPuanlanabilirMi(oturum.date, bugunkuTarih),
       puanlayan: puanlama?.scoredBy?.name ?? null,
       guncellenmeZamani: puanlama?.updatedAt ?? null,
+      mufredat: oturumKonusu(
+        mufredat,
+        oturum.weekNumber,
+        oturum.workshopType.id,
+      ),
     };
 
     const anahtar = tarihMetni(oturum.date);
