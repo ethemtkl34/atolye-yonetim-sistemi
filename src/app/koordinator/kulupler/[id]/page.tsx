@@ -4,14 +4,15 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
-import { KULUP_DURUMLARI } from "@/lib/durumlar";
+import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
+import { kulupDurumDegistir } from "../actions";
 import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
-import { DurumSecici } from "./durum-secici";
+import { DurumSecici } from "@/components/durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 
 export async function generateMetadata(
@@ -121,7 +122,12 @@ export default async function KulupDetaySayfasi(
             baslik={kulup.name}
             aciklama={kulup.description ?? undefined}
             aksiyon={
-              <DurumSecici kulupId={kulup.id} mevcutDurum={kulup.status} />
+              <DurumSecici
+                mevcutDurum={kulup.status}
+                durumlar={KULUP_DURUMLARI}
+                gecisler={KULUP_DURUM_GECISLERI}
+                eylem={kulupDurumDegistir.bind(null, kulup.id)}
+              />
             }
           />
         </div>

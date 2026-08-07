@@ -56,12 +56,18 @@ export function KayitListesi({
   ilerlemeler,
   temelYol,
   ogrenciYolu,
+  baslikBicimi = "ogrenci",
 }: {
   ilerlemeler: KayitIlerlemesi[];
   /** Kayıt detayının kök yolu: "/stajyer/puanlama" veya "/koordinator/puanlamalar". */
   temelYol: string;
   /** Koordinatörde öğrenci profiline bağlantı verilir; stajyerde verilmez. */
   ogrenciYolu?: string;
+  /**
+   * Kart başlığı: listelerde öğrenci adı; öğrencinin kendi puanlama geçmişi
+   * sayfasında öğrenci adı zaten başlıkta olduğundan program adı kullanılır.
+   */
+  baslikBicimi?: "ogrenci" | "program";
 }) {
   return (
     <div className="space-y-2">
@@ -74,7 +80,9 @@ export function KayitListesi({
                   href={`${temelYol}/${ilerleme.kayit.id}`}
                   className={kartBasligiStili}
                 >
-                  {ilerleme.kayit.ogrenciAdi}
+                  {baslikBicimi === "ogrenci"
+                    ? ilerleme.kayit.ogrenciAdi
+                    : `${ilerleme.kayit.program} · ${ilerleme.kayit.grupAdi}`}
                 </Link>
                 <Rozet>{ilerleme.kayit.programTuru}</Rozet>
                 {!ilerleme.kayit.aktif ? <Rozet tur="pasif">İptal</Rozet> : null}
@@ -85,7 +93,9 @@ export function KayitListesi({
                 ) : null}
               </div>
               <p className="mt-1 text-sm text-zinc-600">
-                {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi} ·{" "}
+                {baslikBicimi === "ogrenci"
+                  ? `${ilerleme.kayit.program} · ${ilerleme.kayit.grupAdi} · `
+                  : ""}
                 {grupZamani(ilerleme.kayit.gunler, ilerleme.kayit.zamanDilimi)}
               </p>
               <p className="mt-1 text-xs text-zinc-500">

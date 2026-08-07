@@ -251,6 +251,61 @@ export function BosDurum({
   );
 }
 
+/**
+ * Kapalı başlayan bölüm çerçevesi.
+ *
+ * Native `<details>`: JS gerektirmediği için sunucu bileşeninde çalışıyor ve
+ * içindeki istemci bileşenleri (stajyer atamaları gibi) etkilenmiyor. Özet
+ * satırı telefonda 44px dokunma hedefi; masaüstünde sıkı ölçüye dönüyor.
+ */
+export function KatlanirBolum({
+  baslik,
+  etiket,
+  children,
+}: {
+  baslik: string;
+  etiket?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Kart className="p-4">
+      <details className="group">
+        <summary className="flex min-h-[2.75rem] cursor-pointer list-none items-center justify-between gap-2 sm:min-h-0">
+          <span className="flex flex-wrap items-center gap-2 text-base font-semibold text-zinc-900">
+            {baslik}
+            {etiket}
+          </span>
+          <span className="shrink-0 text-xs text-zinc-500 group-open:hidden">
+            Göster
+          </span>
+          <span className="hidden shrink-0 text-xs text-zinc-500 group-open:inline">
+            Gizle
+          </span>
+        </summary>
+        <div className="mt-3">{children}</div>
+      </details>
+    </Kart>
+  );
+}
+
+/** `<dl>` içinde etiket + değer hücresi; boş değer tire olarak çıkar. */
+export function OzetHucresi({
+  etiket,
+  deger,
+}: {
+  etiket: string;
+  deger: string | null;
+}) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-500">{etiket}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-zinc-900">
+        {deger ?? <span className="font-normal text-zinc-400">—</span>}
+      </dd>
+    </div>
+  );
+}
+
 /** İşlem sonucu bildirimi — Server Action dönüşlerini göstermek için. */
 export function Bildirim({
   tur,

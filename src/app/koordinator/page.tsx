@@ -1,28 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
-import {
-  AKTIF_DONEM_KOSULU,
-  AKTIF_KULUP_KOSULU,
-  aktifGrupKosulu,
-  aktifOgrenciKosulu,
-  atanmamisKayitKosulu,
-} from "@/lib/durumlar";
-import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
-import { raporOzetleri } from "@/lib/rapor-verisi";
-import { kontenjanDurumu } from "@/lib/kayit-kurallari";
-import {
-  bugun,
-  gunEkle,
-  grupZamani,
-  tarihBicimle,
-  tarihGunleBicimle,
-  tarihMetni,
-} from "@/lib/tarih";
-import { cn } from "@/lib/utils";
-import type { Day, TimeSlot } from "@/generated/prisma/enums";
+import { dashboardVerisi } from "@/lib/dashboard-verisi";
+import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
+import { BolumBasligi, DurumOgesi, IsKarti } from "./dashboard-kartlari";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -44,17 +26,11 @@ export const metadata: Metadata = {
  * "eksik puanlama 12" eşit ağırlıkta görünüyordu, oysa biri neredeyse sabit
  * diğeri günlük işi belirliyor.
  *
- * Değişmeyen sözleşme: her sayı, tıklanınca açılan listenin kendi sorgusuyla
- * aynı koşuldan üretilir. Koşullar `lib/durumlar.ts` içinde tek yerde tanımlı;
- * kartta yazan sayı ile listenin uzunluğu birebir aynı kalır.
- *
- * Sözleşme şubeli yapıda da geçerli: bütün sayılar AKTİF ŞUBE içindir.
- * "Aktif dönem" ve "aktif kulüp" bunun istisnası — program tanımı iki şubede
- * ortak, sayı ikisinde de aynı görünür.
+ * Sayıların nasıl üretildiği `lib/dashboard-verisi.ts`'te; bu dosya yalnızca
+ * çizer. Kart bileşenleri `dashboard-kartlari.tsx`'te.
  */
 export default async function KoordinatorDashboard() {
   const kullanici = await yonetimZorunlu();
-  const subeId = kullanici.aktifSubeId;
 
   // Dashboard'un kendisi modülsüz (panele giren herkes açar) ama içindeki
   // kartlar modüllere bağlı: yetkisi olmayan modülün görev kartı gösterilmez
@@ -63,94 +39,26 @@ export default async function KoordinatorDashboard() {
   const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
   const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
 
-  const bugunkuTarih = bugun();
-
-  const [
+  const {
     aktifDonemSayisi,
     aktifKulupSayisi,
     aktifGruplar,
     aktifOgrenciSayisi,
     atanmamisKayitSayisi,
-    ilerlemeler,
-    raporlar,
     toplamRaporSayisi,
-    yaklasanOturumlar,
-  ] = await Promise.all([
-    db.term.count({ where: AKTIF_DONEM_KOSULU }),
-    db.club.count({ where: AKTIF_KULUP_KOSULU }),
-    db.group.findMany({
-      where: aktifGrupKosulu(subeId),
-      select: {
-        id: true,
-        name: true,
-        days: true,
-        timeSlot: true,
-        capacity: true,
-        term: { select: { id: true, name: true } },
-        club: { select: { id: true, name: true } },
-        _count: { select: { enrollments: { where: { status: "AKTIF" } } } },
-      },
-    }),
-    // §12.1 — "Toplam aktif öğrenci": aktif programlarda kaydı olan farklı
-    // öğrenci sayısı. Aynı öğrencinin iki kaydı varsa bir kez sayılır.
-    db.student.count({ where: aktifOgrenciKosulu(subeId) }),
-    db.enrollment.count({ where: atanmamisKayitKosulu(subeId) }),
-    puanlamaGorebilir
-      ? kayitIlerlemeleri({
-          subeId,
-          yalnizcaAktif: true,
-          yalnizcaAktifProgram: true,
-        })
-      : [],
-    raporGorebilir ? raporOzetleri({ subeId }) : [],
-    // "Toplam rapor" listeden değil count'tan: raporOzetleri en yeni 200
-    // satırla sınırlı, kart ise gerçek toplamı söylemeli.
-    raporGorebilir
-      ? db.report.count({ where: { student: { branchId: subeId } } })
-      : 0,
-    // Yaklaşan oturumlar grup ve gün bazında toplanır: bir grubun bir günde
-    // 5 (dönem) veya 3 (kulüp) atölyesi var, satır satır çekmeye gerek yok.
-    db.session.groupBy({
-      by: ["date", "groupId"],
-      where: { date: { gte: bugunkuTarih }, group: aktifGrupKosulu(subeId) },
-      orderBy: [{ date: "asc" }],
-      _count: { _all: true },
-      take: 60,
-    }),
-  ]);
-
-  const dolanGruplar = aktifGruplar.filter(
-    (grup) => kontenjanDurumu(grup.capacity, grup._count.enrollments).dolu,
-  );
-
-  // En eski bekleyen gün başta: gecikmiş form, dün yapılmış atölyenin
-  // formundan daha acil. Önceki sürüm kaydın oluşturulma tarihine göre
-  // sıralıyordu — listenin başındaki satırın en acil olduğuna dair hiçbir
-  // güvence yoktu.
-  const eksikPuanlamalar = ilerlemeler
-    .filter((ilerleme) => ilerleme.ozet.bekleyen > 0)
-    .sort(
-      (a, b) =>
-        (a.bekleyenGun?.tarih.getTime() ?? 0) -
-        (b.bekleyenGun?.tarih.getTime() ?? 0),
-    );
-  const bekleyenFormSayisi = eksikPuanlamalar.reduce(
-    (toplam, ilerleme) => toplam + ilerleme.ozet.bekleyen,
-    0,
-  );
-  const enEskiBekleyen = eksikPuanlamalar.at(0)?.bekleyenGun?.tarih ?? null;
-
-  const guncelOlmayanRaporlar = raporlar.filter((rapor) => !rapor.guncel);
-  const sonRaporlar = raporlar.slice(0, 5);
-
-  const haftaSonu = yaklasanHaftaSonu(yaklasanOturumlar, aktifGruplar);
-
-  const bekleyenBasliklar = [
-    ...(puanlamaGorebilir ? [bekleyenFormSayisi] : []),
-    atanmamisKayitSayisi,
-    dolanGruplar.length,
-    ...(raporGorebilir ? [guncelOlmayanRaporlar.length] : []),
-  ].filter((sayi) => sayi > 0).length;
+    dolanGruplar,
+    eksikPuanlamalar,
+    bekleyenFormSayisi,
+    enEskiBekleyen,
+    guncelOlmayanRaporlar,
+    sonRaporlar,
+    haftaSonu,
+    bekleyenBasliklar,
+  } = await dashboardVerisi({
+    subeId: kullanici.aktifSubeId,
+    puanlamaGorebilir,
+    raporGorebilir,
+  });
 
   return (
     <div className="space-y-8">
@@ -478,284 +386,4 @@ export default async function KoordinatorDashboard() {
       ) : null}
     </div>
   );
-}
-
-/** Bölüm başlığı; sağdaki bağlantı verilirse "Tümü" olarak çıkar. */
-function BolumBasligi({
-  baslik,
-  aciklama,
-  yol,
-}: {
-  baslik: string;
-  aciklama?: string;
-  yol?: string;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <div>
-        <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
-        {aciklama ? (
-          <p className="mt-0.5 text-xs text-zinc-500">{aciklama}</p>
-        ) : null}
-      </div>
-      {yol ? (
-        <Link href={yol} className={baglantiStili}>
-          Tümü
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Bekleyen iş kartı.
- *
- * Sıfır ile sıfır olmayan ayrımı kartın tamamında görünür: iş varsa turuncu
- * şerit, turuncu sayı ve turuncu zemin; yoksa kart sessizleşip yerinde kalır.
- * Kartı gizlemek daha temiz görünürdü ama "0 dolan grup" bilgisi de bir
- * cevaptır ve kartların yer değiştirmesi ekranı okunmaz hale getiriyordu.
- * Turuncu yalnızca şerit ve sayıda; küçük metin için beyaz üstünde kontrastı
- * yetmediğinden başlık ve alt bilgi nötr kalıyor.
- */
-function IsKarti({
-  baslik,
-  deger,
-  birim,
-  altBilgi,
-  yol,
-}: {
-  baslik: string;
-  deger: number;
-  birim: string;
-  altBilgi: string;
-  /**
-   * Kartın açtığı liste. Verilmezse kart tıklanamaz olur.
-   *
-   * Ölü bağlantı vermektense tıklanamaz kart daha dürüst: "Güncelliğini
-   * yitiren rapor" kartı bir süre `/koordinator/raporlar?suzgec=eski`
-   * adresine gidiyordu ama o sayfa kaldırılmıştı; yönlendirme süzgeci
-   * düşürüp kullanıcıyı öğrenci listesine atıyor, "hangi raporlar" sorusu
-   * cevapsız kalıyordu.
-   */
-  yol?: string;
-}) {
-  const dikkat = deger > 0;
-
-  const govde = (
-    <>
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 w-1.5",
-          dikkat ? "bg-vurgu-600" : "bg-yuzey-200",
-        )}
-      />
-      <p className="text-sm text-zinc-600">{baslik}</p>
-      <p aria-hidden className="mt-1 flex items-baseline gap-1.5">
-        <span
-          className={cn(
-            "text-3xl font-semibold tabular-nums",
-            dikkat ? "text-vurgu-800" : "text-zinc-400",
-          )}
-        >
-          {deger}
-        </span>
-        <span className="text-xs text-zinc-500">{birim}</span>
-      </p>
-      <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{altBilgi}</p>
-    </>
-  );
-
-  const temel = cn(
-    "relative flex flex-col overflow-hidden rounded-lg border p-4 pl-5 shadow-[0_1px_2px_rgba(91,16,53,0.04)]",
-    dikkat ? "border-vurgu-200 bg-vurgu-50" : "border-yuzey-200 bg-white",
-  );
-
-  if (!yol) {
-    // Tıklanamaz kart imleç değiştirmiyor ve vurgu almıyor: tıklanabilir
-    // görünüp hiçbir şey yapmamak, hiç tıklanabilir görünmemekten kötü.
-    return (
-      <div className={temel} aria-label={`${baslik}: ${deger} ${birim}`}>
-        {govde}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={yol}
-      aria-label={`${baslik}: ${deger} ${birim}`}
-      className={cn(
-        temel,
-        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
-        dikkat ? "hover:bg-vurgu-100" : "hover:bg-marka-50",
-      )}
-    >
-      {govde}
-    </Link>
-  );
-}
-
-/** Durum şeridinin tek hücresi — bağlam bilgisi, iş değil. */
-function DurumOgesi({
-  baslik,
-  deger,
-  yol,
-}: {
-  baslik: string;
-  deger: number;
-  /** Verilmezse hücre tıklanamaz olur — açılacak bir liste yoksa. */
-  yol?: string;
-}) {
-  const govde = (
-    <>
-      <span className="block text-xs text-zinc-500">{baslik}</span>
-      <span className="mt-0.5 block text-xl font-semibold tabular-nums text-marka-800">
-        {deger}
-      </span>
-    </>
-  );
-
-  const yerlesim =
-    "px-4 py-3 first:rounded-t-lg last:rounded-b-lg sm:first:rounded-l-lg sm:first:rounded-tr-none sm:last:rounded-r-lg sm:last:rounded-bl-none";
-
-  if (!yol) {
-    return (
-      <div className={yerlesim} aria-label={`${baslik}: ${deger}`}>
-        {govde}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={yol}
-      aria-label={`${baslik}: ${deger}`}
-      className={cn(
-        yerlesim,
-        "transition-colors hover:bg-marka-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
-      )}
-    >
-      {govde}
-    </Link>
-  );
-}
-
-type HaftaSonuGrubu = {
-  id: string;
-  ad: string;
-  programAdi: string;
-  gunler: Day[];
-  zamanDilimi: TimeSlot;
-  kapasite: number;
-  ogrenciSayisi: number;
-  atolyeSayisi: number;
-  yol: string;
-};
-
-type HaftaSonuGunu = {
-  tarih: Date;
-  tarihAnahtari: string;
-  bugunMu: boolean;
-  gruplar: HaftaSonuGrubu[];
-};
-
-type AktifGrup = {
-  id: string;
-  name: string;
-  days: Day[];
-  timeSlot: TimeSlot;
-  capacity: number;
-  term: { id: string; name: string } | null;
-  club: { id: string; name: string } | null;
-  _count: { enrollments: number };
-};
-
-/**
- * Yaklaşan eğitim günlerini bulur: en yakın oturumdan başlayan 7 günlük
- * pencere.
- *
- * Tek bir "en yakın tarih" yetmiyor: farklı gruplar farklı günlerde
- * toplanıyor, yalnızca en yakın tarihi göstermek diğerlerini görünmez
- * bırakırdı.
- *
- * Pencere TAKVİM HAFTASI değil, en yakın oturumdan itibaren 7 gün. Takvim
- * haftası denendi ve hafta içi programlarla birlikte şu tuhaflığı üretti:
- * pazar günü bakıldığında pencere o gün bitiyor ve ertesi sabah başlayan
- * dersler panelde hiç görünmüyordu. Panelin cevapladığı soru "sırada ne var",
- * "bu takvim haftasında ne vardı" değil.
- */
-function yaklasanHaftaSonu(
-  oturumlar: { date: Date; groupId: string; _count: { _all: number } }[],
-  gruplar: AktifGrup[],
-): { gunler: HaftaSonuGunu[]; gruplar: HaftaSonuGrubu[] } | null {
-  if (oturumlar.length === 0) return null;
-
-  const enYakin = oturumlar.reduce((a, b) =>
-    a.date.getTime() <= b.date.getTime() ? a : b,
-  ).date;
-
-  // Sorgu zaten `date >= bugün` süzüyor, dolayısıyla en yakın oturum bugün ya
-  // da sonrası. Pencere oradan başlayıp 7 günü kapsıyor.
-  const baslangic = enYakin.getTime();
-  const sinir = gunEkle(enYakin, 6).getTime();
-
-  const grupHaritasi = new Map(gruplar.map((grup) => [grup.id, grup]));
-  const bugunAnahtari = tarihMetni(bugun());
-  const gunHaritasi = new Map<string, HaftaSonuGunu>();
-  const tumGruplar: HaftaSonuGrubu[] = [];
-
-  for (const oturum of oturumlar) {
-    const zaman = oturum.date.getTime();
-    if (zaman < baslangic || zaman > sinir) continue;
-
-    const grup = grupHaritasi.get(oturum.groupId);
-    if (!grup) continue;
-
-    const satir: HaftaSonuGrubu = {
-      id: grup.id,
-      ad: grup.name,
-      programAdi: grup.term?.name ?? grup.club?.name ?? "Program",
-      gunler: grup.days,
-      zamanDilimi: grup.timeSlot,
-      kapasite: grup.capacity,
-      ogrenciSayisi: grup._count.enrollments,
-      atolyeSayisi: oturum._count._all,
-      yol: grup.term
-        ? `/koordinator/donemler/${grup.term.id}`
-        : `/koordinator/kulupler/${grup.club?.id}`,
-    };
-
-    const anahtar = tarihMetni(oturum.date);
-    const mevcut = gunHaritasi.get(anahtar);
-
-    if (mevcut) {
-      mevcut.gruplar.push(satir);
-    } else {
-      gunHaritasi.set(anahtar, {
-        tarih: oturum.date,
-        tarihAnahtari: anahtar,
-        bugunMu: anahtar === bugunAnahtari,
-        gruplar: [satir],
-      });
-    }
-
-    tumGruplar.push(satir);
-  }
-
-  if (tumGruplar.length === 0) return null;
-
-  const gunler = [...gunHaritasi.values()]
-    .sort((a, b) => a.tarih.getTime() - b.tarih.getTime())
-    .map((gun) => ({
-      ...gun,
-      gruplar: gun.gruplar.sort((a, b) =>
-        `${a.programAdi} ${a.ad}`.localeCompare(
-          `${b.programAdi} ${b.ad}`,
-          "tr",
-        ),
-      ),
-    }));
-
-  return { gunler, gruplar: tumGruplar };
 }

@@ -3,10 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { BosDurum, Kart, Rozet, SayfaBasligi, geriBaglantiStili, kartBasligiStili } from "@/components/ui";
-import { IlerlemeCubugu } from "@/components/puanlama-ekranlari";
+import { BosDurum, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
+import { KayitListesi } from "@/components/puanlama-ekranlari";
 import { kayitIlerlemeleri } from "@/lib/puanlama-verisi";
-import { tarihBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
   title: "Puanlama geçmişi",
@@ -54,35 +53,11 @@ export default async function OgrenciPuanlamalariSayfasi(
       {ilerlemeler.length === 0 ? (
         <BosDurum baslik="Kayıt oluşturulduğunda puanlama takibi başlar." />
       ) : (
-        <div className="space-y-2">
-          {ilerlemeler.map((ilerleme) => (
-            <Kart key={ilerleme.kayit.id} className="p-4">
-              <div className="grid gap-3 lg:grid-cols-[1fr_16rem] lg:items-center">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/koordinator/puanlamalar/${ilerleme.kayit.id}`}
-                      className={kartBasligiStili}
-                    >
-                      {ilerleme.kayit.program} · {ilerleme.kayit.grupAdi}
-                    </Link>
-                    <Rozet>{ilerleme.kayit.programTuru}</Rozet>
-                    {ilerleme.kayit.aktif ? null : (
-                      <Rozet tur="pasif">İptal</Rozet>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Sorumlu stajyer: {ilerleme.kayit.stajyerAdi ?? "Atanmamış"}
-                    {ilerleme.sonPuanlama
-                      ? ` · Son puanlama ${tarihBicimle(ilerleme.sonPuanlama)}`
-                      : " · Henüz puanlama girilmedi"}
-                  </p>
-                </div>
-                <IlerlemeCubugu ozet={ilerleme.ozet} />
-              </div>
-            </Kart>
-          ))}
-        </div>
+        <KayitListesi
+          ilerlemeler={ilerlemeler}
+          temelYol="/koordinator/puanlamalar"
+          baslikBicimi="program"
+        />
       )}
     </div>
   );

@@ -4,14 +4,15 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
-import { DONEM_DURUMLARI } from "@/lib/durumlar";
+import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
+import { donemDurumDegistir } from "../actions";
 import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/kayit-kurallari";
 import { bugun, DUZEN_GUNLERI, grupZamani, haftaBicimle } from "@/lib/tarih";
 import { mevcutHaftaNumarasi } from "@/lib/oturum-uretici";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
-import { DurumSecici } from "./durum-secici";
+import { DurumSecici } from "@/components/durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
 
@@ -187,7 +188,12 @@ export default async function DonemDetaySayfasi(
             baslik={donem.name}
             aciklama={donem.description ?? undefined}
             aksiyon={
-              <DurumSecici donemId={donem.id} mevcutDurum={donem.status} />
+              <DurumSecici
+                mevcutDurum={donem.status}
+                durumlar={DONEM_DURUMLARI}
+                gecisler={DONEM_DURUM_GECISLERI}
+                eylem={donemDurumDegistir.bind(null, donem.id)}
+              />
             }
           />
         </div>

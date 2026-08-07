@@ -1,24 +1,30 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { TermStatus } from "@/generated/prisma/enums";
-import { DONEM_DURUMLARI, DONEM_DURUM_GECISLERI } from "@/lib/durumlar";
-import { donemDurumDegistir } from "../actions";
 
 /**
- * §4.3 — Dönem durumunu değiştirir.
+ * Program durum seçicisi — dönem ve kulüp sayfalarının ortak bileşeni.
+ *
+ * Önceden iki kopyaydı (`donemler/[id]` ve `kulupler/[id]` altında); tek
+ * fark durum sözlüğü ve çağrılan eylemdi, ikisi de artık prop.
  *
  * Hata gösterimi şart: kutu `value={mevcutDurum}` ile sunucudan besleniyor,
  * yani eylem başarısız olursa seçim eski değerine geri döner ve kullanıcı
  * hiçbir açıklama görmez — "seçtim ama olmadı" denen durum tam olarak bu.
- * Önceki sürüm eylemin dönüşünü atıyordu.
  */
-export function DurumSecici({
-  donemId,
+export function DurumSecici<Durum extends string>({
   mevcutDurum,
+  durumlar,
+  gecisler,
+  eylem,
 }: {
-  donemId: string;
-  mevcutDurum: TermStatus;
+  mevcutDurum: Durum;
+  /** Durum kodu → görünen etiket (örn. `DONEM_DURUMLARI`). */
+  durumlar: Record<Durum, { etiket: string }>;
+  /** Durum kodu → geçilebilen durumlar (örn. `DONEM_DURUM_GECISLERI`). */
+  gecisler: Record<Durum, Durum[]>;
+  /** Kimliği bağlanmış server action: `donemDurumDegistir.bind(null, id)`. */
+  eylem: (yeniDurum: Durum) => Promise<{ hata?: string } | void>;
 }) {
   const [bekliyor, basla] = useTransition();
   const [hata, setHata] = useState<string | null>(null);
@@ -31,10 +37,10 @@ export function DurumSecici({
           value={mevcutDurum}
           disabled={bekliyor}
           onChange={(e) => {
-            const yeni = e.target.value as TermStatus;
+            const yeni = e.target.value as Durum;
             setHata(null);
             basla(async () => {
-              const sonuc = await donemDurumDegistir(donemId, yeni);
+              const sonuc = await eylem(yeni);
               if (sonuc?.hata) setHata(sonuc.hata);
             });
           }}
@@ -43,15 +49,14 @@ export function DurumSecici({
           {/* Yalnızca mevcut durum ve ondan geçilebilen durumlar listelenir;
               sunucu da aynı kuralı uygular, burada saklamak kullanıcıyı
               baştan yanlış seçimden korur. */}
-          {Object.entries(DONEM_DURUMLARI)
+          {(Object.keys(durumlar) as Durum[])
             .filter(
-              ([kod]) =>
-                kod === mevcutDurum ||
-                DONEM_DURUM_GECISLERI[mevcutDurum].includes(kod as TermStatus),
+              (kod) =>
+                kod === mevcutDurum || gecisler[mevcutDurum].includes(kod),
             )
-            .map(([kod, { etiket }]) => (
+            .map((kod) => (
               <option key={kod} value={kod}>
-                {etiket}
+                {durumlar[kod].etiket}
               </option>
             ))}
         </select>

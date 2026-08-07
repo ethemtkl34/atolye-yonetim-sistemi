@@ -3,13 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
+import { Kart, KatlanirBolum, OzetHucresi, SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
+import {
+  Bilgi,
+  KayitBolumu,
+  ProfilKayitListesi,
+  VeliHucresi,
+} from "./profil-kartlari";
 import {
   pdfGecmisi,
   raporKapsamSecenekleri,
   raporOzetleri,
 } from "@/lib/rapor-verisi";
-import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
 import { RaporBolumu } from "./rapor-bolumu";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
 import {
@@ -28,11 +33,8 @@ import {
 import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
-  DONEM_DURUMLARI,
-  KULUP_DURUMLARI,
 } from "@/lib/durumlar";
-import type { CancelReason, ClubStatus, Day, TermStatus } from "@/generated/prisma/enums";
-import { grupZamani, tarihBicimle } from "@/lib/tarih";
+import { tarihBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -496,7 +498,7 @@ export default async function OgrenciProfilSayfasi(
           ) : undefined
         }
       >
-        <KayitListesi
+        <ProfilKayitListesi
           kayitlar={gecmisKayitlar}
           bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
         />
@@ -505,228 +507,6 @@ export default async function OgrenciProfilSayfasi(
       <KatlanirBolum baslik="Stajyer atamaları">
         <StajyerAtamalari kayitlar={atamaKayitlari} />
       </KatlanirBolum>
-    </div>
-  );
-}
-
-type ProfilKaydi = {
-  id: string;
-  status: "AKTIF" | "IPTAL";
-  createdAt: Date;
-  intern: { name: string; active: boolean } | null;
-  cancelReason: CancelReason | null;
-  cancelNote: string | null;
-  lastAttendedWeek: number | null;
-  lastAttendedDate: Date | null;
-  _count: { scores: number };
-  group: {
-    name: string;
-    days: Day[];
-    timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
-    term: { name: string; status: TermStatus } | null;
-    club: { name: string; status: ClubStatus; date: Date } | null;
-    _count: { sessions: number };
-  };
-};
-
-/**
- * Kapalı başlayan bölüm çerçevesi.
- *
- * Native `<details>`: JS gerektirmediği için sunucu bileşeninde çalışıyor ve
- * içindeki istemci bileşenleri (stajyer atamaları gibi) etkilenmiyor. Özet
- * satırı telefonda 44px dokunma hedefi; masaüstünde sıkı ölçüye dönüyor.
- */
-function KatlanirBolum({
-  baslik,
-  etiket,
-  children,
-}: {
-  baslik: string;
-  etiket?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Kart className="p-4">
-      <details className="group">
-        <summary className="flex min-h-[2.75rem] cursor-pointer list-none items-center justify-between gap-2 sm:min-h-0">
-          <span className="flex flex-wrap items-center gap-2 text-base font-semibold text-zinc-900">
-            {baslik}
-            {etiket}
-          </span>
-          <span className="shrink-0 text-xs text-zinc-500 group-open:hidden">
-            Göster
-          </span>
-          <span className="hidden shrink-0 text-xs text-zinc-500 group-open:inline">
-            Gizle
-          </span>
-        </summary>
-        <div className="mt-3">{children}</div>
-      </details>
-    </Kart>
-  );
-}
-
-function OzetHucresi({
-  etiket,
-  deger,
-}: {
-  etiket: string;
-  deger: string | null;
-}) {
-  return (
-    <div>
-      <dt className="text-xs text-zinc-500">{etiket}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-zinc-900">
-        {deger ?? <span className="font-normal text-zinc-400">—</span>}
-      </dd>
-    </div>
-  );
-}
-
-/** Veli adı + tıklanabilir telefon. Koordinatörün en sık işi aileyi aramak. */
-function VeliHucresi({
-  etiket,
-  veli,
-}: {
-  etiket: string;
-  veli: { fullName: string; phone: string | null } | undefined;
-}) {
-  return (
-    <div>
-      <dt className="text-xs text-zinc-500">{etiket}</dt>
-      <dd className="mt-0.5 text-sm">
-        {veli ? (
-          <>
-            {/* Ad kendi satırında: bağlantı stili `inline-block` olduğu için
-                `block` eklemek çakışıyordu ve telefon ada yapışıyordu. */}
-            <span className="block font-medium text-zinc-900">
-              {veli.fullName}
-            </span>
-            {veli.phone ? (
-              <a href={`tel:${veli.phone}`} className={baglantiStili}>
-                {veli.phone}
-              </a>
-            ) : null}
-          </>
-        ) : (
-          <span className="text-zinc-400">—</span>
-        )}
-      </dd>
-    </div>
-  );
-}
-
-function KayitBolumu({
-  baslik,
-  kayitlar,
-  bosAciklama,
-  aksiyon,
-}: {
-  baslik: string;
-  kayitlar: ProfilKaydi[];
-  bosAciklama: string;
-  aksiyon?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
-        {aksiyon}
-      </div>
-      <KayitListesi kayitlar={kayitlar} bosAciklama={bosAciklama} />
-    </div>
-  );
-}
-
-/** Kayıt kartları — başlıksız; katlanır bölümün içinde de kullanılıyor. */
-function KayitListesi({
-  kayitlar,
-  bosAciklama,
-}: {
-  kayitlar: ProfilKaydi[];
-  bosAciklama: string;
-}) {
-  if (kayitlar.length === 0) {
-    return <BosDurum baslik={bosAciklama} />;
-  }
-
-  return (
-    <div className="space-y-2">
-      {kayitlar.map((kayit) => {
-        // İki ayrı durum var ve karıştırılmamalı: kaydın kendi durumu
-        // (aktif / iptal) ve programın durumu (tamamlandı, arşivlendi...).
-        // Kayıt aktif olduğu hâlde program bittiyse bunu yazmak gerekiyor;
-        // yoksa "Geçmiş kayıtlar" başlığı altındaki "Aktif" rozeti
-        // çelişkili görünüyor.
-        const programDurumu = kayit.group.term
-          ? DONEM_DURUMLARI[kayit.group.term.status]
-          : kayit.group.club
-            ? KULUP_DURUMLARI[kayit.group.club.status]
-            : null;
-
-        return (
-          <Kart key={kayit.id} className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-zinc-900">
-                {kayit.group.term?.name ??
-                  kayit.group.club?.name ??
-                  "Program bulunamadı"}
-              </span>
-              <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
-              <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
-                Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
-              </Rozet>
-              {programDurumu ? (
-                <Rozet tur={programDurumu.rozet}>
-                  Program: {programDurumu.etiket}
-                </Rozet>
-              ) : null}
-            </div>
-            <p className="mt-1 text-sm text-zinc-700">
-              {kayit.group.name} ·{" "}
-              {grupZamani(kayit.group.days, kayit.group.timeSlot)}
-            </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Kayıt tarihi {tarihBicimle(kayit.createdAt)}
-              {kayit.group.club
-                ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
-                : ""}
-              {" · "}
-              Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
-            </p>
-
-            {kayit.status === "IPTAL" ? (
-              <KayitIptalOzeti
-                kayit={{
-                  cancelReason: kayit.cancelReason,
-                  cancelNote: kayit.cancelNote,
-                  lastAttendedWeek: kayit.lastAttendedWeek,
-                  lastAttendedDate: kayit.lastAttendedDate,
-                  tamamlananAtolye: kayit._count.scores,
-                  toplamAtolye: kayit.group._count.sessions,
-                }}
-              />
-            ) : null}
-          </Kart>
-        );
-      })}
-    </div>
-  );
-}
-
-function Bilgi({
-  etiket,
-  deger,
-}: {
-  etiket: string;
-  deger: string | null | undefined;
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-zinc-500">{etiket}</dt>
-      <dd className="mt-0.5 text-sm text-zinc-800">
-        {deger ?? <span className="text-zinc-400">—</span>}
-      </dd>
     </div>
   );
 }
