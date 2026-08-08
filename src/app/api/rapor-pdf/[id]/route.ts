@@ -2,7 +2,9 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { belgeYetkisi } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
 import { RaporBelgesi } from "@/lib/pdf/rapor-belgesi";
+import { RaporBelgesiV2 } from "@/lib/pdf/rapor-belgesi-v2";
 import type { RaporGovdesi } from "@/lib/rapor-motoru";
+import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 import { tarihMetni } from "@/lib/tarih";
 import { normalizeArama } from "@/lib/turkce";
 
@@ -73,13 +75,25 @@ export async function GET(
       `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
   );
 
+  // §13.17 — Gövde biçimi zamanla değişti; belge snapshot'ın sürümüne göre
+  // seçilir. Sürüm alanı taşımayan arşiv kayıtları eski düzeniyle basılmaya
+  // devam eder: alınmış bir belge yeniden indirildiğinde başka bir şey
+  // göstermemeli. V2 gövdesi öğrenci adını ve kapsamı kendi içinde taşıdığı
+  // için ayrıca geçirilmez.
+  const snapshot = pdf.snapshotJson as unknown as { surum?: number };
+
   const belge = await renderToBuffer(
-    RaporBelgesi({
-      govde: pdf.snapshotJson as unknown as RaporGovdesi,
-      ogrenciAdi,
-      kapsam,
-      uretimZamani: pdf.report.generatedAt,
-    }),
+    snapshot?.surum === 2
+      ? RaporBelgesiV2({
+          govde: pdf.snapshotJson as unknown as RaporGovdesiV2,
+          uretimZamani: pdf.report.generatedAt,
+        })
+      : RaporBelgesi({
+          govde: pdf.snapshotJson as unknown as RaporGovdesi,
+          ogrenciAdi,
+          kapsam,
+          uretimZamani: pdf.report.generatedAt,
+        }),
   );
 
   // Dosya adı Türkçe karakter içermesin: bazı tarayıcı ve işletim sistemleri
