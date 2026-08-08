@@ -106,6 +106,11 @@ async function programBilgisi(
   };
 }
 
+/** Dönem haftalara, kulüp günlere bölünür; bildirimler buna göre yazılır. */
+function birimAdi(tur: MufredatHedefi["tur"]): string {
+  return tur === "donem" ? "haftanın" : "günün";
+}
+
 function mufredatYollariniYenile(hedef: MufredatHedefi): void {
   const kok = hedef.tur === "donem" ? "donemler" : "kulupler";
   revalidatePath(`/koordinator/${kok}/${hedef.id}`);
@@ -180,7 +185,7 @@ export async function mufredatKaydet(
   }
 
   mufredatYollariniYenile(hedef);
-  return { basari: `${haftaNo}. haftanın konusu kaydedildi.` };
+  return { basari: `${haftaNo}. ${birimAdi(hedef.tur)} konusu kaydedildi.` };
 }
 
 /** Bir haftanın konusunu siler. */
@@ -209,12 +214,14 @@ export async function mufredatSil(girdiId: string): Promise<EylemDurumu> {
 
   await db.curriculumEntry.delete({ where: { id: girdiId } });
 
-  mufredatYollariniYenile(
-    girdi.termId
-      ? { tur: "donem", id: girdi.termId }
-      : { tur: "kulup", id: girdi.clubId! },
-  );
-  return { basari: `${girdi.weekNumber}. haftanın konusu silindi.` };
+  const hedef: MufredatHedefi = girdi.termId
+    ? { tur: "donem", id: girdi.termId }
+    : { tur: "kulup", id: girdi.clubId! };
+
+  mufredatYollariniYenile(hedef);
+  return {
+    basari: `${girdi.weekNumber}. ${birimAdi(hedef.tur)} konusu silindi.`,
+  };
 }
 
 /**

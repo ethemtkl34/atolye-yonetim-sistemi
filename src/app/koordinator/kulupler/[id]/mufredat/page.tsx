@@ -113,6 +113,7 @@ export default async function KulupMufredatSayfasi(
           aciklama: girdi.description,
         }))}
         duzenlenebilir={duzenlenebilir}
+        birim="gün"
       />
     </div>
   );

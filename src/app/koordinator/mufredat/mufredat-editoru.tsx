@@ -34,6 +34,12 @@ export type MufredatHaftasi = {
   etiket: string;
 };
 
+/**
+ * Programın hafta birimi. Dönem haftalara, kulüp günlere bölünür; rozet ve
+ * onay metinleri bunu kullanır ki kulüpte "1/1 hafta" yazmasın.
+ */
+export type MufredatBirimi = "hafta" | "gün";
+
 export type MufredatGirdiSatiri = {
   id: string;
   haftaNo: number;
@@ -59,12 +65,14 @@ export function MufredatEditoru({
   haftalar,
   girdiler,
   duzenlenebilir,
+  birim,
 }: {
   hedef: MufredatHedefi;
   atolyeler: MufredatAtolyesi[];
   haftalar: MufredatHaftasi[];
   girdiler: MufredatGirdiSatiri[];
   duzenlenebilir: boolean;
+  birim: MufredatBirimi;
 }) {
   return (
     <div className="space-y-3">
@@ -78,6 +86,7 @@ export function MufredatEditoru({
             (girdi) => girdi.atolyeTipiId === atolye.atolyeTipiId,
           )}
           duzenlenebilir={duzenlenebilir}
+          birim={birim}
         />
       ))}
     </div>
@@ -90,12 +99,14 @@ function AtolyeBolumu({
   haftalar,
   girdiler,
   duzenlenebilir,
+  birim,
 }: {
   hedef: MufredatHedefi;
   atolye: MufredatAtolyesi;
   haftalar: MufredatHaftasi[];
   girdiler: MufredatGirdiSatiri[];
   duzenlenebilir: boolean;
+  birim: MufredatBirimi;
 }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [bekliyor, basla] = useTransition();
@@ -117,7 +128,7 @@ function AtolyeBolumu({
       etiket={
         <>
           <Rozet tur={doluHafta === haftalar.length ? "olumlu" : "notr"}>
-            {doluHafta}/{haftalar.length} hafta
+            {doluHafta}/{haftalar.length} {birim}
           </Rozet>
           {atolye.ogretmenAdi ? (
             <span className="text-sm font-normal text-zinc-600">
@@ -158,8 +169,11 @@ function AtolyeBolumu({
                     kapat={() => setAcikHafta(null)}
                   />
                 ) : (
-                  <div className="flex flex-wrap items-start gap-3">
-                    <span className="mt-0.5 w-36 shrink-0 text-xs text-zinc-500">
+                  // Telefonda dikey: etiket + konu + butonlar alt alta. Yatay
+                  // düzende içerik sütununa ~60px kalıyordu ve başlık her
+                  // kelimeyi ayrı satıra kırıp butonların altına giriyordu.
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
+                    <span className="text-xs text-zinc-500 sm:mt-0.5 sm:w-36 sm:shrink-0">
                       {hafta.etiket}
                     </span>
 
@@ -181,7 +195,7 @@ function AtolyeBolumu({
                     </div>
 
                     {duzenlenebilir ? (
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="-ml-3 flex shrink-0 items-center gap-1 sm:ml-0">
                         <Buton
                           tur="sade"
                           disabled={bekliyor}
@@ -196,7 +210,7 @@ function AtolyeBolumu({
                             onClick={() => {
                               if (
                                 window.confirm(
-                                  `${hafta.numara}. haftanın "${girdi.baslik}" konusu silinecek. Devam edilsin mi?`,
+                                  `${hafta.numara}. ${birim === "hafta" ? "haftanın" : "günün"} "${girdi.baslik}" konusu silinecek. Devam edilsin mi?`,
                                 )
                               ) {
                                 basla(async () =>
@@ -235,8 +249,10 @@ function OgretmenFormu({
 
   return (
     <form action={eylem} className="space-y-2">
-      <div className="flex items-end gap-2">
-        <div className="max-w-xs flex-1">
+      {/* Telefonda dikey: yan yana dizildiğinde ipucu metni iki satıra
+          çıkıyor ve butonu alana göre kaydırıyordu. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="sm:max-w-xs sm:flex-1">
           <Alan
             etiket="Öğretmen"
             hata={durum.alanHatalari?.ogretmenAdi}
@@ -251,7 +267,9 @@ function OgretmenFormu({
             />
           </Alan>
         </div>
-        <GonderButonu tur="ikincil">Kaydet</GonderButonu>
+        <div className="sm:pb-6">
+          <GonderButonu tur="ikincil">Kaydet</GonderButonu>
+        </div>
       </div>
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}

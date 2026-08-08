@@ -112,6 +112,7 @@ export default async function DonemMufredatSayfasi(
           aciklama: girdi.description,
         }))}
         duzenlenebilir={duzenlenebilir}
+        birim="hafta"
       />
     </div>
   );
