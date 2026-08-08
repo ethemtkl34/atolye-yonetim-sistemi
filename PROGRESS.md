@@ -854,6 +854,41 @@ satırı 3) ve sihirbaz adımı tarayıcıda uçtan uca denendi.
 
 ---
 
+## Revize — gerçek karne soruları ve gelişim testi (8 Ağustos 2026)
+
+Kurumun gerçekte kullandığı karne (C-1 Yaz Grubu 2025-2026 Excel'i) sisteme
+iki parça hâlinde aktarıldı:
+
+**1. Atölye soruları kategorili gerçek setlerle değiştirildi.**
+`Question` modeline `category` (konu başlığı: "Dersin İlgi ve Merak
+Alanları" / "Dersin Yetenek Gelişim Alanları") ve `title` (kısa başlık, örn.
+"Duygu Düzenleme") eklendi; `ScoreAnswer` bu ikisinin snapshot'ını da taşıyor
+(§13.14 ilkesinin genişletilmiş hâli). `soru_kategorileri` migration'ı 11
+atölyeyi ada göre desenle eşleştirir (yoksa oluşturur: STEM Maker, Masal ve
+Hikâye, Düşünme Becerileri, Gastronomi, Ahşap Modelleme yeni geldi), cevaplı
+eski soruları pasife alır, cevapsızları siler, 110 gerçek soruyu sabit
+kimliklerle yükler. Rapor düzyazısı artık soru cümlesi ("… gösteriyor mu?")
+yerine kısa başlığı gömer; atölyeler arası bulgu havuzu da başlıkla
+birleştirilir. Seed'deki `BASLANGIC_SORULARI` kaldırıldı — sorular artık
+migration'dan gelir.
+
+**2. Gelişim testi eklendi (yeni modül).** "Sosyal Duygusal Bilişsel
+Beceriler" testi: stajyer, atanmış her dönem öğrencisi için 18 soruyu
+(duygusal 7 / sosyal 5 / bilişsel 6) dönem ortasında ve dönem sonunda bir kez
+doldurur. `DevelopmentAssessment` tablosu kayıt × dönem-noktası başına tek
+satır tutar; cevaplar `answersJson` içinde soru metni snapshot'ıyla saklanır
+(`ParentMeeting` deseni). Sorular kodda sabit
+(`lib/gelisim-degerlendirmesi.ts`). Dönem ortası penceresi orta haftanın,
+dönem sonu son haftanın gününde açılır; kapanış yok. Stajyer menüsüne
+"Gelişim testleri" eklendi; koordinatör öğrenci profilindeki bölümden aynı
+formu `puanlamalar TAM` yetkisiyle doldurup düzeltebilir.
+
+**Bilinçli kapsam dışı:** Gelişim testi sonuçları henüz öğrenci raporuna ve
+veli brifine BESLENMİYOR; rapor motoru yalnızca atölye puanlarını okumaya
+devam ediyor. İstenirse ayrı bir iş olarak eklenecek.
+
+---
+
 ## Örnek veri
 
 ```bash
