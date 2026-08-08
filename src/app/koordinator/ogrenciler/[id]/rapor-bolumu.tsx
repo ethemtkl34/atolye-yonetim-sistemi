@@ -293,7 +293,7 @@ export function RaporBolumu({
         ref={dialogRef}
         onClose={kapat}
         aria-label={`${ogrenciAdi} raporu`}
-        className="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-lg bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/50"
+        className="m-auto w-[min(68rem,calc(100vw-2rem))] rounded-2xl bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/40 backdrop:backdrop-blur-md"
       >
         <div className="flex max-h-[85vh] flex-col">
           <header className="flex items-start justify-between gap-3 border-b border-yuzey-200 px-5 py-4">

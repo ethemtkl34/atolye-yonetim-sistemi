@@ -1,4 +1,6 @@
+import type { AssessmentPeriod } from "@/generated/prisma/enums";
 import { db } from "./db";
+import { gelisimCevaplariCozumle } from "./gelisim-degerlendirmesi";
 import { raporGuncelMi } from "./rapor-motoru";
 import {
   raporUret,
@@ -362,4 +364,58 @@ export async function raporGovdesiUret(
 ): Promise<RaporGovdesi | null> {
   const girdi = await raporGirdisiHazirla(ogrenciId, kayitIdleri, subeId);
   return girdi ? raporUret(girdi) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Akran kıyası
+// ---------------------------------------------------------------------------
+
+/**
+ * §11.2 — Bir grubun üç gelişim alanındaki ortalaması.
+ *
+ * Rapor, öğrencinin duygusal/sosyal/bilişsel kademesini bu ortalamayla
+ * karşılaştırarak belirler ("yaşıtlarının üzerinde"). Kıyas grubu, öğrencinin
+ * kendi grubudur: sistemde yaş grubu diye bir kavram yok ve grup zaten aynı
+ * dönemde aynı programı gören yaş yakın öğrencilerden oluşuyor.
+ *
+ * Öğrencinin kendisi de ortalamaya dahildir. Hariç tutulsaydı her öğrenci
+ * farklı bir kıyas tabanı görürdü ve aynı gruptaki iki rapor birbiriyle
+ * tutarsız olurdu.
+ *
+ * `donem` seçilen değerlendirme zamanı; rapor dönem sonunu kullanır.
+ * O değerlendirmeyi hiç kimse doldurmamışsa kıyas yapılamaz ve fonksiyon boş
+ * harita döner — çağıran taraf bu durumda mutlak eşiklere düşer.
+ *
+ * ŞUBE: grup zaten tek bir şubeye ait (`Group.branchId`); çağıran şube
+ * süzgecinden geçmiş bir grup kimliği verdiği için burada ayrıca süzülmez.
+ */
+export async function grupGelisimOrtalamalari(
+  grupId: string,
+  donem: AssessmentPeriod,
+): Promise<Map<string, number>> {
+  const degerlendirmeler = await db.developmentAssessment.findMany({
+    where: { period: donem, enrollment: { groupId: grupId } },
+    select: { answersJson: true },
+  });
+
+  const havuz = new Map<string, { toplam: number; adet: number }>();
+
+  for (const degerlendirme of degerlendirmeler) {
+    for (const cevap of gelisimCevaplariCozumle(degerlendirme.answersJson)) {
+      if (cevap.deger === null) continue;
+      const mevcut = havuz.get(cevap.kategori);
+      if (mevcut) {
+        mevcut.toplam += cevap.deger;
+        mevcut.adet += 1;
+      } else {
+        havuz.set(cevap.kategori, { toplam: cevap.deger, adet: 1 });
+      }
+    }
+  }
+
+  return new Map(
+    [...havuz.entries()]
+      .filter(([, veri]) => veri.adet > 0)
+      .map(([kategori, veri]) => [kategori, veri.toplam / veri.adet]),
+  );
 }

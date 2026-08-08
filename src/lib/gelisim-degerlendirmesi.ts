@@ -257,3 +257,63 @@ export function gelisimCevaplariCozumle(ham: unknown): GelisimCevabi[] {
     );
   });
 }
+
+/**
+ * §11.2 — Üç gelişim alanının ortalaması.
+ *
+ * Rapor bu üç alanı (Duygusal / Sosyal / Bilişsel) kendi bölümünde kademe
+ * göstergesiyle sunar. Alan sırası `GELISIM_SORULARI` listesindeki ilk
+ * görünme sırasına göre sabittir; rapordan rapora değişmez.
+ *
+ * `Değerlendirilemedi` (null) cevaplar ortalamaya girmez — §11.3 gereği
+ * olumsuz puan gibi sayılmazlar. Bir alanın hiç geçerli cevabı yoksa
+ * ortalaması `null` döner; bu "0 puan" değil, "ölçülemedi" demektir.
+ */
+export type GelisimAlanOrtalamasi = {
+  kategori: string;
+  ortalama: number | null;
+  gozlemSayisi: number;
+};
+
+export function gelisimAlanOrtalamalari(
+  cevaplar: readonly GelisimCevabi[],
+): GelisimAlanOrtalamasi[] {
+  // Alan sırası soru listesinden gelir; cevap kaydındaki sıra değil. Eski
+  // bir kayıtta alanlar farklı sırayla durabilir, rapor hep aynı sırada
+  // basılmalı.
+  const sira = new Map<string, number>();
+  for (const soru of GELISIM_SORULARI) {
+    if (!sira.has(soru.kategori)) sira.set(soru.kategori, sira.size);
+  }
+
+  const havuz = new Map<string, { toplam: number; adet: number }>();
+
+  for (const cevap of cevaplar) {
+    if (cevap.deger === null) continue;
+    const mevcut = havuz.get(cevap.kategori);
+    if (mevcut) {
+      mevcut.toplam += cevap.deger;
+      mevcut.adet += 1;
+    } else {
+      havuz.set(cevap.kategori, { toplam: cevap.deger, adet: 1 });
+    }
+  }
+
+  // Hiç cevaplanmamış alan da listede kalır ("Değerlendirilmedi" basılabilsin).
+  const kategoriler = [...new Set([...sira.keys(), ...havuz.keys()])];
+
+  return kategoriler
+    .map((kategori) => {
+      const veri = havuz.get(kategori);
+      return {
+        kategori,
+        ortalama: veri && veri.adet > 0 ? veri.toplam / veri.adet : null,
+        gozlemSayisi: veri?.adet ?? 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        (sira.get(a.kategori) ?? Number.MAX_SAFE_INTEGER) -
+        (sira.get(b.kategori) ?? Number.MAX_SAFE_INTEGER),
+    );
+}

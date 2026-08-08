@@ -85,7 +85,9 @@ export function Pencere({
       ref={pencereRef}
       onClose={onKapat}
       style={{ width: `min(${genislik}, calc(100vw - 2rem))` }}
-      className="m-auto rounded-lg bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/50"
+      // Arka plan bulanıklığı `backdrop:` katmanında: pencerenin ardındaki
+      // liste okunur kalmayıp geri çekiliyor, odak pencerede kalıyor.
+      className="m-auto rounded-2xl bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/40 backdrop:backdrop-blur-md"
     >
       {acik ? (
         <div className="flex max-h-[85vh] flex-col">

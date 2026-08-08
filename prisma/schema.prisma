@@ -218,6 +218,7 @@ model User {
   addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
   addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
   filledDevelopmentAssessments DevelopmentAssessment[] @relation("GelisimiDolduran")
+  generatedWorkshopContents    AtolyeIcerigi[]         @relation("AtolyeIcerigiUreten")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
@@ -246,6 +247,8 @@ model WorkshopType {
   clubWorkshops     ClubWorkshop[]
   sessions          Session[]
   curriculumEntries CurriculumEntry[]
+  atolyeIcerikleri  AtolyeIcerigi[]
+  oneriUrunleri     OneriUrunu[]
 
   @@index([active, sortOrder])
 }
@@ -288,6 +291,11 @@ model Term {
   /// daralır. Eski dönemlerin hepsi hafta sonu.
   dayMode DayMode @default(HAFTA_SONU)
 
+  /// Rapor kapağında basılan eğitim yılı ("2025-2026"). Dönem adına gömmek
+  /// yerine ayrı tutuluyor: kapakta kendi satırı var ve dönem adı
+  /// ("Kış 1. Kur") yıldan bağımsız değişebiliyor. Eski dönemlerde boş.
+  egitimYili String?
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -296,6 +304,7 @@ model Term {
   groups            Group[]
   interns           TermIntern[]
   curriculumEntries CurriculumEntry[]
+  atolyeIcerikleri  AtolyeIcerigi[]
 
   @@index([status])
 }
@@ -392,6 +401,7 @@ model Club {
   workshops         ClubWorkshop[]
   groups            Group[]
   curriculumEntries CurriculumEntry[]
+  atolyeIcerikleri  AtolyeIcerigi[]
 
   @@index([status])
 }
@@ -793,6 +803,14 @@ model Enrollment {
   lastAttendedWeek Int?
   lastAttendedDate DateTime? @db.Date
 
+  /// §11 — Koordinatörün bu kayıt için yazdığı öğrenci geneli gözlem notu.
+  ///
+  /// Rapor gövdesinde DEĞİL burada duruyor: her rapor üretimi yeni bir
+  /// `Report` satırı açıyor (`generatedAt` ile listeleniyor), notu rapora
+  /// yazsaydık yeniden üretimde kaybolurdu. Not kayda ait, rapora değil.
+  /// Oturum bazlı ayrıntılı gözlemler `Score.gozlemNotu` alanında.
+  gozlemNotu String?
+
   scores                 Score[]
   reportLinks            ReportEnrollment[]
   developmentAssessments DevelopmentAssessment[]
@@ -854,6 +872,14 @@ model Score {
   /// §10.2 — Katılım her atölye için ayrı işaretlenir. `false` ise cevap
   /// satırı yazılmaz ve oturum hiçbir ortalamaya dahil edilmez.
   attended Boolean
+
+  /// §11 — Stajyerin bu oturuma dair serbest gözlem notu. İSTEĞE BAĞLI.
+  ///
+  /// Rapordaki beceri bloklarının ("Ramazan'ın … 'internet çektirir' yanıtı")
+  /// tek kaynağı burası: puan 1–5 arası bir sayıdır, hangi davranışın
+  /// gözlendiğini taşımaz. Yapay zekâ bu alandaki bilgiyi yeniden yazar ama
+  /// buraya yazılmamış bir davranışı rapora ekleyemez.
+  gozlemNotu String?
 
   scoredByUserId String?
   scoredBy       User?   @relation("PuanlamayiGiren", fields: [scoredByUserId], references: [id], onDelete: SetNull)
@@ -999,4 +1025,119 @@ model ReportPdf {
   createdAt DateTime @default(now())
 
   @@index([reportId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Rapor içeriği — öğrenciye özel OLMAYAN metinler
+// ---------------------------------------------------------------------------
+
+/// §11.2 — "Atölyeler ve İçerikleri Hakkında" bölümünün paragrafları.
+///
+/// Bu metin ÖĞRENCİYE ÖZEL DEĞİLDİR: bir programın bir atölyesinin o dönem
+/// boyunca ne işlediğini anlatır, dolayısıyla o programdaki bütün öğrenciler
+/// aynı paragrafı görür. Bu yüzden rapor gövdesinde değil burada duruyor —
+/// aksi halde aynı metin yüzlerce rapor satırına kopyalanır ve bir düzeltme
+/// için hepsinin yeniden üretilmesi gerekirdi.
+///
+/// Kaynağı `CurriculumEntry` satırlarıdır (hafta × atölye); yapay zekâ o
+/// haftaların başlık ve açıklamalarını tek paragrafa çevirir.
+model AtolyeIcerigi {
+  id String @id @default(cuid())
+
+  /// `CurriculumEntry` ile aynı kural: dönem VEYA kulüp, tam olarak biri dolu.
+  termId String?
+  term   Term?   @relation(fields: [termId], references: [id], onDelete: Cascade)
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  workshopTypeId String
+  /// Restrict: programda kullanılan atölye çeşidi silinemez (TermWorkshop
+  /// ve CurriculumEntry ile aynı kural).
+  workshopType WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+
+  metin String
+
+  /// Metnin nasıl üretildiği. `elle` değeri koordinatörün düzenlediğini
+  /// gösterir; yeniden üretimde bu ayrım kullanıcıya gösterilir.
+  kaynak String @default("ai")
+
+  /// Kilitliyken toplu yeniden üretim bu satırı atlar. Koordinatör metni
+  /// onayladıktan sonra kazara üzerine yazılmasını engeller.
+  kilitli Boolean @default(false)
+
+  uretenUserId String?
+  ureten       User?   @relation("AtolyeIcerigiUreten", fields: [uretenUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Program × atölye başına TEK paragraf. NULL sütun unique'e girmediği için
+  // dönem ve kulüp satırları iki ayrı indeksle kısıtlanır (CurriculumEntry
+  // ile aynı desen).
+  @@unique([termId, workshopTypeId])
+  @@unique([clubId, workshopTypeId])
+}
+
+/// §11.2 — Rapordaki beceri bloklarının sabit tanım metinleri.
+///
+/// Örn. ad "Akıl Yürütme", tanım "çocuğun bilgisini kullanarak hem duruma hem
+/// de normlara uygun yeni bilgi üretme sürecidir…". Bu metinler öğrenciden
+/// bağımsızdır ve her raporda aynen basılır.
+///
+/// Kodda sabit tutulmadı: metin veliye gidiyor, kurum dili zamanla
+/// değişebiliyor ve koordinatörün bir düzeltme için yayın beklemesi gerekmez.
+model BeceriTanimi {
+  id    String @id @default(cuid())
+  ad    String @unique
+  tanim String
+
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+/// §11.2 — Rapor sonundaki "ev ortamında öneriler" bölümünün ürün kataloğu.
+///
+/// NEDEN TABLO: yapay zekâya serbest bırakılsaydı var olmayan ürün adı
+/// uydurabilirdi ve bu metin veliye gidiyor. Sistem önce yaş ve beceri
+/// eşleşmesine göre aday ürünleri seçer; yapay zekâ yalnızca kendisine
+/// verilen bu adaylardan seçebilir, uygun aday yoksa ürün adı vermeden genel
+/// öneri yazar.
+model OneriUrunu {
+  id  String @id @default(cuid())
+  ad  String
+  url String
+
+  /// kitap | oyun | set | materyal
+  kategori String
+
+  /// Ürün adında yazan yaş aralığı esas alınır — veli onu görecek. (Katalogda
+  /// yaş üç ayrı yerde ve bazen çelişkili yazıyor.)
+  yasMin Int
+  yasMax Int
+
+  /// DUYGUSAL | SOSYAL | BILISSEL — birden fazla olabilir.
+  alanlar String[]
+
+  /// Puanlama sorularının kısa başlıklarıyla eşleşen beceri etiketleri.
+  beceriler String[]
+
+  aciklama String?
+
+  /// Ürünün bir atölyeyle doğrudan bağı varsa (örn. Torappu → Zekâ ve Akıl
+  /// Oyunları Atölyesi). En güçlü öneri tipi bu: "atölyede oynadığı oyunun
+  /// ev versiyonu".
+  workshopTypeId String?
+  workshopType   WorkshopType? @relation(fields: [workshopTypeId], references: [id], onDelete: SetNull)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, yasMin, yasMax])
 }

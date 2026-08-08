@@ -172,6 +172,67 @@ export function atolyeOzetiHesapla(
   };
 }
 
+export type KategoriOrtalamasi = {
+  /** Konu başlığı — "Dersin İlgi ve Merak Alanları" gibi. */
+  kategori: string;
+  ortalama: number | null;
+  /** Bu kategoride kaç geçerli puan var (Değerlendirilemedi hariç). */
+  gozlemSayisi: number;
+  sortOrder: number;
+};
+
+/**
+ * §11.2 — Soru ortalamalarını konu başlığına göre toplar.
+ *
+ * Rapor artık soru bazlı puan listesi basmıyor; her atölye için yalnızca
+ * konu başlıklarının kademesini gösteriyor. Örnek raporun "ilgi" ve "başarı"
+ * grafikleri tam olarak bu iki kategorinin ortalamasıdır.
+ *
+ * Ortalama AĞIRLIKLI alınır: soru ortalamalarının ortalaması değil, bütün
+ * geçerli puanların ortalaması. Bir kategoride 9 kez puanlanmış bir soruyla
+ * 1 kez puanlanmış bir soru eşit ağırlık taşımamalı — dosyanın geri
+ * kalanındaki ilkeyle aynı.
+ *
+ * Kategorisi olmayan (eski) sorular hiçbir kategoriye girmez; onlar yalnızca
+ * atölyenin genel ortalamasına katkı verir.
+ */
+export function kategoriOrtalamalari(
+  soruOrtalamalari: readonly SoruOrtalamasi[],
+): KategoriOrtalamasi[] {
+  const havuz = new Map<
+    string,
+    { puanToplami: number; gozlem: number; sortOrder: number }
+  >();
+
+  for (const soru of soruOrtalamalari) {
+    if (soru.kategori === null) continue;
+
+    const mevcut = havuz.get(soru.kategori);
+    if (mevcut) {
+      mevcut.puanToplami += soru.puanToplami;
+      mevcut.gozlem += soru.puanlananOturumSayisi;
+      // Kategori, içindeki en önce gelen sorunun sırasını alır; puanlama
+      // formundaki bölüm sırası böyle korunur.
+      mevcut.sortOrder = Math.min(mevcut.sortOrder, soru.sortOrder);
+    } else {
+      havuz.set(soru.kategori, {
+        puanToplami: soru.puanToplami,
+        gozlem: soru.puanlananOturumSayisi,
+        sortOrder: soru.sortOrder,
+      });
+    }
+  }
+
+  return [...havuz.entries()]
+    .map(([kategori, veri]) => ({
+      kategori,
+      ortalama: veri.gozlem > 0 ? veri.puanToplami / veri.gozlem : null,
+      gozlemSayisi: veri.gozlem,
+      sortOrder: veri.sortOrder,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 /**
  * Ortalamayı Türkçe biçimde metne çevirir: ondalık ayırıcı virgül,
  * tek basamak. Hesaplanamayan ortalama için tire döner.
