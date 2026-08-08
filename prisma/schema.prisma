@@ -217,6 +217,7 @@ model User {
   addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
   addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
   addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
+  filledDevelopmentAssessments DevelopmentAssessment[] @relation("GelisimiDolduran")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
@@ -792,8 +793,9 @@ model Enrollment {
   lastAttendedWeek Int?
   lastAttendedDate DateTime? @db.Date
 
-  scores      Score[]
-  reportLinks ReportEnrollment[]
+  scores                 Score[]
+  reportLinks            ReportEnrollment[]
+  developmentAssessments DevelopmentAssessment[]
 
   @@unique([studentId, groupId])
   @@index([groupId, status])
@@ -899,6 +901,42 @@ model ScoreAnswer {
   value Int?
 
   @@index([scoreId, sortOrder])
+}
+
+/// Gelişim değerlendirmesinin dönem içindeki zamanı.
+enum AssessmentPeriod {
+  DONEM_ORTASI
+  DONEM_SONU
+}
+
+/// "Sosyal Duygusal Bilişsel Beceriler" testi — stajyerin her öğrencisi için
+/// dönem ortasında ve dönem sonunda bir kez doldurduğu, atölye oturumlarından
+/// bağımsız değerlendirme. Yalnızca dönem kayıtları için tutulur; kulüpte
+/// dönem ortası/sonu kavramı yok.
+///
+/// Sorular kodda sabittir (lib/gelisim-degerlendirmesi.ts); cevaplar soru
+/// metnini kendi içinde taşır (`questionTextSnapshot` ilkesi,
+/// `ParentMeeting.answersJson` deseni) — liste değişse de geçmiş bozulmaz.
+model DevelopmentAssessment {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  period AssessmentPeriod
+
+  /// `[{anahtar, kategori, baslik, soruMetni, deger}]` — deger 1–5 ya da
+  /// null (Değerlendirilemedi).
+  answersJson Json
+
+  filledByUserId String?
+  filledBy       User?   @relation("GelisimiDolduran", fields: [filledByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Kayıt başına her dönem noktası bir kez doldurulur; tekrar kaydetme
+  /// üzerine yazar (upsert).
+  @@unique([enrollmentId, period])
 }
 
 // ---------------------------------------------------------------------------

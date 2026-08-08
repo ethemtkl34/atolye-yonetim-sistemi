@@ -16,6 +16,8 @@ import {
   raporOzetleri,
 } from "@/lib/rapor-verisi";
 import { RaporBolumu } from "./rapor-bolumu";
+import { GelisimBolumu } from "@/components/gelisim-bolumu";
+import { gelisimListesi } from "@/lib/gelisim-verisi";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
 import {
   TerapiGorusmeleriBolumu,
@@ -132,6 +134,7 @@ export default async function OgrenciProfilSayfasi(
     gorusmeKayitlari,
     veliGorusmeKayitlari,
     zekaTestiKayitlari,
+    gelisimKayitlari,
   ] = await Promise.all([
       raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
       raporGorebilir ? pdfGecmisi({ subeId, ogrenciId: id }) : [],
@@ -180,6 +183,9 @@ export default async function OgrenciProfilSayfasi(
             },
           })
         : [],
+      // Gelişim testleri puanlama yetkisine tabi; iptal kayıtlar da dahil —
+      // doldurulmuş bir test kayıt iptal edildi diye görünmez olmamalı.
+      puanlamaGorebilir ? gelisimListesi({ subeId, studentId: id }) : [],
     ]);
 
   const ogrenciAdi = `${ogrenci.firstName} ${ogrenci.lastName}`;
@@ -420,6 +426,10 @@ export default async function OgrenciProfilSayfasi(
           acilisParametresi={acilisRaporu}
         />
       ) : null}
+
+      {/* --- Gelişim testleri — stajyerin dönem ortası/sonu doldurduğu
+          Sosyal Duygusal Bilişsel Beceriler testi. Puanlama yetkisine tabi. */}
+      {puanlamaGorebilir ? <GelisimBolumu kayitlar={gelisimKayitlari} /> : null}
 
       {/* --- Arşiv katı: kapalı başlayan bölümler. Sık bakılmayan ayrıntılar
           buraya indi; sayfa artık günlük işte tek ekran boyunda. --- */}

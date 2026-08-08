@@ -194,6 +194,13 @@ export const STAJYER_MENUSU: readonly MenuOgesi[] = [
     simge: "kisi",
   },
   {
+    etiket: "Gelişim testleri",
+    yol: "/stajyer/gelisim",
+    hazir: true,
+    paket: "P16",
+    simge: "gorev",
+  },
+  {
     etiket: "Doldurduğum formlar",
     yol: "/stajyer/formlarim",
     hazir: true,
