@@ -49,6 +49,8 @@ export type OturumFormu = {
   /** Gelecek tarihli oturum henüz puanlanamaz. */
   puanlanabilir: boolean;
   puanlayan: string | null;
+  /** §11.2 — Stajyerin serbest gözlem notu; rapor gözlem bölümünün kaynağı. */
+  gozlemNotu: string | null;
   guncellenmeZamani: Date | null;
   /**
    * O haftanın müfredat konusu — girilmemişse ve telafi günlerinde null
@@ -165,6 +167,7 @@ export async function kayitPuanlamasi(
         select: {
           attended: true,
           updatedAt: true,
+          gozlemNotu: true,
           scoredBy: { select: { name: true } },
           answers: {
             orderBy: { sortOrder: "asc" },
@@ -243,6 +246,7 @@ export async function kayitPuanlamasi(
       satirlar,
       puanlanabilir: oturumPuanlanabilirMi(oturum.date, bugunkuTarih),
       puanlayan: puanlama?.scoredBy?.name ?? null,
+      gozlemNotu: puanlama?.gozlemNotu ?? null,
       guncellenmeZamani: puanlama?.updatedAt ?? null,
       mufredat: oturumKonusu(
         mufredat,

@@ -122,6 +122,13 @@ export async function puanlamaKaydet(
   }
   const katildi = katilim === "katildi";
 
+  // §11.2 — Stajyerin serbest gözlem notu. İsteğe bağlı; rapordaki beceri
+  // bloklarının tek somut kaynağı bu alan olduğu için puanla birlikte
+  // kaydediliyor, ayrı bir ekran açılmıyor.
+  const hamNot = formVerisi.get("gozlemNotu");
+  const gozlemNotu =
+    typeof hamNot === "string" && hamNot.trim() ? hamNot.trim().slice(0, 2000) : null;
+
   const mevcut = await db.score.findUnique({
     where: {
       sessionId_enrollmentId: { sessionId: oturumId, enrollmentId: kayitId },
@@ -174,8 +181,9 @@ export async function puanlamaKaydet(
           enrollmentId: kayitId,
           attended: false,
           scoredByUserId: kullanici.id,
+          gozlemNotu,
         },
-        update: { attended: false, scoredByUserId: kullanici.id },
+        update: { attended: false, scoredByUserId: kullanici.id, gozlemNotu },
         select: { id: true },
       });
 
@@ -258,8 +266,9 @@ export async function puanlamaKaydet(
         enrollmentId: kayitId,
         attended: true,
         scoredByUserId: kullanici.id,
+        gozlemNotu,
       },
-      update: { attended: true, scoredByUserId: kullanici.id },
+      update: { attended: true, scoredByUserId: kullanici.id, gozlemNotu },
       select: { id: true },
     });
 

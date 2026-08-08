@@ -37,6 +37,8 @@ export type PuanlamaFormuVerisi = {
   satirlar: FormSatiri[];
   puanlanabilir: boolean;
   puanlayan: string | null;
+  /** §11.2 — Stajyerin bu oturuma dair serbest gözlem notu. */
+  gozlemNotu: string | null;
 };
 
 export function PuanlamaFormu({
@@ -243,6 +245,36 @@ export function PuanlamaFormu({
               })}
             </fieldset>
           ) : null}
+
+          <div className="border-t border-yuzey-100 pt-4">
+            <label
+              htmlFor={`gozlem-${form.oturumId}`}
+              className="block text-sm font-medium"
+            >
+              Gözlem notu{" "}
+              <span className="font-normal text-zinc-500">(isteğe bağlı)</span>
+            </label>
+            {/*
+              Rapordaki beceri bloklarının tek somut kaynağı burası: puan
+              1–5 arası bir sayıdır, hangi davranışın gözlendiğini taşımaz.
+              Buraya yazılmayan bir davranış rapora da giremez.
+            */}
+            <p className="mt-0.5 mb-2 text-xs text-zinc-500">
+              Bugün dikkatinizi çeken somut bir davranış, söz ya da tepki
+              varsa yazın. Rapordaki gözlem bölümü yalnızca buraya
+              yazılanlardan üretilir.
+            </p>
+            <textarea
+              id={`gozlem-${form.oturumId}`}
+              name="gozlemNotu"
+              rows={3}
+              maxLength={2000}
+              defaultValue={form.gozlemNotu ?? ""}
+              disabled={kilitli || bekliyor}
+              placeholder="Örn: “Uydular ne yapar?” sorusuna “interneti çektirir” dedi, izlediği videodan bağlantı kurdu."
+              className="w-full rounded-lg border border-yuzey-200 p-3 text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 disabled:bg-yuzey-50"
+            />
+          </div>
 
           {katilimEksik ? (
             <Bildirim tur="hata">

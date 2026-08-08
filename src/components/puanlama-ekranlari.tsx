@@ -262,6 +262,7 @@ export function GunFormEkrani({
               satirlar: form.satirlar,
               puanlanabilir: form.puanlanabilir,
               puanlayan: form.puanlayan,
+              gozlemNotu: form.gozlemNotu,
             }}
             duzenlenebilir={duzenlenebilir && kayit.aktif}
           />
