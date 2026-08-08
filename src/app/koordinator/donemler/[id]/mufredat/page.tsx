@@ -6,6 +6,8 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { Bildirim, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
 import { haftaBicimle } from "@/lib/tarih";
 import { MufredatEditoru } from "@/app/koordinator/mufredat/mufredat-editoru";
+import { AtolyeIcerikleri } from "@/app/koordinator/mufredat/atolye-icerikleri";
+import { atolyeIcerikleriniOku } from "@/app/koordinator/mufredat/atolye-icerik-eylemleri";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]/mufredat">,
@@ -65,6 +67,8 @@ export default async function DonemMufredatSayfasi(
 
   if (!donem) notFound();
 
+  const icerikler = await atolyeIcerikleriniOku({ tur: "donem", id: donem.id });
+
   const arsivli = donem.status === "ARSIVLENDI";
   const duzenlenebilir = !arsivli && kullanici.yetkiler.mufredat === "TAM";
 
@@ -113,6 +117,16 @@ export default async function DonemMufredatSayfasi(
         }))}
         duzenlenebilir={duzenlenebilir}
         birim="hafta"
+      />
+
+      <AtolyeIcerikleri
+        hedef={{ tur: "donem", id: donem.id }}
+        atolyeler={donem.workshops.map((atolye) => ({
+          atolyeTipiId: atolye.workshopTypeId,
+          ad: atolye.workshopType.name,
+        }))}
+        kayitlar={icerikler}
+        duzenlenebilir={duzenlenebilir}
       />
     </div>
   );
