@@ -7,6 +7,8 @@ import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihBicimle } from "@/lib/tarih";
 import type { KapsamKaydi } from "@/lib/rapor-verisi";
 import type { RaporMetni } from "@/lib/rapor-motoru";
+import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
+import { RaporIcerigiV2 } from "./rapor-icerigi-v2";
 import type { EylemDurumu, RaporPenceresiVerisi } from "./rapor-eylemleri";
 
 /**
@@ -17,6 +19,29 @@ import type { EylemDurumu, RaporPenceresiVerisi } from "./rapor-eylemleri";
 /** §11.2 — Atölye bazlı sonuçlar + genel değerlendirme. */
 export function RaporIcerigi({ veri }: { veri: RaporPenceresiVerisi }) {
   const { ozet, govde } = veri.detay;
+
+  // §11.2 — Gövde biçimi zamanla değişti. Sürüm alanı taşıyan raporlar yeni
+  // düzenle, eskiler (alan yok) eski düzenle gösterilir; üretilmiş bir
+  // raporun içeriği sonradan değişmemeli.
+  const surumlu = govde as unknown as { surum?: number };
+  if (surumlu?.surum === 2) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Rozet tur={ozet.guncel ? "olumlu" : "uyari"}>
+            {ozet.guncel ? "Güncel" : "Güncel değil"}
+          </Rozet>
+          {ozet.duzenlemeZamani ? (
+            <span className="text-xs text-zinc-500">
+              {tarihBicimle(ozet.duzenlemeZamani)} tarihinde{" "}
+              {ozet.duzenleyen ?? "koordinatör"} tarafından düzenlendi
+            </span>
+          ) : null}
+        </div>
+        <RaporIcerigiV2 govde={govde as unknown as RaporGovdesiV2} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

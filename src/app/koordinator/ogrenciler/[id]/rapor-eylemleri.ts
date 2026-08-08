@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { raporGovdesiV2Uret } from "@/lib/rapor-govdesi-verisi";
 import {
   pdfGecmisi,
   raporDetayi,
@@ -70,7 +71,13 @@ export async function raporOlustur(
   // rapor yine "Güncel" görünürdü (§13.16 karşılaştırması generatedAt ile
   // yapılıyor).
   const uretimZamani = new Date();
-  const govde = await raporGovdesiUret(ogrenciId, kayitIdleri, subeId);
+  // §11.2 — İkinci sürüm gövde denenir; kurulmamış bir programda (atölye
+  // içeriği veya gelişim değerlendirmesi yoksa) yine üretilir, eksik
+  // bölümler basılmaz. Yalnızca öğrenci ya da kayıt bulunamazsa birinci
+  // sürüme düşülür.
+  const govde =
+    (await raporGovdesiV2Uret(ogrenciId, kayitIdleri, subeId, new Date())) ??
+    (await raporGovdesiUret(ogrenciId, kayitIdleri, subeId));
   if (!govde) return { hata: "Öğrenci bulunamadı." };
 
   const rapor = await db.report.create({
@@ -114,7 +121,9 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollmentId);
   // Zaman damgası puanlar okunmadan önce — raporOlustur'daki açıklamaya bakın.
   const uretimZamani = new Date();
-  const govde = await raporGovdesiUret(eski.studentId, kayitIdleri, subeId);
+  const govde =
+    (await raporGovdesiV2Uret(eski.studentId, kayitIdleri, subeId, new Date())) ??
+    (await raporGovdesiUret(eski.studentId, kayitIdleri, subeId));
   if (!govde) return { hata: "Rapor verisi hazırlanamadı." };
 
   const yeni = await db.report.create({
