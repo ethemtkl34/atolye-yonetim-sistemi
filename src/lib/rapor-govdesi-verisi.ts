@@ -100,6 +100,12 @@ export async function raporGovdesiV2Uret(
               categorySnapshot: true,
               value: true,
               sortOrder: true,
+              // Anlık görüntü alanları sonradan eklendi; onlardan önce
+              // girilmiş puanlamalarda boşlar. Soru hâlâ duruyorsa
+              // kategorisini oradan okumak, kademeyi hiç hesaplayamamaktan
+              // iyidir — kademe yoksa rapor "Değerlendirilmedi" basar ve
+              // dolu bir puanlama boşmuş gibi görünür.
+              question: { select: { title: true, category: true } },
             },
           },
         },
@@ -114,16 +120,37 @@ export async function raporGovdesiV2Uret(
   if (kayitlar.length === 0) return null;
 
   // --- Atölye kademeleri -------------------------------------------------
+  type CevapSatiri = {
+    questionId: string | null;
+    questionTextSnapshot: string;
+    titleSnapshot: string | null;
+    categorySnapshot: string | null;
+    value: number | null;
+    sortOrder: number;
+  };
+
   const atolyeHavuzu = new Map<
     string,
-    { ad: string; sira: number; puanlamalar: { attended: boolean; answers: typeof kayitlar[number]["scores"][number]["answers"] }[] }
+    {
+      ad: string;
+      sira: number;
+      puanlamalar: { attended: boolean; answers: CevapSatiri[] }[];
+    }
   >();
 
   for (const kayit of kayitlar) {
     for (const puanlama of kayit.scores) {
       const atolye = puanlama.session.workshopType;
       const mevcut = atolyeHavuzu.get(atolye.id);
-      const satir = { attended: puanlama.attended, answers: puanlama.answers };
+      const satir = {
+        attended: puanlama.attended,
+        answers: puanlama.answers.map((cevap) => ({
+          ...cevap,
+          titleSnapshot: cevap.titleSnapshot ?? cevap.question?.title ?? null,
+          categorySnapshot:
+            cevap.categorySnapshot ?? cevap.question?.category ?? null,
+        })),
+      };
       if (mevcut) mevcut.puanlamalar.push(satir);
       else
         atolyeHavuzu.set(atolye.id, {
