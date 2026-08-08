@@ -9,23 +9,14 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL tanımlı değil"),
   AUTH_SECRET: z.string().min(16, "AUTH_SECRET en az 16 karakter olmalı"),
   AUTH_URL: z.string().url().optional(),
-  /**
-   * Rapor metinlerini üreten OpenAI anahtarı. İSTEĞE BAĞLI: anahtar yokken
-   * uygulama çalışmaya devam eder ve rapor metni şablonla üretilir (§11.2).
-   * Zorunlu yapmak, yapay zekâ tarafı henüz kurulmamış bir ortamda bütün
-   * paneli düşürürdü.
-   *
-   * BOŞ METİN = TANIMSIZ. Vercel'de "Sensitive" işaretli değişkenler derleme
-   * sırasında gerçek değerleriyle değil boş metin olarak veriliyor; sade bir
-   * `.optional()` bunu "var ama geçersiz" sayıp derlemeyi düşürüyordu.
-   */
-  OPENAI_API_KEY: z
-    .string()
-    .optional()
-    .transform((deger) => {
-      const kirpilmis = deger?.trim();
-      return kirpilmis ? kirpilmis : undefined;
-    }),
+  // OPENAI_API_KEY BİLEREK BURADA DEĞİL.
+  //
+  // Bu şema modül yüklenirken çalışıyor; Next.js modülü derleme sırasında da
+  // yüklüyor ve Vercel'de "Sensitive" işaretli değişkenler derlemede gerçek
+  // değerleriyle gelmiyor. Anahtar buradan okunsaydı doğrulanmış nesne
+  // "anahtar yok" hâlinde donar, çalışma anındaki gerçek değere hiç
+  // ulaşılmazdı. Anahtar `lib/ai/openai-istemci.ts` içinde her çağrıda taze
+  // okunuyor; isteğe bağlı olduğu için doğrulanacak bir şey de yok.
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),

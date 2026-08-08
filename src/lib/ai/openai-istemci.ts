@@ -1,5 +1,3 @@
-import { env } from "@/lib/env";
-
 /**
  * OpenAI Responses API'sine ince bir sarmalayıcı — §11.2.
  *
@@ -42,9 +40,25 @@ export type UretimSonucu =
   | { durum: "anahtar-yok" }
   | { durum: "hata"; mesaj: string };
 
+/**
+ * Anahtarı ÇAĞRI ANINDA okur — `lib/env.ts` üzerinden değil.
+ *
+ * `env.ts` doğrulamayı modül yüklenirken yapıyor ve Next.js bu modülü
+ * derleme sırasında da çalıştırıyor. Vercel'de "Sensitive" işaretli
+ * değişkenler derlemede gerçek değerleriyle gelmediği için, doğrulanmış
+ * nesne "anahtar yok" hâlinde donuyor ve çalışma anında gerçek değer
+ * okunmuş olmuyordu. Bu yüzden anahtar burada, her çağrıda taze okunuyor.
+ *
+ * Boş metin tanımsız sayılır: aynı sebeple değişken boş gelebiliyor.
+ */
+function anahtariOku(): string | null {
+  const ham = process.env.OPENAI_API_KEY?.trim();
+  return ham ? ham : null;
+}
+
 /** Anahtar tanımlı mı — arayüz "Metin üret" düğmesini buna göre gösterir. */
 export function yapayZekaAcikMi(): boolean {
-  return Boolean(env.OPENAI_API_KEY);
+  return anahtariOku() !== null;
 }
 
 /**
@@ -66,7 +80,7 @@ export async function metinUret({
   girdi: string;
   enFazlaJeton?: number;
 }): Promise<UretimSonucu> {
-  const anahtar = env.OPENAI_API_KEY;
+  const anahtar = anahtariOku();
   if (!anahtar) return { durum: "anahtar-yok" };
 
   const iptal = AbortSignal.timeout(ZAMAN_ASIMI_MS);
