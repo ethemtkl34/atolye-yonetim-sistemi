@@ -14,8 +14,18 @@ const envSchema = z.object({
    * uygulama çalışmaya devam eder ve rapor metni şablonla üretilir (§11.2).
    * Zorunlu yapmak, yapay zekâ tarafı henüz kurulmamış bir ortamda bütün
    * paneli düşürürdü.
+   *
+   * BOŞ METİN = TANIMSIZ. Vercel'de "Sensitive" işaretli değişkenler derleme
+   * sırasında gerçek değerleriyle değil boş metin olarak veriliyor; sade bir
+   * `.optional()` bunu "var ama geçersiz" sayıp derlemeyi düşürüyordu.
    */
-  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z
+    .string()
+    .optional()
+    .transform((deger) => {
+      const kirpilmis = deger?.trim();
+      return kirpilmis ? kirpilmis : undefined;
+    }),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
