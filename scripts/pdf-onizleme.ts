@@ -11,17 +11,17 @@ const db = new PrismaClient({
 });
 
 async function main() {
-  const rapor = await db.report.findFirst({
-    where: { student: { firstName: process.argv[3] ?? undefined } },
-    orderBy: { generatedAt: "desc" },
-    select: { bodyJson: true, generatedAt: true },
+  // Rotanın sunduğunun aynısı: aynı snapshot, aynı bileşen.
+  const kayit = await db.reportPdf.findFirst({
+    where: { id: process.argv[3] },
+    select: { snapshotJson: true, report: { select: { generatedAt: true } } },
   });
-  if (!rapor) throw new Error("Rapor yok");
+  if (!kayit) throw new Error("PDF kaydı yok");
 
   const belge = await renderToBuffer(
     RaporBelgesiV2({
-      govde: rapor.bodyJson as unknown as RaporGovdesiV2,
-      uretimZamani: rapor.generatedAt,
+      govde: kayit.snapshotJson as unknown as RaporGovdesiV2,
+      uretimZamani: kayit.report.generatedAt,
     }),
   );
   const yol = process.argv[2] ?? "rapor-onizleme.pdf";
