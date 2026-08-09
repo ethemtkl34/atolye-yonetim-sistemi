@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { Buton } from "@/components/ui";
+import { Buton, DonenHalka } from "@/components/ui";
 
 /**
  * `ui.tsx`'in istemci tarafı parçaları.
@@ -34,7 +34,14 @@ export function GonderButonu({
 
   return (
     <Buton type="submit" disabled={pending || disabled} {...props}>
-      {pending ? bekleyenEtiket : children}
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <DonenHalka />
+          {bekleyenEtiket}
+        </span>
+      ) : (
+        children
+      )}
     </Buton>
   );
 }

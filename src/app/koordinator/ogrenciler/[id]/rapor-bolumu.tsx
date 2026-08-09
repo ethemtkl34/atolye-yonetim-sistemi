@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, Kart, Rozet, baglantiStili, geriBaglantiStili } from "@/components/ui";
+import { Bildirim, Buton, DonenHalka, Kart, Rozet, baglantiStili, geriBaglantiStili } from "@/components/ui";
 import { tarihBicimle } from "@/lib/tarih";
 import type { KapsamKaydi, PdfKaydi, RaporOzeti } from "@/lib/rapor-verisi";
 import {
@@ -81,6 +81,9 @@ export function RaporBolumu({
   const [duzenleniyor, setDuzenleniyor] = useState(false);
   const [islemSonucu, setIslemSonucu] = useState<EylemDurumu | null>(null);
   const [islemde, basla] = useTransition();
+  // Hangi uzun işlemin sürdüğü — buton kendi spinner'ını gösterir, diğeri
+  // yalnızca kilitlenir. `islemde` bitince kendiliğinden anlamsızlaşır.
+  const [surenIslem, setSurenIslem] = useState<"pdf" | "yeniden" | null>(null);
 
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -166,6 +169,7 @@ export function RaporBolumu({
   function pdfUret() {
     if (pencere?.mod !== "detay") return;
     const raporId = pencere.raporId;
+    setSurenIslem("pdf");
     basla(async () => {
       const sonuc = await pdfOlustur(raporId);
       setIslemSonucu(sonuc);
@@ -176,6 +180,7 @@ export function RaporBolumu({
   function yenidenUret() {
     if (pencere?.mod !== "detay") return;
     const raporId = pencere.raporId;
+    setSurenIslem("yeniden");
     basla(async () => {
       const sonuc = await raporYenidenUret(raporId);
       setIslemSonucu(sonuc);
@@ -355,11 +360,36 @@ export function RaporBolumu({
                 <Bildirim tur="hata">{islemSonucu.hata}</Bildirim>
               ) : null}
 
+              {islemde && surenIslem === "yeniden" ? (
+                <div
+                  role="status"
+                  className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
+                >
+                  <DonenHalka />
+                  <span>
+                    Rapor güncel puanlarla yeniden üretiliyor; gözlem metni de
+                    yeniden yazıldığı için bu işlem bir dakikaya kadar
+                    sürebilir.
+                  </span>
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
                 <Buton disabled={islemde} onClick={pdfUret}>
-                  {islemde ? "İşleniyor…" : "PDF oluştur"}
+                  {islemde && surenIslem === "pdf" ? (
+                    <span className="inline-flex items-center gap-2">
+                      <DonenHalka />
+                      PDF hazırlanıyor…
+                    </span>
+                  ) : (
+                    "PDF oluştur"
+                  )}
                 </Buton>
-                <Buton tur="ikincil" onClick={() => setDuzenleniyor(true)}>
+                <Buton
+                  tur="ikincil"
+                  disabled={islemde}
+                  onClick={() => setDuzenleniyor(true)}
+                >
                   Metni düzenle
                 </Buton>
                 <Buton
@@ -367,7 +397,14 @@ export function RaporBolumu({
                   disabled={islemde}
                   onClick={yenidenUret}
                 >
-                  Güncel puanlarla yeniden üret
+                  {islemde && surenIslem === "yeniden" ? (
+                    <span className="inline-flex items-center gap-2">
+                      <DonenHalka />
+                      Yeniden üretiliyor…
+                    </span>
+                  ) : (
+                    "Güncel puanlarla yeniden üret"
+                  )}
                 </Buton>
               </div>
               <p className="text-xs text-zinc-500">

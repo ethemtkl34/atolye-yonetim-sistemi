@@ -114,6 +114,23 @@ export function butonStili(tur: ButonTuru = "birincil", ekSinif?: string) {
   return cn(BUTON_TEMELI, BUTON_STILLERI[tur], ekSinif);
 }
 
+/**
+ * Dönen yükleme halkası. Uzun süren eylemlerde (rapor üretimi, PDF çizimi)
+ * metnin yanında gösterilir; salt metin değişimi "takıldı" hissi veriyordu.
+ * `currentColor` kullandığı için durduğu yerin metin rengine uyar.
+ */
+export function DonenHalka({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent",
+        className,
+      )}
+    />
+  );
+}
+
 export function Buton({
   tur = "birincil",
   className,

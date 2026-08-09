@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Bildirim, Buton, CokSatirli, Kart, Rozet, baglantiStili } from "@/components/ui";
+import { useFormStatus } from "react-dom";
+import { Bildirim, Buton, CokSatirli, DonenHalka, Kart, Rozet, baglantiStili } from "@/components/ui";
+import { GonderButonu } from "@/components/ui-istemci";
 import { cn } from "@/lib/utils";
 import { ortalamaBicimle } from "@/lib/puan-hesaplari";
 import { tarihBicimle } from "@/lib/tarih";
@@ -321,14 +323,45 @@ export function YeniRaporFormu({
 
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
+      <UretimSurecKutusu />
+
       <div className="flex items-center gap-3">
-        <Buton type="submit" disabled={secilenler.length === 0}>
+        <GonderButonu
+          bekleyenEtiket="Rapor üretiliyor…"
+          disabled={secilenler.length === 0}
+        >
           Raporu oluştur
-        </Buton>
+        </GonderButonu>
         <span className="text-sm text-zinc-500">
           {secilenler.length} kayıt seçili
         </span>
       </div>
     </form>
+  );
+}
+
+/**
+ * Rapor üretimi sürerken formda görünen bilgi şeridi.
+ *
+ * Üretim yapay zekâ gözlem metnini de yazdığı için yarım dakikayı bulabiliyor;
+ * yalnızca buton etiketi değişince süreç "takıldı" sanılıyordu. Şerit yalnızca
+ * eylem çalışırken çizilir — `useFormStatus` en yakın üst formdan okur, bu
+ * yüzden form İÇİNDE ayrı bir bileşen olmak zorunda.
+ */
+function UretimSurecKutusu() {
+  const { pending } = useFormStatus();
+  if (!pending) return null;
+
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
+    >
+      <DonenHalka />
+      <span>
+        Rapor üretiliyor; puanlar değerlendiriliyor ve gözlem metni yazılıyor.
+        Bu işlem bir dakikaya kadar sürebilir, lütfen pencereyi kapatmayın.
+      </span>
+    </div>
   );
 }
