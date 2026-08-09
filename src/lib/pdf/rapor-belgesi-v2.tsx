@@ -1,16 +1,22 @@
 import path from "node:path";
 import {
+  Circle,
+  Defs,
   Document,
+  Ellipse,
   Font,
   Image,
   Page,
+  RadialGradient,
+  Stop,
   StyleSheet,
+  Svg,
   Text,
   View,
 } from "@react-pdf/renderer";
 import { KURUM_ADI } from "@/lib/kurallar";
 import { tarihBicimle } from "@/lib/tarih";
-import type { BantBilgisi } from "@/lib/rapor-bantlari";
+import { KADEMELER, type BantBilgisi, type Kademe } from "@/lib/rapor-bantlari";
 import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 
 /**
@@ -232,9 +238,7 @@ const stil = StyleSheet.create({
   cubukAltEtiket: {
     fontSize: 7,
     fontWeight: "bold",
-    color: GRAFIK_KIRMIZI,
     textAlign: "center",
-    marginTop: 3,
   },
   cubukAdi: {
     fontSize: 6,
@@ -244,16 +248,46 @@ const stil = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Kademe segmentleri (alan kutularında)
-  segmentSatiri: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-  segment: { width: 12, height: 8, marginRight: 2 },
-  kademeEtiketi: {
+  // Kademe skalası (alan kutularında): beyaz şerit içinde üç küre; sonuç
+  // olan kademe halkalı ve renkli şerit etiketli, diğerleri soluk.
+  skalaSatiri: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  skalaKutusu: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    borderWidth: 0.8,
+    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  skalaSutunu: { width: 64, alignItems: "center" },
+  skalaKureHucresi: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  kademeSeridi: {
     fontSize: 8,
     fontWeight: "bold",
-    paddingHorizontal: 6,
+    color: "#ffffff",
+    paddingHorizontal: 10,
     paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 6,
+    borderRadius: 3,
+  },
+  skalaSolukEtiket: {
+    fontSize: 8,
+    color: "#a1a1aa",
+    paddingVertical: 2,
   },
   madde: { fontSize: 8.5, marginBottom: 2, paddingLeft: 8, lineHeight: 1.4 },
   kucuk: { fontSize: 8.5, color: "#52525b" },
@@ -339,38 +373,114 @@ function DikeyEtiketKutu({
 // Kademe göstergeleri
 // ---------------------------------------------------------------------------
 
-/** Üç segment + etiket — alan kutularının içindeki satır gösterimi. */
-function KademeSatiri({ bant }: { bant: BantBilgisi | null }) {
-  if (!bant) {
-    return (
-      <View style={stil.segmentSatiri}>
-        {[1, 2, 3].map((sira) => (
-          <View key={sira} style={[stil.segment, { backgroundColor: "#ffffff" }]} />
-        ))}
-        <Text style={[stil.kademeEtiketi, { backgroundColor: "#ffffff", color: "#71717a" }]}>
-          Değerlendirilmedi
-        </Text>
-      </View>
-    );
-  }
+/**
+ * Kademelerin PDF'e özgü görünümü — kurumun "Uyum Tablosu" malzemesindeki
+ * parlak küre diline uyarlandı: yeşil büyük küre Yüksek, altın orta küre
+ * Ortalama, kırmızı küçük küre Düşük.
+ *
+ * Renk paleti burada yerel; `rapor-bantlari.ts`'teki renkler ekran (web)
+ * gösterimini besliyor ve o dosya korunuyor. Kademe yine iki kanaldan
+ * okunur: kürenin ÇAPI kademeyle büyür ve etiket metni her zaman yazılır —
+ * siyah-beyaz baskıda renk kaybolsa da bilgi ayakta kalır.
+ */
+const KADEME_GORUNUMU: Record<
+  Kademe,
+  { acik: string; orta: string; koyu: string; cap: number }
+> = {
+  YUKSEK: { acik: "#8fe39a", orta: "#1f9d3a", koyu: "#0d6b22", cap: 24 },
+  ORTALAMA: { acik: "#ffdf8a", orta: "#eda800", koyu: "#a86f00", cap: 18 },
+  DUSUK: { acik: "#ff9e8e", orta: "#d81e10", koyu: "#8f0e05", cap: 12 },
+};
+
+/** Parlak küre — radyal geçiş + sol üstte ışık lekesi. `soluk` seçilmemiş
+ *  kademeler için: aynı küre, iyice şeffaflaştırılmış. */
+function KademeTopu({
+  kademe,
+  cap,
+  soluk = false,
+}: {
+  kademe: Kademe;
+  cap: number;
+  soluk?: boolean;
+}) {
+  const gorunum = KADEME_GORUNUMU[kademe];
+  // Gradyan kimliği kademe + durum bazlı benzersiz; tanımlar çakışmasın.
+  const kimlik = `top-${kademe}-${soluk ? "s" : "n"}`;
+
   return (
-    <View style={stil.segmentSatiri}>
-      {[1, 2, 3].map((sira) => (
-        <View
-          key={sira}
-          style={[
-            stil.segment,
-            {
-              backgroundColor: sira <= bant.dolu ? bant.renk : "#ffffff",
-              borderWidth: 0.8,
-              borderColor: bant.renk,
-            },
-          ]}
-        />
-      ))}
-      <Text style={[stil.kademeEtiketi, { backgroundColor: bant.zemin, color: bant.renk }]}>
-        {bant.etiket}
-      </Text>
+    <Svg width={cap} height={cap} viewBox="0 0 100 100">
+      <Defs>
+        <RadialGradient id={kimlik} cx="38%" cy="32%" r="80%">
+          <Stop offset="0%" stopColor={gorunum.acik} />
+          <Stop offset="55%" stopColor={gorunum.orta} />
+          <Stop offset="100%" stopColor={gorunum.koyu} />
+        </RadialGradient>
+      </Defs>
+      <Circle cx="50" cy="50" r="46" fill={`url(#${kimlik})`} fillOpacity={soluk ? 0.18 : 1} />
+      <Ellipse
+        cx="36"
+        cy="27"
+        rx="17"
+        ry="11"
+        fill="#ffffff"
+        fillOpacity={soluk ? 0.25 : 0.5}
+      />
+    </Svg>
+  );
+}
+
+/** Skaladaki soldan sağa sıra: gelişim yönünde Düşük → Yüksek. */
+const SKALA_SIRASI: Kademe[] = ["DUSUK", "ORTALAMA", "YUKSEK"];
+
+/**
+ * Alan kutularındaki gösterge: üç kürelik skala, beyaz yuvarlak bir şerit
+ * içinde kutunun ortasında. Üç kademe de görünür; sonuç olan kademe tam
+ * renkli, halkalı ve altında renkli şerit etiketiyle işaretli, diğerleri
+ * soluk. İşaret üç kanaldan okunur — halka, etiket şeridi ve soluk/dolu
+ * farkı — bu yüzden siyah-beyaz baskıda da kaybolmaz.
+ */
+function KademeSkalasi({ bant }: { bant: BantBilgisi | null }) {
+  return (
+    <View style={stil.skalaSatiri}>
+      <View style={stil.skalaKutusu}>
+        {SKALA_SIRASI.map((kademe) => {
+          const gorunum = KADEME_GORUNUMU[kademe];
+          const secili = bant?.kademe === kademe;
+
+          return (
+            <View key={kademe} style={stil.skalaSutunu}>
+              {/* Küre hücresi sabit yükseklikte; halka yalnızca seçilende. */}
+              <View
+                style={
+                  secili
+                    ? [
+                        stil.skalaKureHucresi,
+                        {
+                          borderWidth: 1.6,
+                          borderColor: gorunum.koyu,
+                          borderRadius: 17,
+                          backgroundColor: "#ffffff",
+                        },
+                      ]
+                    : stil.skalaKureHucresi
+                }
+              >
+                <KademeTopu kademe={kademe} cap={gorunum.cap} soluk={!secili} />
+              </View>
+              {secili ? (
+                <Text style={[stil.kademeSeridi, { backgroundColor: gorunum.orta }]}>
+                  {KADEMELER[kademe].etiket}
+                </Text>
+              ) : (
+                <Text style={stil.skalaSolukEtiket}>{KADEMELER[kademe].etiket}</Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+      {!bant ? (
+        <Text style={[stil.kucuk, { marginLeft: 10 }]}>Değerlendirilmedi</Text>
+      ) : null}
     </View>
   );
 }
@@ -461,9 +571,12 @@ function KademeGrafigi({
                             width: 16,
                             marginHorizontal: 2,
                             height: bant.dolu * ADIM,
-                            backgroundColor: seriSira === 0 ? bant.renk : "#ffffff",
+                            backgroundColor:
+                              seriSira === 0
+                                ? KADEME_GORUNUMU[bant.kademe].orta
+                                : "#ffffff",
                             borderWidth: seriSira === 0 ? 0 : 1.4,
-                            borderColor: bant.renk,
+                            borderColor: KADEME_GORUNUMU[bant.kademe].orta,
                           }
                         : {
                             width: 16,
@@ -483,11 +596,32 @@ function KademeGrafigi({
       <View style={{ flexDirection: "row", marginLeft: 50 }}>
         {sutunlar.map((sutun) => (
           <View key={sutun.ad} style={{ flex: 1, paddingHorizontal: 2 }}>
-            <Text style={stil.cubukAltEtiket}>
-              {sutun.bantlar
-                .map((bant) => bant?.etiket ?? "—")
-                .join(" / ")}
-            </Text>
+            {/* Etiket rengi kademeyi izler: yeşil çubuğun altında yeşil
+                "Yüksek". Kıyaslama grafiğinde iki etiket yan yana, her biri
+                kendi kademesinin renginde. */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                flexWrap: "wrap",
+                marginTop: 3,
+              }}
+            >
+              {sutun.bantlar.map((bant, seriSira) => (
+                <Text
+                  key={seriSira}
+                  style={[
+                    stil.cubukAltEtiket,
+                    {
+                      color: bant ? KADEME_GORUNUMU[bant.kademe].koyu : "#71717a",
+                    },
+                  ]}
+                >
+                  {seriSira > 0 ? " / " : ""}
+                  {bant?.etiket ?? "—"}
+                </Text>
+              ))}
+            </View>
             <Text style={stil.cubukAdi}>
               {sutun.ad.toLocaleUpperCase("tr-TR")}
             </Text>
@@ -779,7 +913,7 @@ export function RaporBelgesiV2({
                       Bu kazanımlar çerçevesinde çocuğunuzun almış olduğu
                       değerlendirme şu şekildedir:
                     </Text>
-                    <KademeSatiri bant={alan.bant} />
+                    <KademeSkalasi bant={alan.bant} />
                     {alan.cumle ? (
                       <Text style={{ fontSize: 8.5, marginTop: 6, textAlign: "justify" }}>
                         {alan.cumle}
