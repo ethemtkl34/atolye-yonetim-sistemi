@@ -77,6 +77,13 @@ export type RaporGovdesiV2 = {
     sinif: string | null;
   };
   egitimYili: string | null;
+  /** Kapağın alt satırı için şube adı. Eski snapshot'larda yok; PDF o
+   *  durumda grup adına düşer. */
+  subeAdi?: string | null;
+  /** "Bu raporlamada ... değerlendirilen grubun öğrenci sayısı" notu için;
+   *  kıyas grubundaki dönem sonu değerlendirmesi girilmiş öğrenci sayısı.
+   *  Eski snapshot'larda yok; satır o durumda basılmaz. */
+  grupOgrenciSayisi?: number | null;
   kapsam: { programAdi: string; grupAdi: string; tur: "Dönem" | "Kulüp" }[];
   /** Program düzeyinde üretilen atölye içerik paragrafları. */
   atolyeIcerikleri: { atolyeAdi: string; metin: string }[];

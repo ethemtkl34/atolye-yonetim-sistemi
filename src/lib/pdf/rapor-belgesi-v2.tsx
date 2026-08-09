@@ -663,11 +663,14 @@ function KademeGrafigi({
 // sayı göstermez.
 // ---------------------------------------------------------------------------
 
+// Örnek rapordan birebir alınmış sabit giriş metni.
 const BECERILER_GENEL_BILGI = [
   "Çocukları bir bütün olarak ele almaya çalıştığımız atölye sistematiğimizde; sadece ilgi ve yetenek bazlı çalışma ve değerlendirmelerin, çocuğu tanımada ve gelişiminde yeterli olmayacağını biliyoruz. Bundan dolayı gerek atölye içeriklerini düzenlerken gerekse çocukları atölye içerisinde değerlendirirken her yönüyle ele alıyor ve bu kısmı önemsiyoruz.",
-  "Çocuğunuzu atölye içerisindeki çalışmalara katılırken; beden dili, jest ve mimiği, içinde bulunduğu duygu ve sergilediği davranışlarla bütüncül olarak gözlemleyip raporumuzu bu kriterleri de esas alarak hazırladık.",
+  "Çocuğu atölye içerisindeki çalışmalara katılırken; beden dili, jest mimiği, içinde bulunduğu duygu ve sergilediği davranışlarla bütüncül olarak gözlemleyip raporumuzu bu kriterleri de esas alarak hazırladık.",
   "Bundan dolayı değerlendirme aşamamızın ilk kısmında çocuğunuzun duygusal, sosyal ve bilişsel becerilerinin değerlendirmesini sizlerle paylaşıyoruz.",
-  "Aşağıdaki grafikte her alanın değerlendirmesi üç kademe (Düşük, Ortalama, Yüksek) üzerinden sunulmuştur; kademe, çubuğun yüksekliğinden ve renginden birlikte okunur. Değerlendirme, çocuğunuzun atölyeye katılan yaş grubuyla beraber o grubun genel ortalaması esas alınarak yapılmıştır.",
+  "Bu değerlendirmede çocuğunuzun her beceri alanında çeşitli kazanım başlıklarında hem bireysel hem de kendi yaş grubunda bulunan akranları ile karşılaştırmalı durumunu göreceksiniz.",
+  "Bu değerlendirme ile her alanın detaylarını, ilgili başlıkta verilen kazanımların durumunu görmüş olacaksınız.",
+  "Bu aşamadaki değerlendirmelerin çıktı olan netice puan ve karşılığının atölyeye katılan grupla beraber o yaş grubunun kabul gören genel ortalaması esas alınarak sonuç yazılmıştır.",
 ];
 
 const BECERILER_NOT =
@@ -748,15 +751,17 @@ export function RaporBelgesiV2({
               <Text style={stil.kapakEtiket}>Öğrenci Adı:</Text>
               <Text style={stil.kapakDeger}>{govde.ogrenci.adSoyad}</Text>
             </View>
-            {govde.ogrenci.sinif ? (
-              <View style={stil.kapakAlan}>
-                <Text style={stil.kapakEtiket}>Sınıfı:</Text>
-                <Text style={stil.kapakDeger}>{govde.ogrenci.sinif}</Text>
-              </View>
-            ) : null}
+            {/* Şablon gereği satır her raporda durur; sınıf girilmemişse boş
+                kalır (örnek raporla birebir). */}
+            <View style={stil.kapakAlan}>
+              <Text style={stil.kapakEtiket}>Sınıfı:</Text>
+              <Text style={stil.kapakDeger}>{govde.ogrenci.sinif ?? ""}</Text>
+            </View>
           </View>
 
-          <Text style={stil.kapakGrup}>{grupAdi.toLocaleUpperCase("tr-TR")}</Text>
+          <Text style={stil.kapakGrup}>
+            {(govde.subeAdi ?? grupAdi).toLocaleUpperCase("tr-TR")}
+          </Text>
         </View>
       </Page>
 
@@ -767,34 +772,63 @@ export function RaporBelgesiV2({
           altBilgi={altBilgi}
         />
 
-        <Text style={stil.paragraf}>Değerli velimiz,</Text>
+        {/* Bu sayfanın tamamı kurumun örnek raporundan birebir alınmış sabit
+            metindir; yalnızca eğitim yılı ve program adı raporun verisinden
+            gelir. Değişiklik isteği örnek raporla birlikte gelmeli. */}
+        <Text style={stil.paragraf}>Değerli velimiz;</Text>
         <Text style={stil.paragraf}>
-          Elinizdeki bu rapor, çocuğunuzun {programAdi} atölye çalışmaları
-          neticesinde; eğitmen, psikolog ve yardımcı eğitmen gözlemleri göz
-          önüne alınarak hazırlanmıştır. Rapor, çocuğunuzun katıldığı her bir
-          atölyede sergilediği performansa göre oluşturulmuştur.
+          Elinizde bulunan bu raporun, çocuğunuzun
+          {govde.egitimYili ? ` ${govde.egitimYili} Eğitim Öğretim Yılı` : ""}{" "}
+          TÜZDER {programAdi} atölye çalışmaları neticesinde; eğitmen, psikolog
+          ile yardımcı eğitmen gözlemleri ve görüşleri göz önüne alınarak
+          hazırlandığını hatırlatmak isteriz.
         </Text>
         <Text style={stil.paragraf}>
-          Raporda çocuğunuzun atölyelere olan ilgi ve merak düzeyini,
-          atölyelerde sergilediği başarıyı ve bunların yanında duygusal, sosyal
-          ve bilişsel gelişimine olan katkısını bulacaksınız. Çocuğunuzun
-          katıldığı her bir atölye ve etkinlikte gerek eğitmeni gerekse
-          arkadaşları ile etkileşimi takip edilip gözlemlenerek oluşturulan bu
-          raporda, sizlere neler sunulduğunu ve bu raporu okurken bahsedilen
-          mevzuları nasıl anlamlandırmanız gerektiği ile alakalı yapılan
-          açıklamaları dikkatlice okuyarak raporu buna bağlı değerlendirmenizi
-          tavsiye ederiz.
+          Rapor, çocuğunuzun atölyeye katılmış olduğu 10 haftalık süreçte,
+          katıldığı her bir atölyede sergilediği performansa göre
+          oluşturulmuştur. Çocuğunuzun katıldığı her bir atölye ve etkinlikte
+          gerek öğretmeni gerekse arkadaşları ile etkileşimi takip edilip
+          gözlemlenerek oluşturulan bu raporda, sizlere neler sunulduğunu ve bu
+          raporu okurken bahsedilen mevzuları nasıl anlamlandırmanız gerektiği
+          ile alakalı yapılan açıklamaları dikkatlice okuyarak raporu buna
+          bağlı değerlendirmenizi tavsiye ederiz.
         </Text>
         <Text style={stil.paragraf}>
-          Atölye sürecinin sınırlı bir zaman diliminde yürütüldüğü ve gözlemin
-          bu süre içindeki davranışları kapsadığı unutulmamalıdır. Rapor bir
-          tanı aracı değil, çocuğunuzun bu süreçte neler yaptığını ve nasıl
-          etkilendiğini gösteren bir değerlendirmedir.
+          Unutulmamalıdır ki bu rapor; TÜZDER uzmanları tarafından uzunca
+          süredir tecrübe edilen ve TEM&apos;in (TÜZDER Eğitim Metodu) bir parçası
+          olan özel bir raporlama programı ile hazırlanmış olup oluşabilecek
+          kişisel (eğitmen, psikolog, yardımcı eğitmen gibi) hataları en aza
+          indirmek üzere çapraz kontrol ile oluşturulmuştur. Her ne kadar
+          raporun sistematik kontrole sahip olması hataları en aza indirgese
+          de bu gözlem sürecinin yoğun okul dönemi içerisinde devam ettiği ve
+          10 hafta gibi sınırlı bir süre içerisinde yürütülüyor olmasının
+          rapora olabilecek etkileri unutulmamalıdır.
+        </Text>
+        <Text style={stil.paragraf}>
+          Bu rapor; atölye sürecini özetleyen, çocuğunuzun bu atölye sürecinde
+          neler yaptığını ve nasıl etkilendiğini gösteren gözlemleri ve bu
+          gözlemlere bağlı olarak gerek bireysel gerekse yaş grubunda yer alan
+          ilgili başlıklardaki gelişimlerini sunmaktadır.
+        </Text>
+        <Text style={stil.paragraf}>
+          En nihayetinde rapordan maksadımız; geçirilen süreçte çocuklarımızın
+          duygusal, sosyal, bilişsel becerilerinin gözlemlenerek hem bireysel
+          hem de grup içindeki gelişiminin ortaya konulması, bununla beraber
+          bu süreçte, her atölye özelinde verilmek istenen kazanımların ne
+          kadarının hangi düzeyde sağlanabildiğini göstermektir.
+        </Text>
+        <Text style={stil.paragraf}>
+          Bu rapor; çocuğunuzun atölyede elde ettiği verimi, mutluluğu ve
+          faydayı görmeniz açısından sizler için bir değerlendirme
+          niteliğindedir. Çocuğunuzun atölyelerin her birine olan ilgi ve merak
+          düzeyini, atölyelerde sergilediği başarıyı ve bunların yanında
+          duygusal, sosyal ve bilişsel gelişimine olan katkısını sizlere
+          sunmaktadır.
         </Text>
         <Text style={stil.paragraf}>
           Sizlerle bir dönemi başarıyla tamamlamanın ve çocuklarımıza bu
           süreçte sağlamaya gayret ettiğimiz faydaların gerçekleşmiş olmasının
-          mutluluğu ile ileriki yaşantılarınızda çocuklarınız ve sizlerin
+          mutluğu ile ileriki yaşantılarınızda çocuklarınız ve sizlerin
           sağlıklı ve güzel günlerde kalmanızı dileriz.
         </Text>
         <Text style={stil.paragraf}>Saygılarımızla…</Text>
@@ -807,17 +841,28 @@ export function RaporBelgesiV2({
           <View style={stil.notSatiri}>
             <Text style={stil.notNumara}>1</Text>
             <Text style={stil.notMetin}>
-              Değerlendirmeler üç kademe üzerinden sunulmuştur: Düşük, Ortalama
-              ve Yüksek. Grafiklerde kademe hem çubuğun yüksekliğinden hem de
-              renginden okunur; rapor veliye ham puan göstermez.
+              Grafiklerin değerlendirmesi 5 (beş) puan üzerinden yapılmıştır.
+              (1: Desteklenmeli, 5: İleri Düzey)
             </Text>
           </View>
-          <View style={stil.notSatiri}>
-            <Text style={stil.notNumara}>2</Text>
-            <Text style={stil.notMetin}>
-              Katılım sağlanmayan oturumlar değerlendirmeye dahil edilmemiştir.
-            </Text>
-          </View>
+          {govde.grupOgrenciSayisi ? (
+            <View style={stil.notSatiri}>
+              <Text style={stil.notNumara}>2</Text>
+              <Text style={stil.notMetin}>
+                Bu raporlamada ilgili yaş düzeyinde değerlendirilen grubun
+                öğrenci sayısı
+              </Text>
+              <Text
+                style={{
+                  fontSize: 8.5,
+                  fontWeight: "bold",
+                  paddingHorizontal: 10,
+                }}
+              >
+                {govde.grupOgrenciSayisi}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Page>
 

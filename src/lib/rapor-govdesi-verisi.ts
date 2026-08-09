@@ -58,7 +58,13 @@ export async function raporGovdesiV2Uret(
 ): Promise<RaporGovdesiV2 | null> {
   const ogrenci = await db.student.findFirst({
     where: { id: ogrenciId, branchId: subeId },
-    select: { firstName: true, lastName: true, grade: true, birthDate: true },
+    select: {
+      firstName: true,
+      lastName: true,
+      grade: true,
+      birthDate: true,
+      branch: { select: { name: true } },
+    },
   });
   if (!ogrenci) return null;
 
@@ -186,6 +192,16 @@ export async function raporGovdesiV2Uret(
     kayitlar[0].groupId,
     "DONEM_SONU",
   );
+
+  // Kapak notundaki "değerlendirilen grubun öğrenci sayısı": kıyas grubunda
+  // dönem sonu değerlendirmesi girilmiş farklı öğrencilerin sayısı — grup
+  // ortalamasını besleyen kümenin ta kendisi.
+  const grupDegerlendirmeleri = await db.developmentAssessment.findMany({
+    where: { period: "DONEM_SONU", enrollment: { groupId: kayitlar[0].groupId } },
+    select: { enrollment: { select: { studentId: true } } },
+  });
+  const grupOgrenciSayisi =
+    new Set(grupDegerlendirmeleri.map((d) => d.enrollment.studentId)).size || null;
 
   const gelisimAlanlari = gelisimAlanlariCikar(
     gelisimAlanOrtalamalari(gelisimCevaplari),
@@ -342,6 +358,8 @@ export async function raporGovdesiV2Uret(
       sinif: ogrenci.grade,
     },
     egitimYili: ilkKayit.group.term?.egitimYili ?? null,
+    subeAdi: ogrenci.branch?.name ?? null,
+    grupOgrenciSayisi,
     kapsam: kayitlar.map((kayit) => ({
       programAdi: kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
       grupAdi: kayit.group.name,
