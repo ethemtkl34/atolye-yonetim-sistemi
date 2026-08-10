@@ -913,6 +913,16 @@ ikisini birlikte güncellemeyi gerektirir.
   (110 aktif + 50 pasif), kısıt yerinde, 14.580 cevap snapshot'ı yeni
   adlarda, 2.780 eski cevap boş kaldı.
 
+Aynı gün ikinci karar: **pasif soruların tamamı silindi ve "Değerlendirme
+soruları" ekranı kaldırıldı** (sorular atölye detayından yönetiliyor; menü
+maddesi ve `sorular` modülü yetki matrisinden çıktı). Silme geçmişi bozmaz:
+`ScoreAnswer.questionId` `onDelete: SetNull` ile boşa düşer, geçmiş formlar
+§13.14 snapshot'larından görüntülenir. Canlıda doğrulandı: pasif soru 0,
+110 aktif soru duruyor, 17.360 cevabın tamamı yerinde (2.780'i bağı kopmuş
+ama snapshot'lı). Bilinçli yan etki: bağı kopan eski cevaplar kategori
+bilgisini soru satırından okuyordu; artık 8 Ağustos öncesindeki gibi
+ilgi/başarı kademe ortalamalarının dışındalar.
+
 ## Örnek veri
 
 ```bash
