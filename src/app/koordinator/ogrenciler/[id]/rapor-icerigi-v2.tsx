@@ -1,18 +1,32 @@
 "use client";
 
-import { Kart, Rozet } from "@/components/ui";
+import { useState, useTransition } from "react";
+import { Bildirim, Buton, CokSatirli, DonenHalka, Kart, Rozet } from "@/components/ui";
 import { KademeGostergesi, KademeYok } from "@/components/kademe-gostergesi";
+import { cn } from "@/lib/utils";
 import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
+import { raporBolumunuDuzenle, type DuzenlenebilirAlan } from "./rapor-eylemleri";
 
 /**
  * §11.2 — İkinci sürüm rapor gövdesinin pencere görünümü.
  *
  * PDF ile aynı bölümleri aynı sırayla gösterir: koordinatörün gördüğü ile
- * velinin eline geçen belge ayrışmamalı. Sayı burada da basılmıyor — PDF'te
- * gizlenip panelde gösterilseydi, koordinatör raporu farklı bir belge olarak
- * okurdu.
+ * velinin eline geçen belge ayrışmamalı.
+ *
+ * DÜZENLEME: veliye giden her metin kutusunun sağ üstünde kalem var;
+ * tıklanınca kutu yerinde düzenleyiciye dönüşür ve yalnızca o metin
+ * kaydedilir. Eski "tüm raporu tek formda düzenle" ekranı v2 raporlarda
+ * kullanılmıyor. `raporId` verilmezse görünüm salt okunurdur.
  */
-export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
+export function RaporIcerigiV2({
+  govde,
+  raporId,
+  onGuncellendi,
+}: {
+  govde: RaporGovdesiV2;
+  raporId?: string;
+  onGuncellendi?: () => Promise<void> | void;
+}) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -33,10 +47,13 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
           <h3 className="text-sm font-semibold">Atölyeler ve içerikleri</h3>
           {govde.atolyeIcerikleri.map((atolye) => (
             <Kart key={atolye.atolyeAdi} className="p-4">
-              <h4 className="font-medium">{atolye.atolyeAdi}</h4>
-              <p className="mt-1 text-sm leading-relaxed text-zinc-700">
-                {atolye.metin}
-              </p>
+              <DuzenlenebilirMetin
+                raporId={raporId}
+                alan={{ tur: "atolyeIcerik", atolyeAdi: atolye.atolyeAdi }}
+                metin={atolye.metin}
+                onGuncellendi={onGuncellendi}
+                baslik={<h4 className="font-medium">{atolye.atolyeAdi}</h4>}
+              />
             </Kart>
           ))}
         </section>
@@ -53,9 +70,13 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
               {alan.bant ? <KademeGostergesi bant={alan.bant} /> : <KademeYok />}
             </div>
             {alan.cumle ? (
-              <p className="mt-2 text-sm leading-relaxed text-zinc-700">
-                {alan.cumle}
-              </p>
+              <DuzenlenebilirMetin
+                raporId={raporId}
+                alan={{ tur: "gelisimCumle", alanAdi: alan.ad }}
+                metin={alan.cumle}
+                onGuncellendi={onGuncellendi}
+                sinif="mt-2"
+              />
             ) : null}
           </Kart>
         ))}
@@ -96,7 +117,13 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
 
         {govde.asimetriler.map((asimetri) => (
           <Kart key={asimetri.atolyeAdi} className="bg-vurgu-50 p-3">
-            <p className="text-sm text-vurgu-800">{asimetri.cumle}</p>
+            <DuzenlenebilirMetin
+              raporId={raporId}
+              alan={{ tur: "asimetriCumle", atolyeAdi: asimetri.atolyeAdi }}
+              metin={asimetri.cumle}
+              onGuncellendi={onGuncellendi}
+              metinSinifi="text-sm text-vurgu-800"
+            />
           </Kart>
         ))}
       </section>
@@ -105,8 +132,18 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Gözlem raporu</h3>
           <Kart className="space-y-3 p-4 text-sm leading-relaxed text-zinc-700">
-            <p>{govde.gozlem.giris}</p>
-            <p>{govde.gozlem.profil}</p>
+            <DuzenlenebilirMetin
+              raporId={raporId}
+              alan={{ tur: "gozlem", bolum: "giris" }}
+              metin={govde.gozlem.giris}
+              onGuncellendi={onGuncellendi}
+            />
+            <DuzenlenebilirMetin
+              raporId={raporId}
+              alan={{ tur: "gozlem", bolum: "profil" }}
+              metin={govde.gozlem.profil}
+              onGuncellendi={onGuncellendi}
+            />
 
             {govde.gozlem.bloklar.map((blok) => (
               <div key={blok.beceriAdi} className="space-y-1">
@@ -115,20 +152,35 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
                   <p className="text-xs text-zinc-500">{blok.tanim}</p>
                 ) : null}
                 {blok.etkinlik ? <p>{blok.etkinlik}</p> : null}
-                <p>{blok.gozlem}</p>
+                <DuzenlenebilirMetin
+                  raporId={raporId}
+                  alan={{ tur: "gozlemBlok", beceriAdi: blok.beceriAdi }}
+                  metin={blok.gozlem}
+                  onGuncellendi={onGuncellendi}
+                />
               </div>
             ))}
 
             <div className="space-y-1">
               <h4 className="font-medium text-zinc-900">Sonuç</h4>
-              <p>{govde.gozlem.sonuc}</p>
+              <DuzenlenebilirMetin
+                raporId={raporId}
+                alan={{ tur: "gozlem", bolum: "sonuc" }}
+                metin={govde.gozlem.sonuc}
+                onGuncellendi={onGuncellendi}
+              />
             </div>
 
             <div className="space-y-1">
               <h4 className="font-medium text-zinc-900">
                 Ev ortamında öneriler
               </h4>
-              <p>{govde.gozlem.oneriler}</p>
+              <DuzenlenebilirMetin
+                raporId={raporId}
+                alan={{ tur: "gozlem", bolum: "oneriler" }}
+                metin={govde.gozlem.oneriler}
+                onGuncellendi={onGuncellendi}
+              />
               {govde.gozlem.urunler.length > 0 ? (
                 <ul className="mt-1 list-inside list-disc text-xs text-zinc-600">
                   {govde.gozlem.urunler.map((urun) => (
@@ -148,6 +200,134 @@ export function RaporIcerigiV2({ govde }: { govde: RaporGovdesiV2 }) {
           </p>
         </Kart>
       )}
+    </div>
+  );
+}
+
+/**
+ * Sağ üstünde kalem duran, tıklanınca yerinde düzenleyiciye dönüşen metin.
+ *
+ * Kalem, kutunun üzerine gelince belirginleşir ama dokunmatikte de
+ * bulunabilsin diye tamamen gizlenmez. Kaydetme yalnızca bu alanı sunucuya
+ * gönderir; başarıda üst bileşen pencereyi tazeler ve düzenleme kapanır.
+ */
+function DuzenlenebilirMetin({
+  raporId,
+  alan,
+  metin,
+  onGuncellendi,
+  baslik,
+  sinif,
+  metinSinifi = "text-sm leading-relaxed text-zinc-700",
+}: {
+  raporId?: string;
+  alan: DuzenlenebilirAlan;
+  metin: string;
+  onGuncellendi?: () => Promise<void> | void;
+  /** Metnin üstünde duran, düzenlenmeyen kısım (ör. atölye adı). */
+  baslik?: React.ReactNode;
+  sinif?: string;
+  metinSinifi?: string;
+}) {
+  const [duzenleniyor, setDuzenleniyor] = useState(false);
+  const [taslak, setTaslak] = useState(metin);
+  const [hata, setHata] = useState<string | null>(null);
+  const [kaydediliyor, basla] = useTransition();
+
+  if (!raporId) {
+    return (
+      <div className={sinif}>
+        {baslik}
+        <p className={cn(baslik && "mt-1", metinSinifi)}>{metin}</p>
+      </div>
+    );
+  }
+
+  function ac() {
+    setTaslak(metin);
+    setHata(null);
+    setDuzenleniyor(true);
+  }
+
+  function kaydet() {
+    basla(async () => {
+      const sonuc = await raporBolumunuDuzenle(raporId!, alan, taslak);
+      if (sonuc.hata) {
+        setHata(sonuc.hata);
+        return;
+      }
+      await onGuncellendi?.();
+      setDuzenleniyor(false);
+    });
+  }
+
+  if (duzenleniyor) {
+    return (
+      <div className={cn("space-y-2", sinif)}>
+        {baslik}
+        <CokSatirli
+          value={taslak}
+          onChange={(olay) => setTaslak(olay.target.value)}
+          rows={Math.min(12, Math.max(3, Math.ceil(taslak.length / 90)))}
+          disabled={kaydediliyor}
+          autoFocus
+        />
+        {hata ? <Bildirim tur="hata">{hata}</Bildirim> : null}
+        <div className="flex items-center gap-2">
+          <Buton
+            type="button"
+            onClick={kaydet}
+            disabled={kaydediliyor || !taslak.trim()}
+            className="px-2.5 py-1.5 text-xs"
+          >
+            {kaydediliyor ? (
+              <span className="inline-flex items-center gap-1.5">
+                <DonenHalka className="size-3" />
+                Kaydediliyor…
+              </span>
+            ) : (
+              "Kaydet"
+            )}
+          </Buton>
+          <Buton
+            type="button"
+            tur="sade"
+            onClick={() => setDuzenleniyor(false)}
+            disabled={kaydediliyor}
+            className="px-2.5 py-1.5 text-xs"
+          >
+            Vazgeç
+          </Buton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("group/metin relative", sinif)}>
+      {baslik}
+      <p className={cn("pr-8", baslik && "mt-1", metinSinifi)}>{metin}</p>
+      <button
+        type="button"
+        onClick={ac}
+        aria-label="Bu metni düzenle"
+        title="Bu metni düzenle"
+        className="absolute top-0 right-0 flex size-7 items-center justify-center rounded-md text-zinc-300 transition-colors group-hover/metin:text-zinc-500 hover:bg-marka-50 hover:!text-marka-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          <path d="m15 5 4 4" />
+        </svg>
+      </button>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, DonenHalka, Kart, Rozet, baglantiStili, geriBaglantiStili } from "@/components/ui";
+import { Bildirim, Buton, DonenHalka, Kart, Rozet, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
 import { tarihBicimle } from "@/lib/tarih";
 import type { KapsamKaydi, PdfKaydi, RaporOzeti } from "@/lib/rapor-verisi";
 import {
@@ -347,7 +347,11 @@ export function RaporBolumu({
                 onVazgec={() => setDuzenleniyor(false)}
               />
             ) : (
-              <RaporIcerigi veri={veri} />
+              <RaporIcerigi
+                veri={veri}
+                raporId={pencere.raporId}
+                onGuncellendi={() => tazele(pencere.raporId)}
+              />
             )}
           </div>
 
@@ -385,13 +389,29 @@ export function RaporBolumu({
                     "PDF oluştur"
                   )}
                 </Buton>
-                <Buton
-                  tur="ikincil"
-                  disabled={islemde}
-                  onClick={() => setDuzenleniyor(true)}
-                >
-                  Metni düzenle
-                </Buton>
+                {islemSonucu?.pdfAdresi ? (
+                  <a
+                    href={islemSonucu.pdfAdresi}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={butonStili("ikincil")}
+                  >
+                    PDF&apos;i indir
+                  </a>
+                ) : null}
+                {/* v2 raporlar kutuların üzerindeki kalemle yerinde
+                    düzenleniyor; toplu düzenleme ekranı yalnızca eski
+                    biçimli (arşiv) raporlar için duruyor. */}
+                {(veri.detay.govde as unknown as { surum?: number })?.surum ===
+                2 ? null : (
+                  <Buton
+                    tur="ikincil"
+                    disabled={islemde}
+                    onClick={() => setDuzenleniyor(true)}
+                  >
+                    Metni düzenle
+                  </Buton>
+                )}
                 <Buton
                   tur={veri.detay.ozet.guncel ? "sade" : "birincil"}
                   disabled={islemde}

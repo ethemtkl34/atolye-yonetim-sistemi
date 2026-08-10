@@ -12,6 +12,7 @@ import {
   type RaporDetayi,
 } from "@/lib/rapor-verisi";
 import type { RaporGovdesi } from "@/lib/rapor-motoru";
+import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
 
 /**
@@ -31,6 +32,8 @@ import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
 export type EylemDurumu = TemelEylemDurumu & {
   /** Yeni üretilen rapor — pencere bu rapora geçer. */
   raporId?: string;
+  /** Üretilen PDF'in indirme adresi — pencere indirme düğmesi gösterir. */
+  pdfAdresi?: string;
 };
 
 /**
@@ -166,7 +169,7 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
   // İki adım tek transaction'da: satır oluşturma ile adresin yazılması
   // arasında bir hata olursa, silinemeyen (onDelete: Restrict) ama adressiz
   // bir PDF kaydı kalıcı olarak ortada kalırdı.
-  await db.$transaction(async (tx) => {
+  const pdfAdresi = await db.$transaction(async (tx) => {
     const pdf = await tx.reportPdf.create({
       data: {
         reportId: rapor.id,
@@ -178,15 +181,17 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
       select: { id: true },
     });
 
+    const adres = `/api/rapor-pdf/${pdf.id}`;
     await tx.reportPdf.update({
       where: { id: pdf.id },
-      data: { fileUrl: `/api/rapor-pdf/${pdf.id}` },
+      data: { fileUrl: adres },
     });
+    return adres;
   });
 
   revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
 
-  return { basari: "PDF oluşturuldu ve rapor geçmişine eklendi." };
+  return { basari: "PDF oluşturuldu ve rapor geçmişine eklendi.", pdfAdresi };
 }
 
 /**
@@ -247,6 +252,97 @@ export async function raporMetniDuzenle(
   revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
 
   return { basari: "Rapor metni güncellendi.", raporId };
+}
+
+/** İkinci sürüm raporda yerinde düzenlenebilen metin alanları. */
+export type DuzenlenebilirAlan =
+  | { tur: "atolyeIcerik"; atolyeAdi: string }
+  | { tur: "gelisimCumle"; alanAdi: string }
+  | { tur: "asimetriCumle"; atolyeAdi: string }
+  | { tur: "gozlem"; bolum: "giris" | "profil" | "sonuc" | "oneriler" }
+  | { tur: "gozlemBlok"; beceriAdi: string };
+
+/**
+ * §11.4 — İkinci sürüm raporda tek bir metin kutusunun yerinde düzenlenmesi.
+ *
+ * Eski toplu düzenleme ekranının kutucuk bazlı karşılığı: koordinatör
+ * penceredeki kutunun kalemine basar, yalnızca o metin değişir. Analiz
+ * çıktısı (kademeler, ortalamalar) ve diğer metinler olduğu gibi kalır;
+ * düzenleyen kişi ve zaman rapora işlenir. Daha önce alınmış PDF'ler kendi
+ * snapshot'larından basılmaya devam eder (§13.17).
+ */
+export async function raporBolumunuDuzenle(
+  raporId: string,
+  alan: DuzenlenebilirAlan,
+  metin: string,
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+
+  const yeniMetin = metin.trim();
+  if (!yeniMetin) return { hata: "Metin boş bırakılamaz." };
+
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    select: { bodyJson: true, studentId: true },
+  });
+  if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  const govde = rapor.bodyJson as unknown as RaporGovdesiV2 & { surum?: number };
+  if (govde?.surum !== 2) {
+    return { hata: "Bu rapor eski biçimde; alttaki düzenleme ekranını kullanın." };
+  }
+
+  // Alan adları istemciden geliyor; hedef bulunamazsa sessizce hiçbir şeyi
+  // değiştirmeden dönmek yerine hata verilir.
+  switch (alan.tur) {
+    case "atolyeIcerik": {
+      const hedef = govde.atolyeIcerikleri.find(
+        (a) => a.atolyeAdi === alan.atolyeAdi,
+      );
+      if (!hedef) return { hata: "Atölye içeriği bulunamadı." };
+      hedef.metin = yeniMetin;
+      break;
+    }
+    case "gelisimCumle": {
+      const hedef = govde.gelisimAlanlari.find((a) => a.ad === alan.alanAdi);
+      if (!hedef) return { hata: "Gelişim alanı bulunamadı." };
+      hedef.cumle = yeniMetin;
+      break;
+    }
+    case "asimetriCumle": {
+      const hedef = govde.asimetriler.find(
+        (a) => a.atolyeAdi === alan.atolyeAdi,
+      );
+      if (!hedef) return { hata: "Değerlendirme notu bulunamadı." };
+      hedef.cumle = yeniMetin;
+      break;
+    }
+    case "gozlem": {
+      if (!govde.gozlem) return { hata: "Gözlem bölümü yok." };
+      govde.gozlem[alan.bolum] = yeniMetin;
+      break;
+    }
+    case "gozlemBlok": {
+      const hedef = govde.gozlem?.bloklar.find(
+        (b) => b.beceriAdi === alan.beceriAdi,
+      );
+      if (!hedef) return { hata: "Gözlem bloğu bulunamadı." };
+      hedef.gozlem = yeniMetin;
+      break;
+    }
+  }
+
+  await db.report.update({
+    where: { id: raporId },
+    data: {
+      bodyJson: govde as unknown as object,
+      editedByUserId: kullanici.id,
+      editedAt: new Date(),
+    },
+  });
+
+  revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
+  return { basari: "Metin güncellendi.", raporId };
 }
 
 export type RaporPenceresiVerisi = {

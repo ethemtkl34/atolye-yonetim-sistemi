@@ -19,7 +19,16 @@ import type { EylemDurumu, RaporPenceresiVerisi } from "./rapor-eylemleri";
  */
 
 /** §11.2 — Atölye bazlı sonuçlar + genel değerlendirme. */
-export function RaporIcerigi({ veri }: { veri: RaporPenceresiVerisi }) {
+export function RaporIcerigi({
+  veri,
+  raporId,
+  onGuncellendi,
+}: {
+  veri: RaporPenceresiVerisi;
+  /** Verilirse v2 kutuları yerinde düzenlenebilir olur. */
+  raporId?: string;
+  onGuncellendi?: () => Promise<void> | void;
+}) {
   const { ozet, govde } = veri.detay;
 
   // §11.2 — Gövde biçimi zamanla değişti. Sürüm alanı taşıyan raporlar yeni
@@ -40,7 +49,11 @@ export function RaporIcerigi({ veri }: { veri: RaporPenceresiVerisi }) {
             </span>
           ) : null}
         </div>
-        <RaporIcerigiV2 govde={govde as unknown as RaporGovdesiV2} />
+        <RaporIcerigiV2
+          govde={govde as unknown as RaporGovdesiV2}
+          raporId={raporId}
+          onGuncellendi={onGuncellendi}
+        />
       </div>
     );
   }
