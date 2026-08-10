@@ -889,6 +889,30 @@ devam ediyor. İstenirse ayrı bir iş olarak eklenecek.
 
 ---
 
+## Revize — soru kategorisi zorunlu (11 Ağustos 2026)
+
+Kurum kuralı: her değerlendirme sorusu bir kategoriye ait olmak zorunda ve
+kategoriler sabit — **"İlgi ve Merak Alanları"** ve **"Yetenek Gelişim
+Alanları"** ("Dersin" öneki kaldırıldı). Kategori formda artık serbest metin
+değil zorunlu seçim kutusu; liste `lib/kurallar.ts` içindeki
+`SORU_KATEGORILERI` sabitinde, Zod `z.enum` ve veritabanı CHECK kısıtı
+(`Question_category_gecerli`) aynı listeyi zorluyor. Yeni kategori eklemek
+ikisini birlikte güncellemeyi gerektirir.
+
+- **Snapshot'lar da yeniden adlandırıldı** (migration
+  `soru_kategorisi_zorunlu`): rapor kademeleri (ilgi/başarı) kategori adına
+  göre gruplandığı için eski ad snapshot'ta kalsaydı aynı kategori raporda
+  ikiye bölünürdü. §13.14 soru metnini dondurur; bu bir içerik değişikliği
+  değil, aynı kategorinin adının değişmesi. `updatedAt` bilerek
+  dokunulmadı ki raporlar "Güncel değil"e düşmesin.
+- **Kategorisiz 50 pasif eski soru** ilk karnenin blok düzenine göre
+  dolduruldu (sıra 0–3 ilgi, 4–9 yetenek). Kategorisiz dönemde doldurulmuş
+  formların cevaplarındaki boş `categorySnapshot` bilerek boş bırakıldı;
+  geriye dönük doldurmak geçmiş raporların sayılarını değiştirirdi.
+- Canlıda doğrulandı (Neon, salt-okunur): 160 sorunun tamamı kategorili
+  (110 aktif + 50 pasif), kısıt yerinde, 14.580 cevap snapshot'ı yeni
+  adlarda, 2.780 eski cevap boş kaldı.
+
 ## Örnek veri
 
 ```bash
