@@ -29,13 +29,13 @@ function soru(
 describe("kategoriOrtalamalari", () => {
   it("soruları konu başlığına göre toplar", () => {
     const sonuc = kategoriOrtalamalari([
-      soru("Dersin İlgi ve Merak Alanları", 40, 10, 0),
-      soru("Dersin İlgi ve Merak Alanları", 45, 10, 1),
-      soru("Dersin Yetenek Gelişim Alanları", 30, 10, 2),
+      soru("İlgi ve Merak Alanları", 40, 10, 0),
+      soru("İlgi ve Merak Alanları", 45, 10, 1),
+      soru("Yetenek Gelişim Alanları", 30, 10, 2),
     ]);
 
     expect(sonuc).toHaveLength(2);
-    expect(sonuc[0].kategori).toBe("Dersin İlgi ve Merak Alanları");
+    expect(sonuc[0].kategori).toBe("İlgi ve Merak Alanları");
     expect(sonuc[0].ortalama).toBeCloseTo(4.25);
     expect(sonuc[0].gozlemSayisi).toBe(20);
     expect(sonuc[1].ortalama).toBeCloseTo(3.0);

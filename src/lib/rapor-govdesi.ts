@@ -42,9 +42,9 @@ export type GelisimAlaniSatiri = KademeSatiri & {
 
 export type AtolyeKademesi = {
   atolyeAdi: string;
-  /** "Dersin İlgi ve Merak Alanları" ortalamasının kademesi. */
+  /** "İlgi ve Merak Alanları" ortalamasının kademesi. */
   ilgi: BantBilgisi | null;
-  /** "Dersin Yetenek Gelişim Alanları" ortalamasının kademesi. */
+  /** "Yetenek Gelişim Alanları" ortalamasının kademesi. */
   basari: BantBilgisi | null;
   /** 5'lik grafik için ham ortalamalar (eski snapshot'larda yok). */
   ilgiOrtalamasi?: number | null;

@@ -36,3 +36,15 @@ export const KURUM_ADI = "TÜZDER";
 /** §10.3 — Puanlama ölçeğinin alt ve üst sınırı. */
 export const EN_DUSUK_PUAN = 1;
 export const EN_YUKSEK_PUAN = 5;
+
+/**
+ * Değerlendirme sorusu kategorileri. Her soru bu listeden birine ait olmak
+ * ZORUNDA; serbest metin bırakılamaz çünkü rapor kademeleri (ilgi/başarı)
+ * kategori adına göre gruplanıyor — yazımı farklı bir ad aynı kategoriyi
+ * raporda ikiye bölerdi. Veritabanındaki CHECK kısıtı da aynı listeyi zorlar;
+ * yeni kategori eklemek bu listeyi VE kısıtı birlikte güncellemeyi gerektirir.
+ */
+export const SORU_KATEGORILERI = [
+  "İlgi ve Merak Alanları",
+  "Yetenek Gelişim Alanları",
+] as const;

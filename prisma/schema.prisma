@@ -262,9 +262,10 @@ model Question {
   /// Kısa başlık (örn. "Duygu Düzenleme"). Rapor düzyazısı ve kompakt
   /// listeler soru cümlesi yerine bunu kullanır; tek parçalı sorularda boş.
   title          String?
-  /// Konu başlığı (örn. "Dersin İlgi ve Merak Alanları"). Puanlama formunda
-  /// ve raporlarda bölüm başlığı olarak basılır; salt sunumsal.
-  category       String?
+  /// Konu başlığı — `SORU_KATEGORILERI` listesinden biri ("İlgi ve Merak
+  /// Alanları" / "Yetenek Gelişim Alanları"). Zorunlu: rapor kademeleri bu
+  /// ada göre gruplanır. Liste dışı değer migration'daki CHECK kısıtına takılır.
+  category       String
   sortOrder      Int          @default(0)
   active         Boolean      @default(true)
   createdAt      DateTime     @default(now())

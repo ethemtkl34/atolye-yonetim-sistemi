@@ -154,7 +154,7 @@ describe("başlıklı sorular", () => {
           questionTextSnapshot:
             "Zorlayıcı durumlarda duygularını kontrol etme becerisi gösteriyor mu?",
           titleSnapshot: "Duygu Düzenleme",
-          categorySnapshot: "Dersin Yetenek Gelişim Alanları",
+          categorySnapshot: "Yetenek Gelişim Alanları",
           value: deger,
           sortOrder: 0,
         },
@@ -189,7 +189,7 @@ describe("başlıklı sorular", () => {
 
     const soru = analiz.atolyeler[0].soruOrtalamalari[0];
     expect(soru.baslik).toBe("Duygu Düzenleme");
-    expect(soru.kategori).toBe("Dersin Yetenek Gelişim Alanları");
+    expect(soru.kategori).toBe("Yetenek Gelişim Alanları");
   });
 
   it("aynı başlıklı soruları farklı cümlelerle de atölyeler arası birleştirir", () => {
@@ -203,7 +203,7 @@ describe("başlıklı sorular", () => {
           questionTextSnapshot:
             "Duygularını kontrol etmeyi robotik çalışmalarında da gösteriyor mu?",
           titleSnapshot: "Duygu Düzenleme",
-          categorySnapshot: "Dersin Yetenek Gelişim Alanları",
+          categorySnapshot: "Yetenek Gelişim Alanları",
           value: 5,
           sortOrder: 0,
         },

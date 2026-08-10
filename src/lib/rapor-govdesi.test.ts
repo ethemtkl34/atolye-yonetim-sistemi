@@ -20,8 +20,8 @@ function soru(
   };
 }
 
-const ILGI = "Dersin İlgi ve Merak Alanları";
-const YETENEK = "Dersin Yetenek Gelişim Alanları";
+const ILGI = "İlgi ve Merak Alanları";
+const YETENEK = "Yetenek Gelişim Alanları";
 
 describe("atolyeKademesiCikar", () => {
   it("ilgi ve başarıyı doğru kategorilerden çıkarır", () => {

@@ -10,8 +10,10 @@ import {
   Girdi,
   Kart,
   Rozet,
+  secimStili,
 } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
+import { SORU_KATEGORILERI } from "@/lib/kurallar";
 import {
   soruDurumDegistir,
   soruEkle,
@@ -24,17 +26,11 @@ export type SoruSatiri = {
   id: string;
   text: string;
   title: string | null;
-  category: string | null;
+  category: string;
   active: boolean;
   sortOrder: number;
   kullanimSayisi: number;
 };
-
-/** Kategori girdisinin önerdiği standart konu başlıkları. */
-const STANDART_KATEGORILER = [
-  "Dersin İlgi ve Merak Alanları",
-  "Dersin Yetenek Gelişim Alanları",
-];
 
 /**
  * §9.2 — Bir atölyenin değerlendirme soru setinin yönetimi.
@@ -53,16 +49,6 @@ export function SoruYonetimi({
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [bekliyor, basla] = useTransition();
   const [duzenlenenId, setDuzenlenenId] = useState<string | null>(null);
-
-  // Öneri listesi: standart başlıklar + bu atölyede zaten kullanılanlar.
-  const kategoriSecenekleri = [
-    ...new Set([
-      ...STANDART_KATEGORILER,
-      ...sorular
-        .map((soru) => soru.category)
-        .filter((kategori): kategori is string => kategori !== null),
-    ]),
-  ];
 
   function calistir(eylem: () => Promise<EylemDurumu>) {
     basla(async () => setMesaj(await eylem()));
@@ -102,7 +88,6 @@ export function SoruYonetimi({
                 {duzenlenenId === soru.id ? (
                   <SoruDuzenleFormu
                     soru={soru}
-                    kategoriler={kategoriSecenekleri}
                     kapat={() => setDuzenlenenId(null)}
                   />
                 ) : (
@@ -218,65 +203,57 @@ export function SoruYonetimi({
         </ol>
       )}
 
-      <SoruEkleFormu atolyeId={atolyeId} kategoriler={kategoriSecenekleri} />
+      <SoruEkleFormu atolyeId={atolyeId} />
     </div>
   );
 }
 
 /**
  * Başlık ve kategori girdileri — ekleme ve düzenleme formlarının ortak bloğu.
- * Kategori serbest metin; `<datalist>` standart başlıkları ve atölyede zaten
- * kullanılan kategorileri önerir.
+ * Kategori zorunlu ve sabit listeden seçilir (SORU_KATEGORILERI); rapor
+ * kademeleri kategori adına göre gruplandığı için serbest metin bırakılmadı.
  */
 function SoruEkAlanlari({
-  listeId,
-  kategoriler,
   durum,
   varsayilan,
 }: {
-  listeId: string;
-  kategoriler: string[];
   durum: EylemDurumu;
-  varsayilan?: { title: string | null; category: string | null };
+  varsayilan?: { title: string | null; category: string };
 }) {
   return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Alan
-          etiket="Kısa başlık (isteğe bağlı)"
-          hata={durum.alanHatalari?.title}
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Alan
+        etiket="Kısa başlık (isteğe bağlı)"
+        hata={durum.alanHatalari?.title}
+      >
+        <Girdi
+          name="title"
+          placeholder="Örnek: Duygu Düzenleme"
+          defaultValue={varsayilan?.title ?? ""}
+        />
+      </Alan>
+      <Alan etiket="Kategori" hata={durum.alanHatalari?.category}>
+        <select
+          name="category"
+          className={secimStili}
+          defaultValue={varsayilan?.category ?? ""}
+          required
         >
-          <Girdi
-            name="title"
-            placeholder="Örnek: Duygu Düzenleme"
-            defaultValue={varsayilan?.title ?? ""}
-          />
-        </Alan>
-        <Alan etiket="Kategori (isteğe bağlı)" hata={durum.alanHatalari?.category}>
-          <Girdi
-            name="category"
-            list={listeId}
-            placeholder="Örnek: Dersin İlgi ve Merak Alanları"
-            defaultValue={varsayilan?.category ?? ""}
-          />
-        </Alan>
-      </div>
-      <datalist id={listeId}>
-        {kategoriler.map((kategori) => (
-          <option key={kategori} value={kategori} />
-        ))}
-      </datalist>
-    </>
+          <option value="" disabled>
+            Seçin…
+          </option>
+          {SORU_KATEGORILERI.map((kategori) => (
+            <option key={kategori} value={kategori}>
+              {kategori}
+            </option>
+          ))}
+        </select>
+      </Alan>
+    </div>
   );
 }
 
-function SoruEkleFormu({
-  atolyeId,
-  kategoriler,
-}: {
-  atolyeId: string;
-  kategoriler: string[];
-}) {
+function SoruEkleFormu({ atolyeId }: { atolyeId: string }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     soruEkle.bind(null, atolyeId),
     {},
@@ -298,11 +275,7 @@ function SoruEkleFormu({
             required
           />
         </Alan>
-        <SoruEkAlanlari
-          listeId="kategori-listesi-ekle"
-          kategoriler={kategoriler}
-          durum={durum}
-        />
+        <SoruEkAlanlari durum={durum} />
         <GonderButonu>Soru ekle</GonderButonu>
       </form>
     </Kart>
@@ -311,11 +284,9 @@ function SoruEkleFormu({
 
 function SoruDuzenleFormu({
   soru,
-  kategoriler,
   kapat,
 }: {
   soru: SoruSatiri;
-  kategoriler: string[];
   kapat: () => void;
 }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
@@ -334,8 +305,6 @@ function SoruDuzenleFormu({
       </Alan>
 
       <SoruEkAlanlari
-        listeId={`kategori-listesi-${soru.id}`}
-        kategoriler={kategoriler}
         durum={durum}
         varsayilan={{ title: soru.title, category: soru.category }}
       />

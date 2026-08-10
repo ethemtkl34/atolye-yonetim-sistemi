@@ -173,7 +173,7 @@ export function atolyeOzetiHesapla(
 }
 
 export type KategoriOrtalamasi = {
-  /** Konu başlığı — "Dersin İlgi ve Merak Alanları" gibi. */
+  /** Konu başlığı — "İlgi ve Merak Alanları" gibi. */
   kategori: string;
   ortalama: number | null;
   /** Bu kategoride kaç geçerli puan var (Değerlendirilemedi hariç). */

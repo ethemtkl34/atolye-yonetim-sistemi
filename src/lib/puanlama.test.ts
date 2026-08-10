@@ -124,7 +124,7 @@ describe("formSatirlariOlustur", () => {
       id: "s1",
       text: "İlgi gösterir.",
       title: "İlgi",
-      category: "Dersin İlgi ve Merak Alanları",
+      category: "İlgi ve Merak Alanları",
       sortOrder: 0,
     },
     {
@@ -187,10 +187,10 @@ describe("formSatirlariOlustur", () => {
     const satirlar = formSatirlariOlustur(sorular, []);
 
     expect(satirlar[0].baslik).toBe("İlgi");
-    expect(satirlar[0].kategori).toBe("Dersin İlgi ve Merak Alanları");
+    expect(satirlar[0].kategori).toBe("İlgi ve Merak Alanları");
     expect(satirlar[0].kaydedilecekBaslik).toBe("İlgi");
     expect(satirlar[0].kaydedilecekKategori).toBe(
-      "Dersin İlgi ve Merak Alanları",
+      "İlgi ve Merak Alanları",
     );
     // Tek parçalı soru başlık/kategori taşımaz.
     expect(satirlar[1].baslik).toBeNull();

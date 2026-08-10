@@ -115,7 +115,7 @@ export type SoruGirdisi = {
   text: string;
   /** Kısa başlık (örn. "Duygu Düzenleme"); tek parçalı sorularda null. */
   title: string | null;
-  /** Konu başlığı (örn. "Dersin İlgi ve Merak Alanları"). */
+  /** Konu başlığı (örn. "İlgi ve Merak Alanları"). */
   category: string | null;
   sortOrder: number;
 };

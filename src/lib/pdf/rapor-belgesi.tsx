@@ -82,7 +82,7 @@ const stil = StyleSheet.create({
   },
   atolyeBasligi: { fontSize: 11, fontWeight: "bold", marginBottom: 2 },
   kucukMetin: { fontSize: 8, color: "#71717a", marginBottom: 6 },
-  // Soru listesi içindeki konu başlığı ("Dersin İlgi ve Merak Alanları") —
+  // Soru listesi içindeki konu başlığı ("İlgi ve Merak Alanları") —
   // bolumBasligi'nin küçük varyantı.
   kategoriBasligi: {
     fontSize: 8,

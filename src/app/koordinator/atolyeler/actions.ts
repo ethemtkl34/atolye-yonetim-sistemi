@@ -9,6 +9,7 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
+import { SORU_KATEGORILERI } from "@/lib/kurallar";
 
 /**
  * Atölye çeşitleri ve değerlendirme sorularının işlemleri (§2.1, §9.2).
@@ -44,12 +45,11 @@ const soruSemasi = z.object({
     .max(150, "Başlık en fazla 150 karakter olabilir")
     .optional()
     .transform((deger) => (deger ? deger : null)),
-  category: z
-    .string()
-    .trim()
-    .max(150, "Kategori en fazla 150 karakter olabilir")
-    .optional()
-    .transform((deger) => (deger ? deger : null)),
+  // Her soru bir kategoriye ait olmak zorunda; serbest metin değil, sabit
+  // listeden seçilir (gerekçe: lib/kurallar.ts, SORU_KATEGORILERI).
+  category: z.enum(SORU_KATEGORILERI, {
+    message: "Kategori seçin",
+  }),
 });
 
 /** Formdan soru alanlarını tek biçimde toplar (ekle + güncelle ortak). */
