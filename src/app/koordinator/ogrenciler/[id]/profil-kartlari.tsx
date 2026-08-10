@@ -64,28 +64,6 @@ export function VeliHucresi({
   );
 }
 
-export function KayitBolumu({
-  baslik,
-  kayitlar,
-  bosAciklama,
-  aksiyon,
-}: {
-  baslik: string;
-  kayitlar: ProfilKaydi[];
-  bosAciklama: string;
-  aksiyon?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">{baslik}</h2>
-        {aksiyon}
-      </div>
-      <ProfilKayitListesi kayitlar={kayitlar} bosAciklama={bosAciklama} />
-    </div>
-  );
-}
-
 /**
  * Kayıt kartları — başlıksız; katlanır bölümün içinde de kullanılıyor.
  * (Puanlama ekranlarındaki `KayitListesi` ile karışmasın diye "Profil" önekli.)

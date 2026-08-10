@@ -316,11 +316,12 @@ function KonuFormu({
       <Alan
         etiket="Açıklama"
         hata={durum.alanHatalari?.aciklama}
-        ipucu="İsteğe bağlı — işlenecek içeriğin ayrıntısı, etkinlikler, materyaller."
+        ipucu="Zorunlu — o hafta işlenen müfredat içeriği: konular, etkinlikler, materyaller. Veli raporundaki atölye paragrafı bu metinlerden üretilir."
       >
         <CokSatirli
           name="aciklama"
-          rows={3}
+          rows={5}
+          required
           defaultValue={durum.degerler?.aciklama ?? girdi?.aciklama ?? ""}
         />
       </Alan>

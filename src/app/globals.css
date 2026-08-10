@@ -59,6 +59,100 @@ html {
   color-scheme: light;
 }
 
+/*
+ * "Kil" (soft clay / skeuomorph) teması — şimdilik yalnızca öğrenci profili
+ * sayfasında pilot. Beğenilirse panelin tamamı bu dile taşınacak; o yüzden
+ * sınıflar sayfaya değil temaya göre adlandırıldı.
+ *
+ * Işık modeli: zemin yuzey-50 (#f6f0f3), ışık sol üstten. Kabartma çift
+ * gölgeyle (koyu sağ-alt + beyaz sol-üst) veriliyor; basılınca gölge içe
+ * dönüyor. Gölge renkleri zemine göre ayarlı — zemin değişirse bunlar da
+ * değişmeli.
+ */
+.kil-kutu {
+  border-radius: 20px;
+  border: 1px solid #fbf6f9;
+  background: linear-gradient(180deg, #fdfafc, #f3ebef);
+  box-shadow:
+    7px 7px 16px #e2d0d9,
+    -7px -7px 16px #ffffff,
+    inset 0 1px 0 #ffffff;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.kil-kutu:hover {
+  transform: translateY(-2px);
+}
+.kil-kutu:active {
+  transform: none;
+  box-shadow:
+    inset 5px 5px 12px #e2d0d9,
+    inset -5px -5px 12px #ffffff;
+}
+.kil-kutu:focus-visible {
+  outline: 2px solid var(--color-marka-600);
+  outline-offset: 2px;
+}
+
+/* Kutunun renkli ikon plakası — rengi satır içi değişkenle gelir. */
+.kil-ikon {
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--kil-renk), var(--kil-renk-koyu));
+  box-shadow:
+    0 2px 4px rgba(64, 24, 44, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Sayı rozeti — kabartmalı küçük hap. */
+.kil-rozet {
+  background: linear-gradient(180deg, #ffffff, #f1e8ed);
+  box-shadow:
+    0 2px 4px rgba(64, 24, 44, 0.22),
+    inset 0 1px 0 #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* İçe gömülü bilgi çipi (okul, veli telefonu). */
+.kil-cip {
+  border-radius: 999px;
+  background: #f2eaee;
+  box-shadow:
+    inset 2px 2px 5px #e0cfd8,
+    inset -2px -2px 5px #fffdfe;
+}
+
+/* Güvenlik uyarısı şeridi — basılı sarı etiket. */
+.kil-uyari {
+  border-radius: 14px;
+  border: 1px solid #e6cf97;
+  background: linear-gradient(180deg, #fff3d9, #f7e5bd);
+  box-shadow:
+    0 2px 4px rgba(122, 91, 22, 0.14),
+    inset 0 1px 0 #fffaef;
+}
+
+/* Açılır pencere — kalın kil plakası. */
+.kil-pencere {
+  border-radius: 24px;
+  border: none;
+  background: linear-gradient(180deg, #fdfbfc, #f4edf1);
+  box-shadow:
+    12px 12px 34px rgba(64, 24, 44, 0.35),
+    inset 0 1px 0 #ffffff;
+}
+.kil-pencere::backdrop {
+  background: rgba(91, 16, 53, 0.4);
+  backdrop-filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kil-kutu,
+  .kil-kutu:hover,
+  .kil-kutu:active {
+    transition: none;
+    transform: none;
+  }
+}
+
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }

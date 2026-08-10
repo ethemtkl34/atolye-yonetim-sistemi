@@ -31,12 +31,14 @@ const mufredatSemasi = z.object({
     .trim()
     .min(2, "Başlık en az 2 karakter olmalı")
     .max(150, "Başlık en fazla 150 karakter olabilir"),
+  // ZORUNLU: rapordaki "Atölyeler ve İçerikleri Hakkında" paragrafı bu
+  // metinlerden üretiliyor; açıklamasız hafta, paragrafa girecek içerik
+  // taşımaz. (Şemada sütun eski kayıtlar yüzünden nullable kalıyor.)
   aciklama: z
-    .string()
+    .string("Açıklama zorunlu — o haftanın müfredat içeriğini yazın")
     .trim()
-    .max(2000, "Açıklama en fazla 2000 karakter olabilir")
-    .optional()
-    .transform((d) => (d ? d : null)),
+    .min(20, "Açıklama en az 20 karakter olmalı — o haftanın müfredat içeriğini yazın")
+    .max(2000, "Açıklama en fazla 2000 karakter olabilir"),
 });
 
 const ogretmenSemasi = z.object({

@@ -3,13 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { Kart, KatlanirBolum, OzetHucresi, SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
+import { SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
 import {
   Bilgi,
-  KayitBolumu,
   ProfilKayitListesi,
   VeliHucresi,
 } from "./profil-kartlari";
+import { ProfilKutusu } from "./profil-kutulari";
 import {
   raporKapsamSecenekleri,
   raporOzetleri,
@@ -290,6 +290,15 @@ export default async function OgrenciProfilSayfasi(
     (kayit) => !aktifKayitlar.includes(kayit),
   );
 
+  // Kutu altyazıları: kutu açılmadan "içeride ne var" sorusuna cevap veren
+  // tek satır. Tarihler en yeni kayıttan geliyor (listeler zaten tarih desc).
+  const sonTerapi = gorusmeler[0]?.tarih;
+  const sonVeliGorusmesi = veliGorusmeleri[0]?.tarih;
+  const sonZekaTesti = zekaTestleri[0]?.tarih;
+  const aktifAtamaSayisi = atamaKayitlari.filter(
+    (a) => a.aktif && a.stajyerId,
+  ).length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -312,207 +321,264 @@ export default async function OgrenciProfilSayfasi(
             }
           />
         </div>
-      </div>
 
-      {/* --- Özet kartı: tek bakışta öğrenci. Ayrıntılar aşağıdaki kapalı
-          bölümlerde; buradaki her hücre "aramadan görülmesi gereken" bilgi.
-          Veli telefonları tıklanabilir — koordinatör en çok aileyi arıyor. */}
-      <Kart className="p-4">
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-5">
-          <OzetHucresi
-            etiket="Okul · Sınıf"
-            deger={
-              ogrenci.school || ogrenci.grade
-                ? [ogrenci.school, ogrenci.grade].filter(Boolean).join(" · ")
-                : null
-            }
-          />
-          <VeliHucresi etiket="Anne" veli={anne} />
-          <VeliHucresi etiket="Baba" veli={baba} />
-          <OzetHucresi
-            etiket="Aktif kayıt"
-            deger={String(aktifKayitlar.length)}
-          />
-          {/* Görüşme sayısı da görüşme verisidir; yetkisi olmayana hücre
-              hiç çizilmez (sayı bile sızıntı olur). */}
-          {gorusmeGorebilir ? (
-            <OzetHucresi
-              etiket="Görüşme"
-              deger={String(gorusmeler.length + veliGorusmeleri.length)}
-            />
+        {/* Özet çipleri: eski özet kartının yerine — aramadan görülmesi
+            gereken bilgi. Veli telefonları tıklanabilir, koordinatör en çok
+            aileyi arıyor. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {ogrenci.school || ogrenci.grade ? (
+            <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
+              {[ogrenci.school, ogrenci.grade].filter(Boolean).join(" · ")}
+            </span>
           ) : null}
-        </dl>
+          {[
+            { etiket: "Anne", veli: anne },
+            { etiket: "Baba", veli: baba },
+          ].map(({ etiket, veli }) =>
+            veli ? (
+              <span
+                key={etiket}
+                className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700"
+              >
+                {etiket}: {veli.fullName}
+                {veli.phone ? (
+                  <>
+                    {" · "}
+                    <a
+                      href={`tel:${veli.phone}`}
+                      className="text-marka-700 hover:underline"
+                    >
+                      {veli.phone}
+                    </a>
+                  </>
+                ) : null}
+              </span>
+            ) : null,
+          )}
+        </div>
 
         {saglik?.internSafetyNote ? (
-          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-medium text-amber-800">
+          <div className="kil-uyari mt-4 max-w-2xl px-4 py-3">
+            <p className="text-[11px] font-semibold tracking-wide text-amber-800 uppercase">
               Güvenlik uyarısı (stajyerler de görür)
             </p>
-            <p className="mt-1 text-sm text-amber-900">
+            <p className="mt-0.5 text-sm text-amber-900">
               {saglik.internSafetyNote}
             </p>
           </div>
         ) : null}
-      </Kart>
+      </div>
 
-      {/* --- Aktif kayıtlar --- */}
-      <KayitBolumu
-        baslik="Aktif kayıtlar"
-        kayitlar={aktifKayitlar}
-        bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
-        aksiyon={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {/* Katılım ve puanlama geçmişi kendi sayfalarında; eski "Geçmiş"
-                kart bölümü kaldırıldı, erişim bu iki bağlantıdan sürüyor. */}
-            <Link
-              href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
-              className={baglantiStili}
-            >
-              Katılım geçmişi
-            </Link>
-            {puanlamaGorebilir ? (
+      {/* --- Kutu ızgarası: her bölüm bir kutu, ayrıntı pencerede. Yetki
+          kuralları aynen sürüyor: yetkisiz bölümün kutusu HİÇ çizilmez
+          (sorgusu da yukarıda hiç atılmıyor). --- */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        <ProfilKutusu
+          renk="kayit"
+          baslik="Aktif kayıtlar"
+          altyazi={
+            aktifKayitlar.length > 0
+              ? `${aktifKayitlar.length} program devam ediyor`
+              : "Aktif kayıt yok"
+          }
+          adet={aktifKayitlar.length}
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <Link
-                href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
+                href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
                 className={baglantiStili}
               >
-                Puanlamalar
+                + Yeni kayıt
               </Link>
-            ) : null}
-            <Link
-              href={`/koordinator/kayitlar/yeni?studentId=${ogrenci.id}`}
-              className={baglantiStili}
+              <Link
+                href={`/koordinator/ogrenciler/${ogrenci.id}/gecmis`}
+                className={baglantiStili}
+              >
+                Katılım geçmişi
+              </Link>
+              {puanlamaGorebilir ? (
+                <Link
+                  href={`/koordinator/ogrenciler/${ogrenci.id}/puanlamalar`}
+                  className={baglantiStili}
+                >
+                  Puanlamalar
+                </Link>
+              ) : null}
+            </div>
+            <ProfilKayitListesi
+              kayitlar={aktifKayitlar}
+              bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
+            />
+          </div>
+        </ProfilKutusu>
+
+        {/* Görüşme kutuları danışmanlık yetkisine tabi; salt okunur, yazma
+            işlemleri Danışmanlık sayfasında. */}
+        {gorusmeGorebilir ? (
+          <>
+            <ProfilKutusu
+              renk="veli"
+              baslik="Veli görüşmeleri"
+              altyazi={
+                sonVeliGorusmesi
+                  ? `Son: ${tarihBicimle(sonVeliGorusmesi)}`
+                  : "Henüz kayıt yok"
+              }
+              adet={veliGorusmeleri.length}
             >
-              + Yeni kayıt
-            </Link>
-          </div>
-        }
-      />
-
-      {/* --- Görüşmeler — iki ayrı bölüm, ikisi de stajyerden ve danışmanlık
-          yetkisi olmayan rollerden gizli; burada SALT OKUNUR: ekleme, silme
-          ve not işlemleri Danışmanlık sayfasında. --- */}
-      {gorusmeGorebilir ? (
-        <>
-          <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
-          <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
-        </>
-      ) : null}
-
-      {/* --- Zeka testleri — belgeler yetkiye göre önizlenir (GORUNTULE) ya
-          da yalnızca listelenir (LISTE); yükleme ve silme Zeka testleri
-          sayfasında. Stajyerden gizli. --- */}
-      {zekaTestiYetkisi !== "YOK" ? (
-        <ZekaTestleriBolumu
-          mod={zekaTestiYetkisi === "LISTE" ? "liste" : "okuma"}
-          testler={zekaTestleri}
-        />
-      ) : null}
-
-      {/* --- Raporlar ve PDF geçmişi.
-
-          Rapor öğrenciye ait bir belge olduğu için listesi de içeriği de
-          burada duruyor: karta tıklayınca sayfadan çıkmadan bir pencere
-          açılıyor, düzenleme ve PDF üretimi de o pencerede yapılıyor. */}
-      {raporGorebilir ? (
-        <RaporBolumu
-          ogrenciId={ogrenci.id}
-          ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
-          raporlar={raporlar}
-          kapsamKayitlari={kapsamKayitlari}
-          acilisParametresi={acilisRaporu}
-        />
-      ) : null}
-
-      {/* --- Gelişim testleri — stajyerin dönem ortası/sonu doldurduğu
-          Sosyal Duygusal Bilişsel Beceriler testi. Puanlama yetkisine tabi. */}
-      {puanlamaGorebilir ? <GelisimBolumu kayitlar={gelisimKayitlari} /> : null}
-
-      {/* --- Arşiv katı: kapalı başlayan bölümler. Sık bakılmayan ayrıntılar
-          buraya indi; sayfa artık günlük işte tek ekran boyunda. --- */}
-
-      <KatlanirBolum baslik="Genel bilgiler">
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <Bilgi
-            etiket="Doğum tarihi"
-            deger={ogrenci.birthDate ? tarihBicimle(ogrenci.birthDate) : null}
-          />
-          <Bilgi etiket="Okul" deger={ogrenci.school} />
-          <Bilgi etiket="Sınıf" deger={ogrenci.grade} />
-        </dl>
-        {ogrenci.notes ? (
-          <div className="mt-3">
-            <p className="text-sm text-zinc-500">Notlar</p>
-            <p className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-800">
-              {ogrenci.notes}
-            </p>
-          </div>
+              <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
+            </ProfilKutusu>
+            <ProfilKutusu
+              renk="terapi"
+              baslik="Terapi görüşmeleri"
+              altyazi={
+                sonTerapi ? `Son: ${tarihBicimle(sonTerapi)}` : "Henüz kayıt yok"
+              }
+              adet={gorusmeler.length}
+            >
+              <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+            </ProfilKutusu>
+          </>
         ) : null}
-      </KatlanirBolum>
 
-      <KatlanirBolum baslik="Anne ve baba bilgileri">
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <Bilgi
-            etiket="Anne"
-            deger={
-              anne
-                ? `${anne.fullName}${anne.phone ? ` · ${anne.phone}` : ""}`
-                : null
+        {zekaTestiYetkisi !== "YOK" ? (
+          <ProfilKutusu
+            renk="zeka"
+            baslik="Zeka testleri"
+            altyazi={
+              sonZekaTesti
+                ? `Son: ${tarihBicimle(sonZekaTesti)}`
+                : "Belge yüklenmedi"
             }
-          />
-          <Bilgi
-            etiket="Baba"
-            deger={
-              baba
-                ? `${baba.fullName}${baba.phone ? ` · ${baba.phone}` : ""}`
-                : null
-            }
-          />
-        </dl>
-      </KatlanirBolum>
+            adet={zekaTestleri.length}
+          >
+            <ZekaTestleriBolumu
+              mod={zekaTestiYetkisi === "LISTE" ? "liste" : "okuma"}
+              testler={zekaTestleri}
+            />
+          </ProfilKutusu>
+        ) : null}
 
-      <KatlanirBolum
-        baslik="Sağlık ve özel durum"
-        etiket={
-          <span className="text-xs font-normal text-zinc-500">
-            Stajyerlere kapalı
-          </span>
-        }
-      >
-        {saglikSatirlari.length === 0 ? (
-          <p className="text-sm text-zinc-500">Kayıtlı sağlık bilgisi yok.</p>
-        ) : (
-          <dl className="space-y-3">
-            {saglikSatirlari.map((satir) => (
-              <div key={satir.etiket}>
-                <dt className="text-sm text-zinc-500">{satir.etiket}</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-800">
-                  {satir.deger}
-                </dd>
+        {raporGorebilir ? (
+          <ProfilKutusu
+            renk="rapor"
+            baslik="Raporlar"
+            altyazi={
+              raporlar.length > 0
+                ? `${raporlar.length} rapor`
+                : "Henüz rapor yok"
+            }
+            adet={raporlar.length}
+            // `?rapor=` derin bağlantısı: rapor penceresi bu kutunun içinde
+            // açıldığı için önce kutunun kendisi açılmalı.
+            baslangictaAcik={Boolean(acilisRaporu)}
+          >
+            <RaporBolumu
+              ogrenciId={ogrenci.id}
+              ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
+              raporlar={raporlar}
+              kapsamKayitlari={kapsamKayitlari}
+              acilisParametresi={acilisRaporu}
+            />
+          </ProfilKutusu>
+        ) : null}
+
+        {puanlamaGorebilir ? (
+          <ProfilKutusu
+            renk="gelisim"
+            baslik="Gelişim testleri"
+            altyazi={
+              gelisimKayitlari.length > 0
+                ? `${gelisimKayitlari.length} kayıt`
+                : "Henüz form yok"
+            }
+            adet={gelisimKayitlari.length}
+          >
+            <GelisimBolumu kayitlar={gelisimKayitlari} />
+          </ProfilKutusu>
+        ) : null}
+
+        <ProfilKutusu
+          renk="genel"
+          baslik="Genel bilgiler"
+          altyazi="Okul · sınıf · veliler"
+        >
+          <div className="space-y-4">
+            <dl className="grid gap-3 sm:grid-cols-3">
+              <Bilgi
+                etiket="Doğum tarihi"
+                deger={
+                  ogrenci.birthDate ? tarihBicimle(ogrenci.birthDate) : null
+                }
+              />
+              <Bilgi etiket="Okul" deger={ogrenci.school} />
+              <Bilgi etiket="Sınıf" deger={ogrenci.grade} />
+            </dl>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <VeliHucresi etiket="Anne" veli={anne} />
+              <VeliHucresi etiket="Baba" veli={baba} />
+            </dl>
+            {ogrenci.notes ? (
+              <div>
+                <p className="text-sm text-zinc-500">Notlar</p>
+                <p className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-800">
+                  {ogrenci.notes}
+                </p>
               </div>
-            ))}
-          </dl>
-        )}
-      </KatlanirBolum>
+            ) : null}
+          </div>
+        </ProfilKutusu>
 
-      <KatlanirBolum
-        baslik="Geçmiş kayıtlar"
-        etiket={
-          gecmisKayitlar.length > 0 ? (
-            <span className="text-xs font-normal text-zinc-500">
-              {gecmisKayitlar.length} kayıt
-            </span>
-          ) : undefined
-        }
-      >
-        <ProfilKayitListesi
-          kayitlar={gecmisKayitlar}
-          bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
-        />
-      </KatlanirBolum>
+        <ProfilKutusu
+          renk="saglik"
+          baslik="Sağlık · özel durum"
+          altyazi="Stajyerlere kapalı"
+        >
+          {saglikSatirlari.length === 0 ? (
+            <p className="text-sm text-zinc-500">Kayıtlı sağlık bilgisi yok.</p>
+          ) : (
+            <dl className="space-y-3">
+              {saglikSatirlari.map((satir) => (
+                <div key={satir.etiket}>
+                  <dt className="text-sm text-zinc-500">{satir.etiket}</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-800">
+                    {satir.deger}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </ProfilKutusu>
 
-      <KatlanirBolum baslik="Stajyer atamaları">
-        <StajyerAtamalari kayitlar={atamaKayitlari} />
-      </KatlanirBolum>
+        <ProfilKutusu
+          renk="gecmis"
+          baslik="Geçmiş kayıtlar"
+          altyazi={
+            gecmisKayitlar.length > 0
+              ? "Tamamlanan ve iptal kayıtlar"
+              : "Geçmiş kayıt yok"
+          }
+          adet={gecmisKayitlar.length}
+        >
+          <ProfilKayitListesi
+            kayitlar={gecmisKayitlar}
+            bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
+          />
+        </ProfilKutusu>
+
+        <ProfilKutusu
+          renk="stajyer"
+          baslik="Stajyer atamaları"
+          altyazi={
+            aktifAtamaSayisi > 0
+              ? `${aktifAtamaSayisi} aktif atama`
+              : "Atama yok"
+          }
+        >
+          <StajyerAtamalari kayitlar={atamaKayitlari} />
+        </ProfilKutusu>
+      </div>
     </div>
   );
 }
