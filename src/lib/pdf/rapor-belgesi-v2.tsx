@@ -429,6 +429,11 @@ function KademeTopu({
   );
 }
 
+/** "4,4" — puanların rapora basılış biçimi (bir ondalık, virgüllü). */
+function puanBicimle(deger: number): string {
+  return deger.toFixed(1).replace(".", ",");
+}
+
 /** Skaladaki soldan sağa sıra: gelişim yönünde Düşük → Yüksek. */
 const SKALA_SIRASI: Kademe[] = ["DUSUK", "ORTALAMA", "YUKSEK"];
 
@@ -658,9 +663,197 @@ function KademeGrafigi({
 }
 
 // ---------------------------------------------------------------------------
-// Sabit metinler — şablondaki kurumsal açıklamaların kademe diline uyarlanmış
-// hâlleri. Puan/ondalık iddiası taşıyan ifadeler kullanılmaz; rapor veliye
-// sayı göstermez.
+// 5'lik puan grafiği
+// ---------------------------------------------------------------------------
+
+const PUAN_ADIMI = 22; // 1 puanlık basamağın yüksekliği (pt)
+const PUAN_PLOT = PUAN_ADIMI * 5;
+
+// Örnek raporun beceriler grafiğindeki seri renkleri (öğrenci / grup).
+const OGRENCI_MAVI = "#4472C4";
+const GRUP_TURUNCU = "#ED7D31";
+
+type PuanSutunu = {
+  ad: string;
+  /** Sütundaki çubuklar; iki serili grafikte [öğrenci, grup] ya da
+   *  [ilgi, başarı]. null değer çubuk çizdirmez, "—" basılır. */
+  degerler: (number | null)[];
+  /** Kademe renkli grafiklerde çubuğun rengini veren bantlar. */
+  bantlar?: (BantBilgisi | null)[];
+};
+
+/**
+ * Şablondaki 5 puanlık çubuk grafik: eksen 0–5, değer etiketi çubuğun
+ * altında kırmızı ve bir ondalıklı (NOTLAR kutusundaki "5 puan üzerinden"
+ * açıklamasının karşılığı).
+ *
+ * İki kip:
+ * - `seriRenkleri` verilirse çubuklar o sabit renklerle çizilir (örnekteki
+ *   öğrenci/grup kıyası) ve değer etiketleri seri rengini alır.
+ * - Verilmezse çubuk rengini kademe paleti belirler; `cerceveliIkinci`
+ *   ikinci seriyi beyaz zeminli çerçeveli çizer (ilgi/başarı kıyası) ki
+ *   seriler gri baskıda da ayrışsın. Sayı etiketi her zaman ikinci kanaldır.
+ */
+function PuanGrafigi({
+  baslik,
+  sutunlar,
+  seriRenkleri,
+  seriAdlari,
+  cerceveliIkinci = false,
+}: {
+  baslik: string;
+  sutunlar: PuanSutunu[];
+  seriRenkleri?: string[];
+  seriAdlari?: string[];
+  cerceveliIkinci?: boolean;
+}) {
+  const cubukRengi = (sutun: PuanSutunu, seri: number): string =>
+    seriRenkleri?.[seri] ??
+    (sutun.bantlar?.[seri] ? KADEME_GORUNUMU[sutun.bantlar[seri]!.kademe].orta : "#a1a1aa");
+
+  return (
+    <View style={stil.grafikKutu} wrap={false}>
+      <Text style={stil.grafikBaslik}>{baslik}</Text>
+
+      <View style={{ flexDirection: "row" }}>
+        <View style={[stil.eksenSutunu, { height: PUAN_PLOT }]}>
+          {[1, 2, 3, 4, 5].map((puan) => (
+            <Text
+              key={puan}
+              style={[stil.eksenYazisi, { bottom: puan * PUAN_ADIMI - 3 }]}
+            >
+              {puan},00
+            </Text>
+          ))}
+        </View>
+
+        <View style={{ flex: 1, height: PUAN_PLOT, position: "relative" }}>
+          <View style={[stil.cizgi, { bottom: 0, backgroundColor: "#a1a1aa" }]} />
+          {[1, 2, 3, 4, 5].map((puan) => (
+            <View key={puan} style={[stil.cizgi, { bottom: puan * PUAN_ADIMI }]} />
+          ))}
+
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              flexDirection: "row",
+            }}
+          >
+            {sutunlar.map((sutun) => (
+              <View
+                key={sutun.ad}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                }}
+              >
+                {sutun.degerler.map((deger, seri) =>
+                  deger === null ? (
+                    <View
+                      key={seri}
+                      style={{
+                        width: 15,
+                        marginHorizontal: 2,
+                        height: 1.5,
+                        backgroundColor: "#a1a1aa",
+                      }}
+                    />
+                  ) : (
+                    <View
+                      key={seri}
+                      style={{
+                        width: 15,
+                        marginHorizontal: 2,
+                        height: Math.max(2, (Math.min(deger, 5) / 5) * PUAN_PLOT),
+                        backgroundColor:
+                          cerceveliIkinci && seri > 0 ? "#ffffff" : cubukRengi(sutun, seri),
+                        borderWidth: cerceveliIkinci && seri > 0 ? 1.4 : 0,
+                        borderColor: cubukRengi(sutun, seri),
+                      }}
+                    />
+                  ),
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: "row", marginLeft: 50 }}>
+        {sutunlar.map((sutun) => (
+          <View key={sutun.ad} style={{ flex: 1, paddingHorizontal: 2 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                flexWrap: "wrap",
+                marginTop: 3,
+              }}
+            >
+              {sutun.degerler.map((deger, seri) => (
+                <Text
+                  key={seri}
+                  style={[
+                    stil.cubukAltEtiket,
+                    {
+                      color: seriRenkleri?.[seri] ?? GRAFIK_KIRMIZI,
+                    },
+                  ]}
+                >
+                  {seri > 0 ? "  " : ""}
+                  {deger === null ? "—" : puanBicimle(deger)}
+                </Text>
+              ))}
+            </View>
+            <Text style={stil.cubukAdi}>{sutun.ad.toLocaleUpperCase("tr-TR")}</Text>
+          </View>
+        ))}
+      </View>
+
+      {seriAdlari ? (
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            marginTop: 8,
+          }}
+        >
+          {seriAdlari.map((ad, seri) => (
+            <View
+              key={ad}
+              style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 6 }}
+            >
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  marginRight: 3,
+                  backgroundColor:
+                    cerceveliIkinci && seri > 0
+                      ? "#ffffff"
+                      : (seriRenkleri?.[seri] ?? "#52525b"),
+                  borderWidth: cerceveliIkinci && seri > 0 ? 1.4 : 0,
+                  borderColor: "#52525b",
+                }}
+              />
+              <Text style={{ fontSize: 7 }}>{ad}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sabit metinler — örnek rapordan alınmış kurumsal açıklamalar.
 // ---------------------------------------------------------------------------
 
 // Örnek rapordan birebir alınmış sabit giriş metni.
@@ -677,7 +870,7 @@ const BECERILER_NOT =
   "Grafikte bulunan alanlar ile ilgili açıklama ve öğrencinin değerlendirme neticesi, her alan özelinde aşağıda ayrı ayrı sunulmuştur.";
 
 const ILGI_BASARI_GENEL_BILGI = [
-  "Atölye dönemi boyunca yapılan gözlemler doğrultusunda; eğitmen ve yardımcı eğitmenlerden alınan veriler, çapraz teyitle kademe grafiğine dönüştürülmüştür. Bu grafikler, çocuğunuzun atölyede katıldığı programlara karşı olan ilgi düzeyleri ile bu atölyelerde sergilediği performans doğrultusunda sağladığı başarıyı yansıtmaktadır.",
+  "Atölye dönemi boyunca yapılan gözlemler doğrultusunda; eğitmen ve yardımcı eğitmenlerden alınan veriler, çapraz teyitle karnelendirme programında puanlama grafiğine dönüştürülmüştür. Bu grafikler, çocuğunuzun atölyede katıldığı programlara karşı olan ilgi düzeyleri ile bu atölyelerde sergilediği performans doğrultusunda sağladığı başarıyı yansıtmaktadır.",
   "Bu grafikler ayrı ayrı değerlendirildiğinde;",
   "– Atölye ilgi düzeyi grafiği; çocuğun gördüğü farklı başlıktaki atölyelerden her birine gösterdiği ilgiyi yansıtmaktadır. Bununla beraber eş zamanlı her atölyenin birbirine mukayeseli ilgi düzeylerini de göstermektedir.",
   "– Atölye başarı düzeyi grafiği; atölye kazanımları ön plana alındığında, her bir atölye için hedeflenen kazanımlara ne derece ulaşabildiği ve çocuğun bu kazanımları ne derece edindiği ile alakalı verileri sunmaktadır.",
@@ -725,6 +918,14 @@ export function RaporBelgesiV2({
 
   const katilmayanlar = govde.atolyeKademeleri.filter(
     (a) => a.katilmadigiOturumSayisi > 0,
+  );
+
+  // Ham ortalama taşıyan (yeni) snapshot'larda 5'lik puan grafikleri çizilir;
+  // eski snapshot'lar kademe eksenli grafiklerle basılmaya devam eder.
+  const sayisalAtolyeVerisiVar = govde.atolyeKademeleri.some(
+    (a) =>
+      typeof a.ilgiOrtalamasi === "number" ||
+      typeof a.basariOrtalamasi === "number",
   );
 
   return (
@@ -912,13 +1113,32 @@ export function RaporBelgesiV2({
             />
 
             <View style={{ marginTop: 10 }}>
-              <KademeGrafigi
-                baslik="DUYGUSAL - SOSYAL - BİLİŞSEL BECERİLER GRAFİĞİ"
-                sutunlar={govde.gelisimAlanlari.map((alan) => ({
-                  ad: alanKisaAdi(alan.ad),
-                  bantlar: [alan.bant],
-                }))}
-              />
+              {/* Ham ortalama taşıyan raporlarda örnekteki 5'lik öğrenci-grup
+                  kıyas grafiği; taşımayan eski snapshot'larda kademe ekseni. */}
+              {govde.gelisimAlanlari.some(
+                (alan) => typeof alan.ogrenciOrtalamasi === "number",
+              ) ? (
+                <PuanGrafigi
+                  baslik="DUYGUSAL - SOSYAL - BİLİŞSEL BECERİLER GRAFİĞİ"
+                  sutunlar={govde.gelisimAlanlari.map((alan) => ({
+                    ad: alanKisaAdi(alan.ad),
+                    degerler: [
+                      alan.ogrenciOrtalamasi ?? null,
+                      alan.grupOrtalamasi ?? null,
+                    ],
+                  }))}
+                  seriRenkleri={[OGRENCI_MAVI, GRUP_TURUNCU]}
+                  seriAdlari={["Öğrenci Ortalaması", "Grup Ortalaması"]}
+                />
+              ) : (
+                <KademeGrafigi
+                  baslik="DUYGUSAL - SOSYAL - BİLİŞSEL BECERİLER GRAFİĞİ"
+                  sutunlar={govde.gelisimAlanlari.map((alan) => ({
+                    ad: alanKisaAdi(alan.ad),
+                    bantlar: [alan.bant],
+                  }))}
+                />
+              )}
             </View>
 
             <DikeyEtiketKutu
@@ -998,13 +1218,24 @@ export function RaporBelgesiV2({
             />
 
             <View style={{ marginTop: 10 }}>
-              <KademeGrafigi
-                baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ GRAFİĞİ"
-                sutunlar={govde.atolyeKademeleri.map((atolye) => ({
-                  ad: atolye.atolyeAdi,
-                  bantlar: [atolye.ilgi],
-                }))}
-              />
+              {sayisalAtolyeVerisiVar ? (
+                <PuanGrafigi
+                  baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ GRAFİĞİ"
+                  sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                    ad: atolye.atolyeAdi,
+                    degerler: [atolye.ilgiOrtalamasi ?? null],
+                    bantlar: [atolye.ilgi],
+                  }))}
+                />
+              ) : (
+                <KademeGrafigi
+                  baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ GRAFİĞİ"
+                  sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                    ad: atolye.atolyeAdi,
+                    bantlar: [atolye.ilgi],
+                  }))}
+                />
+              )}
             </View>
 
             <DikeyEtiketKutu
@@ -1024,13 +1255,24 @@ export function RaporBelgesiV2({
               altBilgi={altBilgi}
             />
 
-            <KademeGrafigi
-              baslik="ÖĞRENCİNİN ATÖLYELERDE SERGİLEDİĞİ BAŞARI GRAFİĞİ"
-              sutunlar={govde.atolyeKademeleri.map((atolye) => ({
-                ad: atolye.atolyeAdi,
-                bantlar: [atolye.basari],
-              }))}
-            />
+            {sayisalAtolyeVerisiVar ? (
+              <PuanGrafigi
+                baslik="ÖĞRENCİNİN ATÖLYELERDE SERGİLEDİĞİ BAŞARI GRAFİĞİ"
+                sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                  ad: atolye.atolyeAdi,
+                  degerler: [atolye.basariOrtalamasi ?? null],
+                  bantlar: [atolye.basari],
+                }))}
+              />
+            ) : (
+              <KademeGrafigi
+                baslik="ÖĞRENCİNİN ATÖLYELERDE SERGİLEDİĞİ BAŞARI GRAFİĞİ"
+                sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                  ad: atolye.atolyeAdi,
+                  bantlar: [atolye.basari],
+                }))}
+              />
+            )}
 
             <DikeyEtiketKutu
               etiket="EĞİTMENİN YORUMU"
@@ -1042,14 +1284,30 @@ export function RaporBelgesiV2({
               }
             />
 
-            <KademeGrafigi
-              baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ VE ATÖLYELERDE SERGİLEDİĞİ BAŞARI DÜZEYİ KIYASLAMA GRAFİĞİ"
-              sutunlar={govde.atolyeKademeleri.map((atolye) => ({
-                ad: atolye.atolyeAdi,
-                bantlar: [atolye.ilgi, atolye.basari],
-              }))}
-              seriAdlari={["İlgi", "Başarı"]}
-            />
+            {sayisalAtolyeVerisiVar ? (
+              <PuanGrafigi
+                baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ VE ATÖLYELERDE SERGİLEDİĞİ BAŞARI DÜZEYİ KIYASLAMA GRAFİĞİ"
+                sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                  ad: atolye.atolyeAdi,
+                  degerler: [
+                    atolye.ilgiOrtalamasi ?? null,
+                    atolye.basariOrtalamasi ?? null,
+                  ],
+                  bantlar: [atolye.ilgi, atolye.basari],
+                }))}
+                seriAdlari={["İlgi (dolu)", "Başarı (çerçeveli)"]}
+                cerceveliIkinci
+              />
+            ) : (
+              <KademeGrafigi
+                baslik="ÖĞRENCİNİN ATÖLYELERE OLAN İLGİ VE ATÖLYELERDE SERGİLEDİĞİ BAŞARI DÜZEYİ KIYASLAMA GRAFİĞİ"
+                sutunlar={govde.atolyeKademeleri.map((atolye) => ({
+                  ad: atolye.atolyeAdi,
+                  bantlar: [atolye.ilgi, atolye.basari],
+                }))}
+                seriAdlari={["İlgi", "Başarı"]}
+              />
+            )}
 
             <DikeyEtiketKutu
               etiket="EĞİTMENİN YORUMU"

@@ -34,6 +34,10 @@ export type GelisimAlaniSatiri = KademeSatiri & {
   kazanimlar: string[];
   /** Puan bandından üretilen değerlendirme cümlesi. */
   cumle: string | null;
+  /** 5'lik grafik için ham ortalamalar. Eski snapshot'larda yok; PDF o
+   *  durumda kademe eksenli grafiğe düşer. */
+  ogrenciOrtalamasi?: number | null;
+  grupOrtalamasi?: number | null;
 };
 
 export type AtolyeKademesi = {
@@ -42,6 +46,9 @@ export type AtolyeKademesi = {
   ilgi: BantBilgisi | null;
   /** "Dersin Yetenek Gelişim Alanları" ortalamasının kademesi. */
   basari: BantBilgisi | null;
+  /** 5'lik grafik için ham ortalamalar (eski snapshot'larda yok). */
+  ilgiOrtalamasi?: number | null;
+  basariOrtalamasi?: number | null;
   katildigiOturumSayisi: number;
   katilmadigiOturumSayisi: number;
 };
@@ -130,11 +137,16 @@ export function atolyeKademesiCikar(atolye: {
   katilmadigiOturumSayisi: number;
 }): AtolyeKademesi {
   const kategoriler = kategoriOrtalamalari(atolye.soruOrtalamalari);
+  const ilgiOrtalamasi = kategoriBul(kategoriler, ILGI_ANAHTARI);
+  const basariOrtalamasi = kategoriBul(kategoriler, BASARI_ANAHTARI);
 
   return {
     atolyeAdi: atolye.atolyeAdi,
-    ilgi: atolyeBandi(kategoriBul(kategoriler, ILGI_ANAHTARI)),
-    basari: atolyeBandi(kategoriBul(kategoriler, BASARI_ANAHTARI)),
+    ilgi: atolyeBandi(ilgiOrtalamasi),
+    basari: atolyeBandi(basariOrtalamasi),
+    // Ham ortalamalar 5'lik grafik için taşınır; kademe hesabı değişmez.
+    ilgiOrtalamasi,
+    basariOrtalamasi,
     katildigiOturumSayisi: atolye.katildigiOturumSayisi,
     katilmadigiOturumSayisi: atolye.katilmadigiOturumSayisi,
   };
@@ -163,6 +175,8 @@ export function gelisimAlanlariCikar(
       ad: alan.kategori,
       bant,
       kazanimlar: alanKazanimlari,
+      ogrenciOrtalamasi: alan.ortalama,
+      grupOrtalamasi,
       cumle: bant
         ? gelisimCumlesi(
             bant,
