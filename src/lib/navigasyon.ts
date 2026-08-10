@@ -77,15 +77,6 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     simge: "izgara",
   },
   {
-    etiket: "Değerlendirme soruları",
-    yol: "/koordinator/sorular",
-    modul: "sorular",
-    hazir: true,
-    paket: "P3",
-    bolum: "Atölyeler",
-    simge: "liste",
-  },
-  {
     etiket: "Öğrenciler",
     yol: "/koordinator/ogrenciler",
     modul: "ogrenciler",
