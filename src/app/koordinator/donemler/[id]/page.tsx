@@ -15,6 +15,7 @@ import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
 import { DurumSecici } from "@/components/durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
+import { AtolyeDegistirici } from "@/components/atolye-degistirici";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]">,
@@ -36,7 +37,7 @@ export default async function DonemDetaySayfasi(
 
   // Dönemin kendisi ortak (iki şube aynı takvimi kullanır); şubeye ait olan
   // gruplar ve kadro burada süzülüyor.
-  const [donem, aktifStajyerler, donemKayitSayilari, subeOgrencileri] = await Promise.all([
+  const [donem, aktifStajyerler, donemKayitSayilari, subeOgrencileri, aktifAtolyeler] = await Promise.all([
     db.term.findUnique({
       where: { id },
       include: {
@@ -97,6 +98,12 @@ export default async function DonemDetaySayfasi(
           select: { group: { select: { id: true, name: true } } },
         },
       },
+    }),
+    // Atölye değiştirici seçenekleri; programdakiler aşağıda eleniyor.
+    db.workshopType.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -219,21 +226,28 @@ export default async function DonemDetaySayfasi(
         </div>
         <p className="mt-1 text-sm text-zinc-600">
           Bu {donem.workshops.length} atölye, dönemin bütün gruplarında ve
-          bütün haftalarda uygulanır.
+          bütün haftalarda uygulanır. Değiştirme, puanlama girilmemiş
+          atölyelerde mümkündür.
         </p>
-        <ol className="mt-3 space-y-1">
-          {donem.workshops.map((atolye, sira) => (
-            <li key={atolye.id} className="flex gap-2 text-sm">
-              <span className="w-5 shrink-0 tabular-nums text-zinc-400">
-                {sira + 1}.
-              </span>
-              <span className="text-zinc-700">{atolye.workshopType.name}</span>
-              {atolye.teacherName ? (
-                <span className="text-zinc-500">· {atolye.teacherName}</span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+        <AtolyeDegistirici
+          hedef={{ tur: "donem", id: donem.id }}
+          atolyeler={donem.workshops.map((atolye) => ({
+            programAtolyeId: atolye.id,
+            ad: atolye.workshopType.name,
+            ogretmenAdi: atolye.teacherName,
+          }))}
+          secenekler={aktifAtolyeler.filter(
+            (aday) =>
+              !donem.workshops.some(
+                (atolye) => atolye.workshopTypeId === aday.id,
+              ),
+          ).map((aday) => ({ id: aday.id, ad: aday.name }))}
+          duzenlenebilir={
+            kullanici.yetkiler.donemler === "TAM" &&
+            donem.status !== "TAMAMLANDI" &&
+            donem.status !== "ARSIVLENDI"
+          }
+        />
       </Kart>
 
       {/* --- Takvim --- */}

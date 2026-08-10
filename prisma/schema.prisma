@@ -388,9 +388,14 @@ model Club {
   ///
   /// Kulüp eskiden TEK yarım gündü; artık dönem gibi haftalara yayılabiliyor
   /// ve hafta sayısı serbest (1 de olur, 30 da). Ayrı bir `ClubWeek` tablosu
-  /// açılmadı: kulüp haftasına bağlanan başka bir kayıt yok, liste sadece
-  /// grup açılırken oturum üretmek için okunuyor. Tablo, ilişkisi olmayan bir
+  /// açılmadı: kulüp haftasına bağlanan başka bir kayıt yok, liste grup
+  /// açılırken oturum üretmek için okunuyor. Tablo, ilişkisi olmayan bir
   /// veri için fazladan bir katman olurdu.
+  ///
+  /// Liste kulüp açıldıktan sonra da düzenlenebilir (kulupler/
+  /// takvim-eylemleri.ts): gün ekleme/silme/taşıma bütün grupların
+  /// oturumlarına uygulanır ve sıra değişirse müfredat günüyle birlikte
+  /// yeniden numaralanır.
   weekDates DateTime[] @db.Date
 
   description String?
@@ -440,15 +445,17 @@ model ClubWorkshop {
 /// Hafta çapası SAYIDIR (`weekNumber`), `TermWeek` FK'sı değil: puanlama
 /// ekranları haftayı iki program türünde de `Session.weekNumber` üzerinden
 /// okuyor ve kulübün hafta tablosu yok (hafta = `Club.weekDates` dizisindeki
-/// 1 tabanlı sıra; dizi yalnızca kulüp oluşturulurken yazıldığı için sıra
-/// sabittir — ileride weekDates düzenleme özelliği gelirse müfredat tarihle
-/// değil sırayla kayar). Telafi günlerinin hafta numarası olmadığı için
-/// (`Session.weekNumber = null`) telafi gününde müfredat gösterilmez.
+/// 1 tabanlı sıra). Kulüp takvimi düzenlendiğinde sıra değişirse oturumlar
+/// ve buradaki girdiler BİRLİKTE yeniden numaralanır — konu kendi gününü
+/// takip eder (bkz. kulupler/takvim-eylemleri.ts). Telafi günlerinin hafta
+/// numarası olmadığı için (`Session.weekNumber = null`) telafi gününde
+/// müfredat gösterilmez.
 ///
 /// Üst sınır (dönemde hafta sayısı, kulüpte gün sayısı) programa göre
 /// değişken olduğundan uygulama katmanında doğrulanır ("tam 5 atölye"
-/// kuralıyla aynı gerekçe). Programdan atölye çıkarma arayüzü bugün yok;
-/// eklenirse o eylem bu tablodaki (program, atölye) satırlarını da silmeli.
+/// kuralıyla aynı gerekçe). Programdan atölye çıkarılamaz, ancak DEĞİŞTİRİLİR
+/// (sayı sabit); değiştirme eylemi eski atölyenin buradaki satırlarını ve
+/// `AtolyeIcerigi` paragrafını da siler (bkz. mufredat/atolye-degistir-eylemi.ts).
 ///
 /// Şubeden BAĞIMSIZDIR (dönem/kulüp gibi ortak): iki şube aynı programı aynı
 /// müfredatla uygular.

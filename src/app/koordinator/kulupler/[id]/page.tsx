@@ -8,12 +8,23 @@ import { KULUP_DURUMLARI, KULUP_DURUM_GECISLERI } from "@/lib/durumlar";
 import { kulupDurumDegistir } from "../actions";
 import { kayitKapaliMesaji } from "@/lib/kayit-kurallari";
 import { kontenjanDurumu } from "@/lib/kayit-kurallari";
-import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
+import {
+  bugun,
+  grupZamani,
+  tarihBicimle,
+  tarihGunleBicimle,
+  tarihMetni,
+} from "@/lib/tarih";
 import { KULUP_ATOLYE_SAYISI } from "@/lib/kurallar";
 import { GrupEylemleri } from "@/components/grup-eylemleri";
 import { TopluKayitPaneli } from "@/components/toplu-kayit-paneli";
 import { DurumSecici } from "@/components/durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
+import {
+  KulupTakvimDuzenleyici,
+  type KulupGunu,
+} from "./kulup-takvim-duzenleyici";
+import { AtolyeDegistirici } from "@/components/atolye-degistirici";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/kulupler/[id]">,
@@ -35,7 +46,7 @@ export default async function KulupDetaySayfasi(
   const { id } = await props.params;
 
   // Kulübün kendisi ortak; her şube kendi gruplarını açar.
-  const [kulup, subeOgrencileri] = await Promise.all([
+  const [kulup, subeOgrencileri, haftaMufredati, aktifAtolyeler] = await Promise.all([
     db.club.findUnique({
       where: { id },
       include: {
@@ -73,7 +84,26 @@ export default async function KulupDetaySayfasi(
         },
       },
     }),
+    db.curriculumEntry.groupBy({
+      by: ["weekNumber"],
+      where: { clubId: id },
+      _count: true,
+    }),
+    // Atölye değiştirici seçenekleri; programdakiler aşağıda eleniyor.
+    db.workshopType.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
+
+  // şube-muaf: takvim düzenleyicinin gün başına puanlama sayısı. Takvim
+  // işlemi kulübün BÜTÜN gruplarına uygulanır; diğer şubenin puanlaması da
+  // günü silinmekten korur, bu yüzden sayım bilerek iki şubeyi kapsar.
+  const haftaOturumlari = await db.session.findMany({
+    where: { group: { clubId: id }, weekNumber: { not: null } },
+    select: { weekNumber: true, _count: { select: { scores: true } } },
+  });
 
   if (!kulup) notFound();
 
@@ -106,6 +136,32 @@ export default async function KulupDetaySayfasi(
   // okuma tarafı da kendini korusun.
   const gunler =
     kulup.weekDates.length > 0 ? kulup.weekDates : [kulup.date];
+
+  const takvimDuzenlenebilir =
+    kullanici.yetkiler.kulupler === "TAM" &&
+    (kulup.status === "TASLAK" || kulup.status === "KAYIT_ALIYOR");
+
+  const puanlamaSayilari = new Map<number, number>();
+  for (const oturum of haftaOturumlari) {
+    if (oturum.weekNumber === null) continue;
+    puanlamaSayilari.set(
+      oturum.weekNumber,
+      (puanlamaSayilari.get(oturum.weekNumber) ?? 0) + oturum._count.scores,
+    );
+  }
+  const mufredatSayilari = new Map(
+    haftaMufredati.map((satir) => [satir.weekNumber, satir._count]),
+  );
+
+  const bugunkuTarih = bugun();
+  const takvimGunleri: KulupGunu[] = gunler.map((gun, sira) => ({
+    anahtar: tarihMetni(gun),
+    gosterim: tarihGunleBicimle(gun),
+    haftaNo: sira + 1,
+    puanlamaSayisi: puanlamaSayilari.get(sira + 1) ?? 0,
+    mufredatSayisi: mufredatSayilari.get(sira + 1) ?? 0,
+    gecmis: gun.getTime() < bugunkuTarih.getTime(),
+  }));
 
   return (
     <div className="space-y-6">
@@ -144,23 +200,28 @@ export default async function KulupDetaySayfasi(
         </div>
       </div>
 
-      {gunler.length > 1 ? (
+      {takvimDuzenlenebilir || gunler.length > 1 ? (
         <Kart className="p-4">
           <h2 className="text-base font-semibold text-zinc-900">
             Kulüp takvimi
           </h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Bu günler yeni açılan grupların başlangıç takvimidir. Grup
-            açıldıktan sonra takvimi grubun kendi sayfasından düzenlenir.
+            {takvimDuzenlenebilir
+              ? "Buradaki değişiklik kulübün BÜTÜN gruplarına uygulanır ve gün sırası değişirse müfredat günüyle birlikte kayar. Tek grubu ilgilendiren erteleme ve telafiler grubun kendi takvim sayfasından yapılır."
+              : "Bu günler yeni açılan grupların başlangıç takvimidir. Grup açıldıktan sonra takvimi grubun kendi sayfasından düzenlenir."}
           </p>
-          <ol className="mt-3 grid gap-1 text-sm text-zinc-700 sm:grid-cols-2">
-            {gunler.map((gun, sira) => (
-              <li key={gun.toISOString()}>
-                <span className="text-zinc-400">{sira + 1}.</span>{" "}
-                {tarihGunleBicimle(gun)}
-              </li>
-            ))}
-          </ol>
+          {takvimDuzenlenebilir ? (
+            <KulupTakvimDuzenleyici kulupId={kulup.id} gunler={takvimGunleri} />
+          ) : (
+            <ol className="mt-3 grid gap-1 text-sm text-zinc-700 sm:grid-cols-2">
+              {gunler.map((gun, sira) => (
+                <li key={gun.toISOString()}>
+                  <span className="text-zinc-400">{sira + 1}.</span>{" "}
+                  {tarihGunleBicimle(gun)}
+                </li>
+              ))}
+            </ol>
+          )}
         </Kart>
       ) : null}
 
@@ -180,22 +241,24 @@ export default async function KulupDetaySayfasi(
           ) : null}
         </div>
         <p className="mt-1 text-sm text-zinc-600">
-          Kulüp tek yarım gün sürer; bu {kulup.workshops.length} atölye kulübün
-          bütün gruplarında uygulanır.
+          Bu {kulup.workshops.length} atölye kulübün bütün gruplarında
+          uygulanır. Değiştirme, puanlama girilmemiş atölyelerde mümkündür.
         </p>
-        <ol className="mt-3 space-y-1">
-          {kulup.workshops.map((atolye, sira) => (
-            <li key={atolye.id} className="flex gap-2 text-sm">
-              <span className="w-5 shrink-0 tabular-nums text-zinc-400">
-                {sira + 1}.
-              </span>
-              <span className="text-zinc-700">{atolye.workshopType.name}</span>
-              {atolye.teacherName ? (
-                <span className="text-zinc-500">· {atolye.teacherName}</span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+        <AtolyeDegistirici
+          hedef={{ tur: "kulup", id: kulup.id }}
+          atolyeler={kulup.workshops.map((atolye) => ({
+            programAtolyeId: atolye.id,
+            ad: atolye.workshopType.name,
+            ogretmenAdi: atolye.teacherName,
+          }))}
+          secenekler={aktifAtolyeler.filter(
+            (aday) =>
+              !kulup.workshops.some(
+                (atolye) => atolye.workshopTypeId === aday.id,
+              ),
+          ).map((aday) => ({ id: aday.id, ad: aday.name }))}
+          duzenlenebilir={takvimDuzenlenebilir}
+        />
       </Kart>
 
       {/* --- Gruplar --- */}
