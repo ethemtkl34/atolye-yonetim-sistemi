@@ -87,15 +87,27 @@ export function atolyeIcerikGirdisiYaz(girdi: AtolyeIcerikGirdisi): string {
  * söylemeyen ama bir şey söylüyormuş gibi duran bir metin olur; böyle bir
  * metni veliye göndermek, bölümü hiç basmamaktan kötüdür.
  */
+
+/**
+ * "1. hafta uygulaması", "… 2. hafta etkinlik ve gözlem konuları" gibi hafta
+ * numarasından başka bilgi taşımayan kalıplar — başlıkta da açıklamada da
+ * görülüyor.
+ */
+const YER_TUTUCU = /\d+\.\s*hafta\s+(uygulamas|etkinlik)/i;
+
 export function mufredatYeterliMi(
   haftalar: readonly { baslik: string; aciklama: string | null }[],
 ): boolean {
   const dolu = haftalar.filter((hafta) => {
     const baslik = hafta.baslik.trim();
-    // "1. hafta uygulaması" gibi, hafta numarasından başka bilgi taşımayan
-    // başlıklar sayılmaz.
-    const yerTutucu = /^\d+\.\s*hafta\s+uygulamas/i.test(baslik);
-    return !yerTutucu && (baslik.length > 0 || (hafta.aciklama ?? "").length > 0);
+    const aciklama = (hafta.aciklama ?? "").trim();
+    // Bir hafta iki yoldan sayılır: gerçek bir başlık YA DA gerçek bir
+    // açıklama. Açıklama artık zorunlu ve müfredatın asıl gövdesi orada;
+    // başlığı yer tutucu kalmış eski bir satır, açıklaması doluysa yeterli
+    // içerik taşıyor demektir.
+    const baslikGercek = baslik.length > 0 && !YER_TUTUCU.test(baslik);
+    const aciklamaGercek = aciklama.length > 0 && !YER_TUTUCU.test(aciklama);
+    return baslikGercek || aciklamaGercek;
   });
 
   return dolu.length >= 3;

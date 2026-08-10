@@ -23,6 +23,17 @@ describe("mufredatYeterliMi", () => {
     ).toBe(false);
   });
 
+  it("başlığı yer tutucu kalsa da gerçek açıklama sayılır", () => {
+    // Açıklama zorunlu hale geldi; müfredatın gövdesi orada taşınıyor.
+    expect(
+      mufredatYeterliMi([
+        { baslik: "1. hafta uygulaması", aciklama: "Temel kodlama kavramları: sıralama, döngüler ve koşullar; blok tabanlı araçlarla ilk proje." },
+        { baslik: "2. hafta uygulaması", aciklama: "Sensörler ve motorlarla ışığa tepki veren basit robot tasarımı." },
+        { baslik: "3. hafta uygulaması", aciklama: "Grup projesi: görev temelli robot yarışması ve hata ayıklama." },
+      ]),
+    ).toBe(true);
+  });
+
   it("üç dolu haftadan azı yetmez", () => {
     expect(
       mufredatYeterliMi([
