@@ -345,6 +345,36 @@ export async function raporBolumunuDuzenle(
   return { basari: "Metin güncellendi.", raporId };
 }
 
+/**
+ * Raporu ve ona bağlı PDF kayıtlarını kalıcı siler.
+ *
+ * YETKİ: raporlar modülünde TAM seviye (Kurum Yöneticisi, Koordinatör,
+ * Atölye Psikoloğu). Danışma görevlisi ve stajyer bu pencereyi zaten açamaz.
+ *
+ * PDF kayıtları şemada Restrict ile korunur (yanlışlıkla kaybolmasınlar);
+ * silme bilinçli bir işlem olduğu için önce PDF'ler sonra rapor aynı
+ * transaction içinde kaldırılır. Verilmiş PDF bağlantıları bundan sonra
+ * çalışmaz — onay metni bunu açıkça söyler.
+ */
+export async function raporSil(raporId: string): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    select: { id: true, studentId: true },
+  });
+  if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  await db.$transaction([
+    db.reportPdf.deleteMany({ where: { reportId: rapor.id } }),
+    db.report.delete({ where: { id: rapor.id } }),
+  ]);
+
+  revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
+  revalidatePath("/koordinator");
+  return { basari: "Rapor ve PDF'leri silindi." };
+}
+
 export type RaporPenceresiVerisi = {
   detay: RaporDetayi;
   pdfler: PdfKaydi[];

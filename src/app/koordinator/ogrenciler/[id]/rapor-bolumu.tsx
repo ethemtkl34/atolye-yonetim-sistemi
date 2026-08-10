@@ -2,9 +2,9 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, DonenHalka, Kart, Rozet, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
+import { Bildirim, Buton, DonenHalka, Rozet, butonStili } from "@/components/ui";
 import { tarihBicimle } from "@/lib/tarih";
-import type { KapsamKaydi, PdfKaydi, RaporOzeti } from "@/lib/rapor-verisi";
+import type { KapsamKaydi, RaporOzeti } from "@/lib/rapor-verisi";
 import {
   MetinDuzenleme,
   RaporIcerigi,
@@ -15,6 +15,7 @@ import {
   raporMetniDuzenle,
   raporOlustur,
   raporPenceresiVerisi,
+  raporSil,
   raporYenidenUret,
   type EylemDurumu,
   type RaporPenceresiVerisi,
@@ -37,14 +38,12 @@ export function RaporBolumu({
   ogrenciAdi,
   raporlar,
   kapsamKayitlari,
-  pdfler,
   acilisParametresi,
 }: {
   ogrenciId: string;
   ogrenciAdi: string;
   raporlar: RaporOzeti[];
   kapsamKayitlari: KapsamKaydi[];
-  pdfler: PdfKaydi[];
   /** `?rapor=` değeri: "yeni", bir rapor kimliği ya da yok. */
   acilisParametresi?: string;
 }) {
@@ -83,7 +82,9 @@ export function RaporBolumu({
   const [islemde, basla] = useTransition();
   // Hangi uzun işlemin sürdüğü — buton kendi spinner'ını gösterir, diğeri
   // yalnızca kilitlenir. `islemde` bitince kendiliğinden anlamsızlaşır.
-  const [surenIslem, setSurenIslem] = useState<"pdf" | "yeniden" | null>(null);
+  const [surenIslem, setSurenIslem] = useState<"pdf" | "yeniden" | "sil" | null>(
+    null,
+  );
 
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -177,6 +178,30 @@ export function RaporBolumu({
     });
   }
 
+  function raporuSil() {
+    if (pencere?.mod !== "detay") return;
+    const raporId = pencere.raporId;
+    const pdfSayisi = veri?.pdfler.length ?? 0;
+
+    const uyari =
+      pdfSayisi > 0
+        ? `Bu rapor ve rapora bağlı ${pdfSayisi} PDF kaydı kalıcı olarak silinecek; daha önce paylaşılmış PDF bağlantıları açılmaz olur. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`
+        : "Bu rapor kalıcı olarak silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?";
+    if (!window.confirm(uyari)) return;
+
+    setSurenIslem("sil");
+    basla(async () => {
+      const sonuc = await raporSil(raporId);
+      if (sonuc.hata) {
+        setIslemSonucu(sonuc);
+        return;
+      }
+      // Silinen raporun penceresi kapanır; arkadaki liste tazelenir.
+      kapat();
+      router.refresh();
+    });
+  }
+
   function yenidenUret() {
     if (pencere?.mod !== "detay") return;
     const raporId = pencere.raporId;
@@ -241,55 +266,6 @@ export function RaporBolumu({
               </button>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* --- PDF geçmişi --- */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">
-          PDF rapor geçmişi
-        </h2>
-
-        {pdfler.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
-            Henüz PDF oluşturulmamış. Bir raporu açıp “PDF oluştur” düğmesini
-            kullanın; üretilen PDF’ler burada kalıcı olarak saklanır.
-          </p>
-        ) : (
-          <Kart className="divide-y divide-yuzey-100">
-            {pdfler.map((pdf) => (
-              <div
-                key={pdf.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm text-zinc-800">
-                    {tarihBicimle(pdf.olusturmaZamani)} tarihli PDF
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {tarihBicimle(pdf.raporUretimZamani)} raporundan üretildi
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => ac({ mod: "detay", raporId: pdf.raporId })}
-                    className={geriBaglantiStili}
-                  >
-                    Raporu gör
-                  </button>
-                  <a
-                    href={pdf.adres}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={baglantiStili}
-                  >
-                    PDF’i aç
-                  </a>
-                </div>
-              </div>
-            ))}
-          </Kart>
         )}
       </div>
 
@@ -424,6 +400,21 @@ export function RaporBolumu({
                     </span>
                   ) : (
                     "Güncel puanlarla yeniden üret"
+                  )}
+                </Buton>
+                <Buton
+                  tur="tehlike"
+                  disabled={islemde}
+                  onClick={raporuSil}
+                  className="ml-auto"
+                >
+                  {islemde && surenIslem === "sil" ? (
+                    <span className="inline-flex items-center gap-2">
+                      <DonenHalka />
+                      Siliniyor…
+                    </span>
+                  ) : (
+                    "Raporu sil"
                   )}
                 </Buton>
               </div>

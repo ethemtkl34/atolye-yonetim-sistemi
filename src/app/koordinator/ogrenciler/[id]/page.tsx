@@ -11,7 +11,6 @@ import {
   VeliHucresi,
 } from "./profil-kartlari";
 import {
-  pdfGecmisi,
   raporKapsamSecenekleri,
   raporOzetleri,
 } from "@/lib/rapor-verisi";
@@ -128,7 +127,6 @@ export default async function OgrenciProfilSayfasi(
 
   const [
     raporlar,
-    pdfler,
     kapsamKayitlari,
     aktifStajyerler,
     gorusmeKayitlari,
@@ -137,7 +135,6 @@ export default async function OgrenciProfilSayfasi(
     gelisimKayitlari,
   ] = await Promise.all([
       raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
-      raporGorebilir ? pdfGecmisi({ subeId, ogrenciId: id }) : [],
       // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
       // pencere açılmasa da peşinen okunuyor.
       raporGorebilir ? raporKapsamSecenekleri(id, subeId) : [],
@@ -422,7 +419,6 @@ export default async function OgrenciProfilSayfasi(
           ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
           raporlar={raporlar}
           kapsamKayitlari={kapsamKayitlari}
-          pdfler={pdfler}
           acilisParametresi={acilisRaporu}
         />
       ) : null}
