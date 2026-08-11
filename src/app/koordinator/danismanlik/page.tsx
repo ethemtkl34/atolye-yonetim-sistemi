@@ -14,6 +14,12 @@ import {
   type VeliGorusmesiSatiri,
 } from "@/components/veli-gorusmeleri-bolumu";
 import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
+import {
+  TERAPI_TURLERI,
+  TERAPI_TURU_SLUGLARI,
+  terapiTuruSlugMu,
+  type TerapiTuru,
+} from "@/lib/terapi-turleri";
 
 export const metadata: Metadata = {
   title: "Danışmanlık",
@@ -21,17 +27,19 @@ export const metadata: Metadata = {
 
 const TEMEL_YOL = "/koordinator/danismanlik";
 
-/** Adresteki terapi türü slug'ı → veritabanı enum değeri. */
-const TERAPI_TURU_SORGULARI = {
-  oyun: "OYUN_TERAPISI",
-  danisan: "DANISAN_TERAPISI",
-} as const;
-
-/** Tür seçimine göre alt süzgecin tanımı — iki ikiz JSX bloğu yerine veri. */
+/**
+ * Tür seçimine göre alt süzgecin tanımı — iki ikiz JSX bloğu yerine veri.
+ *
+ * `bicim` gerekli, çünkü iki süzgeç aynı sözleşmeyi paylaşsa da aynı ölçüde
+ * değil: veli tarafı üç kısa durum (çip grubu), terapi tarafı altı uzun tür
+ * adı — çip olarak süzgeç çubuğunu tek başına doldururdu, açılır liste olarak
+ * duruyor (`SuzgecSecici`, öğrenci süzgecindeki gibi).
+ */
 const ALT_SUZGECLER = {
   veli: {
     etiket: "Durum",
     anahtar: "durum",
+    bicim: "cip",
     secenekler: [
       { deger: "tumu", etiket: "Tümü" },
       { deger: "bekliyor", etiket: "Not bekliyor" },
@@ -41,11 +49,11 @@ const ALT_SUZGECLER = {
   terapi: {
     etiket: "Terapi türü",
     anahtar: "terapi",
-    secenekler: [
-      { deger: "tumu", etiket: "Tümü" },
-      { deger: "oyun", etiket: "Oyun terapisi" },
-      { deger: "danisan", etiket: "Danışan terapisi" },
-    ],
+    bicim: "secici",
+    secenekler: TERAPI_TURLERI.map((tur) => ({
+      deger: tur.slug as string,
+      etiket: tur.etiket,
+    })),
   },
 } as const;
 
@@ -76,10 +84,9 @@ export default async function DanismanlikSayfasi(
     parametreler.durum === "bekliyor" || parametreler.durum === "tamamlandi"
       ? parametreler.durum
       : "tumu";
-  const terapiTuruSuzgeci =
-    parametreler.terapi === "oyun" || parametreler.terapi === "danisan"
-      ? parametreler.terapi
-      : "tumu";
+  const terapiTuruSuzgeci = terapiTuruSlugMu(parametreler.terapi)
+    ? parametreler.terapi
+    : "tumu";
   const ogrenciSuzgeci =
     typeof parametreler.ogrenci === "string" ? parametreler.ogrenci : "";
 
@@ -132,7 +139,7 @@ export default async function DanismanlikSayfasi(
             student: { branchId: subeId },
             ...(ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {}),
             ...(terapiTuruSuzgeci !== "tumu"
-              ? { therapyType: TERAPI_TURU_SORGULARI[terapiTuruSuzgeci] }
+              ? { therapyType: TERAPI_TURU_SLUGLARI[terapiTuruSuzgeci] }
               : {}),
           },
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
@@ -173,14 +180,27 @@ export default async function DanismanlikSayfasi(
             { deger: "terapi", etiket: "Terapi görüşmeleri" },
           ]}
         />
-        <SuzgecGrubu
-          etiket={altSuzgec.etiket}
-          temelYol={TEMEL_YOL}
-          anahtar={altSuzgec.anahtar}
-          secili={altDeger}
-          digerler={korunanlarHaric(altSuzgec.anahtar)}
-          secenekler={altSuzgec.secenekler}
-        />
+        {altSuzgec.bicim === "cip" ? (
+          <SuzgecGrubu
+            etiket={altSuzgec.etiket}
+            temelYol={TEMEL_YOL}
+            anahtar={altSuzgec.anahtar}
+            secili={altDeger}
+            digerler={korunanlarHaric(altSuzgec.anahtar)}
+            secenekler={altSuzgec.secenekler}
+          />
+        ) : (
+          // Açılır listede "Tümü" boş dizeyle temsil ediliyor (`SuzgecSecici`
+          // sözleşmesi); sayfanın "tumu" değeri kapıda çevriliyor.
+          <SuzgecSecici
+            etiket={altSuzgec.etiket}
+            temelYol={TEMEL_YOL}
+            anahtar={altSuzgec.anahtar}
+            secili={altDeger === "tumu" ? "" : altDeger}
+            digerler={korunanlarHaric(altSuzgec.anahtar)}
+            secenekler={altSuzgec.secenekler}
+          />
+        )}
         <SuzgecSecici
           etiket="Öğrenci"
           temelYol={TEMEL_YOL}
@@ -240,7 +260,7 @@ type TerapiKaydi = OrtakIliskiler & {
   date: Date;
   counselorName: string;
   counselorType: "PSIKOLOG" | "KOORDINATOR";
-  therapyType: "OYUN_TERAPISI" | "DANISAN_TERAPISI";
+  therapyType: TerapiTuru;
   notes: string;
   createdAt: Date;
 };

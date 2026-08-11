@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { bugun, tarihBicimle, tarihCozumle } from "@/lib/tarih";
 import { formDegerleri } from "@/lib/formlar";
+import { TERAPI_TURLERI } from "@/lib/terapi-turleri";
 import type { EylemDurumu } from "@/lib/formlar";
 
 /**
@@ -47,9 +48,10 @@ const gorusmeSemasi = z.object({
   tur: z.enum(["PSIKOLOG", "KOORDINATOR"], {
     message: "Görüşmeci türünü seçin",
   }),
-  terapiTuru: z.enum(["OYUN_TERAPISI", "DANISAN_TERAPISI"], {
-    message: "Terapi türünü seçin",
-  }),
+  terapiTuru: z.enum(
+    TERAPI_TURLERI.map((tur) => tur.deger),
+    { message: "Terapi türünü seçin" },
+  ),
   not: z
     .string()
     .trim()

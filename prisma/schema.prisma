@@ -116,13 +116,21 @@ enum CounselorType {
   KOORDINATOR
 }
 
-/// Terapi görüşmesinin türü — kurum iki tür yürütüyor ve "bu dönem kaç oyun
-/// terapisi yapıldı" sorusu ancak sayılabilir bir alandan cevaplanır.
-/// Görüşmeci türünden (CounselorType) ayrı bir eksen: oyun terapisini de
-/// danışan terapisini de psikolog veya koordinatör yürütebilir.
+/// Terapi görüşmesinin türü — "bu dönem kaç oyun terapisi yapıldı" sorusu
+/// ancak sayılabilir bir alandan cevaplanır. Görüşmeci türünden
+/// (CounselorType) ayrı bir eksen: türlerin hepsini psikolog da koordinatör
+/// de yürütebilir.
+///
+/// Liste kurumun hizmet yelpazesiyle değişiyor; arayüz tarafındaki etiket ve
+/// adres slug'larının tek kaynağı `src/lib/terapi-turleri.ts` — buraya bir
+/// tür eklemek o dosyayı da güncellemeyi gerektirir.
 enum TherapyType {
   OYUN_TERAPISI
-  DANISAN_TERAPISI
+  ERGEN_TERAPISI
+  ERGOTERAPI
+  BILISSEL_MUDAHALE
+  KISA_AILE_DANISMANLIGI
+  UZUN_AILE_DANISMANLIGI
 }
 
 /// Kaydın neden iptal edildiği.
@@ -649,8 +657,7 @@ model CounselingSession {
 
   counselorName String
   counselorType CounselorType
-  /// Oyun terapisi mi, danışan terapisi mi. Sonradan eklendi; migration
-  /// mevcut satırları DANISAN_TERAPISI ile doldurur.
+  /// Görüşmenin hangi terapi türü kapsamında yapıldığı (bkz. TherapyType).
   therapyType   TherapyType
   notes         String
 

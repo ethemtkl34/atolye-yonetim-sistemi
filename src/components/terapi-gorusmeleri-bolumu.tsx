@@ -25,6 +25,11 @@ import {
 } from "@/components/bolum-iskeleti";
 import { tarihBicimle } from "@/lib/tarih";
 import {
+  TERAPI_TURLERI,
+  TERAPI_TURU_ETIKETLERI,
+  type TerapiTuru,
+} from "@/lib/terapi-turleri";
+import {
   terapiGorusmesiEkle,
   terapiGorusmesiSil,
   type GorusmeEylemDurumu,
@@ -55,7 +60,7 @@ export type TerapiGorusmesiSatiri = {
   tarih: Date;
   gorusmeciAdi: string;
   tur: "PSIKOLOG" | "KOORDINATOR";
-  terapiTuru: "OYUN_TERAPISI" | "DANISAN_TERAPISI";
+  terapiTuru: TerapiTuru;
   not: string;
   ekleyen: string | null;
   eklenmeTarihi: Date;
@@ -64,14 +69,6 @@ export type TerapiGorusmesiSatiri = {
 const TUR_ETIKETLERI: Record<TerapiGorusmesiSatiri["tur"], string> = {
   PSIKOLOG: "Psikolog",
   KOORDINATOR: "Koordinatör",
-};
-
-export const TERAPI_TURU_ETIKETLERI: Record<
-  TerapiGorusmesiSatiri["terapiTuru"],
-  string
-> = {
-  OYUN_TERAPISI: "Oyun terapisi",
-  DANISAN_TERAPISI: "Danışan terapisi",
 };
 
 export function TerapiGorusmeleriBolumu({
@@ -194,11 +191,14 @@ export function TerapiGorusmeleriBolumu({
               <Alan etiket="Terapi türü" hata={durum.alanHatalari?.terapiTuru}>
                 <select
                   name="terapiTuru"
-                  defaultValue={deger("terapiTuru") ?? "OYUN_TERAPISI"}
+                  defaultValue={deger("terapiTuru") ?? TERAPI_TURLERI[0].deger}
                   className={secimStili}
                 >
-                  <option value="OYUN_TERAPISI">Oyun terapisi</option>
-                  <option value="DANISAN_TERAPISI">Danışan terapisi</option>
+                  {TERAPI_TURLERI.map((terapiTuru) => (
+                    <option key={terapiTuru.deger} value={terapiTuru.deger}>
+                      {terapiTuru.etiket}
+                    </option>
+                  ))}
                 </select>
               </Alan>
 
@@ -261,11 +261,10 @@ export function TerapiGorusmeleriBolumu({
                   {gorusme.ogrenciAdi}
                 </span>
               ) : null}
-              <Rozet
-                tur={gorusme.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"}
-              >
-                {TERAPI_TURU_ETIKETLERI[gorusme.terapiTuru]}
-              </Rozet>
+              {/* Tür ayrımını etiketin kendisi taşır; altı türe renk kodu
+                  vermek hem palete sığmaz hem de olmayan bir öncelik sırası
+                  ima ederdi. */}
+              <Rozet>{TERAPI_TURU_ETIKETLERI[gorusme.terapiTuru]}</Rozet>
               <span className="truncate text-sm text-zinc-600">
                 {gorusme.gorusmeciAdi}
               </span>
@@ -284,11 +283,7 @@ export function TerapiGorusmeleriBolumu({
               <h3 className="text-base font-semibold text-zinc-900">
                 {tarihBicimle(secili.tarih)}
               </h3>
-              <Rozet
-                tur={secili.terapiTuru === "OYUN_TERAPISI" ? "notr" : "pasif"}
-              >
-                {TERAPI_TURU_ETIKETLERI[secili.terapiTuru]}
-              </Rozet>
+              <Rozet>{TERAPI_TURU_ETIKETLERI[secili.terapiTuru]}</Rozet>
             </>
           ) : null
         }
