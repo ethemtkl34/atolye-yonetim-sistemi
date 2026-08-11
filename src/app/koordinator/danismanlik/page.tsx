@@ -26,6 +26,7 @@ import {
   terapiTuruSlugMu,
   type TerapiTuru,
 } from "@/lib/terapi-turleri";
+import { DanisanBasvurusuFormu } from "@/components/danisan-basvurusu-formu";
 
 export const metadata: Metadata = {
   title: "Danışmanlık",
@@ -187,6 +188,9 @@ export default async function DanismanlikSayfasi(
       <SayfaBasligi
         baslik="Danışmanlık"
         aciklama="Veli görüşmeleri (mini test + görüşme brief'i) ve terapi görüşmeleri buradan yönetilir; bütün öğrenciler tek listede. Veli görüşmesi öğrencinin kendi profilinden de eklenebilir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
+        aksiyon={
+          <DanisanBasvurusuFormu ogrenciSecenekleri={ogrenciSecenekleri} />
+        }
       />
 
       <SuzgecCubugu>

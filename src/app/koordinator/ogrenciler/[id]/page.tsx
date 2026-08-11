@@ -29,6 +29,10 @@ import {
 } from "@/components/veli-gorusmeleri-bolumu";
 import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
 import {
+  DanisanBasvurusuOzeti,
+  type BasvuruOzeti,
+} from "@/components/danisan-basvurusu-ozeti";
+import {
   ZekaTestleriBolumu,
   type ZekaTestiSatiri,
 } from "@/components/zeka-testleri-bolumu";
@@ -138,6 +142,7 @@ export default async function OgrenciProfilSayfasi(
     kapsamKayitlari,
     aktifStajyerler,
     gorusmeKayitlari,
+    basvuruKaydi,
     veliGorusmeKayitlari,
     zekaTestiKayitlari,
     gelisimKayitlari,
@@ -161,6 +166,12 @@ export default async function OgrenciProfilSayfasi(
             include: { createdBy: { select: { name: true } } },
           })
         : [],
+      // GİZLİLİK: danışan başvurusu da görüşme verisiyle aynı kurala tabi.
+      gorusmeGorebilir
+        ? db.therapyIntake.findFirst({
+            where: { studentId: id, student: { branchId: subeId } },
+          })
+        : null,
       // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir.
       gorusmeGorebilir
         ? db.parentMeeting.findMany({
@@ -335,6 +346,29 @@ export default async function OgrenciProfilSayfasi(
   // istemcinin saat dilimi günü kaydırmasın (Danışmanlık sayfasıyla aynı).
   const bugunMetni = tarihMetni(bugun());
 
+  /** Başvuru satırı → özet bileşeninin beklediği biçim (null alanlar korunur). */
+  const danisanBasvurusu: BasvuruOzeti | null = basvuruKaydi
+    ? {
+        terapiTuru: basvuruKaydi.therapyType,
+        basvuruNedeni: basvuruKaydi.reason,
+        yonlendiren: basvuruKaydi.referredBy,
+        oncekiDestek: basvuruKaydi.previousSupport,
+        tani: basvuruKaydi.diagnosis,
+        kardesler: basvuruKaydi.siblings,
+        birlikteYasadiklari: basvuruKaydi.livesWith,
+        ebeveynDurumu: basvuruKaydi.parentStatus,
+        anneEgitim: basvuruKaydi.motherEducation,
+        anneMeslek: basvuruKaydi.motherOccupation,
+        babaEgitim: basvuruKaydi.fatherEducation,
+        babaMeslek: basvuruKaydi.fatherOccupation,
+        ailedeRuhsalOyku: basvuruKaydi.familyHistory,
+        // İlaç bilgisi sağlık kaydında yaşıyor; başvuru formu oraya yazıyor.
+        ilac: ogrenci.healthInfo?.medications ?? null,
+        eklenmeTarihi: basvuruKaydi.createdAt,
+        guncellemeTarihi: basvuruKaydi.updatedAt,
+      }
+    : null;
+
   const sonTerapi = gorusmeler[0]?.tarih;
   const sonVeliGorusmesi = veliGorusmeleri[0]?.tarih;
   const sonZekaTesti = zekaTestleri[0]?.tarih;
@@ -493,7 +527,17 @@ export default async function OgrenciProfilSayfasi(
               }
               adet={gorusmeler.length}
             >
-              <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+              {/* Başvuru seansların ÜSTÜNDE: terapi kutusunu açan kişi çocuğun
+                  neden geldiğini ve dosyanın doldurulup doldurulmadığını
+                  önce görsün. */}
+              <div className="space-y-4">
+                <DanisanBasvurusuOzeti
+                  ogrenci={{ id: ogrenci.id, ad: ogrenciAdi }}
+                  basvuru={danisanBasvurusu}
+                  yazabilir={gorusmeYazabilir}
+                />
+                <TerapiGorusmeleriBolumu mod="okuma" gorusmeler={gorusmeler} />
+              </div>
             </ProfilKutusu>
           </>
         ) : null}

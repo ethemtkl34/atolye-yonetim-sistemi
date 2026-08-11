@@ -100,6 +100,19 @@ enum GuardianType {
   BABA
 }
 
+/// Çocuğun ebeveynlerinin birliktelik durumu — danışan başvurusunda alınır.
+/// Serbest metin yerine etiket: terapide "ayrı yaşayan ebeveyn" bilgisi
+/// süzülebilir ve sayılabilir olmalı. DIGER, listeye sığmayan durumlar için
+/// (vasi yanında kalma, koruyucu aile) açık kapı bırakıyor; ayrıntısı
+/// `livesWith` alanına yazılır.
+enum ParentStatus {
+  BIRLIKTE
+  AYRI
+  BOSANMIS
+  VEFAT
+  DIGER
+}
+
 enum EnrollmentStatus {
   AKTIF
   IPTAL
@@ -224,6 +237,7 @@ model User {
   editedReports       Report[]     @relation("RaporuDuzenleyen")
   addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
   addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
+  addedTherapyIntakes     TherapyIntake[]     @relation("DanisanBasvurusuEkleyen")
   addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
   filledDevelopmentAssessments DevelopmentAssessment[] @relation("GelisimiDolduran")
   generatedWorkshopContents    AtolyeIcerigi[]         @relation("AtolyeIcerigiUreten")
@@ -581,6 +595,7 @@ model Student {
 
   guardians          Guardian[]
   healthInfo         HealthInfo?
+  therapyIntake      TherapyIntake?
   enrollments        Enrollment[]
   reports            Report[]
   counselingSessions CounselingSession[]
@@ -710,6 +725,66 @@ model ParentMeeting {
   createdAt       DateTime @default(now())
 
   @@index([studentId, date])
+}
+
+/// Danışan başvurusu — çocuk terapiye alınırken bir kez doldurulan bilgiler.
+///
+/// NEDEN AYRI MODEL: terapi danışanı olmak öğrencilikten bağımsız bir durum.
+/// Psikologlar atölyeye hiç girmeyen çocuk da alıyor, atölyeden gelen çocuk da
+/// sonradan terapiye başlayabiliyor. Bu alanlar `Student` üzerinde dursaydı
+/// atölye öğrencilerinin çoğunda boş kalır, "başvurusu var mı" sorusu da
+/// alanların doluluğundan tahmin edilirdi. Ayrı satır olunca kaydın VARLIĞI
+/// cevabın kendisi olur ve başvuru çocuk sisteme girdikten aylar sonra da
+/// açılabilir.
+///
+/// Öğrenci başına EN FAZLA BİR başvuru (`@unique`): bu bir görüşme kaydı değil,
+/// çocuğun terapi dosyasının kapağı — terapi türü değişirse veya bilgi
+/// güncellenirse üzerine yazılır. Seans seans biriken kayıt
+/// `CounselingSession`da.
+///
+/// GİZLİLİK (§3.2): sağlık bilgisi kuralına tabi — stajyer sorgularına hiç
+/// girmez, danışma görevlisi de göremez (`danismanlik` modülü yetkisi).
+model TherapyIntake {
+  id        String  @id @default(cuid())
+  studentId String  @unique
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Hangi terapi için başvurdu. Sonraki seansların türü değişebilir
+  /// (`CounselingSession.therapyType`); bu alan başlangıç yönelimidir.
+  therapyType TherapyType
+  /// Ailenin/çocuğun başvuru nedeni, kendi cümleleriyle. Zorunlu: nedeni
+  /// olmayan bir terapi başvurusu dosya değil, boş kayıttır.
+  reason      String
+  /// Kim yönlendirdi — okul, hekim, kendi başvurusu.
+  referredBy  String?
+
+  /// Daha önce alınan psikolojik/psikiyatrik destek: nereden, ne kadar süre.
+  previousSupport String?
+  /// Konmuş bir tanı varsa. Serbest metin — tanı listesi tutmak bu sistemin
+  /// işi değil, yazan da hekim değil.
+  diagnosis       String?
+
+  /// Kardeş sayısı ve yaşları, serbest metin ("1 kız kardeş, 5 yaşında").
+  siblings      String?
+  /// Çocuğun kimlerle yaşadığı — ebeveyn durumu DIGER olduğunda ayrıntı buraya.
+  livesWith     String?
+  parentStatus  ParentStatus?
+  /// Ailede ruhsal/nörolojik hastalık öyküsü.
+  familyHistory String?
+
+  /// Ebeveynlerin öğrenim durumu ve mesleği. `Guardian` satırına DEĞİL buraya
+  /// yazılıyor: bilgi başvuru bağlamında alınıyor ve atölyeden gelen çocuğun
+  /// başvurusu açılırken de aynı formdan geçiyor — Guardian'a taşınsaydı form
+  /// iki ayrı kayda yazmak zorunda kalır, velisi olmayan öğrencide de kaybolurdu.
+  motherEducation  String?
+  motherOccupation String?
+  fatherEducation  String?
+  fatherOccupation String?
+
+  createdByUserId String?
+  createdBy       User?    @relation("DanisanBasvurusuEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 /// Zeka testi kataloğu — yükleme formundaki "Testin adı" açılır listesi.
