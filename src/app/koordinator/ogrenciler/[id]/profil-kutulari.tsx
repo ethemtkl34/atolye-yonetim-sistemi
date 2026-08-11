@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { PencereIcinde } from "@/components/bolum-iskeleti";
 
 /**
  * "Kil" temalı profil kutuları — öğrenci profilindeki her bölüm küçük renkli
@@ -208,7 +209,13 @@ export function ProfilKutusu({
               ✕
             </button>
           </header>
-          <div className="overflow-y-auto px-6 pt-3 pb-6">{children}</div>
+          {/* Pencerenin başlığı zaten bölümün adı; içerideki bölüm kendi
+              başlığını bir daha yazmasın (bkz. `PencereIcinde`). */}
+          <div className="overflow-y-auto px-6 pt-3 pb-6">
+            <PencereIcinde.Provider value={true}>
+              {children}
+            </PencereIcinde.Provider>
+          </div>
         </div>
       </dialog>
     </>

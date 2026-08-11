@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { createContext, useActionState, useContext, useState, useTransition } from "react";
 import { Buton } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 
@@ -12,6 +12,15 @@ import type { EylemDurumu } from "@/lib/formlar";
  * satır listesi, silme. Bu dosyadan önce iskelet üç dosyada satır satır
  * kopyalanmıştı (durum kancaları ve satır stiline kadar aynı).
  */
+
+/**
+ * Bölüm bir pencerenin İÇİNDE mi çiziliyor?
+ *
+ * Öğrenci profilindeki kutular bölümü kendi penceresinde açıyor ve pencerenin
+ * başlığı zaten bölümün adı; başlık ikinci kez yazılınca "Veli görüşmeleri /
+ * Veli görüşmeleri" gibi tekrar oluyordu. Sağlayıcı `ProfilKutusu`'nda.
+ */
+export const PencereIcinde = createContext(false);
 
 /** Bölüm başlığı: sol tarafta ad + adet, sağda ekleme düğmesi veya bağlantı. */
 export function BolumUstu({
@@ -26,16 +35,25 @@ export function BolumUstu({
   adetEtiketi: string;
   aksiyon?: React.ReactNode;
 }) {
+  const pencerede = useContext(PencereIcinde);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="text-base font-semibold text-zinc-900">
-        {baslik}
-        {adet > 0 ? (
-          <span className="ml-2 text-sm font-normal text-zinc-500">
-            {adet} {adetEtiketi}
-          </span>
-        ) : null}
-      </h2>
+      {pencerede ? (
+        // Pencerede başlık yerine yalnızca sayı: ad zaten pencerenin tepesinde.
+        <span className="text-sm text-zinc-500">
+          {adet > 0 ? `${adet} ${adetEtiketi}` : "Kayıt yok"}
+        </span>
+      ) : (
+        <h2 className="text-base font-bold tracking-tight text-zinc-900">
+          {baslik}
+          {adet > 0 ? (
+            <span className="ml-2 text-sm font-normal text-zinc-500">
+              {adet} {adetEtiketi}
+            </span>
+          ) : null}
+        </h2>
+      )}
       {aksiyon}
     </div>
   );

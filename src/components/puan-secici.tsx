@@ -89,8 +89,10 @@ export function PuanSecici({
                 className={cn(
                   DOKUNMA_HEDEFI,
                   "kil-satir text-sm text-zinc-700",
-                  "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
-                  "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
+                  // Seçili puan zemine GÖMÜLÜ durur (kil kuralı: basılı olan
+                  // içeri gider), seçilmeyen kabarık kalır.
+                  "peer-checked:bg-[#efe5eb] peer-checked:font-semibold peer-checked:text-marka-700 peer-checked:shadow-[var(--kil-ic)]",
+                  "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marka-600",
                 )}
               >
                 {secenek.etiket}

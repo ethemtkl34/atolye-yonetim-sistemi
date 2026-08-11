@@ -472,4 +472,9 @@ html {
     margin-bottom: 0.25rem;
     padding-inline: 0;
   }
+  /* Float'tan sonra gelen ilk kardeş temizlenmezse, yanına sıkışıyor: puan
+     seçenekleri beş sütunluk ızgara yerine sağda tek sütuna diziliyordu. */
+  fieldset.kil-oyuk > legend + * {
+    clear: both;
+  }
 }
