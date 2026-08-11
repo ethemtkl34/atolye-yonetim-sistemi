@@ -1,5 +1,9 @@
 import { BosDurum, Kart, Rozet, baglantiStili } from "@/components/ui";
 import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
+import {
+  KayitCikarButonu,
+  type CikisGunu,
+} from "@/components/kayit-cikar-butonu";
 import { DONEM_DURUMLARI, KULUP_DURUMLARI } from "@/lib/durumlar";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import type {
@@ -13,6 +17,7 @@ import type {
 
 export type ProfilKaydi = {
   id: string;
+  groupId: string;
   status: "AKTIF" | "IPTAL";
   createdAt: Date;
   intern: { name: string; active: boolean } | null;
@@ -67,13 +72,23 @@ export function VeliHucresi({
 /**
  * Kayıt kartları — başlıksız; katlanır bölümün içinde de kullanılıyor.
  * (Puanlama ekranlarındaki `KayitListesi` ile karışmasın diye "Profil" önekli.)
+ *
+ * Programdan çıkarma buradan yapılıyor: kaydın tek operasyon adresi öğrencinin
+ * kendi sayfası. Menüdeki ayrı "Öğrenci kayıtları" ekranı kaldırıldığı için
+ * düğme oraya değil buraya bağlı (bkz. lib/navigasyon.ts).
  */
 export function ProfilKayitListesi({
   kayitlar,
   bosAciklama,
+  cikarilabilir = false,
+  gruplarinGunleri,
 }: {
   kayitlar: ProfilKaydi[];
   bosAciklama: string;
+  /** `kayitlar` modülünde TAM yetki — düğme yoksa sunucu eylemi de reddeder. */
+  cikarilabilir?: boolean;
+  /** Grup id → grubun eğitim günleri; "son katıldığı gün" listesi. */
+  gruplarinGunleri?: Map<string, CikisGunu[]>;
 }) {
   if (kayitlar.length === 0) {
     return <BosDurum baslik={bosAciklama} />;
@@ -95,34 +110,47 @@ export function ProfilKayitListesi({
 
         return (
           <Kart key={kayit.id} className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-zinc-900">
-                {kayit.group.term?.name ??
-                  kayit.group.club?.name ??
-                  "Program bulunamadı"}
-              </span>
-              <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
-              <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
-                Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
-              </Rozet>
-              {programDurumu ? (
-                <Rozet tur={programDurumu.rozet}>
-                  Program: {programDurumu.etiket}
-                </Rozet>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-zinc-900">
+                    {kayit.group.term?.name ??
+                      kayit.group.club?.name ??
+                      "Program bulunamadı"}
+                  </span>
+                  <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
+                  <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
+                    Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "Ayrıldı"}
+                  </Rozet>
+                  {programDurumu ? (
+                    <Rozet tur={programDurumu.rozet}>
+                      Program: {programDurumu.etiket}
+                    </Rozet>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-sm text-zinc-700">
+                  {kayit.group.name} ·{" "}
+                  {grupZamani(kayit.group.days, kayit.group.timeSlot)}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Kayıt tarihi {tarihBicimle(kayit.createdAt)}
+                  {kayit.group.club
+                    ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
+                    : ""}
+                  {" · "}
+                  Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
+                </p>
+              </div>
+
+              {cikarilabilir ? (
+                <KayitCikarButonu
+                  kayitId={kayit.id}
+                  aktif={kayit.status === "AKTIF"}
+                  gunler={gruplarinGunleri?.get(kayit.groupId) ?? []}
+                  programTuru={kayit.group.club ? "Kulüp" : "Dönem"}
+                />
               ) : null}
             </div>
-            <p className="mt-1 text-sm text-zinc-700">
-              {kayit.group.name} ·{" "}
-              {grupZamani(kayit.group.days, kayit.group.timeSlot)}
-            </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Kayıt tarihi {tarihBicimle(kayit.createdAt)}
-              {kayit.group.club
-                ? ` · Kulüp tarihi ${tarihBicimle(kayit.group.club.date)}`
-                : ""}
-              {" · "}
-              Sorumlu: {kayit.intern?.name ?? "Atanmamış"}
-            </p>
 
             {kayit.status === "IPTAL" ? (
               <KayitIptalOzeti

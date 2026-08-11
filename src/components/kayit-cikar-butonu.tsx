@@ -7,33 +7,39 @@ import {
   kayitIptalEt,
   kayitYenidenEtkinlestir,
   type EylemDurumu,
-} from "./actions";
+} from "@/app/koordinator/kayitlar/actions";
 
-export type IptalGunu = {
+export type CikisGunu = {
   /** `YYYY-AA-GG` — sunucu grubun takviminde bu günü arar. */
   deger: string;
   etiket: string;
 };
 
 /**
- * Kayıt iptali ve geri açma.
+ * Öğrenciyi programdan çıkarma ve geri alma.
  *
- * İptal artık tek tık değil, küçük bir form: sebep etiketi ve son katıldığı
- * gün alınıyor. Onay kutusu (`window.confirm`) yerine form açılıyor, çünkü
- * sorulan şey artık "emin misiniz" değil "ne oldu" — cevabı da veritabanına
- * yazılıyor.
+ * Çıkarma tek tık değil, küçük bir form: sebep etiketi ve son katıldığı gün
+ * alınıyor. Onay kutusu (`window.confirm`) yerine form açılıyor, çünkü sorulan
+ * şey "emin misiniz" değil "ne oldu" — cevabı da veritabanına yazılıyor.
  *
- * Geri açma tek tık kalıyor: hiçbir bilgi istemiyor ve zaten geri alınabilir.
+ * Geri alma tek tık kalıyor: hiçbir bilgi istemiyor ve zaten geri alınabilir.
+ *
+ * Ekranda "iptal" değil "çıkarma" yazıyor: kayıt satırı silinmiyor, öğrenci
+ * programdan ayrılıyor. Veritabanı alanları (`status: IPTAL`, `cancelReason`)
+ * eski adlarıyla duruyor; değiştirmek şema göçü demekti.
  */
-export function KayitDurumButonu({
+export function KayitCikarButonu({
   kayitId,
   aktif,
   gunler,
+  programTuru,
 }: {
   kayitId: string;
   aktif: boolean;
   /** Grubun eğitim günleri — son katıldığı gün buradan seçilir. */
-  gunler: IptalGunu[];
+  gunler: CikisGunu[];
+  /** Etiket buna göre yazılır: kulüp kaydında "dönem" demek yanlış olurdu. */
+  programTuru: "Dönem" | "Kulüp";
 }) {
   const [durum, setDurum] = useState<EylemDurumu>({});
   const [bekliyor, basla] = useTransition();
@@ -43,7 +49,10 @@ export function KayitDurumButonu({
   const [sonGun, setSonGun] = useState("");
   const [aciklama, setAciklama] = useState("");
 
-  function iptalEt() {
+  const cikarEtiketi =
+    programTuru === "Kulüp" ? "Kulüpten çıkar" : "Dönemden çıkar";
+
+  function cikar() {
     basla(async () => {
       const sonuc = await kayitIptalEt(kayitId, { sebep, aciklama, sonGun });
       setDurum(sonuc);
@@ -52,15 +61,15 @@ export function KayitDurumButonu({
     });
   }
 
-  function geriAc() {
+  function geriAl() {
     basla(async () => setDurum(await kayitYenidenEtkinlestir(kayitId)));
   }
 
   if (!aktif) {
     return (
       <div className="space-y-2">
-        <Buton type="button" tur="ikincil" disabled={bekliyor} onClick={geriAc}>
-          {bekliyor ? "İşleniyor…" : "Yeniden etkinleştir"}
+        <Buton type="button" tur="ikincil" disabled={bekliyor} onClick={geriAl}>
+          {bekliyor ? "İşleniyor…" : "Çıkarmayı geri al"}
         </Buton>
         {durum.basari ? (
           <Bildirim tur="basari">{durum.basari}</Bildirim>
@@ -74,7 +83,7 @@ export function KayitDurumButonu({
     return (
       <div className="space-y-2">
         <Buton type="button" tur="tehlike" onClick={() => setAcik(true)}>
-          Kaydı iptal et
+          {cikarEtiketi}
         </Buton>
         {durum.basari ? (
           <Bildirim tur="basari">{durum.basari}</Bildirim>
@@ -87,14 +96,14 @@ export function KayitDurumButonu({
   return (
     <div className="w-full space-y-3 rounded-md border border-red-200 bg-red-50/40 p-3 sm:w-80">
       <div>
-        <p className="text-sm font-medium text-red-800">Kaydı iptal et</p>
+        <p className="text-sm font-medium text-red-800">{cikarEtiketi}</p>
         <p className="mt-1 text-xs text-zinc-600">
           Kayıt silinmez; girilmiş puanlamalar ve katılım geçmişi korunur,
-          kayıt kontenjandan düşer.
+          kontenjandan bir yer boşalır.
         </p>
       </div>
 
-      <Alan etiket="Sebep" hata={durum.alanHatalari?.sebep}>
+      <Alan etiket="Ayrılma sebebi" hata={durum.alanHatalari?.sebep}>
         <select
           value={sebep}
           onChange={(e) => setSebep(e.target.value)}
@@ -152,10 +161,10 @@ export function KayitDurumButonu({
           type="button"
           tur="tehlike"
           disabled={bekliyor || !sebep}
-          engelSebebi={!sebep ? "Önce iptal sebebini seçin." : undefined}
-          onClick={iptalEt}
+          engelSebebi={!sebep ? "Önce ayrılma sebebini seçin." : undefined}
+          onClick={cikar}
         >
-          {bekliyor ? "İptal ediliyor…" : "Kaydı iptal et"}
+          {bekliyor ? "Çıkarılıyor…" : cikarEtiketi}
         </Buton>
         <Buton
           type="button"

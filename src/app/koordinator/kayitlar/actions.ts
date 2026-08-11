@@ -54,7 +54,7 @@ const kayitSemasi = z.object({
 const iptalSemasi = z
   .object({
     sebep: z.enum(["TASINMA", "SAGLIK", "AILEVI", "DEVAMSIZLIK", "DIGER"], {
-      message: "İptal sebebi seçin",
+      message: "Ayrılma sebebi seçin",
     }),
     aciklama: z.string().trim().max(500, "Açıklama en fazla 500 karakter"),
     sonGun: z.string(),
@@ -575,13 +575,13 @@ export async function topluKayitOlustur(
 /**
  * Dönem/kulüp sayfasından bir gruptan öğrenci çıkarma.
  *
- * Kayıt SİLİNMEZ, iptal edilir — Kayıtlar ekranındaki "Kaydı iptal et" ile
+ * Kayıt SİLİNMEZ, pasife alınır — öğrenci profilindeki "Dönemden çıkar" ile
  * birebir aynı iş. Girilmiş puanlamalar ve katılım geçmişi korunur; öğrenci
  * yanlışlıkla çıkarıldıysa aynı panelden geri eklenince kaydı puanlamalarıyla
  * birlikte yeniden etkinleşir.
  *
  * Form yerine doğrudan çağrı: çıkarma geri dönüşü olan ama açıklama isteyen
- * bir işlem, önce onay soruluyor (kayıt iptal düğmesindeki desenle aynı).
+ * bir işlem, önce onay soruluyor (profildeki çıkarma düğmesindeki desenle aynı).
  */
 export async function topluKayitCikar(
   groupId: string,
@@ -757,7 +757,9 @@ export async function kayitIptalEt(
     select: { status: true, groupId: true, studentId: true },
   });
   if (!kayit) return { hata: "Kayıt bulunamadı." };
-  if (kayit.status === "IPTAL") return { hata: "Bu kayıt zaten iptal edilmiş." };
+  if (kayit.status === "IPTAL") {
+    return { hata: "Bu öğrenci programdan zaten çıkarılmış." };
+  }
 
   /**
    * Son katıldığı gün grubun KENDİ takviminden seçilir; hafta numarası da
@@ -812,17 +814,17 @@ export async function kayitIptalEt(
 
   return {
     basari:
-      "Kayıt iptal edildi. Girilmiş puanlamalar ve katılım geçmişi korundu.",
+      "Öğrenci programdan çıkarıldı. Girilmiş puanlamalar ve katılım geçmişi korundu.",
   };
 }
 
 /**
- * İptal edilmiş kaydı geri açar.
+ * Programdan çıkarılmış öğrencinin kaydını geri açar.
  *
- * İptal bilgileri (sebep, açıklama, ayrılma günü) TEMİZLENİR: kayıt artık
- * iptal değil. Veritabanındaki `Enrollment_iptal_alanlari` kısıtı bunu ayrıca
- * zorluyor — unutulduğu gün "aktif ama 4. haftada ayrılmış" gibi kendisiyle
- * çelişen bir satır kalırdı.
+ * Ayrılma bilgileri (sebep, açıklama, son katıldığı gün) TEMİZLENİR: öğrenci
+ * artık ayrılmış değil. Veritabanındaki `Enrollment_iptal_alanlari` kısıtı
+ * bunu ayrıca zorluyor — unutulduğu gün "aktif ama 4. haftada ayrılmış" gibi
+ * kendisiyle çelişen bir satır kalırdı.
  */
 export async function kayitYenidenEtkinlestir(
   kayitId: string,
@@ -868,7 +870,7 @@ export async function kayitYenidenEtkinlestir(
       kayit.group.club?.status !== "KAYIT_ALIYOR"
     ) {
       return {
-        hata: `${kayitKapaliMesaji(kayit.group.term)} Kayıt yeniden etkinleştirilemez.`,
+        hata: `${kayitKapaliMesaji(kayit.group.term)} Çıkarma geri alınamaz.`,
       };
     }
 
@@ -878,7 +880,7 @@ export async function kayitYenidenEtkinlestir(
     );
     if (kontenjan.dolu) {
       return {
-        hata: `"${kayit.group.name}" grubunun kontenjanı dolu; kayıt yeniden etkinleştirilemez.`,
+        hata: `"${kayit.group.name}" grubunun kontenjanı dolu; çıkarma geri alınamaz.`,
       };
     }
 
@@ -907,5 +909,5 @@ export async function kayitYenidenEtkinlestir(
   revalidatePath("/koordinator");
   revalidatePath(`/koordinator/ogrenciler/${sonuc.studentId}`);
 
-  return { basari: "Kayıt yeniden etkinleştirildi." };
+  return { basari: "Öğrenci programa geri alındı." };
 }

@@ -7,7 +7,7 @@ import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili, kartBas
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
 import { atanmamisKayitKosulu } from "@/lib/durumlar";
 import { KayitIptalOzeti } from "@/components/kayit-iptal-ozeti";
-import { KayitDurumButonu, type IptalGunu } from "./kayit-durum-butonu";
+import { KayitCikarButonu, type CikisGunu } from "@/components/kayit-cikar-butonu";
 
 export const metadata: Metadata = {
   title: "Öğrenci kayıtları",
@@ -75,7 +75,7 @@ export default async function KayitlarSayfasi(
         })
       : [];
 
-  const gruplarinGunleri = new Map<string, IptalGunu[]>();
+  const gruplarinGunleri = new Map<string, CikisGunu[]>();
   for (const oturum of oturumGunleri) {
     const liste = gruplarinGunleri.get(oturum.groupId) ?? [];
     liste.push({
@@ -163,7 +163,7 @@ export default async function KayitlarSayfasi(
                       <Rozet
                         tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}
                       >
-                        {kayit.status === "AKTIF" ? "Aktif" : "İptal"}
+                        {kayit.status === "AKTIF" ? "Aktif" : "Ayrıldı"}
                       </Rozet>
                       <Rozet>{program?.tur ?? "Program"}</Rozet>
                     </div>
@@ -203,10 +203,11 @@ export default async function KayitlarSayfasi(
                     </p>
                   </div>
 
-                  <KayitDurumButonu
+                  <KayitCikarButonu
                     kayitId={kayit.id}
                     aktif={kayit.status === "AKTIF"}
                     gunler={gruplarinGunleri.get(kayit.groupId) ?? []}
+                    programTuru={kayit.group.club ? "Kulüp" : "Dönem"}
                   />
                 </div>
 

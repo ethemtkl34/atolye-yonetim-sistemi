@@ -9,6 +9,7 @@ import {
   ProfilKayitListesi,
   VeliHucresi,
 } from "./profil-kartlari";
+import type { CikisGunu } from "@/components/kayit-cikar-butonu";
 import { ProfilKutusu } from "./profil-kutulari";
 import {
   raporKapsamSecenekleri,
@@ -35,7 +36,7 @@ import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
 } from "@/lib/durumlar";
-import { bugun, tarihBicimle, yasBicimle } from "@/lib/tarih";
+import { bugun, tarihBicimle, tarihMetni, yasBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -76,9 +77,16 @@ export default async function OgrenciProfilSayfasi(
   // bu sayfayı açabilir (öğrenciler TAM) ama görüşmeler, raporlar ve zeka
   // testi belgeleri onun için select/include listesine hiç girmez.
   const gorusmeGorebilir = kullanici.yetkiler.danismanlik !== "YOK";
+  // Veli görüşmesi bu sayfadan da eklenebiliyor; ekleme formu yazma yetkisi
+  // olmayana çizilmez (sunucu eylemi ayrıca `TAM` istiyor).
+  const gorusmeYazabilir = kullanici.yetkiler.danismanlik === "TAM";
   const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
   const zekaTestiYetkisi = kullanici.yetkiler.zekaTestleri;
   const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
+  // Programdan çıkarma düğmesi burada yaşıyor (ayrı "Öğrenci kayıtları" ekranı
+  // menüden kaldırıldı). Yetki kaydın kendi modülünden okunur; düğme yoksa
+  // sunucu eylemi de zaten `kayitlar: TAM` istiyor.
+  const kayitCikarabilir = kullanici.yetkiler.kayitlar === "TAM";
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
   // dashboard'dan ve eski rapor adreslerinden gelen bağlantılar bunu kullanır.
@@ -133,6 +141,7 @@ export default async function OgrenciProfilSayfasi(
     veliGorusmeKayitlari,
     zekaTestiKayitlari,
     gelisimKayitlari,
+    oturumGunleri,
   ] = await Promise.all([
       raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
       // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
@@ -183,7 +192,37 @@ export default async function OgrenciProfilSayfasi(
       // Gelişim testleri puanlama yetkisine tabi; iptal kayıtlar da dahil —
       // doldurulmuş bir test kayıt iptal edildi diye görünmez olmamalı.
       puanlamaGorebilir ? gelisimListesi({ subeId, studentId: id }) : [],
+      // "Son katıldığı gün" listesi grubun KENDİ takviminden gelir; serbest
+      // tarih kabul edilseydi hafta numarası tahmin edilmek zorunda kalırdı.
+      // Çıkarma yetkisi yoksa düğme çizilmiyor, sorgu da hiç atılmıyor.
+      kayitCikarabilir && ogrenci.enrollments.length > 0
+        ? db.session.findMany({
+            where: {
+              groupId: {
+                in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
+              },
+              group: { branchId: subeId },
+            },
+            distinct: ["groupId", "date"],
+            orderBy: { date: "asc" },
+            select: { groupId: true, date: true, weekNumber: true },
+          })
+        : [],
     ]);
+
+  /** Grup id → grubun eğitim günleri. Kayıt başına sorgu açmamak için tek seferde. */
+  const gruplarinGunleri = new Map<string, CikisGunu[]>();
+  for (const oturum of oturumGunleri) {
+    const liste = gruplarinGunleri.get(oturum.groupId) ?? [];
+    liste.push({
+      deger: tarihMetni(oturum.date),
+      etiket:
+        oturum.weekNumber === null
+          ? `Telafi günü · ${tarihBicimle(oturum.date)}`
+          : `${oturum.weekNumber}. hafta · ${tarihBicimle(oturum.date)}`,
+    });
+    gruplarinGunleri.set(oturum.groupId, liste);
+  }
 
   const ogrenciAdi = `${ogrenci.firstName} ${ogrenci.lastName}`;
 
@@ -292,6 +331,10 @@ export default async function OgrenciProfilSayfasi(
 
   // Kutu altyazıları: kutu açılmadan "içeride ne var" sorusuna cevap veren
   // tek satır. Tarihler en yeni kayıttan geliyor (listeler zaten tarih desc).
+  // Veli görüşmesi formunun varsayılan tarihi — sunucuda üretilir ki
+  // istemcinin saat dilimi günü kaydırmasın (Danışmanlık sayfasıyla aynı).
+  const bugunMetni = tarihMetni(bugun());
+
   const sonTerapi = gorusmeler[0]?.tarih;
   const sonVeliGorusmesi = veliGorusmeleri[0]?.tarih;
   const sonZekaTesti = zekaTestleri[0]?.tarih;
@@ -414,12 +457,15 @@ export default async function OgrenciProfilSayfasi(
             <ProfilKayitListesi
               kayitlar={aktifKayitlar}
               bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
+              cikarilabilir={kayitCikarabilir}
+              gruplarinGunleri={gruplarinGunleri}
             />
           </div>
         </ProfilKutusu>
 
-        {/* Görüşme kutuları danışmanlık yetkisine tabi; salt okunur, yazma
-            işlemleri Danışmanlık sayfasında. */}
+        {/* Görüşme kutuları danışmanlık yetkisine tabi. Veli görüşmesi bu
+            kutudan da açılabilir (öğrenci zaten belli, seçici çizilmez);
+            terapi görüşmeleri salt okunur, Danışmanlık sayfasından girilir. */}
         {gorusmeGorebilir ? (
           <>
             <ProfilKutusu
@@ -432,7 +478,12 @@ export default async function OgrenciProfilSayfasi(
               }
               adet={veliGorusmeleri.length}
             >
-              <VeliGorusmeleriBolumu mod="okuma" gorusmeler={veliGorusmeleri} />
+              <VeliGorusmeleriBolumu
+                mod={gorusmeYazabilir ? "yonetim" : "okuma"}
+                gorusmeler={veliGorusmeleri}
+                sabitOgrenci={{ id: ogrenci.id, ad: ogrenciAdi }}
+                bugunMetni={bugunMetni}
+              />
             </ProfilKutusu>
             <ProfilKutusu
               renk="terapi"
@@ -561,14 +612,16 @@ export default async function OgrenciProfilSayfasi(
           baslik="Geçmiş kayıtlar"
           altyazi={
             gecmisKayitlar.length > 0
-              ? "Tamamlanan ve iptal kayıtlar"
+              ? "Tamamlanan ve ayrılan kayıtlar"
               : "Geçmiş kayıt yok"
           }
           adet={gecmisKayitlar.length}
         >
           <ProfilKayitListesi
             kayitlar={gecmisKayitlar}
-            bosAciklama="Tamamlanmış veya iptal edilmiş kayıt yok."
+            bosAciklama="Tamamlanmış veya ayrılınmış kayıt yok."
+            cikarilabilir={kayitCikarabilir}
+            gruplarinGunleri={gruplarinGunleri}
           />
         </ProfilKutusu>
 

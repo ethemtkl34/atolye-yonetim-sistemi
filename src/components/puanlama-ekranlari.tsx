@@ -85,7 +85,9 @@ export function KayitListesi({
                     : `${ilerleme.kayit.program} · ${ilerleme.kayit.grupAdi}`}
                 </Link>
                 <Rozet>{ilerleme.kayit.programTuru}</Rozet>
-                {!ilerleme.kayit.aktif ? <Rozet tur="pasif">İptal</Rozet> : null}
+                {!ilerleme.kayit.aktif ? (
+                  <Rozet tur="pasif">Ayrıldı</Rozet>
+                ) : null}
                 {ilerleme.ozet.bekleyen > 0 ? (
                   <Rozet tur="uyari">
                     {ilerleme.ozet.bekleyen} form bekliyor

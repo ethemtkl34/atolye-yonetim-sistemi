@@ -85,15 +85,11 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Kişiler",
     simge: "kisi",
   },
-  {
-    etiket: "Öğrenci kayıtları",
-    yol: "/koordinator/kayitlar",
-    modul: "kayitlar",
-    hazir: true,
-    paket: "P6",
-    bolum: "Kişiler",
-    simge: "pano",
-  },
+  // Ayrı bir "Öğrenci kayıtları" menü maddesi yok: kaydın bütün işleri
+  // (açma, programdan çıkarma, geri alma, stajyer atama) öğrencinin kendi
+  // sayfasında yapılıyor. Bütün kayıtları tek listede gösteren ekran duruyor
+  // ama menüde değil — dashboard'daki "Stajyeri atanmamış" kartı oraya
+  // bağlanıyor ve süzgeç orada anlamlı.
   {
     etiket: "Stajyerler",
     yol: "/koordinator/stajyerler",
