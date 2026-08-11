@@ -526,9 +526,14 @@ export default async function OgrenciProfilSayfasi(
                 : "Henüz rapor yok"
             }
             adet={raporlar.length}
-            // `?rapor=` derin bağlantısı: rapor penceresi bu kutunun içinde
-            // açıldığı için önce kutunun kendisi açılmalı.
+            // `?rapor=` derin bağlantısı: rapor görünümü bu kutunun içinde
+            // açıldığı için önce kutunun kendisi açılmalı. Kutu kapanınca
+            // parametre temizlenir ki tazelemede yeniden açılmasın.
             baslangictaAcik={Boolean(acilisRaporu)}
+            kapaninca={acilisRaporu ? "parametre-temizle" : undefined}
+            // Rapor gövdesi (puan tabloları, gözlem metni) dar pencereye
+            // sığmıyor; kutu penceresi bu bölüme özel geniş.
+            genislik="68rem"
           >
             <RaporBolumu
               ogrenciId={ogrenci.id}

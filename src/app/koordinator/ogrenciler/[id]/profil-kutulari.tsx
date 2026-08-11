@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 /**
  * "Kil" temalı profil kutuları — öğrenci profilindeki her bölüm küçük renkli
@@ -85,6 +86,8 @@ export function ProfilKutusu({
   altyazi,
   adet,
   baslangictaAcik = false,
+  genislik = "44rem",
+  kapaninca,
   children,
 }: {
   renk: KutuRengi;
@@ -94,9 +97,16 @@ export function ProfilKutusu({
   adet?: number;
   /** `?rapor=` gibi derin bağlantılar pencereyi sayfa açılışında açar. */
   baslangictaAcik?: boolean;
+  /** Pencere genişliği — geniş içerik (rapor gövdesi) için büyütülür. */
+  genislik?: string;
+  /** Pencere kapanınca temizlik: "parametre-temizle" adresteki sorguyu siler
+      (derin bağlantıyla açılan pencere, tazelemede yeniden açılmasın). */
+  kapaninca?: "parametre-temizle";
   children: React.ReactNode;
 }) {
   const pencereRef = useRef<HTMLDialogElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
   const [acik, koyu] = RENKLER[renk];
 
   useEffect(() => {
@@ -148,11 +158,18 @@ export function ProfilKutusu({
 
       <dialog
         ref={pencereRef}
-        className="kil-pencere m-auto w-[min(44rem,calc(100vw-2rem))] p-0 text-zinc-900"
+        className="kil-pencere m-auto p-0 text-zinc-900"
+        style={{ width: `min(${genislik}, calc(100vw - 2rem))` }}
         // Zemine (backdrop'a) tıklayınca kapat: dialog'un kendisi hedefse
         // tıklama kenar boşluğuna gelmiştir.
         onClick={(e) => {
           if (e.target === pencereRef.current) pencereRef.current?.close();
+        }}
+        onClose={() => {
+          // Derin bağlantı parametresi pencereyle birlikte temizlenir; yoksa
+          // her sayfa tazelemesi pencereyi yeniden açar.
+          if (kapaninca === "parametre-temizle")
+            router.replace(pathname, { scroll: false });
         }}
       >
         <div className="flex max-h-[85vh] flex-col">

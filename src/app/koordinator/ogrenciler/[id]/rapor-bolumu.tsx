@@ -1,8 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bildirim, Buton, DonenHalka, Rozet, butonStili } from "@/components/ui";
+import {
+  Bildirim,
+  Buton,
+  DonenHalka,
+  Rozet,
+  butonStili,
+} from "@/components/ui";
 import { tarihBicimle } from "@/lib/tarih";
 import type { KapsamKaydi, RaporOzeti } from "@/lib/rapor-verisi";
 import {
@@ -24,14 +30,14 @@ import {
 /**
  * §11 — Öğrencinin raporları.
  *
- * Raporun tamamı öğrenci profilinden çıkmadan yönetilir: liste burada, içerik
- * ve düzenleme ise bir pencerede (native `<dialog>`). Önceden her rapor ayrı
- * bir sayfaya götürüyordu ve koordinatör öğrenciyle rapor arasında sürekli
- * gidip geliyordu; rapor öğrenciye ait bir belge olduğu için yeri burası.
+ * Bölüm zaten kil temalı profil penceresinin İÇİNDE yaşıyor; o yüzden burada
+ * ikinci bir `<dialog>` açılmaz. Liste, yeni rapor formu ve rapor detayı aynı
+ * pencerede GÖRÜNÜM olarak yer değiştirir ("← Raporlar" geri oku listeye
+ * döner) — pencere üstüne pencere binmez.
  *
- * Pencere adres satırıyla da açılabilir (`?rapor=<id>` veya `?rapor=yeni`):
+ * Görünümler adres satırıyla da açılabilir (`?rapor=<id>` veya `?rapor=yeni`):
  * eski rapor bağlantıları ve dashboard'dan gelen adresler bu sayede
- * çalışmaya devam eder.
+ * çalışmaya devam eder (dış pencereyi `baslangictaAcik` açar).
  */
 export function RaporBolumu({
   ogrenciId,
@@ -82,11 +88,9 @@ export function RaporBolumu({
   const [islemde, basla] = useTransition();
   // Hangi uzun işlemin sürdüğü — buton kendi spinner'ını gösterir, diğeri
   // yalnızca kilitlenir. `islemde` bitince kendiliğinden anlamsızlaşır.
-  const [surenIslem, setSurenIslem] = useState<"pdf" | "yeniden" | "sil" | null>(
-    null,
-  );
-
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [surenIslem, setSurenIslem] = useState<
+    "pdf" | "yeniden" | "sil" | null
+  >(null);
 
   const veri =
     pencere?.mod === "detay" && veriKutusu?.raporId === pencere.raporId
@@ -95,16 +99,7 @@ export function RaporBolumu({
   const yukleniyor =
     pencere?.mod === "detay" && veriKutusu?.raporId !== pencere.raporId;
 
-  // Pencere durumu ile <dialog> öğesini eşitler. Native dialog kullanılıyor:
-  // odak tuzağı, ESC ile kapanma ve arka plan engeli tarayıcıdan geliyor.
-  useEffect(() => {
-    const kutu = dialogRef.current;
-    if (!kutu) return;
-    if (pencere && !kutu.open) kutu.showModal();
-    if (!pencere && kutu.open) kutu.close();
-  }, [pencere]);
-
-  // Detay penceresi açıldığında raporun gövdesi çekilir.
+  // Detay görünümü açıldığında raporun gövdesi çekilir.
   useEffect(() => {
     if (pencere?.mod !== "detay") return;
     const raporId = pencere.raporId;
@@ -217,12 +212,16 @@ export function RaporBolumu({
     });
   }
 
-  return (
-    <>
-      {/* --- Rapor listesi --- */}
+  // --- Liste görünümü: pencere hedefi yokken. ---
+  if (!pencere) {
+    return (
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-zinc-900">Raporlar</h2>
+          <span className="text-sm text-zinc-500">
+            {raporlar.length > 0
+              ? `${raporlar.length} rapor`
+              : "Henüz rapor yok"}
+          </span>
           <Buton
             tur="ikincil"
             onClick={() => ac({ mod: "yeni" })}
@@ -258,7 +257,9 @@ export function RaporBolumu({
                   <Rozet tur={rapor.guncel ? "olumlu" : "uyari"}>
                     {rapor.guncel ? "Güncel" : "Güncel değil"}
                   </Rozet>
-                  {rapor.duzenlemeZamani ? <Rozet>Elle düzenlendi</Rozet> : null}
+                  {rapor.duzenlemeZamani ? (
+                    <Rozet>Elle düzenlendi</Rozet>
+                  ) : null}
                 </span>
                 <span className="mt-1 block text-xs text-zinc-500">
                   {rapor.kapsam.join(" · ")} · {rapor.atolyeSayisi} atölye
@@ -268,164 +269,155 @@ export function RaporBolumu({
           </div>
         )}
       </div>
+    );
+  }
 
-      {/* --- Pencere --- */}
-      <dialog
-        ref={dialogRef}
-        onClose={kapat}
-        aria-label={`${ogrenciAdi} raporu`}
-        className="m-auto w-[min(68rem,calc(100vw-2rem))] rounded-2xl bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/40 backdrop:backdrop-blur-md"
-      >
-        <div className="flex max-h-[85vh] flex-col">
-          <header className="flex items-start justify-between gap-3 border-b border-yuzey-200 px-5 py-4">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-zinc-900">
-                {pencere?.mod === "yeni"
-                  ? "Yeni rapor"
-                  : `${ogrenciAdi} — Öğrenci Raporu`}
-              </h2>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                {pencere?.mod === "yeni"
-                  ? "Raporun kapsayacağı kayıtları seçin."
-                  : veri
-                    ? `${tarihBicimle(veri.detay.ozet.uretimZamani)} · ${veri.detay.ozet.kapsam.join(" · ")}`
-                    : "Yükleniyor…"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={kapat}
-              aria-label="Pencereyi kapat"
-              className="-mr-1 shrink-0 rounded-md px-2 py-1 text-xl leading-none text-zinc-400 transition-colors hover:bg-yuzey-50 hover:text-zinc-700"
+  // --- Form / detay görünümü: liste yerine aynı pencerede. ---
+  return (
+    <div className="space-y-4" aria-label={`${ogrenciAdi} raporu`}>
+      <header className="space-y-1.5">
+        <button
+          type="button"
+          onClick={kapat}
+          className="-my-1 inline-block py-1 text-sm text-marka-700 hover:underline"
+        >
+          ← Raporlar
+        </button>
+        <div>
+          <h3 className="text-base font-semibold text-zinc-900">
+            {pencere.mod === "yeni"
+              ? "Yeni rapor"
+              : `${ogrenciAdi} — Öğrenci Raporu`}
+          </h3>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            {pencere.mod === "yeni"
+              ? "Raporun kapsayacağı kayıtları seçin."
+              : veri
+                ? `${tarihBicimle(veri.detay.ozet.uretimZamani)} · ${veri.detay.ozet.kapsam.join(" · ")}`
+                : "Yükleniyor…"}
+          </p>
+        </div>
+      </header>
+
+      <div className="rounded-xl bg-yuzey-50 px-4 py-4">
+        {pencere.mod === "yeni" ? (
+          <YeniRaporFormu
+            kayitlar={kapsamKayitlari}
+            durum={olusturmaDurumu}
+            eylem={olusturmaEylemi}
+          />
+        ) : yukleniyor || !veri ? (
+          <p className="py-8 text-center text-sm text-zinc-500">
+            {yukleniyor ? "Rapor yükleniyor…" : "Rapor bulunamadı."}
+          </p>
+        ) : duzenleniyor ? (
+          <MetinDuzenleme
+            metin={veri.detay.govde.metin}
+            durum={duzenlemeDurumu}
+            eylem={duzenlemeEylemi}
+            onVazgec={() => setDuzenleniyor(false)}
+          />
+        ) : (
+          <RaporIcerigi
+            veri={veri}
+            raporId={pencere.raporId}
+            onGuncellendi={() => tazele(pencere.raporId)}
+          />
+        )}
+      </div>
+
+      {pencere.mod === "detay" && veri && !duzenleniyor ? (
+        <footer className="space-y-3 border-t border-yuzey-200 pt-4">
+          {islemSonucu?.basari ? (
+            <Bildirim tur="basari">{islemSonucu.basari}</Bildirim>
+          ) : null}
+          {islemSonucu?.hata ? (
+            <Bildirim tur="hata">{islemSonucu.hata}</Bildirim>
+          ) : null}
+
+          {islemde && surenIslem === "yeniden" ? (
+            <div
+              role="status"
+              className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
             >
-              ×
-            </button>
-          </header>
+              <DonenHalka />
+              <span>
+                Rapor güncel puanlarla yeniden üretiliyor; gözlem metni de
+                yeniden yazıldığı için bu işlem bir dakikaya kadar sürebilir.
+              </span>
+            </div>
+          ) : null}
 
-          {/* Pencere kapalıyken içerik hiç çizilmez: form durumu ve seçimler
-              her açılışta sıfırdan başlasın. */}
-          <div className="min-h-0 flex-1 overflow-y-auto bg-yuzey-50 px-5 py-4">
-            {!pencere ? null : pencere.mod === "yeni" ? (
-              <YeniRaporFormu
-                kayitlar={kapsamKayitlari}
-                durum={olusturmaDurumu}
-                eylem={olusturmaEylemi}
-              />
-            ) : yukleniyor || !veri ? (
-              <p className="py-8 text-center text-sm text-zinc-500">
-                {yukleniyor ? "Rapor yükleniyor…" : "Rapor bulunamadı."}
-              </p>
-            ) : duzenleniyor ? (
-              <MetinDuzenleme
-                metin={veri.detay.govde.metin}
-                durum={duzenlemeDurumu}
-                eylem={duzenlemeEylemi}
-                onVazgec={() => setDuzenleniyor(false)}
-              />
-            ) : (
-              <RaporIcerigi
-                veri={veri}
-                raporId={pencere.raporId}
-                onGuncellendi={() => tazele(pencere.raporId)}
-              />
-            )}
-          </div>
-
-          {pencere?.mod === "detay" && veri && !duzenleniyor ? (
-            <footer className="space-y-3 border-t border-yuzey-200 px-5 py-4">
-              {islemSonucu?.basari ? (
-                <Bildirim tur="basari">{islemSonucu.basari}</Bildirim>
-              ) : null}
-              {islemSonucu?.hata ? (
-                <Bildirim tur="hata">{islemSonucu.hata}</Bildirim>
-              ) : null}
-
-              {islemde && surenIslem === "yeniden" ? (
-                <div
-                  role="status"
-                  className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
-                >
+          <div className="flex flex-wrap gap-2">
+            <Buton disabled={islemde} onClick={pdfUret}>
+              {islemde && surenIslem === "pdf" ? (
+                <span className="inline-flex items-center gap-2">
                   <DonenHalka />
-                  <span>
-                    Rapor güncel puanlarla yeniden üretiliyor; gözlem metni de
-                    yeniden yazıldığı için bu işlem bir dakikaya kadar
-                    sürebilir.
-                  </span>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <Buton disabled={islemde} onClick={pdfUret}>
-                  {islemde && surenIslem === "pdf" ? (
-                    <span className="inline-flex items-center gap-2">
-                      <DonenHalka />
-                      PDF hazırlanıyor…
-                    </span>
-                  ) : (
-                    "PDF oluştur"
-                  )}
-                </Buton>
-                {islemSonucu?.pdfAdresi ? (
-                  <a
-                    href={islemSonucu.pdfAdresi}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={butonStili("ikincil")}
-                  >
-                    PDF&apos;i indir
-                  </a>
-                ) : null}
-                {/* v2 raporlar kutuların üzerindeki kalemle yerinde
+                  PDF hazırlanıyor…
+                </span>
+              ) : (
+                "PDF oluştur"
+              )}
+            </Buton>
+            {islemSonucu?.pdfAdresi ? (
+              <a
+                href={islemSonucu.pdfAdresi}
+                target="_blank"
+                rel="noreferrer"
+                className={butonStili("ikincil")}
+              >
+                PDF&apos;i indir
+              </a>
+            ) : null}
+            {/* v2 raporlar kutuların üzerindeki kalemle yerinde
                     düzenleniyor; toplu düzenleme ekranı yalnızca eski
                     biçimli (arşiv) raporlar için duruyor. */}
-                {(veri.detay.govde as unknown as { surum?: number })?.surum ===
-                2 ? null : (
-                  <Buton
-                    tur="ikincil"
-                    disabled={islemde}
-                    onClick={() => setDuzenleniyor(true)}
-                  >
-                    Metni düzenle
-                  </Buton>
-                )}
-                <Buton
-                  tur={veri.detay.ozet.guncel ? "sade" : "birincil"}
-                  disabled={islemde}
-                  onClick={yenidenUret}
-                >
-                  {islemde && surenIslem === "yeniden" ? (
-                    <span className="inline-flex items-center gap-2">
-                      <DonenHalka />
-                      Yeniden üretiliyor…
-                    </span>
-                  ) : (
-                    "Güncel puanlarla yeniden üret"
-                  )}
-                </Buton>
-                <Buton
-                  tur="tehlike"
-                  disabled={islemde}
-                  onClick={raporuSil}
-                  className="ml-auto"
-                >
-                  {islemde && surenIslem === "sil" ? (
-                    <span className="inline-flex items-center gap-2">
-                      <DonenHalka />
-                      Siliniyor…
-                    </span>
-                  ) : (
-                    "Raporu sil"
-                  )}
-                </Buton>
-              </div>
-              <p className="text-xs text-zinc-500">
-                Yeniden üretim yeni bir rapor oluşturur; bu rapor ve varsa
-                PDF’leri geçmişte kalır.
-              </p>
-            </footer>
-          ) : null}
-        </div>
-      </dialog>
-    </>
+            {(veri.detay.govde as unknown as { surum?: number })?.surum ===
+            2 ? null : (
+              <Buton
+                tur="ikincil"
+                disabled={islemde}
+                onClick={() => setDuzenleniyor(true)}
+              >
+                Metni düzenle
+              </Buton>
+            )}
+            <Buton
+              tur={veri.detay.ozet.guncel ? "sade" : "birincil"}
+              disabled={islemde}
+              onClick={yenidenUret}
+            >
+              {islemde && surenIslem === "yeniden" ? (
+                <span className="inline-flex items-center gap-2">
+                  <DonenHalka />
+                  Yeniden üretiliyor…
+                </span>
+              ) : (
+                "Güncel puanlarla yeniden üret"
+              )}
+            </Buton>
+            <Buton
+              tur="tehlike"
+              disabled={islemde}
+              onClick={raporuSil}
+              className="ml-auto"
+            >
+              {islemde && surenIslem === "sil" ? (
+                <span className="inline-flex items-center gap-2">
+                  <DonenHalka />
+                  Siliniyor…
+                </span>
+              ) : (
+                "Raporu sil"
+              )}
+            </Buton>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Yeniden üretim yeni bir rapor oluşturur; bu rapor ve varsa PDF’leri
+            geçmişte kalır.
+          </p>
+        </footer>
+      ) : null}
+    </div>
   );
 }
