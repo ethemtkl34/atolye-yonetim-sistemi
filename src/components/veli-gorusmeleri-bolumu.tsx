@@ -42,10 +42,11 @@ import {
  * Veli görüşmeleri bölümü.
  *
  * İki modda çalışır:
- *   - "yonetim": Danışmanlık sayfası — mini test + brief hazırlama, kayıt,
- *     not ekleme ve silme; öğrenci formdaki seçiciden gelir.
- *   - "okuma":  Öğrenci profili — yalnızca o öğrencinin listesi ve detay
- *     penceresi (brief ve not okunur); bütün yazma işlemleri Danışmanlık
+ *   - "yonetim": ekleme, not ve silme açık. Danışmanlık sayfasında öğrenci
+ *     formdaki seçiciden gelir; öğrenci profilinde ise `sabitOgrenci` ile
+ *     baştan bellidir — seçici yerine gizli alan, satırlarda da öğrenci adı
+ *     tekrarlanmaz (sayfanın tamamı zaten o öğrencinin).
+ *   - "okuma":  yalnızca liste ve detay penceresi; yazma Danışmanlık
  *     sayfasına yönlendirilir.
  *
  * GİZLİLİK: Her iki mod da yalnızca koordinatör ekranlarında kullanılır;
@@ -219,6 +220,7 @@ export function VeliGorusmeleriBolumu({
   mod,
   gorusmeler,
   ogrenciSecenekleri = [],
+  sabitOgrenci,
   bugunMetni = "",
   suzgecEtkin = false,
 }: {
@@ -227,12 +229,20 @@ export function VeliGorusmeleriBolumu({
   gorusmeler: VeliGorusmesiSatiri[];
   /** Yalnızca yönetim modunda: ekleme formundaki öğrenciler. */
   ogrenciSecenekleri?: { id: string; ad: string }[];
+  /**
+   * Öğrenci profili gibi tek öğrenciye bağlı ekranlarda: seçici çizilmez,
+   * kayıt doğrudan bu öğrenciye açılır. Verilmezse `ogrenciSecenekleri`
+   * kullanılır.
+   */
+  sabitOgrenci?: { id: string; ad: string };
   /** Formun varsayılan tarihi (YYYY-AA-GG) — sunucudan gelir, saat dilimi kaymaz. */
   bugunMetni?: string;
   /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
   suzgecEtkin?: boolean;
 }) {
   const yonetim = mod === "yonetim";
+  // Öğrenci sütunu yalnızca çok öğrencili listede anlamlı.
+  const ogrenciSutunu = yonetim && !sabitOgrenci;
 
   // Ekleme paneli + form durumu iskeletten; mini test cevapları `degerler`
   // üzerinden `defaultChecked` ile geri gelir (aşağıdaki MiniTestSatiri notu).
@@ -308,6 +318,7 @@ export function VeliGorusmeleriBolumu({
       {yonetim && acik ? (
         <Kart className="space-y-4 p-4">
           <p className="text-sm text-zinc-600">
+            {sabitOgrenci ? `${sabitOgrenci.ad} için veli görüşmesi. ` : null}
             Mini testi görüşmeyi yapacak kişi doldurur; sistem cevaplardan ve
             öğrencinin görüşme tarihine kadarki atölye puanlamalarından bir
             görüşme brief&apos;i hazırlar. Veli görüşmeleri stajyerlere
@@ -315,22 +326,31 @@ export function VeliGorusmeleriBolumu({
           </p>
 
           <form action={eylem} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Alan etiket="Öğrenci" hata={durum.alanHatalari?.ogrenciId}>
-                <select
-                  name="ogrenciId"
-                  defaultValue={deger("ogrenciId") ?? ""}
-                  className={secimStili}
-                  autoFocus
-                >
-                  <option value="">Öğrenci seçin…</option>
-                  {ogrenciSecenekleri.map((ogrenci) => (
-                    <option key={ogrenci.id} value={ogrenci.id}>
-                      {ogrenci.ad}
-                    </option>
-                  ))}
-                </select>
-              </Alan>
+            <div
+              className={cn(
+                "grid gap-4",
+                sabitOgrenci ? "sm:grid-cols-2" : "sm:grid-cols-3",
+              )}
+            >
+              {sabitOgrenci ? (
+                <input type="hidden" name="ogrenciId" value={sabitOgrenci.id} />
+              ) : (
+                <Alan etiket="Öğrenci" hata={durum.alanHatalari?.ogrenciId}>
+                  <select
+                    name="ogrenciId"
+                    defaultValue={deger("ogrenciId") ?? ""}
+                    className={secimStili}
+                    autoFocus
+                  >
+                    <option value="">Öğrenci seçin…</option>
+                    {ogrenciSecenekleri.map((ogrenci) => (
+                      <option key={ogrenci.id} value={ogrenci.id}>
+                        {ogrenci.ad}
+                      </option>
+                    ))}
+                  </select>
+                </Alan>
+              )}
 
               <Alan
                 etiket="Görüşme tarihi"
@@ -400,7 +420,7 @@ export function VeliGorusmeleriBolumu({
               <span className="font-medium text-zinc-900">
                 {tarihBicimle(gorusme.tarih)}
               </span>
-              {yonetim ? (
+              {ogrenciSutunu ? (
                 <span className="font-medium text-zinc-900">
                   {gorusme.ogrenciAdi}
                 </span>

@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { SayfaBasligi } from "@/components/ui";
+import {
+  Girdi,
+  SayfaBasligi,
+  baglantiStili,
+  butonStili,
+} from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { bugun, tarihMetni } from "@/lib/tarih";
-import { tamAd, turkceKarsilastir } from "@/lib/turkce";
+import { normalizeArama, tamAd, turkceKarsilastir } from "@/lib/turkce";
 import {
   TerapiGorusmeleriBolumu,
   type TerapiGorusmesiSatiri,
@@ -87,12 +93,29 @@ export default async function DanismanlikSayfasi(
   const terapiTuruSuzgeci = terapiTuruSlugMu(parametreler.terapi)
     ? parametreler.terapi
     : "tumu";
-  const ogrenciSuzgeci =
-    typeof parametreler.ogrenci === "string" ? parametreler.ogrenci : "";
+  /**
+   * Öğrenci araması — açılır seçicinin yerini aldı. Şubede yüzlerce öğrenci
+   * birikince isimler arasında kaydırmak listeyi süzmenin en yavaş yolu;
+   * kutu Öğrenciler sayfasındakiyle aynı sözleşmede (`q`, sıradan GET formu,
+   * Türkçe karakter duyarsız `searchName` sütunu).
+   */
+  const aramaSorgusu =
+    typeof parametreler.q === "string" ? parametreler.q.trim() : "";
+  const aramaAnahtari = normalizeArama(aramaSorgusu);
 
   const altSuzgec = ALT_SUZGECLER[turSuzgeci];
   const altDeger = turSuzgeci === "veli" ? durumSuzgeci : terapiTuruSuzgeci;
-  const suzgecEtkin = Boolean(ogrenciSuzgeci) || altDeger !== "tumu";
+  const suzgecEtkin = Boolean(aramaSorgusu) || altDeger !== "tumu";
+
+  /**
+   * Aramanın öğrenci koşuluna eklediği parça. Şube kilidi BİLEREK bu nesnenin
+   * dışında, her sorgunun içinde açıkça duruyor: `sube-sizinti.test.ts` şube
+   * süzgecini kaynak metninde arıyor ve değişkene saklanan kilit denetimden
+   * kaçar — kuralın kendisi de "her sorguda gözle görülür olsun" diyor.
+   */
+  const aramaKosulu = aramaAnahtari
+    ? { searchName: { contains: aramaAnahtari } }
+    : {};
 
   /**
    * Adreste korunan süzgeç durumu — bütün süzgeçlere aynı nesne gider,
@@ -104,7 +127,7 @@ export default async function DanismanlikSayfasi(
   const korunanlar: Record<string, string> = {
     ...(turSuzgeci !== "veli" ? { tur: turSuzgeci } : {}),
     ...(altDeger !== "tumu" ? { [altSuzgec.anahtar]: altDeger } : {}),
-    ...(ogrenciSuzgeci ? { ogrenci: ogrenciSuzgeci } : {}),
+    ...(aramaSorgusu ? { q: aramaSorgusu } : {}),
   };
   const korunanlarHaric = (...haric: string[]) =>
     Object.fromEntries(
@@ -122,8 +145,7 @@ export default async function DanismanlikSayfasi(
     turSuzgeci === "veli"
       ? db.parentMeeting.findMany({
           where: {
-            student: { branchId: subeId },
-            ...(ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {}),
+            student: { branchId: subeId, ...aramaKosulu },
             ...(durumSuzgeci !== "tumu"
               ? { note: durumSuzgeci === "bekliyor" ? null : { not: null } }
               : {}),
@@ -136,8 +158,7 @@ export default async function DanismanlikSayfasi(
         })
       : db.counselingSession.findMany({
           where: {
-            student: { branchId: subeId },
-            ...(ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {}),
+            student: { branchId: subeId, ...aramaKosulu },
             ...(terapiTuruSuzgeci !== "tumu"
               ? { therapyType: TERAPI_TURU_SLUGLARI[terapiTuruSuzgeci] }
               : {}),
@@ -165,7 +186,7 @@ export default async function DanismanlikSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Danışmanlık"
-        aciklama="Veli görüşmeleri (mini test + görüşme brief'i) ve terapi görüşmeleri (oyun / danışan) buradan yönetilir; öğrenci profili kayıtları yalnızca gösterir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
+        aciklama="Veli görüşmeleri (mini test + görüşme brief'i) ve terapi görüşmeleri buradan yönetilir; bütün öğrenciler tek listede. Veli görüşmesi öğrencinin kendi profilinden de eklenebilir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
       />
 
       <SuzgecCubugu>
@@ -201,18 +222,42 @@ export default async function DanismanlikSayfasi(
             secenekler={altSuzgec.secenekler}
           />
         )}
-        <SuzgecSecici
-          etiket="Öğrenci"
-          temelYol={TEMEL_YOL}
-          anahtar="ogrenci"
-          secili={ogrenciSuzgeci}
-          secenekler={ogrenciSecenekleri.map((ogrenci) => ({
-            deger: ogrenci.id,
-            etiket: ogrenci.ad,
-          }))}
-          digerler={korunanlarHaric("ogrenci")}
-        />
       </SuzgecCubugu>
+
+      {/* Arama sıradan bir GET formu (Öğrenciler sayfasındaki desen): sorgu
+          adres satırında durur, sonuç paylaşılabilir. Diğer süzgeçler gizli
+          alanlarla taşınır, arama yapınca sıfırlanmasınlar. */}
+      <form method="get" className="flex max-w-lg gap-2">
+        {Object.entries(korunanlarHaric("q")).map(([anahtar, deger]) => (
+          <input key={anahtar} type="hidden" name={anahtar} value={deger} />
+        ))}
+        <Girdi
+          name="q"
+          type="search"
+          defaultValue={aramaSorgusu}
+          placeholder="Öğrenci adı veya soyadı"
+          aria-label="Öğrenci ara"
+        />
+        <button type="submit" className={butonStili("ikincil", "shrink-0")}>
+          Ara
+        </button>
+      </form>
+
+      {aramaSorgusu ? (
+        <p className="text-sm text-zinc-600">
+          <span className="font-medium">{kayitlar.length}</span> görüşme ·{" "}
+          <Link
+            href={
+              Object.keys(korunanlarHaric("q")).length > 0
+                ? `${TEMEL_YOL}?${new URLSearchParams(korunanlarHaric("q")).toString()}`
+                : TEMEL_YOL
+            }
+            className={baglantiStili}
+          >
+            aramayı temizle
+          </Link>
+        </p>
+      ) : null}
 
       {turSuzgeci === "veli" ? (
         <VeliGorusmeleriBolumu
