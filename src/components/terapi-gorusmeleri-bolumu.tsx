@@ -314,9 +314,10 @@ export function TerapiGorusmeleriBolumu({
         }
       >
         {/* Not tam metin: koordinatör okumak için giriyor, kırpılmaz.
-            Satır sonları korunur; uzun not pencere içinde kayar. */}
+            Satır sonları korunur; uzun not pencere içinde kayar. Gövde gömük
+            yüzeyde durur — "içine bir şey konan" alan. */}
         {secili ? (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+          <p className="kil-oyuk whitespace-pre-wrap p-3.5 text-sm leading-relaxed text-zinc-700">
             {secili.not}
           </p>
         ) : null}

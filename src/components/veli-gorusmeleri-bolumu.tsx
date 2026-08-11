@@ -133,8 +133,10 @@ function MiniTestSatiri({
   return (
     <fieldset
       className={cn(
-        "rounded-md border px-3 py-3",
-        hata ? "border-red-300 bg-red-50" : "border-yuzey-200",
+        "px-3 py-3",
+        // Kartın içindeki soru kutusu gömük durur; hatalı soru rengiyle
+        // kendini ayırır (kil kuralı: iç içe iki kabartma olmaz).
+        hata ? "rounded-md border border-red-300 bg-red-50" : "kil-oyuk",
       )}
     >
       <legend className="px-1 text-sm text-zinc-800">
@@ -159,7 +161,7 @@ function MiniTestSatiri({
             <span
               className={cn(
                 DOKUNMA_HEDEFI,
-                "rounded-md border border-yuzey-200 bg-white text-sm text-zinc-700",
+                "kil-satir text-sm text-zinc-700",
                 "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
                 "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
               )}
@@ -401,7 +403,7 @@ export function VeliGorusmeleriBolumu({
           </form>
 
           {durum.brief ? (
-            <div className="rounded-md border border-marka-200 bg-marka-50/50 p-4">
+            <div className="kil-oyuk p-4">
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-marka-700">
                 Brief önizlemesi — henüz kaydedilmedi
               </p>
@@ -510,7 +512,8 @@ export function VeliGorusmeleriBolumu({
               </h4>
               {secili.not ? (
                 <>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                  {/* Not gövdesi "içine bir şey konan" alan: gömük yüzey. */}
+                  <p className="kil-oyuk mt-1 whitespace-pre-wrap p-3.5 text-sm leading-relaxed text-zinc-700">
                     {secili.not}
                   </p>
                   {secili.notGuncellemeZamani ? (

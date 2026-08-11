@@ -43,7 +43,7 @@ export function MobilMenu({
         type="button"
         aria-label="Menüyü aç"
         onClick={() => pencere.current?.showModal()}
-        className="-ml-1 grid size-11 place-items-center rounded-md text-marka-800 transition-colors hover:bg-marka-50"
+        className="kil-buton kil-buton-sade -ml-1 grid size-11 place-items-center text-marka-800"
       >
         <svg
           viewBox="0 0 24 24"
@@ -62,7 +62,7 @@ export function MobilMenu({
         ref={pencere}
         // `m-0 h-dvh` ile pencere ortada değil, solda tam boy duruyor:
         // çekmece görünümü için ek bir kaplama katmanına gerek kalmıyor.
-        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] bg-marka-800 p-0 text-white backdrop:bg-black/50"
+        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] bg-gradient-to-b from-marka-700 to-marka-900 p-0 text-white shadow-[8px_0_28px_rgba(45,6,26,0.45)] backdrop:bg-marka-950/45 backdrop:backdrop-blur-sm"
         onClick={(olay) => {
           // Arka plana tıklayınca kapansın. `<dialog>` tıklamayı kendisi
           // alıyor; hedef pencerenin kendisiyse tıklama panelin dışına
@@ -71,7 +71,7 @@ export function MobilMenu({
         }}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-start justify-between border-b border-marka-700 px-5 py-4">
+          <div className="flex items-start justify-between px-5 py-4 shadow-[inset_0_-1px_0_var(--kil-koyu-golge)]">
             <span>
               <span className="block text-sm font-semibold text-white">
                 Atölye Yönetim
@@ -84,7 +84,7 @@ export function MobilMenu({
               type="button"
               aria-label="Menüyü kapat"
               onClick={() => pencere.current?.close()}
-              className="-mr-2 -mt-1 grid size-11 place-items-center rounded-md text-marka-200 transition-colors hover:bg-marka-700 hover:text-white"
+              className="kil-menu-oge -mr-2 -mt-1 grid size-11 place-items-center text-marka-200 hover:text-white"
             >
               <svg
                 viewBox="0 0 24 24"

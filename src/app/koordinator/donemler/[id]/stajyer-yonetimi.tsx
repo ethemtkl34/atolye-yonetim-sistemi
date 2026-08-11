@@ -126,11 +126,12 @@ export function StajyerYonetimi({
                         : undefined
                     }
                     className={cn(
-                      "flex items-center gap-2 rounded px-2 py-1.5 text-sm",
+                      "flex items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Kadrodaki stajyer kile gömülür; kadro dışındaki düz kalır.
                       cikarilamaz
-                        ? "cursor-not-allowed bg-marka-50 text-marka-700"
+                        ? "kil-cip cursor-not-allowed text-marka-700"
                         : secili
-                          ? "cursor-pointer bg-marka-50 text-marka-700"
+                          ? "kil-cip cursor-pointer text-marka-700"
                           : "cursor-pointer text-zinc-700 hover:bg-marka-50",
                     )}
                   >

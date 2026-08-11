@@ -88,7 +88,7 @@ export function PuanSecici({
               <span
                 className={cn(
                   DOKUNMA_HEDEFI,
-                  "rounded-md border border-yuzey-200 bg-white text-sm text-zinc-700",
+                  "kil-satir text-sm text-zinc-700",
                   "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
                 )}

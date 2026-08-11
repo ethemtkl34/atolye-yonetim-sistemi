@@ -92,15 +92,18 @@ export function Pencere({
       ref={pencereRef}
       onClose={onKapat}
       style={{ width: `min(${genislik}, calc(100vw - 2rem))` }}
-      // Arka plan bulanıklığı `backdrop:` katmanında: pencerenin ardındaki
-      // liste okunur kalmayıp geri çekiliyor, odak pencerede kalıyor.
-      className="m-auto rounded-2xl bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-marka-950/40 backdrop:backdrop-blur-md"
+      // Arka plan bulanıklığı `backdrop:` katmanında (kil temasında
+      // `.kil-pencere::backdrop`): pencerenin ardındaki liste okunur kalmayıp
+      // geri çekiliyor, odak pencerede kalıyor.
+      className="kil-pencere m-auto text-zinc-900"
     >
       {acik ? (
         <div className="flex max-h-[85vh] flex-col">
-          <header className="flex items-start justify-between gap-3 border-b border-yuzey-100 p-4">
+          <header className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">{baslik}</div>
+              <div className="flex flex-wrap items-center gap-2 text-lg font-bold tracking-tight">
+                {baslik}
+              </div>
               {altBaslik ? (
                 <p className="mt-0.5 text-sm text-zinc-600">{altBaslik}</p>
               ) : null}
@@ -109,16 +112,16 @@ export function Pencere({
               type="button"
               onClick={onKapat}
               aria-label="Pencereyi kapat"
-              className="flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-md text-lg text-zinc-400 hover:bg-marka-50 hover:text-zinc-700 sm:min-h-0 sm:min-w-0 sm:px-2"
+              className="kil-rozet flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-zinc-600 hover:text-zinc-900"
             >
-              ×
+              ✕
             </button>
           </header>
 
           <div className={govdeSinifi}>{children}</div>
 
           {altKisim ? (
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-yuzey-100 p-4">
+            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/70 px-5 py-4 shadow-[inset_0_1px_0_var(--kil-golge)]">
               {altKisim}
             </footer>
           ) : null}

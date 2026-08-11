@@ -91,8 +91,10 @@ export function IsKarti({
   );
 
   const temel = cn(
-    "relative flex flex-col overflow-hidden rounded-lg border p-4 pl-5 shadow-[0_1px_2px_rgba(91,16,53,0.04)]",
-    dikkat ? "border-vurgu-200 bg-vurgu-50" : "border-yuzey-200 bg-white",
+    "relative flex flex-col overflow-hidden p-4 pl-5",
+    // Dikkat isteyen kart turuncuya çalıyor; ikisi de aynı kil kabartmasında
+    // duruyor ki "iş var" ile "iş yok" arasındaki fark renkte kalsın.
+    dikkat ? "kil-yuzey bg-[linear-gradient(180deg,#fff6f1,#fdece2)]" : "kil-yuzey",
   );
 
   if (!yol) {
@@ -140,8 +142,9 @@ export function DurumOgesi({
     </>
   );
 
-  const yerlesim =
-    "px-4 py-3 first:rounded-t-lg last:rounded-b-lg sm:first:rounded-l-lg sm:first:rounded-tr-none sm:last:rounded-r-lg sm:last:rounded-bl-none";
+  // Hücreler kartın İÇİNDE duruyor; kendi köşeleri kartın köşesine taşmasın
+  // diye tek bir orta yarıçapla yuvarlanıyor.
+  const yerlesim = "m-1 rounded-[var(--kil-r-md)] px-4 py-3";
 
   if (!yol) {
     return (
@@ -157,7 +160,7 @@ export function DurumOgesi({
       aria-label={`${baslik}: ${deger}`}
       className={cn(
         yerlesim,
-        "transition-colors hover:bg-marka-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
+        "transition-shadow hover:shadow-[var(--kil-ic)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600",
       )}
     >
       {govde}

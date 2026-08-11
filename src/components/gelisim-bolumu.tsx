@@ -43,10 +43,10 @@ export function GelisimBolumu({ kayitlar }: { kayitlar: GelisimKaydi[] }) {
           </p>
 
           {kayitlar.map((kayit) => (
-            <div
-              key={kayit.kayitId}
-              className="rounded-md border border-yuzey-200 p-3"
-            >
+            // Kaydın kutusu gömük bir tepsi; içindeki dönem hücreleri düz
+            // durur. Tepsinin içine ikinci bir yüzey konulursa iki kutu iç
+            // içe geçmiş gibi okunuyor.
+            <div key={kayit.kayitId} className="kil-oyuk p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-medium text-zinc-900">
                   {kayit.program} · {kayit.grupAdi}
@@ -61,7 +61,7 @@ export function GelisimBolumu({ kayitlar }: { kayitlar: GelisimKaydi[] }) {
                   return (
                     <div
                       key={nokta.donem}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-yuzey-50 px-3 py-2"
+                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                     >
                       <div>
                         <p className="text-sm text-zinc-800">

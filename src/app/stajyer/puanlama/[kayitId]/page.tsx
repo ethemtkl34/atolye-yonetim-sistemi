@@ -46,7 +46,7 @@ export default async function StajyerKayitGunleri(
       </div>
 
       {kayit.guvenlikUyarisi ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+        <div className="kil-uyari p-3">
           <p className="text-xs font-medium text-amber-800">Güvenlik uyarısı</p>
           <p className="mt-1 text-sm text-amber-900">{kayit.guvenlikUyarisi}</p>
         </div>

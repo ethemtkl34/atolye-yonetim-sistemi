@@ -50,109 +50,426 @@
    * Kartlar beyaz kaldığı için derinlik bu iki tonun farkından geliyor;
    * fark çok azaltılırsa ekran yeniden "upuzun beyaz" görünüyor.
    */
-  --color-yuzey-50: #f6f0f3;
-  --color-yuzey-100: #efe6ea;
-  --color-yuzey-200: #e3d5db;
+  --color-yuzey-50: #f1e9ee;
+  --color-yuzey-100: #e8dbe3;
+  --color-yuzey-200: #ded0d9;
 }
 
 html {
   color-scheme: light;
 }
 
-/*
- * "Kil" (soft clay / skeuomorph) teması — şimdilik yalnızca öğrenci profili
- * sayfasında pilot. Beğenilirse panelin tamamı bu dile taşınacak; o yüzden
- * sınıflar sayfaya değil temaya göre adlandırıldı.
+/* ===========================================================================
+ * KİL TEMASI — panelin ortak malzeme dili
  *
- * Işık modeli: zemin yuzey-50 (#f6f0f3), ışık sol üstten. Kabartma çift
- * gölgeyle (koyu sağ-alt + beyaz sol-üst) veriliyor; basılınca gölge içe
- * dönüyor. Gölge renkleri zemine göre ayarlı — zemin değişirse bunlar da
- * değişmeli.
- */
-.kil-kutu {
-  border-radius: 20px;
-  border: 1px solid #fbf6f9;
-  background: linear-gradient(180deg, #fdfafc, #f3ebef);
-  box-shadow:
-    7px 7px 16px #e2d0d9,
-    -7px -7px 16px #ffffff,
-    inset 0 1px 0 #ffffff;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
-}
-.kil-kutu:hover {
-  transform: translateY(-2px);
-}
-.kil-kutu:active {
-  transform: none;
-  box-shadow:
-    inset 5px 5px 12px #e2d0d9,
-    inset -5px -5px 12px #ffffff;
-}
-.kil-kutu:focus-visible {
-  outline: 2px solid var(--color-marka-600);
-  outline-offset: 2px;
+ * Panel düz kartlardan "kil" (soft clay / skeuomorphism) yüzeylere geçti.
+ * Tek bir fiziksel model var ve bütün ekranlar ona uyar:
+ *
+ *   IŞIK   sol üstten gelir. Bu yüzden her kabartmanın açık kenarı sol-üstte,
+ *          koyu gölgesi sağ-alttadır. Ters yönde gölge yazılırsa yüzey aynı
+ *          sayfada iki farklı ışık kaynağı varmış gibi görünür.
+ *   KABARIK yüzey = dokunulabilir ya da bir şeyi taşıyan şey (kart, buton,
+ *          rozet). Yükseklik önemine göre üç kademe: --kil-e1/e2/e3.
+ *   GÖMÜK  yüzey = içine bir şey yazılan ya da seçili olan şey (girdi, arama
+ *          kutusu, basılı buton, seçili menü satırı): --kil-ic.
+ *
+ * Gölge renkleri sayfa zeminine (yuzey-50 #f1e9ee) göre ayarlandı; zemin
+ * değişirse --kil-golge de değişmeli, yoksa gölgeler kirli görünür.
+ *
+ * KOYU KİL: sol menü kurumsal mürdüm zeminde duruyor ve aynı model orada da
+ * geçerli — yalnızca gölge/ışık çifti koyu paletten (--kil-koyu-*) alınır.
+ * ========================================================================= */
+
+:root {
+  /* Açık kil: gölge biraz mürdüme çalıyor — nötr gri zeminde kirli durur.
+     Zemin (yuzey-50) bilerek beyazdan uzak: kabarık yüzeyler ancak zemin
+     yeterince koyuysa kabarık okunuyor, aksi hâlde ekran "sisli" görünüyor. */
+  --kil-golge: #d9c6d2;
+  --kil-isik: #ffffff;
+  --kil-kenar: #fbf7f9;
+
+  /* Yüzeyin kendisi: alta doğru koyulaşan çok hafif bir eğim. Düz renk
+     kullanılırsa kabartma "sticker" gibi duruyor, hacim hissi kayboluyor. */
+  --kil-yuzey: linear-gradient(180deg, #fdfbfc, #f4eef1);
+  --kil-yuzey-duz: #faf6f8;
+
+  --kil-r-sm: 10px;
+  --kil-r-md: 14px;
+  --kil-r-lg: 20px;
+  --kil-r-xl: 26px;
+
+  /* Yükseklik kademeleri: rozet/küçük buton → kart → pencere. */
+  --kil-e1:
+    3px 3px 7px var(--kil-golge),
+    -3px -3px 7px var(--kil-isik);
+  --kil-e2:
+    6px 6px 15px var(--kil-golge),
+    -6px -6px 15px var(--kil-isik);
+  --kil-e3:
+    16px 16px 40px rgba(91, 16, 53, 0.22),
+    -10px -10px 26px rgba(255, 255, 255, 0.9);
+
+  /* Gömük: girdi ve seçili durum. "Derin" olanı arama kutusu gibi içine
+     gerçekten bir şey konan yüzeyler için. */
+  --kil-ic:
+    inset 3px 3px 7px var(--kil-golge),
+    inset -3px -3px 7px var(--kil-isik);
+  --kil-ic-derin:
+    inset 5px 5px 11px var(--kil-golge),
+    inset -5px -5px 11px var(--kil-isik);
+
+  /* Kabarık yüzeyin üst kenarındaki ışık çizgisi — plastik/kil hissinin
+     büyük kısmı bu 1 pikselden geliyor. */
+  --kil-ust-isik: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  /* Koyu kil (sol menü). */
+  --kil-koyu-golge: #4c0b2c;
+  --kil-koyu-isik: #8b1a54;
 }
 
-/* Kutunun renkli ikon plakası — rengi satır içi değişkenle gelir. */
-.kil-ikon {
-  border-radius: 12px;
-  background: linear-gradient(180deg, var(--kil-renk), var(--kil-renk-koyu));
-  box-shadow:
-    0 2px 4px rgba(64, 24, 44, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
+@layer components {
+  /* --- Taşıyıcı yüzeyler ------------------------------------------------ */
 
-/* Sayı rozeti — kabartmalı küçük hap. */
-.kil-rozet {
-  background: linear-gradient(180deg, #ffffff, #f1e8ed);
-  box-shadow:
-    0 2px 4px rgba(64, 24, 44, 0.22),
-    inset 0 1px 0 #ffffff;
-  font-variant-numeric: tabular-nums;
-}
+  /** Kart: içerik taşıyan sabit yüzey. */
+  .kil-yuzey {
+    border-radius: var(--kil-r-lg);
+    border: 1px solid var(--kil-kenar);
+    background: var(--kil-yuzey);
+    box-shadow: var(--kil-e2), var(--kil-ust-isik);
+  }
 
-/* İçe gömülü bilgi çipi (okul, veli telefonu). */
-.kil-cip {
-  border-radius: 999px;
-  background: #f2eaee;
-  box-shadow:
-    inset 2px 2px 5px #e0cfd8,
-    inset -2px -2px 5px #fffdfe;
-}
+  /** Kart içindeki ikincil yüzey (satır, iç kutu) — kabartma değil, gömük.
+      İç içe iki kabartma "iki ayrı kart" gibi okunuyordu. */
+  .kil-oyuk {
+    border-radius: var(--kil-r-md);
+    background: #efe5eb;
+    box-shadow: var(--kil-ic);
+  }
 
-/* Güvenlik uyarısı şeridi — basılı sarı etiket. */
-.kil-uyari {
-  border-radius: 14px;
-  border: 1px solid #e6cf97;
-  background: linear-gradient(180deg, #fff3d9, #f7e5bd);
-  box-shadow:
-    0 2px 4px rgba(122, 91, 22, 0.14),
-    inset 0 1px 0 #fffaef;
-}
+  /** Tıklanabilir kutu (öğrenci profilindeki bölüm kutuları). */
+  .kil-kutu {
+    border-radius: var(--kil-r-lg);
+    border: 1px solid var(--kil-kenar);
+    background: var(--kil-yuzey);
+    box-shadow: var(--kil-e2), var(--kil-ust-isik);
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
+  }
+  .kil-kutu:hover {
+    transform: translateY(-2px);
+  }
+  .kil-kutu:active {
+    transform: none;
+    box-shadow: var(--kil-ic-derin);
+  }
 
-/* Açılır pencere — kalın kil plakası. */
-.kil-pencere {
-  border-radius: 24px;
-  border: none;
-  background: linear-gradient(180deg, #fdfbfc, #f4edf1);
-  box-shadow:
-    12px 12px 34px rgba(64, 24, 44, 0.35),
-    inset 0 1px 0 #ffffff;
-}
-.kil-pencere::backdrop {
-  background: rgba(91, 16, 53, 0.4);
-  backdrop-filter: blur(6px);
+  /** Tıklanabilir liste satırı — kart kadar yükselmez, sadece kalkar. */
+  .kil-satir {
+    border-radius: var(--kil-r-md);
+    border: 1px solid var(--kil-kenar);
+    background: var(--kil-yuzey);
+    box-shadow: var(--kil-e1), var(--kil-ust-isik);
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
+  }
+  .kil-satir:hover {
+    box-shadow: var(--kil-e2), var(--kil-ust-isik);
+  }
+  .kil-satir:active {
+    box-shadow: var(--kil-ic);
+  }
+
+  /* --- Butonlar --------------------------------------------------------- */
+
+  .kil-buton {
+    border: 1px solid transparent;
+    border-radius: var(--kil-r-md);
+    font-weight: 600;
+    transition:
+      box-shadow 0.14s ease,
+      transform 0.14s ease,
+      background-color 0.14s ease;
+  }
+  .kil-buton:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .kil-buton:focus-visible {
+    outline: 2px solid var(--color-marka-600);
+    outline-offset: 2px;
+  }
+  .kil-buton:disabled {
+    box-shadow: none;
+    opacity: 0.55;
+  }
+
+  /* Birincil: kurumsal mürdüm dolgu. Gölgesi de mürdüm — gri gölge renkli
+     butonun altında ölü duruyor. */
+  .kil-buton-birincil {
+    background: linear-gradient(180deg, #b31d67, #93154f);
+    border-color: #8a1149;
+    color: #fff;
+    box-shadow:
+      4px 4px 10px rgba(91, 16, 53, 0.3),
+      -3px -3px 8px var(--kil-isik),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+  .kil-buton-birincil:hover:not(:disabled) {
+    background: linear-gradient(180deg, #bd2470, #9c1755);
+  }
+  .kil-buton-birincil:active:not(:disabled) {
+    box-shadow:
+      inset 3px 3px 8px rgba(63, 8, 35, 0.55),
+      inset -2px -2px 6px rgba(255, 255, 255, 0.12);
+  }
+
+  /* İkincil: kilin kendisi, marka renginde yazı. Panelin en sık butonu. */
+  .kil-buton-ikincil {
+    background: var(--kil-yuzey);
+    border-color: var(--kil-kenar);
+    color: var(--color-marka-700);
+    box-shadow: var(--kil-e1), var(--kil-ust-isik);
+  }
+  .kil-buton-ikincil:hover:not(:disabled) {
+    box-shadow: var(--kil-e2), var(--kil-ust-isik);
+  }
+  .kil-buton-ikincil:active:not(:disabled) {
+    box-shadow: var(--kil-ic);
+  }
+
+  /* Tehlike: kırmızı bağırmıyor — kil yüzey, kırmızı yazı; basılınca gömülür. */
+  .kil-buton-tehlike {
+    background: linear-gradient(180deg, #fdf7f7, #f7e9e9);
+    border-color: #f3dcdc;
+    color: #b42318;
+    box-shadow:
+      3px 3px 7px #e2cdd3,
+      -3px -3px 7px var(--kil-isik),
+      var(--kil-ust-isik);
+  }
+  .kil-buton-tehlike:hover:not(:disabled) {
+    background: linear-gradient(180deg, #fdf2f2, #f6e0e0);
+  }
+  .kil-buton-tehlike:active:not(:disabled) {
+    box-shadow:
+      inset 3px 3px 7px #e0c3c3,
+      inset -3px -3px 7px #fffdfd;
+  }
+
+  /* Sade: yüzeyde durmayan buton; ancak dokununca kabarır. */
+  .kil-buton-sade {
+    background: transparent;
+    color: var(--color-zinc-600);
+    box-shadow: none;
+  }
+  .kil-buton-sade:hover:not(:disabled) {
+    background: var(--kil-yuzey);
+    color: var(--color-marka-700);
+    box-shadow: var(--kil-e1), var(--kil-ust-isik);
+  }
+  .kil-buton-sade:active:not(:disabled) {
+    box-shadow: var(--kil-ic);
+  }
+
+  /* --- Girdiler --------------------------------------------------------- */
+
+  .kil-girdi {
+    /* Girdi, kartın içinde AÇIKÇA oyuk okunmalı: kullanıcı nereye
+       yazacağını dokudan anlıyor. Bu yüzden hem zemini karttan koyu hem de
+       gölgesi diğer gömük yüzeylerden bir tık derin. */
+    border: 1px solid #e6d9e1;
+    border-radius: var(--kil-r-md);
+    background: #f2eaef;
+    box-shadow: var(--kil-ic-derin);
+    /* Dolgu BURADA duruyor, çağrı yerindeki `px-*` sınıfında değil: aksi
+       hâlde <select>'in okuyla metin çakışıyordu (utility sınıfı bileşen
+       katmanını eziyor). */
+    padding: 0.5rem 0.875rem;
+    transition:
+      box-shadow 0.14s ease,
+      border-color 0.14s ease;
+  }
+  .kil-girdi:focus,
+  .kil-girdi:focus-visible {
+    outline: none;
+    border-color: var(--color-marka-400);
+    box-shadow:
+      var(--kil-ic-derin),
+      0 0 0 3px rgba(163, 24, 91, 0.14);
+  }
+  .kil-girdi:disabled {
+    box-shadow: none;
+    background: #f1eaee;
+    opacity: 0.7;
+  }
+  /* Yerel <select> okunu kendi zeminimizle uyumlu tutmak için. */
+  select.kil-girdi {
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--color-marka-600) 50%),
+      linear-gradient(135deg, var(--color-marka-600) 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) calc(50% + 2px),
+      calc(100% - 13px) calc(50% + 2px);
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 2.25rem;
+  }
+
+  /* --- Küçük parçalar --------------------------------------------------- */
+
+  /** Sayı rozeti / kapatma düğmesi gibi küçük kabarık haplar. */
+  .kil-rozet {
+    background: linear-gradient(180deg, #ffffff, #f1e8ed);
+    box-shadow: var(--kil-e1), var(--kil-ust-isik);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /** Gömük bilgi çipi (okul, veli telefonu, süzgeç etiketi). */
+  .kil-cip {
+    border-radius: 999px;
+    background: #efe5eb;
+    box-shadow: var(--kil-ic);
+  }
+
+  /** Renkli ikon plakası — rengi satır içi --kil-renk değişkeniyle gelir. */
+  .kil-ikon {
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--kil-renk), var(--kil-renk-koyu));
+    box-shadow:
+      0 2px 4px rgba(64, 24, 44, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  /** Boş durum: içine hiçbir şey konmamış oyuk. */
+  .kil-bos {
+    border-radius: var(--kil-r-lg);
+    background: #efe5eb;
+    box-shadow: var(--kil-ic);
+  }
+
+  /** Uyarı şeridi (güvenlik notu) — basılı sarı etiket. */
+  .kil-uyari {
+    border-radius: var(--kil-r-md);
+    border: 1px solid #e8d3a1;
+    background: linear-gradient(180deg, #fff4dc, #f8e7c2);
+    box-shadow:
+      3px 3px 8px rgba(122, 91, 22, 0.16),
+      inset 0 1px 0 #fffaef;
+  }
+
+  /* --- Pencere ---------------------------------------------------------- */
+
+  .kil-pencere {
+    border: none;
+    border-radius: var(--kil-r-xl);
+    background: linear-gradient(180deg, #fdfbfc, #f4edf1);
+    box-shadow: var(--kil-e3), inset 0 1px 0 #ffffff;
+    padding: 0;
+  }
+  .kil-pencere::backdrop {
+    background: rgba(91, 16, 53, 0.38);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* --- Koyu kil (sol menü) ---------------------------------------------- */
+
+  /** Menüde seçili satır: mürdüm zemine gömülmüş açık plaka. */
+  .kil-menu-aktif {
+    border-radius: var(--kil-r-md);
+    background: linear-gradient(180deg, #ffffff, #f5eaf0);
+    box-shadow:
+      3px 3px 9px var(--kil-koyu-golge),
+      -2px -2px 7px var(--kil-koyu-isik),
+      inset 0 1px 0 #ffffff;
+  }
+
+  /** Menüde seçili olmayan satırın dokunma hâli: zemine hafifçe gömülür. */
+  .kil-menu-oge {
+    border-radius: var(--kil-r-md);
+    transition:
+      box-shadow 0.14s ease,
+      color 0.14s ease;
+  }
+  .kil-menu-oge:hover {
+    box-shadow:
+      inset 2px 2px 6px var(--kil-koyu-golge),
+      inset -2px -2px 6px var(--kil-koyu-isik);
+  }
+
+  /** Koyu zeminde kabarık buton (giriş ekranı, menü başlığı). */
+  .kil-koyu-yuzey {
+    border-radius: var(--kil-r-lg);
+    background: linear-gradient(180deg, #7a1447, #660f39);
+    box-shadow:
+      6px 6px 16px var(--kil-koyu-golge),
+      -5px -5px 14px var(--kil-koyu-isik),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .kil-kutu,
   .kil-kutu:hover,
-  .kil-kutu:active {
+  .kil-kutu:active,
+  .kil-satir,
+  .kil-buton,
+  .kil-buton:active:not(:disabled) {
     transition: none;
     transform: none;
   }
 }
 
-body {
-  font-family: var(--font-sans), system-ui, sans-serif;
+/* Kil yüzeyde ayraç: üstte ışık, altta gölge — çizgi değil, oyuk gibi okunur.
+   `divide-y` ile yapılan ayraçlar kil zeminde kayboluyordu. */
+@layer components {
+  .kil-bolmeli > * + * {
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 var(--kil-golge);
+  }
+}
+
+@layer components {
+  /* İlerleme çubuğunun yuvası: kil zeminde düz renk bir şerit kayboluyordu,
+     ince bir oyuk hem görünür hem malzemeyle tutarlı. */
+  .kil-yuva {
+    background: #e7dae1;
+    box-shadow:
+      inset 1px 1px 2px var(--kil-golge),
+      inset -1px -1px 2px var(--kil-isik);
+  }
+}
+
+@layer components {
+  /* Segment seçeneği (Katıldı/Katılmadı, gün seçimi, puan çipi).
+     Seçili olan gömük (`kil-cip`), seçili OLMAYAN hafifçe kabarık durur:
+     tıklanabilir olduğu görünmeli. Süzgeç çipleri bilerek bunun dışında —
+     onlar zaten "Kapsam:" etiketinin yanında duruyor ve kabarınca sayfada
+     buton kalabalığı yaratıyor. */
+  .kil-segment {
+    border-radius: 999px;
+    border: 1px solid var(--kil-kenar);
+    background: var(--kil-yuzey);
+    box-shadow: var(--kil-e1), var(--kil-ust-isik);
+    transition: box-shadow 0.14s ease;
+  }
+  .kil-segment:hover {
+    box-shadow: var(--kil-e2), var(--kil-ust-isik);
+  }
+}
+
+@layer components {
+  /* <legend> tarayıcıda kutunun ÜST KENARINA oturur; kenarlık yerine gömük
+     zemin kullandığımız için başlık yüzeyin yarısı dışında kalıyordu.
+     `float` ile normal bir blok gibi akıyor, kutunun içinde duruyor. */
+  fieldset.kil-oyuk > legend {
+    float: left;
+    width: 100%;
+    margin-bottom: 0.25rem;
+    padding-inline: 0;
+  }
 }

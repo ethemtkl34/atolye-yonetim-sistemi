@@ -65,11 +65,13 @@ export function SuzgecGrubu({
                 // sıkı ölçü. Süzgeç çipleri neredeyse her liste ekranında var
                 // ve 28px'ti — yan yana duran iki çipten yanlışını seçmek
                 // parmakla fazlasıyla kolaydı.
-                "inline-flex min-h-[2.75rem] items-center rounded-md px-3 text-sm",
-                "sm:min-h-0 sm:px-2.5 sm:py-1",
+                "inline-flex min-h-[2.75rem] items-center rounded-full px-3.5 text-sm transition-shadow",
+                "sm:min-h-[2.25rem] sm:px-3 sm:py-1",
+                // Seçili süzgeç zemine GÖMÜLÜ, seçilmeyenler düz: hangisinin
+                // basılı olduğu renkten önce dokudan okunuyor.
                 secili === secenek.deger
-                  ? "bg-marka-50 font-medium text-marka-700"
-                  : "text-zinc-600 hover:bg-marka-50",
+                  ? "kil-cip font-semibold text-marka-700"
+                  : "font-medium text-zinc-600 hover:bg-white/70",
               )}
             >
               {secenek.etiket}

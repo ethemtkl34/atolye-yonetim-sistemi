@@ -212,7 +212,7 @@ export function ZekaTestleriBolumu({
                   type="file"
                   name="dosya"
                   accept="application/pdf,image/jpeg,image/png"
-                  className="block w-full min-h-[2.75rem] rounded-md border border-yuzey-200 bg-white px-3 py-2 text-base file:mr-3 file:rounded file:border-0 file:bg-marka-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-marka-700 sm:min-h-0 sm:text-sm"
+                  className="kil-girdi block w-full min-h-[2.75rem] px-3 py-2 text-base file:mr-3 file:rounded file:border-0 file:bg-marka-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-marka-700 sm:min-h-0 sm:text-sm"
                 />
               </Alan>
             </div>
@@ -347,19 +347,20 @@ export function ZekaTestleriBolumu({
           <>
             {/* Önizleme: belge inline servis ediliyor; PDF iframe'de,
                 görsel img'de. Pencere kapalıyken bu bölüm render edilmez,
-                belge boşuna indirilmez. */}
+                belge boşuna indirilmez. Belge gömük bir yuvaya oturur; iç
+                dolgu olmadan kilin gölgesi belgenin altında kalıyordu. */}
             {secili.mime === "application/pdf" ? (
               <iframe
                 src={`/api/zeka-testi/${secili.id}`}
                 title={`${secili.testAdi} önizlemesi`}
-                className="h-[60vh] w-full rounded-md border border-yuzey-200"
+                className="kil-oyuk h-[60vh] w-full p-1.5"
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- dinamik, yetkili rotadan gelen belge; next/image optimizasyonuna girmemeli
               <img
                 src={`/api/zeka-testi/${secili.id}`}
                 alt={`${secili.testAdi} sonuç belgesi`}
-                className="max-h-[60vh] w-full rounded-md border border-yuzey-200 object-contain"
+                className="kil-oyuk max-h-[60vh] w-full p-1.5 object-contain"
               />
             )}
 
@@ -368,7 +369,7 @@ export function ZekaTestleriBolumu({
                 <h4 className="text-sm font-semibold text-zinc-900">
                   Değerlendirme notu
                 </h4>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                <p className="kil-oyuk mt-1 whitespace-pre-wrap p-3.5 text-sm leading-relaxed text-zinc-700">
                   {secili.not}
                 </p>
               </div>

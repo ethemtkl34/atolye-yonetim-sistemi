@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Bildirim, Buton, CokSatirli, DonenHalka, Kart, Rozet, baglantiStili } from "@/components/ui";
+import { Bildirim, Buton, CokSatirli, DonenHalka, Rozet, baglantiStili } from "@/components/ui";
 import { GonderButonu } from "@/components/ui-istemci";
 import { cn } from "@/lib/utils";
 import { ortalamaBicimle } from "@/lib/puan-hesaplari";
@@ -72,14 +72,16 @@ export function RaporIcerigi({
         ) : null}
       </div>
 
+      {/* Güncelliğini yitirmiş rapor uyarısı: kil temasının basılı uyarı
+          şeridi; uyarı rengi metinde korunuyor. */}
       {!ozet.guncel ? (
-        <Kart className="bg-vurgu-50 p-3">
+        <div className="kil-uyari p-3">
           <p className="text-sm text-vurgu-800">
             Bu rapor üretildikten sonra puanlarda değişiklik yapıldı. Aşağıdaki
             “Güncel puanlarla yeniden üret” düğmesiyle yeni bir rapor
             oluşturabilirsiniz; bu rapor geçmişte kalır.
           </p>
-        </Kart>
+        </div>
       ) : null}
 
       <section className="space-y-2">
@@ -88,7 +90,7 @@ export function RaporIcerigi({
         </h3>
 
         {govde.analiz.atolyeler.map((atolye, sira) => (
-          <Kart key={atolye.atolyeAdi} className="p-4">
+          <div key={atolye.atolyeAdi} className="kil-oyuk p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="font-medium text-zinc-900">{atolye.atolyeAdi}</h4>
               <span className="text-sm text-zinc-600">
@@ -143,7 +145,7 @@ export function RaporIcerigi({
             <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-800">
               {govde.metin.atolyeler[sira]?.paragraf ?? ""}
             </p>
-          </Kart>
+          </div>
         ))}
       </section>
 
@@ -151,13 +153,13 @@ export function RaporIcerigi({
         <h3 className="text-sm font-semibold text-zinc-900">
           Genel öğrenci değerlendirmesi
         </h3>
-        <Kart className="space-y-3 p-4">
+        <div className="kil-oyuk space-y-3 p-4">
           {govde.metin.genelParagraflar.map((paragraf, sira) => (
             <p key={sira} className="text-sm text-zinc-800">
               {paragraf}
             </p>
           ))}
-        </Kart>
+        </div>
       </section>
 
       {/* §11.5 + §13.17 — Bu rapordan üretilmiş PDF'ler */}
@@ -166,7 +168,7 @@ export function RaporIcerigi({
           <h3 className="text-sm font-semibold text-zinc-900">
             Bu rapordan üretilen PDF’ler
           </h3>
-          <Kart className="divide-y divide-yuzey-100">
+          <div className="kil-oyuk divide-y divide-white/70">
             {veri.pdfler.map((pdf) => (
               <div
                 key={pdf.id}
@@ -185,7 +187,7 @@ export function RaporIcerigi({
                 </a>
               </div>
             ))}
-          </Kart>
+          </div>
         </section>
       ) : null}
     </div>
@@ -210,7 +212,7 @@ export function MetinDuzenleme({
   return (
     <form action={eylem} className="space-y-3">
       {metin.atolyeler.map((atolye, sira) => (
-        <Kart key={atolye.atolyeAdi} className="p-4">
+        <div key={atolye.atolyeAdi} className="kil-oyuk p-4">
           <label className="block">
             <span className="text-sm font-medium text-zinc-800">
               {atolye.atolyeAdi}
@@ -222,10 +224,10 @@ export function MetinDuzenleme({
               className="mt-2"
             />
           </label>
-        </Kart>
+        </div>
       ))}
 
-      <Kart className="p-4">
+      <div className="kil-oyuk p-4">
         <label className="block">
           <span className="text-sm font-medium text-zinc-800">
             Genel öğrenci değerlendirmesi
@@ -240,7 +242,7 @@ export function MetinDuzenleme({
             className="mt-2"
           />
         </label>
-      </Kart>
+      </div>
 
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
@@ -296,7 +298,8 @@ export function YeniRaporFormu({
         fazla kayıtta geçiyorsa raporda tek bölüm olarak birleşir.
       </p>
 
-      <Kart className="p-3">
+      {/* Kapsam listesi bir girdi: kart gibi kabarmaz, forma gömülür. */}
+      <div className="kil-girdi p-3">
         <ul className="space-y-1">
           {kayitlar.map((kayit) => {
             const secili = secilenler.includes(kayit.id);
@@ -332,7 +335,7 @@ export function YeniRaporFormu({
             );
           })}
         </ul>
-      </Kart>
+      </div>
 
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
@@ -368,7 +371,7 @@ function UretimSurecKutusu() {
   return (
     <div
       role="status"
-      className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
+      className="kil-oyuk flex items-center gap-3 px-3 py-2.5 text-sm text-marka-700"
     >
       <DonenHalka />
       <span>

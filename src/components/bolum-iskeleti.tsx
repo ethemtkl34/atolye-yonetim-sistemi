@@ -70,17 +70,19 @@ export function DetaySatiri({
   );
 
   const temel =
-    "flex w-full items-center justify-between gap-3 rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)]";
+    "flex w-full items-center justify-between gap-3 p-4 text-left";
 
+  // Tıklanamayan satır düz durur; tıklanabilir olan kabarır (kil kuralı:
+  // kabartma = dokunulabilir).
   if (!onClick) {
-    return <div className={temel}>{govde}</div>;
+    return <div className={`kil-yuzey ${temel}`}>{govde}</div>;
   }
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group ${temel} transition-colors hover:border-marka-200 hover:bg-marka-50`}
+      className={`group kil-satir ${temel}`}
     >
       {govde}
     </button>

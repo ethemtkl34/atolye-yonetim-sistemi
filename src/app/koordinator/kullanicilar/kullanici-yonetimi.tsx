@@ -156,7 +156,7 @@ export function KullaniciYonetimi({
               </div>
 
               {acikPanel === `ad-${kullanici.id}` ? (
-                <div className="mt-4 border-t border-yuzey-100 pt-4">
+                <div className="mt-4 border-t border-white/70 pt-4 shadow-[inset_0_1px_0_var(--kil-golge)]">
                   <AdFormu
                     kullanici={kullanici}
                     kapat={() => setAcikPanel(null)}
@@ -165,7 +165,7 @@ export function KullaniciYonetimi({
               ) : null}
 
               {acikPanel === `parola-${kullanici.id}` ? (
-                <div className="mt-4 border-t border-yuzey-100 pt-4">
+                <div className="mt-4 border-t border-white/70 pt-4 shadow-[inset_0_1px_0_var(--kil-golge)]">
                   <ParolaFormu
                     kullaniciId={kullanici.id}
                     kapat={() => setAcikPanel(null)}
@@ -174,7 +174,7 @@ export function KullaniciYonetimi({
               ) : null}
 
               {acikPanel === `rol-${kullanici.id}` ? (
-                <div className="mt-4 border-t border-yuzey-100 pt-4">
+                <div className="mt-4 border-t border-white/70 pt-4 shadow-[inset_0_1px_0_var(--kil-golge)]">
                   <RolFormu
                     kullanici={kullanici}
                     subeler={subeler}
@@ -231,7 +231,8 @@ function RolSubeAlanlari({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Alan etiket="Roller" hata={hatalar?.roles}>
-        <div className="space-y-1.5 rounded-md border border-yuzey-200 px-3 py-2">
+        {/* Onay kutuları da bir girdi: kart yüzeyinde kabarmaz, gömülür. */}
+        <div className="kil-girdi space-y-1.5 px-3 py-2">
           {ROL_SECENEKLERI.map((secenek) => (
             <label
               key={secenek}
@@ -261,7 +262,7 @@ function RolSubeAlanlari({
 
       {yonetici ? (
         <Alan etiket="Şube">
-          <p className="rounded-md border border-dashed border-yuzey-200 px-3 py-2 text-sm text-zinc-500">
+          <p className="kil-oyuk px-3 py-2 text-sm text-zinc-500">
             Yönetici bütün şubeleri görür; şube seçilmez.
           </p>
         </Alan>

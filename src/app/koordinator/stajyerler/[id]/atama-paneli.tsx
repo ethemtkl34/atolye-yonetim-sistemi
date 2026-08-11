@@ -132,7 +132,7 @@ export function AtamaPaneli({
       {sonuc?.hata ? <Bildirim tur="hata">{sonuc.hata}</Bildirim> : null}
 
       {kayitlar.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+        <p className="kil-bos p-6 text-center text-sm text-zinc-600">
           Bu programda aktif öğrenci kaydı yok.
         </p>
       ) : (
@@ -159,7 +159,7 @@ export function AtamaPaneli({
           </div>
 
           {gosterilecekler.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+            <p className="kil-bos p-6 text-center text-sm text-zinc-600">
               “{arama}” ile eşleşen öğrenci yok. Aramayı temizleyerek bütün
               kayıtları görebilirsiniz.
             </p>

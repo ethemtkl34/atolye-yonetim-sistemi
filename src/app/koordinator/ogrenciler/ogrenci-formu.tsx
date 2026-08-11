@@ -249,7 +249,9 @@ export function OgrenciFormu({
           />
         </Alan>
 
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+        {/* Güvenlik notu kil temasının basılı sarı etiketi (`kil-uyari`);
+            uyarı rengi korunuyor, yüzey malzemesi ortak dile geçti. */}
+        <div className="kil-uyari p-3">
           <Alan
             etiket="Stajyere gösterilecek kısa güvenlik uyarısı"
             ipucu="Stajyerin göreceği TEK sağlık bilgisi budur. Kısa ve uygulanabilir yazın; teşhis veya ayrıntılı sağlık geçmişi yazmayın."
@@ -339,9 +341,9 @@ export function OgrenciFormu({
               </div>
 
               {secilenGrup ? (
-                <div className="rounded-md bg-yuzey-50 p-3">
+                <div className="kil-oyuk p-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200">
+                    <div className="h-1.5 w-40 overflow-hidden rounded-full kil-yuva">
                       <div
                         className={cn(
                           "h-full",

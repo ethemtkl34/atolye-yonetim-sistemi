@@ -40,7 +40,7 @@ export function KademeGostergesi({
 
       {etiketli ? (
         <span
-          className="rounded-full px-2 py-0.5 text-xs font-semibold"
+          className="kil-cip px-2 py-0.5 text-xs font-semibold"
           style={{ backgroundColor: bant.zemin, color: bant.renk }}
         >
           {bant.etiket}
@@ -65,7 +65,7 @@ export function KademeYok() {
           />
         ))}
       </span>
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-500">
+      <span className="kil-cip px-2 py-0.5 text-xs font-semibold text-zinc-500">
         Değerlendirilmedi
       </span>
     </span>

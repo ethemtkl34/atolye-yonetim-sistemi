@@ -45,10 +45,13 @@ export function PanelKabuk({
 }) {
   return (
     <div className="flex min-h-full flex-1">
-      <aside className="hidden w-64 shrink-0 bg-marka-800 md:sticky md:top-0 md:flex md:h-svh md:flex-col">
-        <div className="border-b border-marka-700 px-5 py-4">
+      {/* Menü zemini üstten aydınlık, alta doğru koyulaşan bir mürdüm yüzey:
+          içerik alanındaki kil ışık modeli (sol üstten ışık) burada da
+          sürüyor, panel tek bir malzemeden yapılmış gibi duruyor. */}
+      <aside className="hidden w-64 shrink-0 bg-gradient-to-b from-marka-700 to-marka-900 md:sticky md:top-0 md:flex md:h-svh md:flex-col">
+        <div className="px-5 py-4 shadow-[inset_0_-1px_0_var(--kil-koyu-golge)]">
           <Link href="/" className="block">
-            <span className="text-sm font-semibold text-white">
+            <span className="text-sm font-bold tracking-tight text-white">
               Atölye Yönetim
             </span>
             <span className="mt-0.5 block text-xs text-marka-200">
@@ -61,7 +64,9 @@ export function PanelKabuk({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-yuzey-200 bg-white/95 px-4 py-2.5 backdrop-blur sm:px-6">
+        {/* Üst şerit sayfanın zemininden bir tık kabarık: altındaki içerik
+            kaydıkça şeridin sabit durduğu gölgesinden anlaşılıyor. */}
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-[linear-gradient(180deg,#fdfbfc,#f6f0f3)] px-4 py-2.5 shadow-[0_6px_16px_-8px_var(--kil-golge),inset_0_1px_0_#fff] sm:px-6">
           {/* Ad, hesap sayfasına giden bağlantı: parola değiştirme buradan
               bulunuyor. Menüye ayrı madde eklenmedi — 13 modülün arasına
               karışmaması, kullanıcının kendi hesabına ait olması gerekiyor. */}
@@ -71,11 +76,11 @@ export function PanelKabuk({
 
             <Link
               href="/hesabim"
-              className="-mx-2 flex min-w-0 items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-marka-50"
+              className="kil-buton kil-buton-sade -mx-2 flex min-w-0 items-center gap-2.5 px-2 py-1"
             >
               <span
                 aria-hidden
-                className="grid size-8 shrink-0 place-items-center rounded-full bg-marka-100 text-xs font-semibold text-marka-700"
+                className="kil-rozet grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold text-marka-700"
               >
                 {basHarfler(kullanici.name)}
               </span>
@@ -103,7 +108,7 @@ export function PanelKabuk({
             <form action={cikisYap}>
               <button
                 type="submit"
-                className="min-h-[2.75rem] rounded-md border border-marka-200 px-3 py-1.5 text-sm font-medium text-marka-700 transition-colors hover:bg-marka-50 sm:min-h-0"
+                className="kil-buton kil-buton-ikincil min-h-[2.75rem] px-3.5 py-1.5 text-sm sm:min-h-[2.25rem]"
               >
                 Çıkış
               </button>

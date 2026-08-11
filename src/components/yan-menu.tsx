@@ -199,13 +199,14 @@ export function YanMenu({
               href={oge.yol}
               aria-current={aktif ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 px-3 py-2 text-sm",
                 yatay && "whitespace-nowrap",
-                // Aktif sayfa beyaz zeminle işaretleniyor; koyu menüde en
-                // güçlü ayrım bu ve rengi ikinci bir tona gerek bırakmıyor.
+                // Aktif sayfa koyu mürdüm zemine oturtulmuş açık bir plaka;
+                // seçili olmayanlar dokunulunca zemine gömülüyor. Koyu kilin
+                // gölge/ışık çifti globals.css'te (--kil-koyu-*).
                 aktif
-                  ? "bg-white font-semibold text-marka-800"
-                  : "text-marka-100 hover:bg-marka-700 hover:text-white",
+                  ? "kil-menu-aktif font-bold text-marka-800"
+                  : "kil-menu-oge font-medium text-marka-100 hover:text-white",
               )}
             >
               {yatay ? null : (

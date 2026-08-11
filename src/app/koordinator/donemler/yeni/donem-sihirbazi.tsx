@@ -273,7 +273,7 @@ export function DonemSihirbazi({
           />
         </Alan>
 
-        <ul className="grid max-h-80 gap-1 overflow-y-auto rounded-md border border-yuzey-200 p-2 sm:grid-cols-2">
+        <ul className="kil-oyuk grid max-h-80 gap-1 overflow-y-auto p-2 sm:grid-cols-2">
           {haftalar.map((haftaninBasi) => {
             const metin = tarihMetni(haftaninBasi);
             const secili = secilenHaftalar.includes(metin);
@@ -290,9 +290,10 @@ export function DonemSihirbazi({
               <li key={metin}>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm",
+                    "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                    // Seçili hafta kile gömülür; seçilmemiş olan düz kalır.
                     secili
-                      ? "bg-marka-50 text-marka-700"
+                      ? "kil-cip text-marka-700"
                       : kilitli
                         ? "cursor-not-allowed text-zinc-300"
                         : "text-zinc-700 hover:bg-marka-50",
@@ -354,9 +355,10 @@ export function DonemSihirbazi({
                 <li key={atolye.id}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm",
+                      "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Seçili atölye kile gömülür; seçilmemiş olan düz kalır.
                       secili
-                        ? "bg-marka-50 text-marka-700"
+                        ? "kil-cip text-marka-700"
                         : kilitli
                           ? "cursor-not-allowed text-zinc-300"
                           : "text-zinc-700 hover:bg-marka-50",
@@ -410,9 +412,10 @@ export function DonemSihirbazi({
                 <li key={stajyer.id}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm",
+                      "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Seçili stajyer kile gömülür; seçilmemiş olan düz kalır.
                       secili
-                        ? "bg-marka-50 text-marka-700"
+                        ? "kil-cip text-marka-700"
                         : "text-zinc-700 hover:bg-marka-50",
                     )}
                   >
@@ -480,9 +483,10 @@ export function DonemSihirbazi({
                   <label
                     key={gun}
                     className={cn(
-                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      // Seçili gün kile gömülür; seçilmemiş olan düz kalır.
                       secili
-                        ? "bg-marka-50 text-marka-700"
+                        ? "kil-cip text-marka-700"
                         : "text-zinc-700 hover:bg-marka-50",
                     )}
                   >

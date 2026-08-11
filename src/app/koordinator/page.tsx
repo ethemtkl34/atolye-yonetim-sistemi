@@ -168,18 +168,16 @@ export default async function KoordinatorDashboard() {
                     <Link
                       key={grup.id}
                       href={grup.yol}
-                      className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+                      className="kil-satir flex h-full flex-col gap-1 p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
                     >
-                      <Kart className="flex h-full flex-col gap-1 p-4 transition-colors hover:border-marka-300 hover:bg-marka-50/40">
-                        <span className="text-sm font-medium text-zinc-900">
-                          {grup.programAdi} · {grup.ad}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          {grupZamani(grup.gunler, grup.zamanDilimi)} ·{" "}
-                          {grup.atolyeSayisi} atölye · {grup.ogrenciSayisi}/
-                          {grup.kapasite} öğrenci
-                        </span>
-                      </Kart>
+                      <span className="text-sm font-medium text-zinc-900">
+                        {grup.programAdi} · {grup.ad}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {grupZamani(grup.gunler, grup.zamanDilimi)} ·{" "}
+                        {grup.atolyeSayisi} atölye · {grup.ogrenciSayisi}/
+                        {grup.kapasite} öğrenci
+                      </span>
                     </Link>
                   ))}
                 </div>

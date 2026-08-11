@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bildirim, Buton, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Buton, CokSatirli, Kart, Rozet } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 import type { MufredatHedefi } from "./actions";
 import {
@@ -90,7 +90,8 @@ function AtolyeSatiri({
   }
 
   return (
-    <div className="rounded-xl border border-yuzey-200 bg-white p-4">
+    // Satır, kartın İÇİNDE duruyor: kabartma değil gömük yüzey.
+    <div className="kil-oyuk p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{atolye.ad}</span>
@@ -173,11 +174,11 @@ function AtolyeSatiri({
           }}
           className="mt-3 space-y-2"
         >
-          <textarea
+          <CokSatirli
             name="metin"
             defaultValue={metin}
             rows={8}
-            className="w-full rounded-lg border border-yuzey-200 p-3 text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+            className="leading-relaxed"
           />
           <Buton type="submit">Kaydet</Buton>
         </form>

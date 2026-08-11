@@ -56,8 +56,9 @@ export function SubeGostergesi({
     sira % 3
   ];
 
-  const kutu =
-    "flex items-center gap-2 rounded-md border border-yuzey-200 bg-white py-1 pl-2 pr-1";
+  // Şube göstergesi üst şeritte GÖMÜK duruyor: kabarık olsaydı buton gibi
+  // okunurdu, oysa asıl işi "neredeyim" sorusunu sessizce cevaplamak.
+  const kutu = "kil-cip flex items-center gap-2 rounded-[var(--kil-r-md)] py-1 pl-2.5 pr-1";
 
   if (!degistirebilir) {
     return (

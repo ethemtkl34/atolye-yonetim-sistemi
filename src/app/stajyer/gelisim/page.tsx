@@ -64,7 +64,7 @@ export default async function GelisimSayfasi() {
                   return (
                     <div
                       key={nokta.donem}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-yuzey-200 px-3 py-2"
+                      className="kil-oyuk flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                     >
                       <div>
                         <p className="text-sm text-zinc-800">

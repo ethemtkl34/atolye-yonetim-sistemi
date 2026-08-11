@@ -286,7 +286,7 @@ export default async function DonemDetaySayfasi(
         <h2 className="text-base font-semibold text-zinc-900">Gruplar</h2>
 
         {donem.groups.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+          <p className="kil-bos p-6 text-center text-sm text-zinc-600">
             Bu dönemde henüz grup yok. Öğrenci kaydı alabilmek için bir grup
             ekleyin.
           </p>

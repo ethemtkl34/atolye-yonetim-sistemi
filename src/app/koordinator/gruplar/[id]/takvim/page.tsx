@@ -102,7 +102,7 @@ export default async function GrupTakvimiSayfasi(
       </div>
 
       {puanlanmisGunSayisi > 0 ? (
-        <p className="rounded-md bg-marka-50 px-3 py-2 text-sm text-marka-700">
+        <p className="rounded-[var(--kil-r-md)] bg-marka-50 px-3 py-2 text-sm text-marka-700">
           {puanlanmisGunSayisi} günde puanlama girilmiş. Bu günlerin tarihi
           değiştirilebilir — puanlamalar oturuma bağlı olduğu için birlikte
           taşınır — ama gün silinemez.

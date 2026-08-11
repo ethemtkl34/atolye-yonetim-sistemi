@@ -150,10 +150,13 @@ export function DanisanBasvurusuFormu({
                     onClick={() => setMod(deger)}
                     aria-pressed={etkinMod === deger}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-sm",
+                      // Seçili çip GÖMÜK durur (basılı düğme), seçilmeyen
+                      // yüzeyde durmaz; hangisinin açık olduğu renkten önce
+                      // dokudan okunur.
+                      "kil-buton px-3 py-1.5 text-sm",
                       etkinMod === deger
-                        ? "bg-marka-50 font-medium text-marka-700"
-                        : "text-zinc-600 hover:bg-marka-50",
+                        ? "kil-oyuk text-marka-700"
+                        : "kil-buton-sade",
                     )}
                   >
                     {etiket}

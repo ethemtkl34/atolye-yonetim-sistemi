@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { Kart, Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
+import { Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, secimStili } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import { AKTIF_DONEM_KOSULU, AKTIF_KULUP_KOSULU } from "@/lib/durumlar";
 import { grupZamani, tarihBicimle } from "@/lib/tarih";
 import { AtamaPaneli, type AtanabilirKayit } from "./atama-paneli";
@@ -168,7 +169,7 @@ export default async function StajyerDetaySayfasi(
               <select
                 name="program"
                 defaultValue={secim}
-                className="mt-1 min-h-[2.75rem] w-full min-w-64 rounded-md border border-yuzey-200 bg-white px-3 py-2 text-base outline-none focus:border-marka-600 focus:ring-2 focus:ring-marka-100 sm:min-h-0 sm:text-sm"
+                className={cn(secimStili, "mt-1 min-w-64")}
               >
                 <option value="">Seçin…</option>
                 {donemler.length > 0 ? (
@@ -193,7 +194,7 @@ export default async function StajyerDetaySayfasi(
             </label>
             <button
               type="submit"
-              className="rounded-md bg-marka-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-marka-700"
+              className={butonStili()}
             >
               Göster
             </button>

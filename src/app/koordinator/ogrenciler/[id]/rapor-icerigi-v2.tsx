@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bildirim, Buton, CokSatirli, DonenHalka, Kart, Rozet } from "@/components/ui";
+import { Bildirim, Buton, CokSatirli, DonenHalka, Rozet } from "@/components/ui";
 import { KademeGostergesi, KademeYok } from "@/components/kademe-gostergesi";
 import { cn } from "@/lib/utils";
 import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
@@ -46,7 +46,7 @@ export function RaporIcerigiV2({
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Atölyeler ve içerikleri</h3>
           {govde.atolyeIcerikleri.map((atolye) => (
-            <Kart key={atolye.atolyeAdi} className="p-4">
+            <div key={atolye.atolyeAdi} className="kil-oyuk p-4">
               <DuzenlenebilirMetin
                 raporId={raporId}
                 alan={{ tur: "atolyeIcerik", atolyeAdi: atolye.atolyeAdi }}
@@ -54,7 +54,7 @@ export function RaporIcerigiV2({
                 onGuncellendi={onGuncellendi}
                 baslik={<h4 className="font-medium">{atolye.atolyeAdi}</h4>}
               />
-            </Kart>
+            </div>
           ))}
         </section>
       ) : null}
@@ -64,7 +64,7 @@ export function RaporIcerigiV2({
           Sosyal, duygusal ve bilişsel beceriler
         </h3>
         {govde.gelisimAlanlari.map((alan) => (
-          <Kart key={alan.ad} className="p-4">
+          <div key={alan.ad} className="kil-oyuk p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-medium">{alan.ad}</h4>
               {alan.bant ? <KademeGostergesi bant={alan.bant} /> : <KademeYok />}
@@ -78,14 +78,14 @@ export function RaporIcerigiV2({
                 sinif="mt-2"
               />
             ) : null}
-          </Kart>
+          </div>
         ))}
       </section>
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Atölyelerde ilgi ve başarı</h3>
         {govde.atolyeKademeleri.map((atolye) => (
-          <Kart key={atolye.atolyeAdi} className="p-4">
+          <div key={atolye.atolyeAdi} className="kil-oyuk p-4">
             <h4 className="font-medium">{atolye.atolyeAdi}</h4>
             <div className="mt-2 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -112,11 +112,12 @@ export function RaporIcerigiV2({
                 {atolye.katilmadigiOturumSayisi} oturuma katılım sağlanmamış.
               </p>
             ) : null}
-          </Kart>
+          </div>
         ))}
 
+        {/* Asimetri notu bir uyarı: rengi korunuyor, malzemesi basılı şerit. */}
         {govde.asimetriler.map((asimetri) => (
-          <Kart key={asimetri.atolyeAdi} className="bg-vurgu-50 p-3">
+          <div key={asimetri.atolyeAdi} className="kil-uyari p-3">
             <DuzenlenebilirMetin
               raporId={raporId}
               alan={{ tur: "asimetriCumle", atolyeAdi: asimetri.atolyeAdi }}
@@ -124,14 +125,14 @@ export function RaporIcerigiV2({
               onGuncellendi={onGuncellendi}
               metinSinifi="text-sm text-vurgu-800"
             />
-          </Kart>
+          </div>
         ))}
       </section>
 
       {govde.gozlem ? (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Gözlem raporu</h3>
-          <Kart className="space-y-3 p-4 text-sm leading-relaxed text-zinc-700">
+          <div className="kil-oyuk space-y-3 p-4 text-sm leading-relaxed text-zinc-700">
             <DuzenlenebilirMetin
               raporId={raporId}
               alan={{ tur: "gozlem", bolum: "giris" }}
@@ -189,16 +190,16 @@ export function RaporIcerigiV2({
                 </ul>
               ) : null}
             </div>
-          </Kart>
+          </div>
         </section>
       ) : (
-        <Kart className="bg-yuzey-50 p-4">
+        <div className="kil-oyuk p-4">
           <p className="text-sm text-zinc-600">
             Gözlem bölümü üretilmedi. Bu bölüm yalnızca stajyerlerin puanlama
             formuna yazdığı gözlem notlarından üretilir; not yoksa yazılacak
             somut bir davranış da yoktur.
           </p>
-        </Kart>
+        </div>
       )}
     </div>
   );
@@ -312,7 +313,7 @@ function DuzenlenebilirMetin({
         onClick={ac}
         aria-label="Bu metni düzenle"
         title="Bu metni düzenle"
-        className="absolute top-0 right-0 flex size-7 items-center justify-center rounded-md text-zinc-300 transition-colors group-hover/metin:text-zinc-500 hover:bg-marka-50 hover:!text-marka-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+        className="kil-buton kil-buton-sade absolute top-0 right-0 flex size-7 items-center justify-center text-zinc-300 group-hover/metin:text-zinc-500 hover:!text-marka-700"
       >
         <svg
           aria-hidden

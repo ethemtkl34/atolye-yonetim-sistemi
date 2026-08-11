@@ -187,9 +187,9 @@ export function KayitFormu({
             </Alan>
 
             {secilenGrup ? (
-              <div className="rounded-md bg-yuzey-50 p-3">
+              <div className="kil-oyuk p-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200">
+                  <div className="h-1.5 w-40 overflow-hidden rounded-full kil-yuva">
                     <div
                       className={cn(
                         "h-full",
@@ -273,8 +273,10 @@ export function KayitFormu({
         )}
       </Kart>
 
+      {/* Çakışma uyarısı kil temasının basılı uyarı şeridi; uyarı rengi
+          metinlerde korunuyor. */}
       {uyariVar ? (
-        <div className="rounded-md border border-vurgu-200 bg-vurgu-50 p-3">
+        <div className="kil-uyari p-3">
           <p className="text-sm font-medium text-vurgu-800">Çakışma uyarısı</p>
           <p className="mt-1 text-sm text-vurgu-700">{durum.uyari}</p>
         </div>

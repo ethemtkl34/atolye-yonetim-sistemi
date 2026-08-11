@@ -72,14 +72,14 @@ export function SoruYonetimi({
       {mesaj?.hata ? <Bildirim tur="hata">{mesaj.hata}</Bildirim> : null}
 
       {sorular.length === 0 ? (
-        <Kart className="border-dashed p-6 text-center">
+        <div className="kil-bos p-6 text-center">
           <p className="text-sm text-zinc-600">
             Bu atölyenin henüz sorusu yok.
           </p>
           <p className="mt-1 text-xs text-zinc-500">
             Puanlama yapılabilmesi için en az bir soru gerekir.
           </p>
-        </Kart>
+        </div>
       ) : (
         <ol className="space-y-2">
           {sorular.map((soru, sira) => (

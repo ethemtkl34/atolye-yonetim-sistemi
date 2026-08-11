@@ -173,8 +173,10 @@ function GelisimSoruSatiri({
     <fieldset
       id={`gelisim-${soru.anahtar}`}
       className={cn(
-        "scroll-mt-4 rounded-md border px-3 py-3",
-        eksik ? "border-red-300 bg-red-50" : "border-yuzey-200",
+        "scroll-mt-4 px-3 py-3",
+        // Kartın içindeki soru kutusu gömük durur; eksik kalan soru
+        // kırmızıya boyanır — o hâlde renk dokunun önüne geçer.
+        eksik ? "rounded-md border border-red-300 bg-red-50" : "kil-oyuk",
       )}
     >
       <legend className="px-1 text-sm text-zinc-800">

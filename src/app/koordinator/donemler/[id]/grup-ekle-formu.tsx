@@ -111,9 +111,10 @@ export function GrupEkleFormu({
                   <label
                     key={gun}
                     className={cn(
-                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
+                      // Seçili gün kile gömülür; seçilmemiş olan düz kalır.
                       secili
-                        ? "bg-marka-50 text-marka-700"
+                        ? "kil-cip text-marka-700"
                         : "text-zinc-700 hover:bg-marka-50",
                     )}
                   >

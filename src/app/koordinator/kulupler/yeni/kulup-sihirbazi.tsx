@@ -186,10 +186,11 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
                 <label
                   key={metin}
                   className={cn(
-                    "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-md border px-3 text-sm sm:min-h-0 sm:py-2",
+                    "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-3 text-sm sm:min-h-0 sm:py-2",
+                    // Seçili gün kile gömülür; seçilmemiş olan düz kalır.
                     secili
-                      ? "border-marka-600 bg-marka-50 text-marka-800"
-                      : "border-yuzey-200 bg-white text-zinc-700 hover:bg-marka-50",
+                      ? "kil-cip text-marka-800"
+                      : "text-zinc-700 hover:bg-marka-50",
                   )}
                 >
                   <input
@@ -243,9 +244,10 @@ export function KulupSihirbazi({ atolyeler }: { atolyeler: AtolyeSecenegi[] }) {
                 <li key={atolye.id}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm",
+                      "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Seçili atölye kile gömülür; seçilmemiş olan düz kalır.
                       secili
-                        ? "bg-marka-50 text-marka-700"
+                        ? "kil-cip text-marka-700"
                         : kilitli
                           ? "cursor-not-allowed text-zinc-300"
                           : "text-zinc-700 hover:bg-marka-50",

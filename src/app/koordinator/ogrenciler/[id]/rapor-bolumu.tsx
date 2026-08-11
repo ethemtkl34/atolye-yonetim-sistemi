@@ -237,7 +237,7 @@ export function RaporBolumu({
         </div>
 
         {raporlar.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+          <p className="kil-bos p-6 text-center text-sm text-zinc-600">
             Henüz rapor üretilmemiş. Rapor, mevcut puanlamalardan istenildiği
             anda üretilebilir.
           </p>
@@ -248,7 +248,7 @@ export function RaporBolumu({
                 key={rapor.id}
                 type="button"
                 onClick={() => ac({ mod: "detay", raporId: rapor.id })}
-                className="block w-full rounded-lg border border-yuzey-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(91,16,53,0.04)] transition-colors hover:border-marka-200 hover:bg-marka-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
+                className="kil-satir block w-full p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600"
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-zinc-900">
@@ -299,7 +299,10 @@ export function RaporBolumu({
         </div>
       </header>
 
-      <div className="rounded-xl bg-yuzey-50 px-4 py-4">
+      {/* Gövdenin kendi yüzeyi yok: pencere (kil-pencere) zaten kabarık tek
+          yüzey, rapor bölümleri onun içine tek tek gömülüyor. Buraya da bir
+          zemin konsaydı gömük kutular gömük zemine karışırdı. */}
+      <div>
         {pencere.mod === "yeni" ? (
           <YeniRaporFormu
             kayitlar={kapsamKayitlari}
@@ -327,7 +330,10 @@ export function RaporBolumu({
       </div>
 
       {pencere.mod === "detay" && veri && !duzenleniyor ? (
-        <footer className="space-y-3 border-t border-yuzey-200 pt-4">
+        <footer
+          // Ayraç kil temasında çizgi değil kazıma: üstte ışık, altta gölge.
+          className="space-y-3 border-t border-white/70 pt-4 shadow-[inset_0_1px_0_var(--kil-golge)]"
+        >
           {islemSonucu?.basari ? (
             <Bildirim tur="basari">{islemSonucu.basari}</Bildirim>
           ) : null}
@@ -338,7 +344,7 @@ export function RaporBolumu({
           {islemde && surenIslem === "yeniden" ? (
             <div
               role="status"
-              className="flex items-center gap-3 rounded-md bg-marka-50 px-3 py-2.5 text-sm text-marka-700"
+              className="kil-oyuk flex items-center gap-3 px-3 py-2.5 text-sm text-marka-700"
             >
               <DonenHalka />
               <span>

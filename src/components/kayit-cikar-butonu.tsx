@@ -94,7 +94,9 @@ export function KayitCikarButonu({
   }
 
   return (
-    <div className="w-full space-y-3 rounded-md border border-red-200 bg-red-50/40 p-3 sm:w-80">
+    // Çıkarma paneli kartın içine gömülü durur; kırmızı ton korunuyor, o
+    // renk "bu form geri alınması zor bir işlem" demek.
+    <div className="kil-oyuk w-full space-y-3 bg-red-50/40 p-3 sm:w-80">
       <div>
         <p className="text-sm font-medium text-red-800">{cikarEtiketi}</p>
         <p className="mt-1 text-xs text-zinc-600">

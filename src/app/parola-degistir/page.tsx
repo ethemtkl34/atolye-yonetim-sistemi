@@ -31,8 +31,8 @@ export default async function ParolaDegistirSayfasi() {
   if (!kullanici.mustChangePassword) redirect("/");
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-marka-800 p-6">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg shadow-marka-900/20">
+    <main className="flex flex-1 items-center justify-center bg-gradient-to-b from-marka-700 to-marka-900 p-6">
+      <div className="kil-yuzey w-full max-w-sm p-6 shadow-[16px_16px_40px_var(--kil-koyu-golge),-10px_-10px_26px_rgba(255,255,255,0.08),inset_0_1px_0_#fff]">
         <h1 className="text-lg font-semibold text-zinc-900">
           Hoş geldiniz, {kullanici.name}
         </h1>

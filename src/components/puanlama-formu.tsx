@@ -142,7 +142,7 @@ export function PuanlamaFormu({
       </div>
 
       {!form.puanlanabilir ? (
-        <p className="mt-3 rounded-md bg-yuzey-50 px-3 py-2 text-sm text-zinc-600">
+        <p className="kil-oyuk mt-3 px-3 py-2 text-sm text-zinc-600">
           Bu atölye henüz yapılmadı. Form, oturum günü geldiğinde açılır.
         </p>
       ) : (
@@ -178,10 +178,12 @@ export function PuanlamaFormu({
                   key={secenek.deger}
                   className={cn(
                     DOKUNMA_HEDEFI,
-                    "cursor-pointer rounded-md border text-sm",
+                    "cursor-pointer text-sm transition-shadow",
+                    // Seçili olan zemine GÖMÜLÜ durur, seçilmeyen düz: hangi
+                    // seçeneğin basılı olduğu renkten önce dokudan okunur.
                     katilim === secenek.deger
-                      ? "border-marka-600 bg-marka-50 font-medium text-marka-700"
-                      : "border-yuzey-200 bg-white text-zinc-700 hover:bg-marka-50",
+                      ? "kil-cip font-semibold text-marka-700"
+                      : "kil-segment font-medium text-zinc-700",
                   )}
                 >
                   <input
@@ -203,7 +205,7 @@ export function PuanlamaFormu({
           </fieldset>
 
           {katilim === "katilmadi" ? (
-            <p className="rounded-md bg-yuzey-50 px-3 py-2 text-sm text-zinc-600">
+            <p className="kil-oyuk px-3 py-2 text-sm text-zinc-600">
               Katılmadı işaretlenen atölyede puanlama soruları doldurulmaz ve
               bu oturum hiçbir ortalamaya dahil edilmez.
             </p>
@@ -272,7 +274,7 @@ export function PuanlamaFormu({
               defaultValue={form.gozlemNotu ?? ""}
               disabled={kilitli || bekliyor}
               placeholder="Örn: “Uydular ne yapar?” sorusuna “interneti çektirir” dedi, izlediği videodan bağlantı kurdu."
-              className="w-full rounded-lg border border-yuzey-200 p-3 text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 disabled:bg-yuzey-50"
+              className="kil-girdi w-full p-3 text-sm leading-relaxed outline-none"
             />
           </div>
 
@@ -354,8 +356,10 @@ function SoruSatiri({
     <fieldset
       id={alanId}
       className={cn(
-        "scroll-mt-4 rounded-md border px-3 py-3",
-        eksik ? "border-red-300 bg-red-50" : "border-yuzey-200",
+        "scroll-mt-4 px-3 py-3",
+        // Kartın içindeki soru kutusu gömük durur; eksik kalan soru
+        // kırmızıya boyanır — o hâlde renk dokunun önüne geçer.
+        eksik ? "rounded-md border border-red-300 bg-red-50" : "kil-oyuk",
       )}
     >
       <legend className="px-1 text-sm text-zinc-800">

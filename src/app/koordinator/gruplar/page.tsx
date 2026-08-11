@@ -179,7 +179,7 @@ export default async function GruplarSayfasi(
 
                 <div className="mt-3 flex items-center gap-3">
                   <div
-                    className="h-1.5 w-40 overflow-hidden rounded-full bg-yuzey-200"
+                    className="h-1.5 w-40 overflow-hidden rounded-full kil-yuva"
                     role="presentation"
                   >
                     <div

@@ -96,7 +96,7 @@ export function TakvimDuzenleyici({
 
       <div className="space-y-2">
         {gunler.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-marka-200 bg-white p-6 text-center text-sm text-zinc-600">
+          <p className="kil-bos p-6 text-center text-sm text-zinc-600">
             Bu grubun takviminde hiç gün yok.
           </p>
         ) : null}

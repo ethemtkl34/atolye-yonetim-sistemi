@@ -53,7 +53,8 @@ export function DanisanBasvurusuOzeti({
 }) {
   if (!basvuru) {
     return (
-      <div className="rounded-md border border-dashed border-yuzey-300 bg-yuzey-50 p-4">
+      // Doldurulmamış başvuru boş bir oyuk: içine henüz bir şey konmamış.
+      <div className="kil-bos p-4">
         <p className="text-sm font-medium text-zinc-800">
           Danışan başvurusu doldurulmamış.
         </p>
@@ -94,7 +95,8 @@ export function DanisanBasvurusuOzeti({
   ];
 
   return (
-    <div className="rounded-md border border-yuzey-200 bg-yuzey-50 p-4">
+    // Başvuru, terapi kutusunun içindeki ikincil yüzey: kabartma değil oyuk.
+    <div className="kil-oyuk p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h4 className="text-sm font-semibold text-zinc-900">

@@ -29,7 +29,7 @@ export function KayitIptalOzeti({ kayit }: { kayit: IptalBilgisi }) {
   const ayrilma = kayit.cancelReason ? ayrilmaMetni(kayit) : null;
 
   return (
-    <div className="mt-2 rounded-md border border-yuzey-200 bg-yuzey-50 p-3">
+    <div className="kil-oyuk mt-2 p-3">
       <div className="flex flex-wrap items-center gap-2">
         {kayit.cancelReason ? (
           <Rozet tur="uyari">{IPTAL_SEBEPLERI[kayit.cancelReason]}</Rozet>

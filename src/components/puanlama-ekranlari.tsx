@@ -41,7 +41,7 @@ export function IlerlemeCubugu({ ozet }: { ozet: GorevOzeti }) {
           <span>Yapılmış oturum yok</span>
         )}
       </div>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-yuzey-200">
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full kil-yuva">
         <div
           className={ozet.bekleyen > 0 ? "h-full bg-vurgu-600" : "h-full bg-emerald-500"}
           style={{ width: `${yuzde}%` }}
@@ -214,14 +214,14 @@ export function GunFormEkrani({
           "işlem bekliyor" demek. Çocuğun güvenliğiyle ilgili uyarı, bekleyen
           bir formla aynı renge girerse gözden kaçabilir. */}
       {guvenlikUyarisiniGoster && kayit.guvenlikUyarisi ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+        <div className="kil-uyari p-3">
           <p className="text-xs font-medium text-amber-800">Güvenlik uyarısı</p>
           <p className="mt-1 text-sm text-amber-900">{kayit.guvenlikUyarisi}</p>
         </div>
       ) : null}
 
       {!kayit.aktif ? (
-        <div className="rounded-md bg-yuzey-100 px-3 py-2 text-sm text-zinc-700">
+        <div className="kil-oyuk px-3 py-2 text-sm text-zinc-700">
           Bu kayıt iptal edilmiş. Girilmiş puanlamalar korunur ama yeni
           puanlama yapılamaz.
         </div>
@@ -235,7 +235,7 @@ export function GunFormEkrani({
               stajyer için salt okunur. Telafi günlerinde ve konu girilmemiş
               haftalarda blok hiç görünmez. */}
           {form.mufredat ? (
-            <div className="rounded-md bg-yuzey-100 px-3 py-2">
+            <div className="kil-oyuk px-3 py-2">
               <p className="text-xs font-medium text-zinc-500">
                 {kayit.programTuru === "Kulüp"
                   ? "Bu günün konusu"
