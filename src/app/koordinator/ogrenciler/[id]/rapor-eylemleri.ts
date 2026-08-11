@@ -78,9 +78,13 @@ export async function raporOlustur(
   // içeriği veya gelişim değerlendirmesi yoksa) yine üretilir, eksik
   // bölümler basılmaz. Yalnızca öğrenci ya da kayıt bulunamazsa birinci
   // sürüme düşülür.
-  const govde =
-    (await raporGovdesiV2Uret(ogrenciId, kayitIdleri, subeId, new Date())) ??
-    (await raporGovdesiUret(ogrenciId, kayitIdleri, subeId));
+  const uretim = await govdeUret(
+    async () =>
+      (await raporGovdesiV2Uret(ogrenciId, kayitIdleri, subeId, new Date())) ??
+      (await raporGovdesiUret(ogrenciId, kayitIdleri, subeId)),
+  );
+  if ("hata" in uretim) return uretim;
+  const govde = uretim.govde;
   if (!govde) return { hata: "Öğrenci bulunamadı." };
 
   const rapor = await db.report.create({
@@ -97,7 +101,46 @@ export async function raporOlustur(
 
   revalidatePath(`/koordinator/ogrenciler/${ogrenciId}`);
   revalidatePath("/koordinator");
-  return { basari: "Rapor oluşturuldu.", raporId: rapor.id };
+  return {
+    basari: `Rapor oluşturuldu.${uyariNotu(govde)}`,
+    raporId: rapor.id,
+  };
+}
+
+/**
+ * Gövde üretimini sarar: beklenmeyen bir çıkış kullanıcıya okunur bir
+ * mesajla döner.
+ *
+ * Yapay zekâ katmanı kendi hatalarını zaten `uyarilar` olarak taşıyor;
+ * buradaki güvenlik ağı veritabanı ve kod hatalarını kapsıyor. Sarmalanmasa
+ * eylem reddediliyor ve pencerede sebepsiz bir çökme görünüyordu.
+ */
+async function govdeUret<T>(
+  uret: () => Promise<T>,
+): Promise<{ govde: T } | { hata: string }> {
+  try {
+    return { govde: await uret() };
+  } catch (hata) {
+    const detay = hata instanceof Error ? hata.message : String(hata);
+    console.error("Rapor gövdesi üretilemedi:", hata);
+    return {
+      hata: `Rapor üretilemedi: ${detay}. Sorun sürerse ekran görüntüsüyle birlikte sistem yöneticisine iletin.`,
+    };
+  }
+}
+
+/**
+ * Üretim sonucuna eklenen eksiklik notu.
+ *
+ * Rapor eksik veriyle de üretilebiliyor; "Rapor oluşturuldu." yazıp susmak,
+ * eksiği ancak veliye gönderdikten sonra fark ettiriyordu. Ayrıntı listesi
+ * raporun kendi penceresinde duruyor, burada yalnızca sayı verilir.
+ */
+function uyariNotu(govde: unknown): string {
+  const sayi = (govde as { uyarilar?: unknown[] })?.uyarilar?.length ?? 0;
+  return sayi > 0
+    ? ` Ancak ${sayi} bölüm eksik üretildi; sebepleri raporun üstünde listelendi.`
+    : "";
 }
 
 /**
@@ -124,9 +167,17 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollmentId);
   // Zaman damgası puanlar okunmadan önce — raporOlustur'daki açıklamaya bakın.
   const uretimZamani = new Date();
-  const govde =
-    (await raporGovdesiV2Uret(eski.studentId, kayitIdleri, subeId, new Date())) ??
-    (await raporGovdesiUret(eski.studentId, kayitIdleri, subeId));
+  const uretim = await govdeUret(
+    async () =>
+      (await raporGovdesiV2Uret(
+        eski.studentId,
+        kayitIdleri,
+        subeId,
+        new Date(),
+      )) ?? (await raporGovdesiUret(eski.studentId, kayitIdleri, subeId)),
+  );
+  if ("hata" in uretim) return uretim;
+  const govde = uretim.govde;
   if (!govde) return { hata: "Rapor verisi hazırlanamadı." };
 
   const yeni = await db.report.create({
@@ -144,7 +195,7 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   revalidatePath(`/koordinator/ogrenciler/${eski.studentId}`);
   revalidatePath("/koordinator");
   return {
-    basari: "Güncel puanlarla yeni rapor üretildi. Eski rapor geçmişte kaldı.",
+    basari: `Güncel puanlarla yeni rapor üretildi. Eski rapor geçmişte kaldı.${uyariNotu(govde)}`,
     raporId: yeni.id,
   };
 }

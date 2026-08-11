@@ -12,6 +12,7 @@ import {
   atolyeKademesiCikar,
   gelisimAlanlariCikar,
   type RaporGovdesiV2,
+  type RaporUyarisi,
 } from "./rapor-govdesi";
 import { grupGelisimOrtalamalari } from "./rapor-verisi";
 import { urunOnerileriSec, type OneriAdayi } from "./urun-onerileri";
@@ -125,6 +126,11 @@ export async function raporGovdesiV2Uret(
 
   if (kayitlar.length === 0) return null;
 
+  // Eksik üretilen her bölüm buraya sebebiyle yazılır; rapor penceresi bu
+  // listeyi gösterir. Sessizce eksik basmak, koordinatörün eksiği ancak
+  // veliye gönderdikten sonra fark etmesi demekti.
+  const uyarilar: RaporUyarisi[] = [];
+
   // --- Atölye kademeleri -------------------------------------------------
   type CevapSatiri = {
     questionId: string | null;
@@ -209,6 +215,36 @@ export async function raporGovdesiV2Uret(
     kazanimHaritasi(),
   );
 
+  if (gelisimCevaplari.length === 0) {
+    uyarilar.push({
+      bolum: "gelisim",
+      mesaj:
+        "Duygusal, sosyal ve bilişsel beceriler bölümü boş: bu öğrenci için dönem sonu gelişim değerlendirmesi girilmemiş.",
+      cozum:
+        "Öğrencinin profilindeki “Gelişim değerlendirmesi” bölümünden dönem sonu formunu doldurup raporu yeniden üretin.",
+    });
+  } else if (grupOrtalamalari.size === 0) {
+    uyarilar.push({
+      bolum: "gelisim",
+      mesaj:
+        "Beceriler grafiğinde grup ortalaması çizilemedi: grupta dönem sonu değerlendirmesi girilmiş başka öğrenci yok.",
+      cozum:
+        "Gruptaki diğer öğrencilerin dönem sonu formları doldurulduktan sonra raporu yeniden üretin; kıyas o zaman yapılabilir.",
+    });
+  }
+
+  const kademesizAtolyeler = atolyeKademeleri
+    .filter((a) => !a.ilgi || !a.basari)
+    .map((a) => a.atolyeAdi);
+  if (kademesizAtolyeler.length > 0) {
+    uyarilar.push({
+      bolum: "kademe",
+      mesaj: `İlgi veya başarı düzeyi hesaplanamayan atölyeler: ${kademesizAtolyeler.join(", ")}. Bu atölyelerde puanlanmış oturum bulunmuyor ya da puanlama soruları ilgi/yetenek başlıkları altında değil.`,
+      cozum:
+        "İlgili oturumların puanlama formlarının doldurulduğunu ve atölyenin soru başlıklarının “ilgi” ile “yetenek” kategorilerini içerdiğini kontrol edin.",
+    });
+  }
+
   // --- Atölye içerik paragrafları ---------------------------------------
   const donemIdleri = kayitlar
     .map((k) => k.group.term?.id)
@@ -231,6 +267,21 @@ export async function raporGovdesiV2Uret(
   const atolyeIcerikleri = icerikKayitlari
     .sort((a, b) => a.workshopType.sortOrder - b.workshopType.sortOrder)
     .map((kayit) => ({ atolyeAdi: kayit.workshopType.name, metin: kayit.metin }));
+
+  // İçerik paragrafı program × atölye başına bir kez üretiliyor; üretilmemiş
+  // olan atölye raporda tamamen boş kalır ve bu fark edilmeyebilir.
+  const icerigiOlanlar = new Set(atolyeIcerikleri.map((i) => i.atolyeAdi));
+  const icerigiOlmayanlar = [...atolyeHavuzu.values()]
+    .map((atolye) => atolye.ad)
+    .filter((ad) => !icerigiOlanlar.has(ad));
+  if (icerigiOlmayanlar.length > 0) {
+    uyarilar.push({
+      bolum: "atolyeIcerik",
+      mesaj: `“Atölyeler ve içerikleri” bölümünde şu atölyeler yok: ${icerigiOlmayanlar.join(", ")}. Bu program için içerik paragrafları üretilmemiş.`,
+      cozum:
+        "Müfredat sayfasında ilgili programı açıp bu atölyelerin haftalık müfredatını girin ve “İçerik üret” adımını çalıştırın; sonra raporu yeniden üretin.",
+    });
+  }
 
   // --- Gözlem bölümü (yapay zekâ) ---------------------------------------
   const beceriler = await db.beceriTanimi.findMany({
@@ -350,6 +401,40 @@ export async function raporGovdesiV2Uret(
         }
       : null;
 
+  // Gözlem bölümü üretilemediyse sebebi yazılır: dördü de çok farklı işler
+  // ("not yok" kurumsal bir eksik, "anahtar yok" kurulum hatası, "hata"
+  // geçici bir arıza) ve çözümleri de farklı.
+  if (!gozlem) {
+    switch (metinSonucu.durum) {
+      case "gozlem-yok":
+        uyarilar.push({
+          bolum: "gozlem",
+          mesaj:
+            "Eğitmen gözlem raporu yazılmadı: bu öğrenci için puanlama formlarına yeterli gözlem notu girilmemiş.",
+          cozum:
+            "Stajyerlerin oturum puanlama formlarındaki “gözlem notu” alanlarını doldurmasını isteyin; notlar girildikten sonra raporu yeniden üretin.",
+        });
+        break;
+      case "anahtar-yok":
+        uyarilar.push({
+          bolum: "gozlem",
+          mesaj:
+            "Eğitmen gözlem raporu yazılmadı: yapay zekâ bağlantısı kurulu değil (OPENAI_API_KEY tanımsız).",
+          cozum:
+            "Sunucu ortam değişkenlerine geçerli bir OPENAI_API_KEY ekleyin; raporun kalan bölümleri bu ayardan etkilenmez.",
+        });
+        break;
+      case "hata":
+        uyarilar.push({
+          bolum: "gozlem",
+          mesaj: `Eğitmen gözlem raporu yazılamadı: ${metinSonucu.mesaj}`,
+          cozum:
+            "“Güncel puanlarla yeniden üret” ile tekrar deneyin; hata sürerse yapay zekâ servisinin durumunu kontrol edin.",
+        });
+        break;
+    }
+  }
+
   return {
     surum: 2,
     ogrenci: {
@@ -378,6 +463,7 @@ export async function raporGovdesiV2Uret(
       })),
     ),
     gozlem,
+    uyarilar,
     metinKaynagi: gozlem ? "ai" : "sablon",
   };
 }

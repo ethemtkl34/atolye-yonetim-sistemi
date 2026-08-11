@@ -76,6 +76,25 @@ export type GozlemBolumu = {
   urunler: { ad: string; url: string }[];
 };
 
+/**
+ * §11.2 — Raporun eksik üretilen bir bölümü ve sebebi.
+ *
+ * Rapor, eksik veriyle de üretilebilir: gelişim değerlendirmesi girilmemişse
+ * kademe çıkmaz, gözlem notu yoksa gözlem bölümü yazılmaz. Bu durumlar
+ * SESSİZ KALMAMALI — koordinatör "bölüm neden yok" diye kodu okumak zorunda
+ * kalmasın diye sebep ve çözüm rapora yazılır.
+ *
+ * Uyarılar yalnızca panelde görünür; veliye giden PDF'e basılmaz.
+ */
+export type RaporUyarisi = {
+  /** Etkilenen bölüm — arayüz gruplamak isterse. */
+  bolum: "gozlem" | "atolyeIcerik" | "gelisim" | "kademe";
+  /** Neyin üretilemediği. */
+  mesaj: string;
+  /** Bunu gidermek için ne yapılmalı. */
+  cozum: string;
+};
+
 export type RaporGovdesiV2 = {
   surum: 2;
   ogrenci: {
@@ -98,6 +117,8 @@ export type RaporGovdesiV2 = {
   atolyeKademeleri: AtolyeKademesi[];
   asimetriler: Asimetri[];
   gozlem: GozlemBolumu | null;
+  /** Üretilemeyen bölümler ve sebepleri; eski snapshot'larda yok. */
+  uyarilar?: RaporUyarisi[];
   /** Metnin nasıl üretildiği — denetlenebilirlik için saklanır. */
   metinKaynagi: "sablon" | "ai";
 };

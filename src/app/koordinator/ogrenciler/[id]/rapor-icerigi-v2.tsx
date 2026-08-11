@@ -42,6 +42,27 @@ export function RaporIcerigiV2({
         ) : null}
       </div>
 
+      {/* Eksik üretilen bölümler en üstte: rapor gönderilmeden önce
+          görülmeli. Bu kutu yalnızca panelde; PDF'e basılmaz. */}
+      {govde.uyarilar && govde.uyarilar.length > 0 ? (
+        <div className="kil-uyari space-y-2 p-4">
+          <h3 className="text-sm font-semibold text-vurgu-900">
+            Bu rapor eksik üretildi ({govde.uyarilar.length})
+          </h3>
+          <ul className="space-y-2">
+            {govde.uyarilar.map((uyari) => (
+              <li key={uyari.mesaj} className="text-sm text-vurgu-800">
+                <p>{uyari.mesaj}</p>
+                <p className="mt-0.5 text-xs text-vurgu-700">
+                  <span className="font-medium">Ne yapmalı: </span>
+                  {uyari.cozum}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {govde.atolyeIcerikleri.length > 0 ? (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Atölyeler ve içerikleri</h3>
