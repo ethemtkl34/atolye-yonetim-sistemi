@@ -10,6 +10,7 @@ import {
   tarihCozumle,
   tarihGunleBicimle,
   tarihMetni,
+  yasBicimle,
 } from "./tarih";
 
 describe("tarihCozumle", () => {
@@ -150,5 +151,31 @@ describe("grupZamani", () => {
     expect(grupZamani(["CARSAMBA", "PAZARTESI"], "OGLEDEN_ONCE")).toBe(
       "Pazartesi, Çarşamba öğleden önce",
     );
+  });
+});
+
+describe("yasBicimle", () => {
+  const yas = (dogum: string, referans: string) =>
+    yasBicimle(tarihCozumle(dogum)!, tarihCozumle(referans)!);
+
+  it("yıl, ay ve günü birlikte yazar", () => {
+    expect(yas("2018-03-14", "2026-08-11")).toBe("8 yaş 4 ay 28 gün");
+  });
+
+  it("doğum günündeyken ay ve günü sıfırlar", () => {
+    expect(yas("2018-08-11", "2026-08-11")).toBe("8 yaş 0 ay 0 gün");
+  });
+
+  it("gün eksiye düşünce önceki aydan ödünç alır", () => {
+    // Referans ayından önceki ay (Şubat 2026, 28 gün) kadar ödünç alınır.
+    expect(yas("2020-01-31", "2026-03-01")).toBe("6 yaş 1 ay 1 gün");
+  });
+
+  it("ay eksiye düşünce yıldan ödünç alır", () => {
+    expect(yas("2019-11-20", "2026-03-05")).toBe("6 yaş 3 ay 13 gün");
+  });
+
+  it("bir yaşından küçükte yaş parçasını yazmaz", () => {
+    expect(yas("2026-04-05", "2026-08-11")).toBe("4 ay 6 gün");
   });
 });

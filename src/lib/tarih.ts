@@ -191,6 +191,47 @@ export function haftaBicimle(haftaBasi: Date, duzen: DayMode): string {
   return `${tarihBicimle(ilk)} – ${tarihBicimle(son)}`;
 }
 
+/**
+ * Doğum tarihinden yaş metni: "7 yaş 4 ay 16 gün".
+ *
+ * Takvim farkıyla hesaplanır (30 günlük ay varsayımı değil): gün eksiye
+ * düşerse referans ayından önceki ayın gün sayısı kadar ödünç alınır.
+ * Bir yaşından küçüklerde "yaş" parçası yazılmaz ("4 ay 12 gün").
+ */
+export function yasBicimle(dogum: Date, referans: Date): string {
+  // Dolmuş ay sayısı: son "ay dönümü" henüz gelmediyse bir eksik. Ay dönümü
+  // günü, kısa aylarda ay sonuna kıstırılır (31 Ocak doğumlunun şubat dönümü
+  // 28 Şubat) — yoksa gün farkı eksiye düşer ve tek ödünç yetmez.
+  const refAySonu = new Date(
+    Date.UTC(referans.getUTCFullYear(), referans.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  const donumGunu = Math.min(dogum.getUTCDate(), refAySonu);
+
+  let toplamAy =
+    (referans.getUTCFullYear() - dogum.getUTCFullYear()) * 12 +
+    (referans.getUTCMonth() - dogum.getUTCMonth());
+  if (referans.getUTCDate() < donumGunu) toplamAy -= 1;
+
+  // Son ay dönümünün gerçek tarihi; gün, referansla arasındaki mesafe.
+  const capaAySonu = new Date(
+    Date.UTC(dogum.getUTCFullYear(), dogum.getUTCMonth() + toplamAy + 1, 0),
+  ).getUTCDate();
+  const capa = Date.UTC(
+    dogum.getUTCFullYear(),
+    dogum.getUTCMonth() + toplamAy,
+    Math.min(dogum.getUTCDate(), capaAySonu),
+  );
+  const gun = Math.round((referans.getTime() - capa) / GUNDE_MS);
+
+  const yil = Math.floor(toplamAy / 12);
+  const ay = toplamAy % 12;
+
+  const parcalar = [];
+  if (yil > 0) parcalar.push(`${yil} yaş`);
+  parcalar.push(`${ay} ay`, `${gun} gün`);
+  return parcalar.join(" ");
+}
+
 /** Bugünün UTC gece yarısına sabitlenmiş hali — karşılaştırmalar için. */
 export function bugun(): Date {
   const simdi = new Date();

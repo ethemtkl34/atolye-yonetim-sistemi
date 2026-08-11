@@ -35,7 +35,7 @@ import {
   AKTIF_DONEM_DURUMLARI,
   AKTIF_KULUP_DURUMLARI,
 } from "@/lib/durumlar";
-import { tarihBicimle } from "@/lib/tarih";
+import { bugun, tarihBicimle, yasBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -326,6 +326,11 @@ export default async function OgrenciProfilSayfasi(
             gereken bilgi. Veli telefonları tıklanabilir, koordinatör en çok
             aileyi arıyor. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {ogrenci.birthDate ? (
+            <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
+              {yasBicimle(ogrenci.birthDate, bugun())}
+            </span>
+          ) : null}
           {ogrenci.school || ogrenci.grade ? (
             <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
               {[ogrenci.school, ogrenci.grade].filter(Boolean).join(" · ")}
