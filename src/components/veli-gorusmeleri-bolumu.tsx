@@ -10,7 +10,6 @@ import {
   useEklemePaneli,
   useSunucuIslemi,
 } from "@/components/bolum-iskeleti";
-import Link from "next/link";
 import {
   Alan,
   Bildirim,
@@ -19,8 +18,6 @@ import {
   CokSatirli,
   Girdi,
   Kart,
-  Rozet,
-  baglantiStili,
   secimStili,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -42,12 +39,16 @@ import {
  * Veli görüşmeleri bölümü.
  *
  * İki modda çalışır:
- *   - "yonetim": ekleme, not ve silme açık. Danışmanlık sayfasında öğrenci
- *     formdaki seçiciden gelir; öğrenci profilinde ise `sabitOgrenci` ile
- *     baştan bellidir — seçici yerine gizli alan, satırlarda da öğrenci adı
- *     tekrarlanmaz (sayfanın tamamı zaten o öğrencinin).
- *   - "okuma":  yalnızca liste ve detay penceresi; yazma Danışmanlık
- *     sayfasına yönlendirilir.
+ *   - "yonetim": ekleme, not ve silme açık. Öğrenci profilinde `sabitOgrenci`
+ *     ile öğrenci baştan bellidir — seçici yerine gizli alan, satırlarda da
+ *     öğrenci adı tekrarlanmaz (sayfanın tamamı zaten o öğrencinin).
+ *   - "okuma":  yalnızca liste ve detay penceresi — danışmanlık yetkisi
+ *     OKUMA olan kullanıcı için; yazma hiçbir ekranda açılmaz.
+ *
+ * VELİ GÖRÜŞMESİNİN TEK ADRESİ ÖĞRENCİ PROFİLİ: Danışmanlık sayfasından veli
+ * sekmesi kaldırıldı, bileşen artık yalnızca profilde kullanılıyor. Çok
+ * öğrencili yol (`ogrenciSecenekleri` ile öğrenci seçici, satırlarda öğrenci
+ * sütunu) veli listesi çok öğrencili bir ekrana geri dönerse diye duruyor.
  *
  * GİZLİLİK: Her iki mod da yalnızca koordinatör ekranlarında kullanılır;
  * veli görüşmesi verisi stajyer ekranlarının hiçbirine gitmez.
@@ -55,8 +56,10 @@ import {
  * Akış (yönetim): koordinatör öğrenci + tarih + görüşmeci + 3 soruluk mini
  * testi doldurur, "Cevapla" ile brief ÖNİZLEMESİ formun altında açılır
  * (hiçbir şey yazılmaz), "Kaydet" görüşmeyi brief'iyle birlikte saklar.
- * Görüşme yapıldıktan sonra serbest not detay penceresinden eklenir; not
- * gelene kadar satır "Not bekliyor" rozetiyle durur.
+ * Görüşme yapıldıktan sonra serbest not detay penceresinden eklenir. Notun
+ * girilip girilmediği listede DAMGALANMAZ: "Not bekliyor" rozeti her görüşmeyi
+ * tamamlanmamış bir iş gibi gösteriyordu, oysa notsuz görüşme de geçerli bir
+ * kayıt. Not varsa pencerede zaten görünür.
  *
  * Tek form, iki gönderme düğmesi: ikisi de aynı server action'a gider,
  * niyet düğmenin `name="niyet"` değerinden okunur.
@@ -162,8 +165,10 @@ function MiniTestSatiri({
               className={cn(
                 DOKUNMA_HEDEFI,
                 "kil-satir text-sm text-zinc-700",
-                "hover:bg-marka-50 peer-checked:border-marka-600 peer-checked:bg-marka-50 peer-checked:font-medium peer-checked:text-marka-700",
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-marka-100",
+                // Seçili puan zemine GÖMÜLÜ durur (kil kuralı: basılı olan
+                // içeri gider), seçilmeyen kabarık kalır.
+                "peer-checked:bg-[#efe5eb] peer-checked:font-semibold peer-checked:text-marka-700 peer-checked:shadow-[var(--kil-ic)]",
+                "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marka-600",
               )}
             >
               {deger}
@@ -274,7 +279,7 @@ export function VeliGorusmeleriBolumu({
       aciklama={
         yonetim
           ? "Görüşmeden önce mini testi doldurup brief hazırlayabilir, görüşme sonrası notunu ekleyebilirsiniz. Kayıtlar stajyerlere görünmez."
-          : "Veli görüşmeleri Danışmanlık sayfasından eklenir."
+          : "Veli görüşmesi eklemek için danışmanlık yetkiniz yeterli değil."
       }
     />
   );
@@ -297,14 +302,12 @@ export function VeliGorusmeleriBolumu({
         adet={gorusmeler.length}
         adetEtiketi="görüşme"
         aksiyon={
+          // Okuma modunda yönlendirilecek bir yer yok: veli görüşmesi yalnızca
+          // bu kutudan (TAM yetkiyle) yönetiliyor.
           yonetim && !acik ? (
             <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
               + Veli görüşmesi ekle
             </Buton>
-          ) : !yonetim ? (
-            <Link href="/koordinator/danismanlik" className={baglantiStili}>
-              Danışmanlık sayfasında yönetilir
-            </Link>
           ) : null
         }
       />
@@ -427,9 +430,6 @@ export function VeliGorusmeleriBolumu({
                   {gorusme.ogrenciAdi}
                 </span>
               ) : null}
-              <Rozet tur={gorusme.not ? "olumlu" : "notr"}>
-                {gorusme.not ? "Tamamlandı" : "Not bekliyor"}
-              </Rozet>
               <span className="truncate text-sm text-zinc-600">
                 {gorusme.gorusmeciAdi}
               </span>
@@ -450,9 +450,6 @@ export function VeliGorusmeleriBolumu({
               <h3 className="text-base font-semibold text-zinc-900">
                 {tarihBicimle(secili.tarih)}
               </h3>
-              <Rozet tur={secili.not ? "olumlu" : "notr"}>
-                {secili.not ? "Tamamlandı" : "Not bekliyor"}
-              </Rozet>
             </>
           ) : null
         }

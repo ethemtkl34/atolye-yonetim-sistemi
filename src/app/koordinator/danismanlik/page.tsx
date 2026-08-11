@@ -8,18 +8,13 @@ import {
   baglantiStili,
   butonStili,
 } from "@/components/ui";
-import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
+import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 import { bugun, tarihMetni } from "@/lib/tarih";
 import { normalizeArama, tamAd, turkceKarsilastir } from "@/lib/turkce";
 import {
   TerapiGorusmeleriBolumu,
   type TerapiGorusmesiSatiri,
 } from "@/components/terapi-gorusmeleri-bolumu";
-import {
-  VeliGorusmeleriBolumu,
-  type VeliGorusmesiSatiri,
-} from "@/components/veli-gorusmeleri-bolumu";
-import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
 import {
   TERAPI_TURLERI,
   TERAPI_TURU_SLUGLARI,
@@ -35,45 +30,19 @@ export const metadata: Metadata = {
 const TEMEL_YOL = "/koordinator/danismanlik";
 
 /**
- * Tür seçimine göre alt süzgecin tanımı — iki ikiz JSX bloğu yerine veri.
+ * Danışmanlık — terapi görüşmeleri (oyun / danışan terapisi) ve danışan
+ * başvuruları tek yerden yönetilir.
  *
- * `bicim` gerekli, çünkü iki süzgeç aynı sözleşmeyi paylaşsa da aynı ölçüde
- * değil: veli tarafı üç kısa durum (çip grubu), terapi tarafı altı uzun tür
- * adı — çip olarak süzgeç çubuğunu tek başına doldururdu, açılır liste olarak
- * duruyor (`SuzgecSecici`, öğrenci süzgecindeki gibi).
- */
-const ALT_SUZGECLER = {
-  veli: {
-    etiket: "Durum",
-    anahtar: "durum",
-    bicim: "cip",
-    secenekler: [
-      { deger: "tumu", etiket: "Tümü" },
-      { deger: "bekliyor", etiket: "Not bekliyor" },
-      { deger: "tamamlandi", etiket: "Tamamlandı" },
-    ],
-  },
-  terapi: {
-    etiket: "Terapi türü",
-    anahtar: "terapi",
-    bicim: "secici",
-    secenekler: TERAPI_TURLERI.map((tur) => ({
-      deger: tur.slug as string,
-      etiket: tur.etiket,
-    })),
-  },
-} as const;
-
-/**
- * Danışmanlık — veli görüşmeleri (mini test + brief) ve terapi görüşmeleri
- * (oyun / danışan terapisi) tek yerden yönetilir.
+ * VELİ GÖRÜŞMELERİ BURADA DEĞİL: mini test + brief akışı öğrencinin kendi
+ * profilinden yürütülür (orada öğrenci zaten belli, seçici de gerekmiyor).
+ * Bu ekran çok öğrencili terapi listesidir.
  *
- * Ekran TEK liste gösterir: "Görüşme türü" süzgeci sekme gibi çalışır ve
- * yalnızca seçili türün kayıtları sorgulanır. Süzgeçler diğer liste
- * ekranlarıyla aynı sözleşmede: etiketli, adres satırında, paylaşılabilir
- * (`SuzgecCubugu`); süzme sunucuda yapılır.
+ * Süzgeçler diğer liste ekranlarıyla aynı sözleşmede: etiketli, adres
+ * satırında, paylaşılabilir (`SuzgecCubugu`); süzme sunucuda yapılır.
+ * Terapi türü çip yerine açılır liste — altı uzun tür adı çip olarak süzgeç
+ * çubuğunu tek başına doldururdu (`SuzgecSecici`, öğrenci süzgecindeki gibi).
  *
- * Görüşmelerin EKLEME, SİLME ve NOT işlemlerinin tek adresi burasıdır;
+ * Terapi görüşmelerinin EKLEME ve SİLME işlemlerinin tek adresi burasıdır;
  * öğrenci profili aynı kayıtları yalnızca gösterir.
  *
  * GİZLİLİK: Görüşmeler sağlık bilgisi kuralına tabidir — stajyer sorgularına
@@ -86,11 +55,6 @@ export default async function DanismanlikSayfasi(
   const subeId = kullanici.aktifSubeId;
 
   const parametreler = await props.searchParams;
-  const turSuzgeci = parametreler.tur === "terapi" ? "terapi" : "veli";
-  const durumSuzgeci =
-    parametreler.durum === "bekliyor" || parametreler.durum === "tamamlandi"
-      ? parametreler.durum
-      : "tumu";
   const terapiTuruSuzgeci = terapiTuruSlugMu(parametreler.terapi)
     ? parametreler.terapi
     : "tumu";
@@ -104,9 +68,7 @@ export default async function DanismanlikSayfasi(
     typeof parametreler.q === "string" ? parametreler.q.trim() : "";
   const aramaAnahtari = normalizeArama(aramaSorgusu);
 
-  const altSuzgec = ALT_SUZGECLER[turSuzgeci];
-  const altDeger = turSuzgeci === "veli" ? durumSuzgeci : terapiTuruSuzgeci;
-  const suzgecEtkin = Boolean(aramaSorgusu) || altDeger !== "tumu";
+  const suzgecEtkin = Boolean(aramaSorgusu) || terapiTuruSuzgeci !== "tumu";
 
   /**
    * Aramanın öğrenci koşuluna eklediği parça. Şube kilidi BİLEREK bu nesnenin
@@ -121,13 +83,11 @@ export default async function DanismanlikSayfasi(
   /**
    * Adreste korunan süzgeç durumu — bütün süzgeçlere aynı nesne gider,
    * her süzgeç kendi anahtarını zaten üzerine yazar. Varsayılan değerler
-   * adrese YAZILMAZ (`?durum=tumu` ile parametresiz adres aynı sayfadır,
-   * iki ayrı önbellek anahtarı olmasın). Tür değiştiren bağlantı diğer
-   * türün alt süzgecini taşımaz; o süzgeç türle birlikte sıfırlanır.
+   * adrese YAZILMAZ (`?terapi=tumu` ile parametresiz adres aynı sayfadır,
+   * iki ayrı önbellek anahtarı olmasın).
    */
   const korunanlar: Record<string, string> = {
-    ...(turSuzgeci !== "veli" ? { tur: turSuzgeci } : {}),
-    ...(altDeger !== "tumu" ? { [altSuzgec.anahtar]: altDeger } : {}),
+    ...(terapiTuruSuzgeci !== "tumu" ? { terapi: terapiTuruSuzgeci } : {}),
     ...(aramaSorgusu ? { q: aramaSorgusu } : {}),
   };
   const korunanlarHaric = (...haric: string[]) =>
@@ -135,41 +95,25 @@ export default async function DanismanlikSayfasi(
       Object.entries(korunanlar).filter(([anahtar]) => !haric.includes(anahtar)),
     );
 
-  // Yalnızca gösterilen türün kayıtları çekilir — diğer sekmenin sorgusu
-  // (veli tarafında brief/mini-test JSON'ları dahil) boşa koşturulmaz.
-  const [ogrenciler, kayitlar] = await Promise.all([
+  const [ogrenciler, gorusmeler] = await Promise.all([
     // Ekleme formlarındaki öğrenci seçici — şubenin bütün öğrencileri.
     db.student.findMany({
       where: { branchId: subeId },
       select: { id: true, firstName: true, lastName: true },
     }),
-    turSuzgeci === "veli"
-      ? db.parentMeeting.findMany({
-          where: {
-            student: { branchId: subeId, ...aramaKosulu },
-            ...(durumSuzgeci !== "tumu"
-              ? { note: durumSuzgeci === "bekliyor" ? null : { not: null } }
-              : {}),
-          },
-          orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-          include: {
-            student: { select: { firstName: true, lastName: true } },
-            createdBy: { select: { name: true } },
-          },
-        })
-      : db.counselingSession.findMany({
-          where: {
-            student: { branchId: subeId, ...aramaKosulu },
-            ...(terapiTuruSuzgeci !== "tumu"
-              ? { therapyType: TERAPI_TURU_SLUGLARI[terapiTuruSuzgeci] }
-              : {}),
-          },
-          orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-          include: {
-            student: { select: { firstName: true, lastName: true } },
-            createdBy: { select: { name: true } },
-          },
-        }),
+    db.counselingSession.findMany({
+      where: {
+        student: { branchId: subeId, ...aramaKosulu },
+        ...(terapiTuruSuzgeci !== "tumu"
+          ? { therapyType: TERAPI_TURU_SLUGLARI[terapiTuruSuzgeci] }
+          : {}),
+      },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      include: {
+        student: { select: { firstName: true, lastName: true } },
+        createdBy: { select: { name: true } },
+      },
+    }),
   ]);
 
   // Prisma'nın sıralaması Türkçe harfleri bilmez; seçici listesi burada
@@ -187,45 +131,26 @@ export default async function DanismanlikSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Danışmanlık"
-        aciklama="Veli görüşmeleri (mini test + görüşme brief'i) ve terapi görüşmeleri buradan yönetilir; bütün öğrenciler tek listede. Veli görüşmesi öğrencinin kendi profilinden de eklenebilir. Bu bölüm stajyerlere hiçbir ekranda görünmez."
+        aciklama="Terapi görüşmeleri (oyun ve danışan terapisi) buradan yönetilir; bütün öğrenciler tek listede. Veli görüşmeleri öğrencinin kendi profilinden yürütülür. Bu bölüm stajyerlere hiçbir ekranda görünmez."
         aksiyon={
           <DanisanBasvurusuFormu ogrenciSecenekleri={ogrenciSecenekleri} />
         }
       />
 
       <SuzgecCubugu>
-        <SuzgecGrubu
-          etiket="Görüşme türü"
+        {/* Açılır listede "Tümü" boş dizeyle temsil ediliyor (`SuzgecSecici`
+            sözleşmesi); sayfanın "tumu" değeri kapıda çevriliyor. */}
+        <SuzgecSecici
+          etiket="Terapi türü"
           temelYol={TEMEL_YOL}
-          anahtar="tur"
-          secili={turSuzgeci}
-          digerler={korunanlarHaric("tur", "durum", "terapi")}
-          secenekler={[
-            { deger: "veli", etiket: "Veli görüşmeleri" },
-            { deger: "terapi", etiket: "Terapi görüşmeleri" },
-          ]}
+          anahtar="terapi"
+          secili={terapiTuruSuzgeci === "tumu" ? "" : terapiTuruSuzgeci}
+          digerler={korunanlarHaric("terapi")}
+          secenekler={TERAPI_TURLERI.map((tur) => ({
+            deger: tur.slug,
+            etiket: tur.etiket,
+          }))}
         />
-        {altSuzgec.bicim === "cip" ? (
-          <SuzgecGrubu
-            etiket={altSuzgec.etiket}
-            temelYol={TEMEL_YOL}
-            anahtar={altSuzgec.anahtar}
-            secili={altDeger}
-            digerler={korunanlarHaric(altSuzgec.anahtar)}
-            secenekler={altSuzgec.secenekler}
-          />
-        ) : (
-          // Açılır listede "Tümü" boş dizeyle temsil ediliyor (`SuzgecSecici`
-          // sözleşmesi); sayfanın "tumu" değeri kapıda çevriliyor.
-          <SuzgecSecici
-            etiket={altSuzgec.etiket}
-            temelYol={TEMEL_YOL}
-            anahtar={altSuzgec.anahtar}
-            secili={altDeger === "tumu" ? "" : altDeger}
-            digerler={korunanlarHaric(altSuzgec.anahtar)}
-            secenekler={altSuzgec.secenekler}
-          />
-        )}
       </SuzgecCubugu>
 
       {/* Arama sıradan bir GET formu (Öğrenciler sayfasındaki desen): sorgu
@@ -249,7 +174,7 @@ export default async function DanismanlikSayfasi(
 
       {aramaSorgusu ? (
         <p className="text-sm text-zinc-600">
-          <span className="font-medium">{kayitlar.length}</span> görüşme ·{" "}
+          <span className="font-medium">{gorusmeler.length}</span> görüşme ·{" "}
           <Link
             href={
               Object.keys(korunanlarHaric("q")).length > 0
@@ -263,23 +188,13 @@ export default async function DanismanlikSayfasi(
         </p>
       ) : null}
 
-      {turSuzgeci === "veli" ? (
-        <VeliGorusmeleriBolumu
-          mod="yonetim"
-          gorusmeler={(kayitlar as VeliKaydi[]).map(veliSatiri)}
-          ogrenciSecenekleri={ogrenciSecenekleri}
-          bugunMetni={bugunMetni}
-          suzgecEtkin={suzgecEtkin}
-        />
-      ) : (
-        <TerapiGorusmeleriBolumu
-          mod="yonetim"
-          gorusmeler={(kayitlar as TerapiKaydi[]).map(terapiSatiri)}
-          ogrenciSecenekleri={ogrenciSecenekleri}
-          bugunMetni={bugunMetni}
-          suzgecEtkin={suzgecEtkin}
-        />
-      )}
+      <TerapiGorusmeleriBolumu
+        mod="yonetim"
+        gorusmeler={gorusmeler.map(terapiSatiri)}
+        ogrenciSecenekleri={ogrenciSecenekleri}
+        bugunMetni={bugunMetni}
+        suzgecEtkin={suzgecEtkin}
+      />
     </div>
   );
 }
@@ -288,23 +203,7 @@ export default async function DanismanlikSayfasi(
 // Veritabanı satırı → bölüm bileşeninin satır tipi
 // ---------------------------------------------------------------------------
 
-type OrtakIliskiler = {
-  student: { firstName: string; lastName: string };
-  createdBy: { name: string } | null;
-};
-
-type VeliKaydi = OrtakIliskiler & {
-  id: string;
-  date: Date;
-  interviewerName: string;
-  answersJson: unknown;
-  briefJson: unknown;
-  note: string | null;
-  noteUpdatedAt: Date | null;
-  createdAt: Date;
-};
-
-type TerapiKaydi = OrtakIliskiler & {
+type TerapiKaydi = {
   id: string;
   date: Date;
   counselorName: string;
@@ -312,22 +211,9 @@ type TerapiKaydi = OrtakIliskiler & {
   therapyType: TerapiTuru;
   notes: string;
   createdAt: Date;
+  student: { firstName: string; lastName: string };
+  createdBy: { name: string } | null;
 };
-
-function veliSatiri(gorusme: VeliKaydi): VeliGorusmesiSatiri {
-  return {
-    id: gorusme.id,
-    ogrenciAdi: tamAd(gorusme.student.firstName, gorusme.student.lastName),
-    tarih: gorusme.date,
-    gorusmeciAdi: gorusme.interviewerName,
-    cevaplar: gorusme.answersJson as MiniTestCevabi[],
-    brief: gorusme.briefJson as VeliBriefi,
-    not: gorusme.note,
-    notGuncellemeZamani: gorusme.noteUpdatedAt,
-    ekleyen: gorusme.createdBy?.name ?? null,
-    eklenmeTarihi: gorusme.createdAt,
-  };
-}
 
 function terapiSatiri(gorusme: TerapiKaydi): TerapiGorusmesiSatiri {
   return {
