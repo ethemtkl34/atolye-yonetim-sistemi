@@ -83,6 +83,7 @@ export function ZekaTestleriBolumu({
   testAdiSecenekleri = [],
   bugunMetni = "",
   suzgecEtkin = false,
+  ekAksiyon,
 }: {
   /** Yetki kademesi: yonetim = yükle/sil, okuma = önizle, liste = üstveri. */
   mod: "yonetim" | "okuma" | "liste";
@@ -102,6 +103,15 @@ export function ZekaTestleriBolumu({
   bugunMetni?: string;
   /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
   suzgecEtkin?: boolean;
+  /**
+   * Bölüm başlığında "+ Test belgesi yükle"nin YANINA konan ikinci eylem
+   * (Zeka testleri sayfasında "+ Öğrenci ekle" bağlantısı).
+   *
+   * Sayfa başlığında ayrı dursaydı araya süzgeç çubuğu girer, sayfada iki ayrı
+   * eylem bölgesi oluşurdu (Danışmanlık sayfasında görülen sorun). İkisi de
+   * aynı listeyi besliyor, listenin başında yan yana duruyorlar.
+   */
+  ekAksiyon?: React.ReactNode;
 }) {
   const yonetim = mod === "yonetim";
   const sayfada = baglam === "sayfa";
@@ -128,10 +138,18 @@ export function ZekaTestleriBolumu({
         adet={testler.length}
         adetEtiketi="belge"
         aksiyon={
-          yonetim && !acik ? (
-            <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
-              + Test belgesi yükle
-            </Buton>
+          // `yonetim` yalnızca Zeka testleri SAYFASINDA doğru olabiliyor
+          // (profil "okuma"/"liste" geçiyor), o yüzden alttaki profil
+          // bağlantısı bu dalla çakışmaz.
+          yonetim ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {ekAksiyon}
+              {!acik ? (
+                <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
+                  + Test belgesi yükle
+                </Buton>
+              ) : null}
+            </div>
           ) : !sayfada && belgeAcilabilir ? (
             <Link href="/koordinator/zeka-testleri" className={baglantiStili}>
               Zeka testleri sayfasında yönetilir

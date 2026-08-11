@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { SayfaBasligi } from "@/components/ui";
+import { SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecSecici } from "@/components/suzgec";
 import { bugun, tarihMetni } from "@/lib/tarih";
 import { tamAd, turkceKarsilastir } from "@/lib/turkce";
@@ -36,6 +37,14 @@ export default async function ZekaTestleriSayfasi(
   const kullanici = await yonetimZorunlu("zekaTestleri", "LISTE");
   const subeId = kullanici.aktifSubeId;
   const yetki = kullanici.yetkiler.zekaTestleri;
+  /**
+   * "+ Öğrenci ekle" iki yetki birden istiyor: belgeyi yükleyebilmek
+   * (`zekaTestleri` TAM) ve öğrenci açabilmek (`ogrenciler` TAM). Danışma
+   * görevlisinin ikincisi var ama testlerde yalnızca LISTE seviyesinde —
+   * onun öğrenci açma yeri kayıt masası ekranı, burası değil.
+   */
+  const ogrenciEkleyebilir =
+    yetki === "TAM" && kullanici.yetkiler.ogrenciler === "TAM";
 
   const parametreler = await props.searchParams;
   const ogrenciSuzgeci =
@@ -134,6 +143,19 @@ export default async function ZekaTestleriSayfasi(
         ogrenciSecenekleri={ogrenciSecenekleri}
         testAdiSecenekleri={testTurleri.map((tur) => tur.name)}
         bugunMetni={tarihMetni(bugun())}
+        ekAksiyon={
+          // Öğrenci açmak zeka testi yetkisiyle gelmiyor: tek başına Test
+          // Uygulayıcısı rolünde `ogrenciler` YOK'tur (bkz. yetkiler.ts).
+          // Sayfa da aynı şartı kendi içinde bir kez daha kontrol ediyor.
+          ogrenciEkleyebilir ? (
+            <Link
+              href="/koordinator/zeka-testleri/ogrenci-ekle"
+              className={butonStili("ikincil")}
+            >
+              + Öğrenci ekle
+            </Link>
+          ) : null
+        }
       />
     </div>
   );
