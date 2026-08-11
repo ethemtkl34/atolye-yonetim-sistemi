@@ -77,6 +77,7 @@ export function TerapiGorusmeleriBolumu({
   ogrenciSecenekleri = [],
   bugunMetni = "",
   suzgecEtkin = false,
+  ekAksiyon,
 }: {
   mod: "yonetim" | "okuma";
   /** Gösterilecek görüşmeler — süzme SAYFADA yapılır (adres tabanlı süzgeçler). */
@@ -87,6 +88,16 @@ export function TerapiGorusmeleriBolumu({
   bugunMetni?: string;
   /** Sayfadaki süzgeçlerden en az biri etkin mi — boş listenin metnini seçer. */
   suzgecEtkin?: boolean;
+  /**
+   * Bölüm başlığında "+ Terapi görüşmesi ekle"nin YANINA konan ikinci eylem
+   * (Danışmanlık sayfasında danışan başvurusu formu).
+   *
+   * Sayfa başlığında ayrı durduğunda iki ekleme düğmesi araya giren süzgeç ve
+   * arama satırlarıyla birbirinden kopuyordu — sayfada iki ayrı eylem bölgesi
+   * oluyordu. İkisi de aynı listeye yazdığı için listenin başında yan yana
+   * duruyorlar.
+   */
+  ekAksiyon?: React.ReactNode;
 }) {
   const yonetim = mod === "yonetim";
 
@@ -131,15 +142,22 @@ export function TerapiGorusmeleriBolumu({
         adet={gorusmeler.length}
         adetEtiketi="görüşme"
         aksiyon={
-          yonetim && !acik ? (
-            <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
-              + Terapi görüşmesi ekle
-            </Buton>
-          ) : !yonetim ? (
+          yonetim ? (
+            // Ekleme paneli açıkken düğme gizlenir ama `ekAksiyon` kalır:
+            // başvuru formu ayrı bir pencere, seans formuyla çakışmaz.
+            <div className="flex flex-wrap items-center gap-2">
+              {ekAksiyon}
+              {!acik ? (
+                <Buton type="button" tur="ikincil" onClick={() => setAcik(true)}>
+                  + Terapi görüşmesi ekle
+                </Buton>
+              ) : null}
+            </div>
+          ) : (
             <Link href="/koordinator/danismanlik" className={baglantiStili}>
               Danışmanlık sayfasında yönetilir
             </Link>
-          ) : null
+          )
         }
       />
 

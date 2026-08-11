@@ -129,12 +129,12 @@ export default async function DanismanlikSayfasi(
 
   return (
     <div className="space-y-6">
+      {/* Başlıkta eylem YOK: iki ekleme düğmesi de listenin başında yan yana
+          duruyor (bkz. `ekAksiyon`). Başlıkta duran düğme, araya giren süzgeç
+          ve arama satırları yüzünden listeden kopuyordu. */}
       <SayfaBasligi
         baslik="Danışmanlık"
         aciklama="Terapi görüşmeleri (oyun ve danışan terapisi) buradan yönetilir; bütün öğrenciler tek listede. Veli görüşmeleri öğrencinin kendi profilinden yürütülür. Bu bölüm stajyerlere hiçbir ekranda görünmez."
-        aksiyon={
-          <DanisanBasvurusuFormu ogrenciSecenekleri={ogrenciSecenekleri} />
-        }
       />
 
       <SuzgecCubugu>
@@ -194,6 +194,9 @@ export default async function DanismanlikSayfasi(
         ogrenciSecenekleri={ogrenciSecenekleri}
         bugunMetni={bugunMetni}
         suzgecEtkin={suzgecEtkin}
+        ekAksiyon={
+          <DanisanBasvurusuFormu ogrenciSecenekleri={ogrenciSecenekleri} />
+        }
       />
     </div>
   );
