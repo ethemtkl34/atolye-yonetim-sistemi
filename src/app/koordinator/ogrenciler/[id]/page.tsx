@@ -3,18 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { SayfaBasligi, baglantiStili, butonStili, geriBaglantiStili } from "@/components/ui";
 import {
-  Bilgi,
-  ProfilKayitListesi,
-  VeliHucresi,
-} from "./profil-kartlari";
+  SayfaBasligi,
+  baglantiStili,
+  butonStili,
+  geriBaglantiStili,
+} from "@/components/ui";
+import { Bilgi, ProfilKayitListesi, VeliHucresi } from "./profil-kartlari";
 import type { CikisGunu } from "@/components/kayit-cikar-butonu";
 import { ProfilKutusu } from "./profil-kutulari";
-import {
-  raporKapsamSecenekleri,
-  raporOzetleri,
-} from "@/lib/rapor-verisi";
+import { raporKapsamSecenekleri, raporOzetleri } from "@/lib/rapor-verisi";
 import { RaporBolumu } from "./rapor-bolumu";
 import { GelisimBolumu } from "@/components/gelisim-bolumu";
 import { gelisimListesi } from "@/lib/gelisim-verisi";
@@ -27,7 +25,11 @@ import {
   VeliGorusmeleriBolumu,
   type VeliGorusmesiSatiri,
 } from "@/components/veli-gorusmeleri-bolumu";
-import type { MiniTestCevabi, VeliBriefi } from "@/lib/veli-gorusmesi";
+import {
+  veliBriefiCozumle,
+  veliFormuCozumle,
+  type GozlemCevabi,
+} from "@/lib/veli-gorusmesi";
 import {
   DanisanBasvurusuOzeti,
   type BasvuruOzeti,
@@ -36,10 +38,7 @@ import {
   ZekaTestleriBolumu,
   type ZekaTestiSatiri,
 } from "@/components/zeka-testleri-bolumu";
-import {
-  AKTIF_DONEM_DURUMLARI,
-  AKTIF_KULUP_DURUMLARI,
-} from "@/lib/durumlar";
+import { AKTIF_DONEM_DURUMLARI, AKTIF_KULUP_DURUMLARI } from "@/lib/durumlar";
 import { bugun, tarihBicimle, tarihMetni, yasBicimle } from "@/lib/tarih";
 
 export async function generateMetadata(
@@ -147,79 +146,109 @@ export default async function OgrenciProfilSayfasi(
     zekaTestiKayitlari,
     gelisimKayitlari,
     oturumGunleri,
+    veliFormuAtolyeKayitlari,
   ] = await Promise.all([
-      raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
-      // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
-      // pencere açılmasa da peşinen okunuyor.
-      raporGorebilir ? raporKapsamSecenekleri(id, subeId) : [],
-      db.user.findMany({
-        where: { roles: { has: "STAJYER" }, active: true, branchId: subeId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }),
-      // GİZLİLİK: görüşmeler stajyerden VE danışmanlık yetkisi olmayan
-      // rollerden gizlidir; yetki yoksa sorgu hiç atılmaz.
-      gorusmeGorebilir
-        ? db.counselingSession.findMany({
-            where: { studentId: id, student: { branchId: subeId } },
-            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-            include: { createdBy: { select: { name: true } } },
-          })
-        : [],
-      // GİZLİLİK: danışan başvurusu da görüşme verisiyle aynı kurala tabi.
-      gorusmeGorebilir
-        ? db.therapyIntake.findFirst({
-            where: { studentId: id, student: { branchId: subeId } },
-          })
-        : null,
-      // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir.
-      gorusmeGorebilir
-        ? db.parentMeeting.findMany({
-            where: { studentId: id, student: { branchId: subeId } },
-            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-            include: { createdBy: { select: { name: true } } },
-          })
-        : [],
-      // GİZLİLİK: zeka testleri de sağlık bilgisi kuralına tabi. `fileData`
-      // seçilmiyor — belge yalnızca indirme rotasından okunur.
-      zekaTestiYetkisi !== "YOK"
-        ? db.intelligenceTest.findMany({
-            where: { studentId: id, student: { branchId: subeId } },
-            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-            select: {
-              id: true,
-              studentId: true,
-              date: true,
-              testName: true,
-              notes: true,
-              fileName: true,
-              mimeType: true,
-              fileSize: true,
-              createdAt: true,
-              createdBy: { select: { name: true } },
+    raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
+    // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
+    // pencere açılmasa da peşinen okunuyor.
+    raporGorebilir ? raporKapsamSecenekleri(id, subeId) : [],
+    db.user.findMany({
+      where: { roles: { has: "STAJYER" }, active: true, branchId: subeId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    // GİZLİLİK: görüşmeler stajyerden VE danışmanlık yetkisi olmayan
+    // rollerden gizlidir; yetki yoksa sorgu hiç atılmaz.
+    gorusmeGorebilir
+      ? db.counselingSession.findMany({
+          where: { studentId: id, student: { branchId: subeId } },
+          orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+          include: { createdBy: { select: { name: true } } },
+        })
+      : [],
+    // GİZLİLİK: danışan başvurusu da görüşme verisiyle aynı kurala tabi.
+    gorusmeGorebilir
+      ? db.therapyIntake.findFirst({
+          where: { studentId: id, student: { branchId: subeId } },
+        })
+      : null,
+    // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir.
+    gorusmeGorebilir
+      ? db.parentMeeting.findMany({
+          where: { studentId: id, student: { branchId: subeId } },
+          orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+          include: {
+            createdBy: { select: { name: true } },
+            // Yönlendirme kararları görüşmenin parçası; ayrı sorgu açmadan
+            // gelir. Sıra kurumun hizmet listesiyle değil kayıt sırasıyla —
+            // eylem zaten o sırayla yazıyor.
+            referrals: {
+              orderBy: { createdAt: "asc" },
+              select: { kind: true, label: true, note: true },
             },
-          })
-        : [],
-      // Gelişim testleri puanlama yetkisine tabi; iptal kayıtlar da dahil —
-      // doldurulmuş bir test kayıt iptal edildi diye görünmez olmamalı.
-      puanlamaGorebilir ? gelisimListesi({ subeId, studentId: id }) : [],
-      // "Son katıldığı gün" listesi grubun KENDİ takviminden gelir; serbest
-      // tarih kabul edilseydi hafta numarası tahmin edilmek zorunda kalırdı.
-      // Çıkarma yetkisi yoksa düğme çizilmiyor, sorgu da hiç atılmıyor.
-      kayitCikarabilir && ogrenci.enrollments.length > 0
-        ? db.session.findMany({
-            where: {
-              groupId: {
-                in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
-              },
-              group: { branchId: subeId },
+          },
+        })
+      : [],
+    // GİZLİLİK: zeka testleri de sağlık bilgisi kuralına tabi. `fileData`
+    // seçilmiyor — belge yalnızca indirme rotasından okunur.
+    zekaTestiYetkisi !== "YOK"
+      ? db.intelligenceTest.findMany({
+          where: { studentId: id, student: { branchId: subeId } },
+          orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            studentId: true,
+            date: true,
+            testName: true,
+            notes: true,
+            fileName: true,
+            mimeType: true,
+            fileSize: true,
+            createdAt: true,
+            createdBy: { select: { name: true } },
+          },
+        })
+      : [],
+    // Gelişim testleri puanlama yetkisine tabi; iptal kayıtlar da dahil —
+    // doldurulmuş bir test kayıt iptal edildi diye görünmez olmamalı.
+    puanlamaGorebilir ? gelisimListesi({ subeId, studentId: id }) : [],
+    // "Son katıldığı gün" listesi grubun KENDİ takviminden gelir; serbest
+    // tarih kabul edilseydi hafta numarası tahmin edilmek zorunda kalırdı.
+    // Çıkarma yetkisi yoksa düğme çizilmiyor, sorgu da hiç atılmıyor.
+    kayitCikarabilir && ogrenci.enrollments.length > 0
+      ? db.session.findMany({
+          where: {
+            groupId: {
+              in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
             },
-            distinct: ["groupId", "date"],
-            orderBy: { date: "asc" },
-            select: { groupId: true, date: true, weekNumber: true },
-          })
-        : [],
-    ]);
+            group: { branchId: subeId },
+          },
+          distinct: ["groupId", "date"],
+          orderBy: { date: "asc" },
+          select: { groupId: true, date: true, weekNumber: true },
+        })
+      : [],
+    // Veli görüşmesi formunun Bölüm 3'ü atölye atölye gözlem soruyor.
+    // Atölye listesi SABİT DEĞİL, öğrencinin gerçekten gördüğü atölyeler:
+    // oturumlardan çıkarılıyor çünkü hem dönemi hem kulübü tek okumada
+    // kapsayan yer orası. Form açılmayacaksa sorgu da atılmıyor.
+    gorusmeYazabilir && ogrenci.enrollments.length > 0
+      ? db.session.findMany({
+          where: {
+            groupId: {
+              in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
+            },
+            group: { branchId: subeId },
+          },
+          distinct: ["workshopTypeId"],
+          orderBy: { workshopType: { name: "asc" } },
+          select: {
+            workshopTypeId: true,
+            workshopType: { select: { name: true } },
+          },
+        })
+      : [],
+  ]);
 
   /** Grup id → grubun eğitim günleri. Kayıt başına sorgu açmamak için tek seferde. */
   const gruplarinGunleri = new Map<string, CikisGunu[]>();
@@ -236,6 +265,11 @@ export default async function OgrenciProfilSayfasi(
   }
 
   const ogrenciAdi = `${ogrenci.firstName} ${ogrenci.lastName}`;
+
+  const veliFormuAtolyeleri = veliFormuAtolyeKayitlari.map((oturum) => ({
+    id: oturum.workshopTypeId,
+    ad: oturum.workshopType.name,
+  }));
 
   const gorusmeler: TerapiGorusmesiSatiri[] = gorusmeKayitlari.map(
     (gorusme) => ({
@@ -257,8 +291,16 @@ export default async function OgrenciProfilSayfasi(
       ogrenciAdi,
       tarih: gorusme.date,
       gorusmeciAdi: gorusme.interviewerName,
-      cevaplar: gorusme.answersJson as unknown as MiniTestCevabi[],
-      brief: gorusme.briefJson as unknown as VeliBriefi,
+      cevaplar: gorusme.answersJson as unknown as GozlemCevabi[],
+      // Brief ve form JSON'ları çözümleyiciden geçer: 2026 Ağustos öncesi
+      // kayıtlarda alan adları farklı (`miniTestParagraflari`) ve form hiç yok.
+      brief: veliBriefiCozumle(gorusme.briefJson),
+      form: veliFormuCozumle(gorusme.formJson),
+      yonlendirmeler: gorusme.referrals.map((y) => ({
+        tur: y.kind,
+        etiket: y.label,
+        not: y.note,
+      })),
       not: gorusme.note,
       notGuncellemeZamani: gorusme.noteUpdatedAt,
       ekleyen: gorusme.createdBy?.name ?? null,
@@ -295,8 +337,7 @@ export default async function OgrenciProfilSayfasi(
 
     return {
       kayitId: kayit.id,
-      programAdi:
-        kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
+      programAdi: kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
       grupAdi: kayit.group.name,
       aktif: kayit.status === "AKTIF",
       stajyerId: kayit.internId,
@@ -379,10 +420,7 @@ export default async function OgrenciProfilSayfasi(
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/koordinator/ogrenciler"
-          className={geriBaglantiStili}
-        >
+        <Link href="/koordinator/ogrenciler" className={geriBaglantiStili}>
           ← Öğrenciler
         </Link>
         <div className="mt-2">
@@ -517,13 +555,19 @@ export default async function OgrenciProfilSayfasi(
                 gorusmeler={veliGorusmeleri}
                 sabitOgrenci={{ id: ogrenci.id, ad: ogrenciAdi }}
                 bugunMetni={bugunMetni}
+                dogumTarihiMetni={
+                  ogrenci.birthDate ? tarihMetni(ogrenci.birthDate) : null
+                }
+                atolyeler={veliFormuAtolyeleri}
               />
             </ProfilKutusu>
             <ProfilKutusu
               renk="terapi"
               baslik="Terapi görüşmeleri"
               altyazi={
-                sonTerapi ? `Son: ${tarihBicimle(sonTerapi)}` : "Henüz kayıt yok"
+                sonTerapi
+                  ? `Son: ${tarihBicimle(sonTerapi)}`
+                  : "Henüz kayıt yok"
               }
               adet={gorusmeler.length}
             >

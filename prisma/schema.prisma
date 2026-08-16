@@ -606,6 +606,7 @@ model Student {
   reports            Report[]
   counselingSessions CounselingSession[]
   parentMeetings     ParentMeeting[]
+  parentReferrals    ParentMeetingReferral[]
   intelligenceTests  IntelligenceTest[]
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
@@ -712,14 +713,30 @@ model ParentMeeting {
   /// görüşen herkes sistemde kullanıcı değil).
   interviewerName String
 
-  /// Mini test cevapları: `[{anahtar, soruMetni, deger}]`. Soru metni o günkü
-  /// hâliyle donmuş (`questionTextSnapshot` ilkesi) — sorular kodda/DB'de
-  /// değişse de geçmiş kayıt bozulmaz.
+  /// Gözlem alanı puanları: `[{anahtar, soruMetni, baslik, deger}]`. Alan adı
+  /// o günkü hâliyle donmuş (`questionTextSnapshot` ilkesi) — liste kodda
+  /// değişse de geçmiş kayıt bozulmaz. 2026 Ağustos öncesi kayıtlarda üç
+  /// soruluk mini testin cevapları var ve `baslik` alanı yok; okuma katmanı
+  /// (`gozlemYorumuUret`) o durumda soru metnine düşer.
   answersJson Json
 
-  /// Üretilen brief (`VeliBriefi`): mini test yorumu + atölye özeti +
-  /// analiz, `Report.bodyJson` deseni. `metinKaynagi` P13'te "ai" olacak.
+  /// Üretilen brief (`VeliBriefi`): gözlem yorumu + atölye özeti + görüşme
+  /// çerçevesi + analiz, `Report.bodyJson` deseni. `metinKaynagi` P13'te "ai"
+  /// olacak. Eski kayıtlarda gözlem paragrafları `miniTestParagraflari`
+  /// adıyla duruyor; `veliBriefiCozumle` iki biçimi de okur.
   briefJson Json
+
+  /// Görüşme formunun işaretleri ve serbest metinleri (`VeliGorusmeFormu`):
+  /// mizaç özellikleri, bilişsel güçlü yönler, zorlanma alanları, atölye
+  /// notları ve görüşme anındaki yaş/bant.
+  ///
+  /// NEDEN BRIEF'TEN AYRI: brief üretilmiş METİN, bu ise uzmanın verdiği
+  /// KARAR. Metin sözlüğü ilerde revize edildiğinde hangi kutuların
+  /// işaretlendiği tartışmasız kalmalı.
+  ///
+  /// Nullable: 2026 Ağustos öncesi kayıtlarda form yok, yalnızca mini test
+  /// vardı. Eski kayıt geriye dönük doldurulmaz.
+  formJson Json?
 
   /// Görüşme sonrası serbest not — kayıt anında boş, sonradan eklenir ve
   /// üzerine yazılabilir. Damgasız not olamaz (CHECK: `ParentMeeting_not_damgasi`).
@@ -730,7 +747,65 @@ model ParentMeeting {
   createdBy       User?    @relation("VeliGorusmesiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
 
+  referrals ParentMeetingReferral[]
+
   @@index([studentId, date])
+}
+
+/// Veli görüşmesinde alınan yönlendirme kararı — "bu dönem şuna yönlendirildi".
+///
+/// NEDEN AYRI SATIR (formJson'un içinde değil): yönlendirmenin ömrü görüşmeden
+/// uzun. Kurumun formu bunları açıkça "öğrenci bir sonraki döneme geldiğinde
+/// ekip ne konuşulmuş, ne önerilmiş bilgisine hızlıca ulaşsın" diye tutuyor;
+/// bu soru ancak satırdan sorgulanır. JSON içine gömülseydi "geçen dönem kime
+/// ergoterapi önerilmişti" sorusu tüm görüşmeleri okuyup ayrıştırmayı
+/// gerektirirdi.
+///
+/// `studentId` bilerek denormalize: öğrencinin yönlendirme geçmişi profil
+/// sayfasında görüşmelere join'lemeden, tek indeksli sorguyla çıkar.
+///
+/// GİZLİLİK: veli görüşmesiyle aynı sınıf — stajyer sorgularının
+/// select/include listesine bu ilişki hiç alınmaz.
+model ParentMeetingReferral {
+  id        String        @id @default(cuid())
+  meetingId String
+  meeting   ParentMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  kind ReferralKind
+
+  /// Kayıt anındaki tür etiketi (`questionTextSnapshot` ilkesi): hizmet listesi
+  /// değişse veya bir tür kaldırılsa da geçmiş kayıt o günkü adı gösterir.
+  label String
+
+  /// Uzmanın gerekçesi / hangi atölye-kulüp olduğu gibi ayrıntı.
+  note String?
+
+  createdAt DateTime @default(now())
+
+  /// Bir görüşmede aynı yönlendirme iki kez işaretlenemez.
+  @@unique([meetingId, kind])
+  @@index([studentId, createdAt])
+}
+
+/// Veli görüşmesinden çıkabilecek yönlendirmeler.
+///
+/// İlk altı değer `TherapyType` ile BİREBİR aynı olmak zorunda (kurumun
+/// yürüttüğü terapiler); son üçü terapi olmayan yönlendirmeler. Etiketler ve
+/// sıra `src/lib/yonlendirme-turleri.ts` içinde — oraya tür eklemek buraya da
+/// migration ister.
+enum ReferralKind {
+  OYUN_TERAPISI
+  ERGEN_TERAPISI
+  ERGOTERAPI
+  BILISSEL_MUDAHALE
+  KISA_AILE_DANISMANLIGI
+  UZUN_AILE_DANISMANLIGI
+  ZEKA_TESTI
+  ATOLYE
+  KULUP
 }
 
 /// Danışan başvurusu — çocuk terapiye alınırken bir kez doldurulan bilgiler.

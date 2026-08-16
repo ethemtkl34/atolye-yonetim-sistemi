@@ -92,9 +92,7 @@ export const ZAMAN_DILIMI_ADLARI: Record<TimeSlot, string> = {
 export function grupZamani(gunler: readonly Day[], dilim: TimeSlot): string {
   const adlar = gunleriSirala(gunler).map((gun) => GUN_ADLARI[gun]);
   const dilimAdi = ZAMAN_DILIMI_ADLARI[dilim].toLocaleLowerCase("tr-TR");
-  return adlar.length === 0
-    ? dilimAdi
-    : `${adlar.join(", ")} ${dilimAdi}`;
+  return adlar.length === 0 ? dilimAdi : `${adlar.join(", ")} ${dilimAdi}`;
 }
 
 /** "YYYY-MM-DD" metnini UTC gece yarısına sabitlenmiş Date'e çevirir. */
@@ -103,9 +101,7 @@ export function tarihCozumle(metin: string): Date | null {
   if (!eslesme) return null;
 
   const [, yil, ay, gun] = eslesme;
-  const tarih = new Date(
-    Date.UTC(Number(yil), Number(ay) - 1, Number(gun)),
-  );
+  const tarih = new Date(Date.UTC(Number(yil), Number(ay) - 1, Number(gun)));
 
   // 31 Şubat gibi taşan tarihleri yakalar.
   if (
@@ -232,14 +228,31 @@ export function yasBicimle(dogum: Date, referans: Date): string {
   return parcalar.join(" ");
 }
 
+/**
+ * Dolmuş yaş (tam yıl) — `yasBicimle`nin yalnızca yıl parçası.
+ *
+ * Veli görüşmesi formu yaş bandını buradan seçiyor: "9 yaş 11 ay" olan çocuk
+ * 9'dur, 10 değil. Ay dönümü kıstırması `yasBicimle` ile aynı; iki fonksiyon
+ * ayrı hesaplasaydı aynı çocuk profilde 9, formda 10 görünebilirdi.
+ */
+export function yasYil(dogum: Date, referans: Date): number {
+  const refAySonu = new Date(
+    Date.UTC(referans.getUTCFullYear(), referans.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  const donumGunu = Math.min(dogum.getUTCDate(), refAySonu);
+
+  let toplamAy =
+    (referans.getUTCFullYear() - dogum.getUTCFullYear()) * 12 +
+    (referans.getUTCMonth() - dogum.getUTCMonth());
+  if (referans.getUTCDate() < donumGunu) toplamAy -= 1;
+
+  return Math.floor(toplamAy / 12);
+}
+
 /** Bugünün UTC gece yarısına sabitlenmiş hali — karşılaştırmalar için. */
 export function bugun(): Date {
   const simdi = new Date();
   return new Date(
-    Date.UTC(
-      simdi.getUTCFullYear(),
-      simdi.getUTCMonth(),
-      simdi.getUTCDate(),
-    ),
+    Date.UTC(simdi.getUTCFullYear(), simdi.getUTCMonth(), simdi.getUTCDate()),
   );
 }

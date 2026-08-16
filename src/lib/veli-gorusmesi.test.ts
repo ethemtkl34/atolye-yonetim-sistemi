@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  MINI_TEST_SORULARI,
+  GOZLEM_ALANLARI,
   atolyeOzetiMetniUret,
-  miniTestYorumuUret,
+  gorusmeCercevesiUret,
+  gozlemYorumuUret,
+  veliBriefiCozumle,
   veliBriefiUret,
-  type MiniTestCevabi,
+  veliFormuCozumle,
+  yasBandiSec,
+  type GozlemCevabi,
+  type VeliGorusmeSecimleri,
 } from "./veli-gorusmesi";
 import { raporAnaliziUret, type RaporGirdisi } from "./rapor-motoru";
 import type { PuanlamaGirdisi } from "./puan-hesaplari";
@@ -38,20 +43,54 @@ function girdi(atolyeler: RaporGirdisi["atolyeler"]): RaporGirdisi {
   };
 }
 
-function cevap(deger: number, sira = 0): MiniTestCevabi {
+function cevap(deger: number, sira = 0): GozlemCevabi {
   return {
-    anahtar: MINI_TEST_SORULARI[sira].anahtar,
-    soruMetni: MINI_TEST_SORULARI[sira].metin,
+    anahtar: GOZLEM_ALANLARI[sira].anahtar,
+    soruMetni: GOZLEM_ALANLARI[sira].metin,
+    baslik: GOZLEM_ALANLARI[sira].baslik,
     deger,
   };
 }
 
-describe("miniTestYorumuUret", () => {
+const BOS_SECIMLER: VeliGorusmeSecimleri = {
+  band: "8-10",
+  genelAnahtarlari: [],
+  gucluAnahtarlari: [],
+  zorlanmaAnahtarlari: [],
+  yonlendirmeler: [],
+};
+
+describe("yasBandiSec", () => {
+  it("yaşı doğru banda yerleştirir", () => {
+    expect(yasBandiSec(4).band).toBe("4-5");
+    expect(yasBandiSec(5).band).toBe("4-5");
+    expect(yasBandiSec(6).band).toBe("6-7");
+    expect(yasBandiSec(7).band).toBe("6-7");
+    expect(yasBandiSec(8).band).toBe("8-10");
+    expect(yasBandiSec(10).band).toBe("8-10");
+  });
+
+  it("aralık içindeki yaşları bant dışı saymaz", () => {
+    expect(yasBandiSec(4).bandDisi).toBe(false);
+    expect(yasBandiSec(10).bandDisi).toBe(false);
+  });
+
+  it("aralık dışını en yakın banda kıstırır ve işaretler", () => {
+    // Kurumda 11 yaşında öğrenci var; form 4–10 için yazıldı.
+    expect(yasBandiSec(11)).toEqual({ band: "8-10", bandDisi: true });
+    expect(yasBandiSec(14)).toEqual({ band: "8-10", bandDisi: true });
+    // Doğum tarihi hatalı girilmiş kayıtlar aşağı uçtan taşabiliyor.
+    expect(yasBandiSec(3)).toEqual({ band: "4-5", bandDisi: true });
+    expect(yasBandiSec(0)).toEqual({ band: "4-5", bandDisi: true });
+  });
+});
+
+describe("gozlemYorumuUret", () => {
   it("değer bantlarına göre farklı yorum üretir", () => {
-    // Aynı soru, üç farklı bant — üç farklı dil.
-    const [yuksek] = miniTestYorumuUret("Tuana", [cevap(5)]);
-    const [orta] = miniTestYorumuUret("Tuana", [cevap(3)]);
-    const [dusuk] = miniTestYorumuUret("Tuana", [cevap(1)]);
+    // Aynı alan, üç farklı bant — üç farklı dil.
+    const [yuksek] = gozlemYorumuUret("Tuana", [cevap(5)]);
+    const [orta] = gozlemYorumuUret("Tuana", [cevap(3)]);
+    const [dusuk] = gozlemYorumuUret("Tuana", [cevap(1)]);
 
     expect(yuksek).toContain("güçlü");
     expect(orta).toContain("dengeli");
@@ -59,29 +98,99 @@ describe("miniTestYorumuUret", () => {
     expect(new Set([yuksek, orta, dusuk]).size).toBe(3);
   });
 
-  it("öğrenci adını tamlayan ekiyle metne geçirir", () => {
-    const [yorum] = miniTestYorumuUret("Tuana", [cevap(4)]);
-    expect(yorum).toContain("Tuana’nın");
+  it("adı yalın hâlde kullanır — yüklem çocuğa ait", () => {
+    // "Tuana’nın … sergilemektedir" bozuk bir cümleydi; özne çocuğun kendisi.
+    const [yorum] = gozlemYorumuUret("Tuana", [cevap(4)]);
+    expect(yorum).toContain("Tuana ");
+    expect(yorum).not.toContain("Tuana’nın");
   });
 
-  it("soru metnini cevabın kendi kopyasından okur, sabit listeden değil", () => {
-    // Snapshot ilkesi: sorular sonradan değişse de kayıt o günkü metni taşır.
-    const eskiMetin = "Grup içinde arkadaşlarına yardımcı olur.";
-    const [yorum] = miniTestYorumuUret("Tuana", [
-      { anahtar: "sosyallik", soruMetni: eskiMetin, deger: 5 },
+  it("kısa alan adını cevabın kendi kopyasından okur, sabit listeden değil", () => {
+    // Snapshot ilkesi: alanlar sonradan değişse de kayıt o günkü adı taşır.
+    const eskiBaslik = "Grup içinde yardımlaşma";
+    const [yorum] = gozlemYorumuUret("Tuana", [
+      {
+        anahtar: "grup-calismasi",
+        soruMetni: "Grup içinde arkadaşlarına yardımcı olur.",
+        baslik: eskiBaslik,
+        deger: 5,
+      },
     ]);
-    expect(yorum).toContain("grup içinde arkadaşlarına yardımcı olur");
-    expect(yorum).not.toContain(MINI_TEST_SORULARI[0].metin);
+    expect(yorum).toContain("grup içinde yardımlaşma");
+    expect(yorum).not.toContain(GOZLEM_ALANLARI[6].baslik.toLowerCase());
+  });
+
+  it("başlığı olmayan ESKİ kayıtta soru metnine düşer", () => {
+    // 2026 Ağustos öncesi üç soruluk mini test kayıtlarında `baslik` yok;
+    // detay penceresi o kayıtları da açabilmeli.
+    const [yorum] = gozlemYorumuUret("Tuana", [
+      {
+        anahtar: "sosyallik",
+        soruMetni: "Akranlarıyla kolay iletişim kurar ve gruba uyum sağlar.",
+        deger: 5,
+      },
+    ]);
+    expect(yorum).toContain("akranlarıyla kolay iletişim kurar");
   });
 
   it("cevap sırasını korur ve deterministiktir", () => {
     const cevaplar = [cevap(5, 0), cevap(1, 1), cevap(3, 2)];
-    const birinci = miniTestYorumuUret("Tuana", cevaplar);
-    const ikinci = miniTestYorumuUret("Tuana", cevaplar);
+    const birinci = gozlemYorumuUret("Tuana", cevaplar);
+    const ikinci = gozlemYorumuUret("Tuana", cevaplar);
 
     expect(birinci).toHaveLength(3);
     expect(birinci).toEqual(ikinci);
-    expect(birinci[1]).toContain("kendine güvenir");
+    expect(birinci[1]).toContain("dikkatini sürdürme");
+  });
+});
+
+describe("gorusmeCercevesiUret", () => {
+  it("hiçbir şey işaretlenmemişse boş döner — kapanış cümlesi de yazılmaz", () => {
+    expect(gorusmeCercevesiUret(BOS_SECIMLER)).toEqual([]);
+  });
+
+  it("işaretlenen her bölüm için etiketli bir parça üretir", () => {
+    const cerceve = gorusmeCercevesiUret({
+      ...BOS_SECIMLER,
+      genelAnahtarlari: ["merakli"],
+      gucluAnahtarlari: ["planlama"],
+      zorlanmaAnahtarlari: ["kaygi"],
+      yonlendirmeler: [
+        { tur: "ERGOTERAPI", etiket: "Ergoterapi", not: "duyusal profil" },
+      ],
+    });
+
+    const etiketler = cerceve.map((b) => b.etiket);
+    expect(etiketler).toHaveLength(5);
+    expect(etiketler[0]).toContain("GENEL PROFİL");
+    expect(etiketler[4]).toContain("KAPANIŞ");
+    expect(cerceve[0].metin).toContain("Meraklı");
+    expect(cerceve[3].metin).toContain("Ergoterapi (duyusal profil)");
+  });
+
+  it("sözlükte karşılığı olmayan anahtarı sessizce atlar", () => {
+    // Bant değişince banda özel madde ("ayrilmakaygisi" yalnızca 4-5'te)
+    // işaretli kalmış olabilir; başlıksız satır üretmek yerine düşmeli.
+    const cerceve = gorusmeCercevesiUret({
+      ...BOS_SECIMLER,
+      band: "8-10",
+      zorlanmaAnahtarlari: ["ayrilmakaygisi"],
+    });
+    expect(cerceve).toEqual([]);
+  });
+
+  it("banda göre farklı metin verir", () => {
+    const kucuk = gorusmeCercevesiUret({
+      ...BOS_SECIMLER,
+      band: "4-5",
+      gucluAnahtarlari: ["planlama"],
+    });
+    const buyuk = gorusmeCercevesiUret({
+      ...BOS_SECIMLER,
+      band: "8-10",
+      gucluAnahtarlari: ["planlama"],
+    });
+    expect(kucuk[0].metin).not.toEqual(buyuk[0].metin);
   });
 });
 
@@ -126,10 +235,11 @@ describe("atolyeOzetiMetniUret", () => {
 });
 
 describe("veliBriefiUret", () => {
-  it("iki bölümü ayrı ayrı üretir ve analizi saklar", () => {
+  it("üç bölümü ayrı ayrı üretir ve analizi saklar", () => {
     const brief = veliBriefiUret({
       ogrenciIlkAdi: "Tuana",
       cevaplar: [cevap(5, 0), cevap(2, 1)],
+      secimler: { ...BOS_SECIMLER, genelAnahtarlari: ["merakli"] },
       raporGirdisi: girdi([
         {
           atolyeAdi: "Bilim Atölyesi",
@@ -138,8 +248,9 @@ describe("veliBriefiUret", () => {
       ]),
     });
 
-    expect(brief.miniTestParagraflari).toHaveLength(2);
+    expect(brief.gozlemParagraflari).toHaveLength(2);
     expect(brief.atolyeParagraflari.length).toBeGreaterThan(0);
+    expect(brief.cerceve.length).toBeGreaterThan(0);
     expect(brief.analiz).not.toBeNull();
     expect(brief.metinKaynagi).toBe("sablon");
   });
@@ -148,6 +259,7 @@ describe("veliBriefiUret", () => {
     const brief = veliBriefiUret({
       ogrenciIlkAdi: "Tuana",
       cevaplar: [cevap(3)],
+      secimler: BOS_SECIMLER,
       raporGirdisi: null,
     });
 
@@ -161,6 +273,11 @@ describe("veliBriefiUret", () => {
     const veri = {
       ogrenciIlkAdi: "Tuana",
       cevaplar: [cevap(5, 0), cevap(3, 1), cevap(1, 2)],
+      secimler: {
+        ...BOS_SECIMLER,
+        genelAnahtarlari: ["merakli", "azimli"],
+        zorlanmaAnahtarlari: ["kaygi"],
+      },
       raporGirdisi: girdi([
         {
           atolyeAdi: "Bilim Atölyesi",
@@ -170,5 +287,80 @@ describe("veliBriefiUret", () => {
     };
 
     expect(veliBriefiUret(veri)).toEqual(veliBriefiUret(veri));
+  });
+});
+
+describe("veliBriefiCozumle", () => {
+  it("ESKİ kaydın `miniTestParagraflari` alanını gözlem paragrafına taşır", () => {
+    // 2026 Ağustos öncesi 7 kayıt bu biçimde; normalize edilmezse detay
+    // penceresi boş açılırdı.
+    const cozulen = veliBriefiCozumle({
+      miniTestParagraflari: ["Eski yorum."],
+      atolyeParagraflari: ["Eski özet."],
+      analiz: null,
+      metinKaynagi: "sablon",
+    });
+
+    expect(cozulen.gozlemParagraflari).toEqual(["Eski yorum."]);
+    expect(cozulen.atolyeParagraflari).toEqual(["Eski özet."]);
+    expect(cozulen.cerceve).toEqual([]);
+  });
+
+  it("yeni kaydı olduğu gibi okur", () => {
+    const cozulen = veliBriefiCozumle({
+      gozlemParagraflari: ["Yeni yorum."],
+      atolyeParagraflari: [],
+      cerceve: [{ etiket: "KAPANIŞ ÖNERİSİ", metin: "…" }],
+      analiz: null,
+      metinKaynagi: "sablon",
+    });
+
+    expect(cozulen.gozlemParagraflari).toEqual(["Yeni yorum."]);
+    expect(cozulen.cerceve).toHaveLength(1);
+  });
+
+  it("tanınmayan gövdede ekranı düşürmez", () => {
+    const cozulen = veliBriefiCozumle(null);
+    expect(cozulen.gozlemParagraflari).toEqual([]);
+    expect(cozulen.cerceve).toEqual([]);
+  });
+});
+
+describe("veliFormuCozumle", () => {
+  it("form olmayan (eski) kayıtta null döner", () => {
+    expect(veliFormuCozumle(null)).toBeNull();
+    expect(veliFormuCozumle({})).toBeNull();
+  });
+
+  it("işaretleri ve serbest metinleri çözer, boş metni null yapar", () => {
+    const form = veliFormuCozumle({
+      yas: 9,
+      band: "8-10",
+      bandDisi: false,
+      genel: [{ anahtar: "merakli", baslik: "Meraklı" }],
+      guclu: [],
+      zorlanma: [{ anahtar: "kaygi", baslik: "Kaygı" }],
+      gozlemNotu: "   ",
+      gucluOzeti: "Özet",
+      atolyeNotlari: [{ atolye: "Robotik Kodlama", not: "Dikkatliydi" }],
+    });
+
+    expect(form?.yas).toBe(9);
+    expect(form?.genel).toHaveLength(1);
+    expect(form?.gozlemNotu).toBeNull();
+    expect(form?.gucluOzeti).toBe("Özet");
+    expect(form?.atolyeNotlari[0].atolye).toBe("Robotik Kodlama");
+  });
+
+  it("bozuk satırları sessizce atar", () => {
+    const form = veliFormuCozumle({
+      yas: 9,
+      band: "8-10",
+      genel: [{ anahtar: "merakli" }, { anahtar: "azimli", baslik: "Azimli" }],
+      atolyeNotlari: "dizi değil",
+    });
+
+    expect(form?.genel).toEqual([{ anahtar: "azimli", baslik: "Azimli" }]);
+    expect(form?.atolyeNotlari).toEqual([]);
   });
 });

@@ -93,3 +93,24 @@ export function formDegerleri(
   }
   return sonuc;
 }
+
+/**
+ * `formDegerleri`nin çoklu kutu karşılığı — aynı `name`i taşıyan onay
+ * kutularının işaretli değerleri.
+ *
+ * Ayrı fonksiyon çünkü `FormData.get` çoklu grupta yalnızca İLK değeri
+ * döndürür; işaretlerin geri yazılması için hepsi lazım (veli görüşmesi
+ * formunda tek gönderimde 40'a yakın kutu var).
+ */
+export function formCoklulari(
+  formVerisi: FormData,
+  alanlar: readonly string[],
+): Record<string, string[]> {
+  const sonuc: Record<string, string[]> = {};
+  for (const alan of alanlar) {
+    sonuc[alan] = formVerisi
+      .getAll(alan)
+      .filter((deger): deger is string => typeof deger === "string");
+  }
+  return sonuc;
+}

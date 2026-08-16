@@ -11,6 +11,7 @@ import {
   tarihGunleBicimle,
   tarihMetni,
   yasBicimle,
+  yasYil,
 } from "./tarih";
 
 describe("tarihCozumle", () => {
@@ -177,5 +178,38 @@ describe("yasBicimle", () => {
 
   it("bir yaşından küçükte yaş parçasını yazmaz", () => {
     expect(yas("2026-04-05", "2026-08-11")).toBe("4 ay 6 gün");
+  });
+});
+
+describe("yasYil", () => {
+  const yil = (dogum: string, referans: string) =>
+    yasYil(tarihCozumle(dogum)!, tarihCozumle(referans)!);
+
+  it("dolmuş yılı verir", () => {
+    expect(yil("2018-03-14", "2026-08-11")).toBe(8);
+  });
+
+  it("doğum gününden bir gün önce hâlâ küçük yaştadır", () => {
+    // Veli görüşmesi bandı buna bağlı: "9 yaş 11 ay" olan çocuk 9'dur.
+    expect(yil("2017-08-12", "2026-08-11")).toBe(8);
+    expect(yil("2017-08-11", "2026-08-11")).toBe(9);
+  });
+
+  it("`yasBicimle` ile aynı yılı söyler", () => {
+    // İki fonksiyon ayrı hesaplasaydı aynı çocuk profilde 9, formda 10
+    // görünebilirdi.
+    for (const [dogum, referans] of [
+      ["2018-03-14", "2026-08-11"],
+      ["2020-01-31", "2026-03-01"],
+      ["2019-11-20", "2026-03-05"],
+      ["2018-08-11", "2026-08-11"],
+    ]) {
+      const metin = yasBicimle(tarihCozumle(dogum)!, tarihCozumle(referans)!);
+      expect(metin.startsWith(`${yil(dogum, referans)} yaş`)).toBe(true);
+    }
+  });
+
+  it("bir yaşından küçükte sıfır döner", () => {
+    expect(yil("2026-04-05", "2026-08-11")).toBe(0);
   });
 });

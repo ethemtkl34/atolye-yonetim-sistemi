@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { Buton, DonenHalka } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 /**
  * `ui.tsx`'in istemci tarafı parçaları.
@@ -43,6 +44,91 @@ export function GonderButonu({
         children
       )}
     </Buton>
+  );
+}
+
+/**
+ * Sekme şeridi — uzun bir formu bölümlere ayırır.
+ *
+ * Kil dili: seçili sekme GÖMÜK durur (basılı olan içeri gider), seçilmeyen
+ * kabarık kalır. Dokunma hedefi telefondaki 44px kuralına uyar.
+ *
+ * ⚠️ Bu bileşen yalnızca ŞERİDİ çizer, içeriği DEĞİL. Sebebi kritik: form
+ * içinde kullanıldığında pasif sekmenin içeriği DOM'dan kaldırılmamalı —
+ * kaldırılırsa o sekmedeki alanlar gönderime hiç girmez ve kullanıcı farkında
+ * olmadan yarım kayıt üretir. Çağıran taraf bölümleri `hidden` ile gizler
+ * (bkz. `SekmePaneli`).
+ */
+export function Sekmeler({
+  sekmeler,
+  etkin,
+  onSecim,
+  etiket,
+}: {
+  sekmeler: readonly { deger: string; etiket: string; rozet?: number }[];
+  etkin: string;
+  onSecim: (deger: string) => void;
+  /** Şeridin erişilebilirlik adı ("Görüşme formu bölümleri"). */
+  etiket: string;
+}) {
+  return (
+    <div role="tablist" aria-label={etiket} className="flex flex-wrap gap-2">
+      {sekmeler.map((sekme) => {
+        const secili = sekme.deger === etkin;
+        return (
+          <button
+            key={sekme.deger}
+            type="button"
+            role="tab"
+            aria-selected={secili}
+            aria-controls={`sekme-panel-${sekme.deger}`}
+            onClick={() => onSecim(sekme.deger)}
+            className={cn(
+              "kil-satir flex min-h-[2.75rem] items-center gap-2 px-3.5 text-sm sm:min-h-[2.25rem]",
+              secili
+                ? "bg-[#efe5eb] font-semibold text-marka-700 shadow-[var(--kil-ic)]"
+                : "text-zinc-700",
+            )}
+          >
+            {sekme.etiket}
+            {sekme.rozet ? (
+              <span className="kil-rozet rounded-full px-1.5 text-xs font-semibold text-marka-700">
+                {sekme.rozet}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Bir sekmenin gövdesi. Pasif olduğunda `hidden` ile gizlenir ama DOM'da
+ * KALIR — içindeki form alanları gönderime girmeye devam eder.
+ */
+export function SekmePaneli({
+  deger,
+  etkin,
+  children,
+}: {
+  deger: string;
+  etkin: string;
+  children: React.ReactNode;
+}) {
+  const gizli = deger !== etkin;
+  return (
+    <div
+      id={`sekme-panel-${deger}`}
+      role="tabpanel"
+      hidden={gizli}
+      // `hidden` özniteliği Tailwind'in `display` yardımcılarıyla ezilebiliyor;
+      // gizli panelin sekme sırasından da çıkması için inert veriliyor.
+      inert={gizli}
+      className="space-y-4"
+    >
+      {children}
+    </div>
   );
 }
 
