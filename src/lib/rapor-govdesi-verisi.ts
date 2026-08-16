@@ -10,6 +10,7 @@ import { atolyeOzetiHesapla } from "./puan-hesaplari";
 import {
   asimetriBul,
   atolyeKademesiCikar,
+  beceriAlanlariCikar,
   gelisimAlanlariCikar,
   type RaporGovdesiV2,
   type RaporUyarisi,
@@ -452,6 +453,7 @@ export async function raporGovdesiV2Uret(
     })),
     atolyeIcerikleri,
     gelisimAlanlari,
+    beceriAlanlari: beceriAlanlariCikar(gelisimCevaplari, GELISIM_SORULARI),
     atolyeKademeleri,
     asimetriler: asimetriBul(
       atolyeKademeleri.map((a) => ({
