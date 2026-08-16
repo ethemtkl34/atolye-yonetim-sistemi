@@ -1,0 +1,14 @@
+-- Yedinci rol: Şube Yöneticisi.
+--
+-- BU DOSYADA BAŞKA HİÇBİR ŞEY OLMAMALI. PostgreSQL'de `ALTER TYPE ... ADD VALUE`
+-- ile eklenen değer aynı transaction içinde KULLANILAMAZ; Prisma ise her
+-- migration dosyasını tek transaction'da çalıştırır (20260807090000_yeni_roller
+-- emsali).
+--
+-- Mevcut CHECK kısıtları bu rol için olduğu gibi doğru çalışıyor, o yüzden
+-- ikinci bir migration gerekmiyor: `User_yonetici_sube_kurali` ADMIN olmayan
+-- herkesten şube istiyor (şube yöneticisi her zaman bir şubeye bağlıdır),
+-- `User_admin_tek_rol` ve `User_stajyer_tek_rol` yalnızca kendi rollerini
+-- ilgilendiriyor. Şube yöneticisi diğer dört şubeli rol gibi serbestçe
+-- birleşebilir.
+ALTER TYPE "Role" ADD VALUE 'SUBE_YONETICISI';

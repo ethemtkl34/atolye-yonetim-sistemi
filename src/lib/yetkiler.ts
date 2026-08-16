@@ -87,6 +87,19 @@ export const YETKI_MATRISI: Record<Role, Record<Modul, Seviye>> = {
   /** Kurum Yöneticisi — her şey, kullanıcı yönetimi dahil. */
   ADMIN: tumModuller("TAM"),
 
+  /**
+   * Şube Yöneticisi — koordinatörün bütün yetkileri, ARTI kullanıcı yönetimi.
+   *
+   * Rolü koordinatörden ayıran tek satır `kullanicilar`; şubenin başındaki
+   * kişi kendi kadrosunu yönetici beklemeden açıp kapatabilsin diye eklendi.
+   * Kurum Yöneticisi'nden ayıran şey burada değil, ŞUBE bağında: bu rol her
+   * zaman bir şubeye bağlıdır ve kullanıcı ekranı da o şubeyle sınırlıdır
+   * (bkz. roller.ts `kullaniciYonetimiKapsami`). Matris şubeye bakmaz —
+   * "ne yapabilir" sorusunun cevabı burada, "kimin üzerinde" sorusununki
+   * kapsam fonksiyonunda.
+   */
+  SUBE_YONETICISI: { ...KOORDINATOR_SATIRI, kullanicilar: "TAM" },
+
   /** Atölye Koordinatörü. */
   KOORDINATOR: KOORDINATOR_SATIRI,
 

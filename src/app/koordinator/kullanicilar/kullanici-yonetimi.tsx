@@ -31,6 +31,7 @@ export type KullaniciSatiri = {
 /** Seçim sırası = ekrandaki sıra: yetkiden aza doğru. */
 const ROL_SECENEKLERI: readonly Role[] = [
   "ADMIN",
+  "SUBE_YONETICISI",
   "KOORDINATOR",
   "ATOLYE_PSIKOLOGU",
   "TEST_UYGULAYICISI",
@@ -41,9 +42,9 @@ const ROL_SECENEKLERI: readonly Role[] = [
 /** Tek başına kalmak zorunda olan roller (sunucu ve CHECK de zorluyor). */
 const TEKIL_ROLLER: readonly Role[] = ["ADMIN", "STAJYER"];
 
-/** Rol rozetinin tonu: yönetici ayırt edilsin, stajyer geri çekilsin. */
+/** Rol rozetinin tonu: yöneticiler ayırt edilsin, stajyer geri çekilsin. */
 function rolRozetTuru(role: Role): "notr" | "uyari" | "pasif" {
-  if (role === "ADMIN") return "uyari";
+  if (role === "ADMIN" || role === "SUBE_YONETICISI") return "uyari";
   if (role === "STAJYER") return "pasif";
   return "notr";
 }
@@ -52,11 +53,19 @@ export function KullaniciYonetimi({
   kullanicilar,
   subeler,
   benimId,
+  subeyeKilitli,
 }: {
   kullanicilar: KullaniciSatiri[];
   subeler: SubeSecenegi[];
   /** Oturumdaki yöneticinin kimliği — kendi satırında yıkıcı düğme çıkmaz. */
   benimId: string;
+  /**
+   * Şube Yöneticisi mi bakıyor. Kurum Yöneticisi rolü seçeneklerden düşer ve
+   * şube seçici kilitlenir; sunucu tarafı aynı kuralı ayrıca uyguluyor
+   * (bkz. actions.ts `rolleriCoz`), burası yalnızca kurulamayacak bir seçimi
+   * ekranda göstermemek için.
+   */
+  subeyeKilitli: boolean;
 }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [bekliyor, basla] = useTransition();
@@ -70,7 +79,7 @@ export function KullaniciYonetimi({
       {mesaj?.basari ? <Bildirim tur="basari">{mesaj.basari}</Bildirim> : null}
       {mesaj?.hata ? <Bildirim tur="hata">{mesaj.hata}</Bildirim> : null}
 
-      <KullaniciEkleFormu subeler={subeler} />
+      <KullaniciEkleFormu subeler={subeler} subeyeKilitli={subeyeKilitli} />
 
       <div className="space-y-2">
         {kullanicilar.map((kullanici) => {
@@ -178,6 +187,7 @@ export function KullaniciYonetimi({
                   <RolFormu
                     kullanici={kullanici}
                     subeler={subeler}
+                    subeyeKilitli={subeyeKilitli}
                     kapat={() => setAcikPanel(null)}
                   />
                 </div>
@@ -218,22 +228,27 @@ function RolSubeAlanlari({
   setRoller,
   varsayilanSube,
   subeler,
+  subeyeKilitli,
   hatalar,
 }: {
   roller: Role[];
   setRoller: (yeni: Role[]) => void;
   varsayilanSube: string;
   subeler: SubeSecenegi[];
+  subeyeKilitli: boolean;
   hatalar?: Record<string, string>;
 }) {
   const yonetici = roller.includes("ADMIN");
+  const secenekler = subeyeKilitli
+    ? ROL_SECENEKLERI.filter((rol) => rol !== "ADMIN")
+    : ROL_SECENEKLERI;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Alan etiket="Roller" hata={hatalar?.roles}>
         {/* Onay kutuları da bir girdi: kart yüzeyinde kabarmaz, gömülür. */}
         <div className="kil-girdi space-y-1.5 px-3 py-2">
-          {ROL_SECENEKLERI.map((secenek) => (
+          {secenekler.map((secenek) => (
             <label
               key={secenek}
               className="flex items-center gap-2 text-sm text-zinc-800"
@@ -254,8 +269,9 @@ function RolSubeAlanlari({
             </label>
           ))}
           <p className="pt-1 text-xs text-zinc-500">
-            Kurum Yöneticisi ve Stajyer başka rolle birleşemez; diğer unvanlar
-            birlikte verilebilir.
+            {subeyeKilitli
+              ? "Stajyer başka rolle birleşemez; diğer unvanlar birlikte verilebilir. Kurum Yöneticisi yetkisini yalnızca bir Kurum Yöneticisi verebilir."
+              : "Kurum Yöneticisi ve Stajyer başka rolle birleşemez; diğer unvanlar birlikte verilebilir."}
           </p>
         </div>
       </Alan>
@@ -265,6 +281,16 @@ function RolSubeAlanlari({
           <p className="kil-oyuk px-3 py-2 text-sm text-zinc-500">
             Yönetici bütün şubeleri görür; şube seçilmez.
           </p>
+        </Alan>
+      ) : subeyeKilitli ? (
+        // Tek seçenek bir seçim değil: açılır listeyi göstermek "başka şube de
+        // seçebilirim" izlenimi verirdi. Değer yine de gönderiliyor ki sunucu
+        // tarafında alan boş kalmasın (orada zaten kapsamla üzerine yazılıyor).
+        <Alan etiket="Şube">
+          <p className="kil-oyuk px-3 py-2 text-sm text-zinc-600">
+            {subeler[0]?.ad ?? "Şubeniz"}
+          </p>
+          <input type="hidden" name="branchId" value={subeler[0]?.id ?? ""} />
         </Alan>
       ) : (
         <Alan etiket="Şube" hata={hatalar?.branchId}>
@@ -286,7 +312,13 @@ function RolSubeAlanlari({
   );
 }
 
-function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
+function KullaniciEkleFormu({
+  subeler,
+  subeyeKilitli,
+}: {
+  subeler: SubeSecenegi[];
+  subeyeKilitli: boolean;
+}) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
     kullaniciEkle,
     {},
@@ -340,6 +372,7 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
           setRoller={setRoller}
           varsayilanSube={durum.degerler?.branchId ?? ""}
           subeler={subeler}
+          subeyeKilitli={subeyeKilitli}
           hatalar={durum.alanHatalari}
         />
 
@@ -367,10 +400,12 @@ function KullaniciEkleFormu({ subeler }: { subeler: SubeSecenegi[] }) {
 function RolFormu({
   kullanici,
   subeler,
+  subeyeKilitli,
   kapat,
 }: {
   kullanici: KullaniciSatiri;
   subeler: SubeSecenegi[];
+  subeyeKilitli: boolean;
   kapat: () => void;
 }) {
   const [durum, eylem] = useActionState<EylemDurumu, FormData>(
@@ -386,6 +421,7 @@ function RolFormu({
         setRoller={setRoller}
         varsayilanSube={kullanici.subeId ?? ""}
         subeler={subeler}
+        subeyeKilitli={subeyeKilitli}
         hatalar={durum.alanHatalari}
       />
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}

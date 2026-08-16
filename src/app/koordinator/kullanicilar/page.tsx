@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { adminZorunlu } from "@/lib/yetki-kapisi";
+import { kullaniciYonetimiZorunlu } from "@/lib/yetki-kapisi";
 import type { Role } from "@/generated/prisma/enums";
 import { BosDurum, SayfaBasligi } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
@@ -16,13 +16,19 @@ export const metadata: Metadata = {
 const TEMEL_YOL = "/koordinator/kullanicilar";
 
 /**
- * Yöneticinin hesap ve rol yönetimi.
+ * Hesap ve rol yönetimi.
  *
- * Panelin ŞUBEYE BAKMAYAN tek ekranı: yönetici burada bütün şubelerin
- * hesaplarını birlikte görür. Üst şeritteki şube seçimi bu listeyi
- * daraltmıyor — daraltsaydı "diğer şubeye koordinatör ata" işi için şube
- * değiştirip geri dönmek gerekirdi. Bunun yerine şube burada sıradan bir
- * süzgeç.
+ * İki rol giriyor ve gördükleri farklı:
+ *
+ * - Kurum Yöneticisi için panelin ŞUBEYE BAKMAYAN tek ekranı: bütün şubelerin
+ *   hesapları birlikte görünür. Üst şeritteki şube seçimi bu listeyi
+ *   daraltmıyor — daraltsaydı "diğer şubeye koordinatör ata" işi için şube
+ *   değiştirip geri dönmek gerekirdi. Bunun yerine şube burada sıradan bir
+ *   süzgeç.
+ * - Şube Yöneticisi için ekran KENDİ ŞUBESİNE kilitli: şube süzgeci hiç
+ *   çıkmaz, sorgu kapsamla süzülür. Süzgeci gizlemek yetki değil — asıl
+ *   sınır sorgudaki `branchId` ve eylemlerdeki `kapsamdaMi` kontrolü
+ *   (bkz. actions.ts).
  *
  * Koordinatörün Stajyerler ekranı yerinde duruyor ve kendi şubesiyle sınırlı;
  * bu ekran onun yerine geçmiyor, üstüne biniyor.
@@ -30,18 +36,27 @@ const TEMEL_YOL = "/koordinator/kullanicilar";
 export default async function KullanicilarSayfasi(
   props: PageProps<"/koordinator/kullanicilar">,
 ) {
-  const yonetici = await adminZorunlu();
+  const yonetici = await kullaniciYonetimiZorunlu();
+  const kapsamSubeId = yonetici.kapsamSubeId;
 
   const parametreler = await props.searchParams;
   const subeSuzgeci =
     typeof parametreler.sube === "string" ? parametreler.sube : "tumu";
   const durumSuzgeci = parametreler.durum === "pasif" ? "pasif" : "aktif";
 
-  const subeler = await db.branch.findMany({
+  const tumSubeler = await db.branch.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" },
     select: { id: true, name: true },
   });
+
+  // Şube yöneticisine formda tek şube sunuluyor: başka şube seçemesin diye.
+  // Sunucu tarafı zaten seçimi okumuyor (rolleriCoz kapsamı yazıyor), bu
+  // yalnızca kurulamayacak bir seçimi ekranda göstermemek için.
+  const subeler =
+    kapsamSubeId === null
+      ? tumSubeler
+      : tumSubeler.filter((sube) => sube.id === kapsamSubeId);
 
   const gecerliSube = subeler.some((sube) => sube.id === subeSuzgeci)
     ? subeSuzgeci
@@ -52,11 +67,15 @@ export default async function KullanicilarSayfasi(
   const kullanicilar = await db.user.findMany({
     where: {
       ...(durumSuzgeci === "aktif" ? { active: true } : { active: false }),
-      ...(gecerliSube === "tumu"
-        ? {}
-        : gecerliSube === "yonetici"
-          ? { branchId: null }
-          : { branchId: gecerliSube }),
+      ...(kapsamSubeId !== null
+        ? // Kapsam süzgeci pazarlık konusu değil: adres çubuğundaki `sube`
+          // parametresi ne olursa olsun üzerine yazılır.
+          { branchId: kapsamSubeId }
+        : gecerliSube === "tumu"
+          ? {}
+          : gecerliSube === "yonetici"
+            ? { branchId: null }
+            : { branchId: gecerliSube }),
     },
     orderBy: { name: "asc" },
     select: {
@@ -82,11 +101,12 @@ export default async function KullanicilarSayfasi(
   // Çoklu rolde satırın sırası EN YETKİLİ rolünden gelir.
   const ROL_SIRASI: Record<Role, number> = {
     ADMIN: 0,
-    KOORDINATOR: 1,
-    ATOLYE_PSIKOLOGU: 2,
-    TEST_UYGULAYICISI: 3,
-    DANISMA_GOREVLISI: 4,
-    STAJYER: 5,
+    SUBE_YONETICISI: 1,
+    KOORDINATOR: 2,
+    ATOLYE_PSIKOLOGU: 3,
+    TEST_UYGULAYICISI: 4,
+    DANISMA_GOREVLISI: 5,
+    STAJYER: 6,
   };
   const satirSirasi = (roller: readonly Role[]) =>
     Math.min(...roller.map((rol) => ROL_SIRASI[rol]));
@@ -113,23 +133,35 @@ export default async function KullanicilarSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Kullanıcılar"
-        aciklama="Koordinatör, stajyer ve yönetici hesapları. Hesabın şubesi görüş alanını belirler: koordinatör ve stajyer yalnızca kendi şubesinin verisini görür. Hesaplar silinmez, pasife alınır — geçmiş puanlamalar ve raporlar korunur."
-        ustBilgi={<span className="text-xs text-zinc-500">Bütün şubeler</span>}
+        aciklama={
+          kapsamSubeId === null
+            ? "Koordinatör, stajyer ve yönetici hesapları. Hesabın şubesi görüş alanını belirler: koordinatör ve stajyer yalnızca kendi şubesinin verisini görür. Hesaplar silinmez, pasife alınır — geçmiş puanlamalar ve raporlar korunur."
+            : "Şubenizin hesapları. Kurum Yöneticisi yetkisi bu ekrandan verilemez; onun dışındaki bütün unvanları kendi şubenizde atayabilirsiniz. Hesaplar silinmez, pasife alınır — geçmiş puanlamalar ve raporlar korunur."
+        }
+        ustBilgi={
+          <span className="text-xs text-zinc-500">
+            {kapsamSubeId === null
+              ? "Bütün şubeler"
+              : (subeler[0]?.name ?? "Şubeniz")}
+          </span>
+        }
       />
 
       <SuzgecCubugu>
-        <SuzgecGrubu
-          etiket="Şube"
-          temelYol={TEMEL_YOL}
-          anahtar="sube"
-          secili={gecerliSube}
-          digerler={{ durum: durumSuzgeci }}
-          secenekler={[
-            { deger: "tumu", etiket: "Tümü" },
-            ...subeler.map((sube) => ({ deger: sube.id, etiket: sube.name })),
-            { deger: "yonetici", etiket: "Şubesiz (yönetici)" },
-          ]}
-        />
+        {kapsamSubeId === null ? (
+          <SuzgecGrubu
+            etiket="Şube"
+            temelYol={TEMEL_YOL}
+            anahtar="sube"
+            secili={gecerliSube}
+            digerler={{ durum: durumSuzgeci }}
+            secenekler={[
+              { deger: "tumu", etiket: "Tümü" },
+              ...subeler.map((sube) => ({ deger: sube.id, etiket: sube.name })),
+              { deger: "yonetici", etiket: "Şubesiz (yönetici)" },
+            ]}
+          />
+        ) : null}
         <SuzgecGrubu
           etiket="Durum"
           temelYol={TEMEL_YOL}
@@ -154,6 +186,7 @@ export default async function KullanicilarSayfasi(
         kullanicilar={satirlar}
         subeler={subeler.map((sube) => ({ id: sube.id, ad: sube.name }))}
         benimId={yonetici.id}
+        subeyeKilitli={kapsamSubeId !== null}
       />
     </div>
   );

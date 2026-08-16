@@ -2,7 +2,11 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { anaSayfaYolu, yonetimRoluMu } from "@/lib/roller";
+import {
+  anaSayfaYolu,
+  kullaniciYonetimiKapsami,
+  yonetimRoluMu,
+} from "@/lib/roller";
 import {
   yetkiYeter,
   yetkileriHesapla,
@@ -261,8 +265,8 @@ export async function belgeYetkisi(
 }
 
 /**
- * Yalnızca yönetici. Hesap ve rol yönetimi ekranları için — orası tek
- * şubeye değil bütün şubelere bakar, o yüzden şube bağlamı döndürmüyor.
+ * Yalnızca Kurum Yöneticisi. Şubeler üstü işler için — şube bağlamı
+ * döndürmüyor çünkü bu rolün kendi şubesi yok.
  */
 export async function adminZorunlu(): Promise<OturumKullanicisi> {
   const kullanici = await girisZorunlu();
@@ -272,6 +276,36 @@ export async function adminZorunlu(): Promise<OturumKullanicisi> {
   }
 
   return kullanici;
+}
+
+/** Kullanıcı yönetimi ekranını açan kişi ve dokunabildiği şube. */
+export type KullaniciYonetimiOturumu = OturumKullanicisi & {
+  /**
+   * Hangi şubenin hesaplarına dokunabilir. `null` YALNIZCA Kurum
+   * Yöneticisinde: bütün şubeler. Şube yöneticisinde her zaman dolu ve
+   * bütün sorgu süzgeçleri ile hedef doğrulamaları bunu kullanır.
+   */
+  kapsamSubeId: string | null;
+};
+
+/**
+ * Hesap ve rol yönetiminin kapısı.
+ *
+ * `adminZorunlu()`nun yerini aldı: ekran artık iki rolü birden ağırlıyor.
+ * Kurum Yöneticisi bütün şubeleri görür, Şube Yöneticisi yalnızca kendi
+ * şubesini — ayrım tek yerde, `kullaniciYonetimiKapsami`'nda. Kapsam
+ * hesaplanamıyorsa (rol yok, ya da şube yöneticisinin şubesi boşalmış)
+ * kullanıcı kendi paneline atılır.
+ */
+export async function kullaniciYonetimiZorunlu(): Promise<KullaniciYonetimiOturumu> {
+  const kullanici = await girisZorunlu();
+
+  const kapsam = kullaniciYonetimiKapsami(kullanici.roller, kullanici.subeId);
+  if (!kapsam) {
+    redirect(anaSayfaYolu(kullanici.roller));
+  }
+
+  return { ...kullanici, kapsamSubeId: kapsam.kapsamSubeId };
 }
 
 export { rolAdi, rolEtiketi, anaSayfaYolu } from "@/lib/roller";

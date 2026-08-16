@@ -11,17 +11,22 @@ zeka testlerinde anlamlı: üstveri görünür, belge içeriği açılamaz).
 
 1. **Kurum Yöneticisi** (`ADMIN`) — her şey + kullanıcı yönetimi; şubesizdir,
    üst şeritten şube seçerek bütün şubelerde çalışır. Başka rolle birleşemez.
-2. **Atölye Koordinatörü** (`KOORDINATOR`) — koordinatör panelinin tamamı tam
+2. **Şube Yöneticisi** (`SUBE_YONETICISI`) — koordinatörün bütün yetkileri
+   ARTI kullanıcı yönetimi, ama YALNIZCA kendi şubesinde. Kurum
+   Yöneticisi'nden farkı şubeye bağlı olması; koordinatörden farkı kullanıcı
+   yönetimini taşıması. Kurum Yöneticisi yetkisi veremez, başka şubenin
+   hesabına dokunamaz. Diğer şubeli rollerle birleşebilir.
+3. **Atölye Koordinatörü** (`KOORDINATOR`) — koordinatör panelinin tamamı tam
    yetki; tek istisna zeka testleri (yalnız görüntüler, yükleyemez).
-3. **Atölye Psikoloğu** (`ATOLYE_PSIKOLOGU`) — koordinatörle birebir aynı
+4. **Atölye Psikoloğu** (`ATOLYE_PSIKOLOGU`) — koordinatörle birebir aynı
    yetki, ayrı unvan.
-4. **Test Uygulayıcısı** (`TEST_UYGULAYICISI`) — zeka testi sonuç belgelerini
+5. **Test Uygulayıcısı** (`TEST_UYGULAYICISI`) — zeka testi sonuç belgelerini
    yükler/siler; tek başına başka yetkisi yok, pratikte psikologla birleşir.
-5. **Danışma Görevlisi** (`DANISMA_GOREVLISI`) — öğrenci ve kayıt işlemleri
+6. **Danışma Görevlisi** (`DANISMA_GOREVLISI`) — öğrenci ve kayıt işlemleri
    tam; dönem/kulüp/grup salt görüntüleme; zeka testlerinde yalnız liste;
    görüşmeler (danışmanlık) TAMAMEN gizli (stajyer kuralı); puanlama, rapor,
    arşiv ve müfredat yönetimi kapalı.
-6. **Stajyer** (`STAJYER`) — yalnızca kendisine atanmış öğrencilerin puanlama
+7. **Stajyer** (`STAJYER`) — yalnızca kendisine atanmış öğrencilerin puanlama
    görevleri (kendi paneli); başka rolle birleşemez.
 
 Karar gerekçeleri:
@@ -30,6 +35,10 @@ Karar gerekçeleri:
   `ROL_ADLARI`'ndan gelir.
 - Çoklu rol `Role[]` dizisidir (`Group.days` deseni); join tablosu yok çünkü
   role bağlı ek veri yok.
+- Yetki matrisi ŞUBEYE BAKMAZ: "ne yapabilir" sorusunun cevabı
+  `yetkiler.ts`'te, "kimin üzerinde" sorusununki şube bağlamındadır. Şube
+  Yöneticisi bu yüzden matriste Kurum Yöneticisi'ne yakın durur ama kullanıcı
+  ekranında kendi şubesine kilitlidir (`roller.ts kullaniciYonetimiKapsami`).
 - Dashboard modülsüzdür: panele girebilen herkes özeti görür.
 - Randevu yönetimi bilinçli olarak kapsam dışı bırakıldı (ileride ayrı iş).
 - Yeni açılan ve parolası sıfırlanan hesaplar ilk girişte parola değiştirmeye

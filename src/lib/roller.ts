@@ -24,6 +24,7 @@ import type { Role } from "@/generated/prisma/enums";
 
 export const ROL_ADLARI: Record<Role, string> = {
   ADMIN: "Kurum Yöneticisi",
+  SUBE_YONETICISI: "Şube Yöneticisi",
   KOORDINATOR: "Atölye Koordinatörü",
   ATOLYE_PSIKOLOGU: "Atölye Psikoloğu",
   TEST_UYGULAYICISI: "Test Uygulayıcısı",
@@ -41,6 +42,7 @@ export const ROL_ADLARI: Record<Role, string> = {
  */
 export const ANA_SAYFA_YOLLARI: Record<Role, string> = {
   ADMIN: "/koordinator",
+  SUBE_YONETICISI: "/koordinator",
   KOORDINATOR: "/koordinator",
   ATOLYE_PSIKOLOGU: "/koordinator",
   TEST_UYGULAYICISI: "/koordinator",
@@ -51,11 +53,32 @@ export const ANA_SAYFA_YOLLARI: Record<Role, string> = {
 /** Koordinatör panelini kullanabilen roller (STAJYER dışındaki herkes). */
 export const YONETIM_ROLLERI: readonly Role[] = [
   "ADMIN",
+  "SUBE_YONETICISI",
   "KOORDINATOR",
   "ATOLYE_PSIKOLOGU",
   "TEST_UYGULAYICISI",
   "DANISMA_GOREVLISI",
 ];
+
+/**
+ * Kullanıcı yönetimi ekranını açabilen roller ve GÖRÜŞ ALANLARI.
+ *
+ * Kurum Yöneticisi bütün şubelerin hesaplarını görür (kapsam null), Şube
+ * Yöneticisi yalnızca kendi şubesininkileri. İkisi ayrı fonksiyonlarla
+ * değil tek yerde ayrışıyor: ekranın ve eylemlerin hepsi bu kapsamı süzgeç
+ * olarak kullanıyor, `null` "süzgeç yok" demek — o yüzden yanlışlıkla
+ * boşalması sızıntı olurdu (bkz. yetki-kapisi.ts `kullaniciYonetimiZorunlu`).
+ */
+export function kullaniciYonetimiKapsami(
+  roller: readonly Role[],
+  subeId: string | null,
+): { kapsamSubeId: string | null } | null {
+  if (roller.includes("ADMIN")) return { kapsamSubeId: null };
+  if (roller.includes("SUBE_YONETICISI") && subeId) {
+    return { kapsamSubeId: subeId };
+  }
+  return null;
+}
 
 /** Tek rolün Türkçe unvanı — rozetlerde tek tek gösterim için. */
 export function rolAdi(role: Role): string {

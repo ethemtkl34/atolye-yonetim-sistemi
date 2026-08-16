@@ -33,7 +33,12 @@ datasource db {
 ///
 /// Kombinasyon kuralları (CHECK ile de zorlanır, bkz. migration `coklu_rol`):
 /// ADMIN tek başınadır ve şubesizdir; STAJYER tek başınadır (kendi paneli);
-/// kalan dört rol serbestçe birleşir ve her zaman bir şubeye bağlıdır.
+/// kalan beş rol serbestçe birleşir ve her zaman bir şubeye bağlıdır.
+///
+/// SUBE_YONETICISI ("Şube Yöneticisi") kurum iki şubeyle yürümeye başlayınca
+/// eklendi: şubenin başındaki kişi kendi kadrosunu açıp kapatabilmeli ama
+/// diğer şubeyi görmemeli. Kurum Yöneticisi'nden farkı tek şubeye bağlı
+/// olması, koordinatörden farkı kullanıcı yönetimini taşıması.
 enum Role {
   KOORDINATOR
   STAJYER
@@ -41,6 +46,7 @@ enum Role {
   ATOLYE_PSIKOLOGU
   TEST_UYGULAYICISI
   DANISMA_GOREVLISI
+  SUBE_YONETICISI
 }
 
 /// §4.3

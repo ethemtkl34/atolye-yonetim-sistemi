@@ -218,5 +218,6 @@ export function panelMenusu(roller: readonly Role[]): readonly MenuOgesi[] {
 export function panelBasligi(roller: readonly Role[]): string {
   if (roller.includes("STAJYER")) return "Stajyer paneli";
   if (roller.includes("ADMIN")) return "Yönetici paneli";
+  if (roller.includes("SUBE_YONETICISI")) return "Şube yöneticisi paneli";
   return "Koordinatör paneli";
 }

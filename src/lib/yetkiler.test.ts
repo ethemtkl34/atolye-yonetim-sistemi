@@ -49,10 +49,27 @@ describe("YETKI_MATRISI değişmezleri", () => {
     expect(YETKI_MATRISI.DANISMA_GOREVLISI.mufredat).toBe("YOK");
   });
 
-  it("kullanıcı yönetimi yalnızca yönetici satırında açık", () => {
+  it("kullanıcı yönetimi yalnızca iki yönetici satırında açık", () => {
     expect(YETKI_MATRISI.ADMIN.kullanicilar).toBe("TAM");
+    expect(YETKI_MATRISI.SUBE_YONETICISI.kullanicilar).toBe("TAM");
     expect(YETKI_MATRISI.KOORDINATOR.kullanicilar).toBe("YOK");
     expect(YETKI_MATRISI.DANISMA_GOREVLISI.kullanicilar).toBe("YOK");
+  });
+
+  it("şube yöneticisi koordinatörden yalnızca kullanıcı yönetimiyle ayrılır", () => {
+    // Rolün gerekçesi bu tek satır. Başka bir modülde ayrışıyorsa bu bilinçli
+    // bir ürün kararı olmalı, sessiz bir düzenleme kazası değil.
+    for (const modul of MODULLER) {
+      expect(YETKI_MATRISI.SUBE_YONETICISI[modul]).toBe(
+        modul === "kullanicilar" ? "TAM" : YETKI_MATRISI.KOORDINATOR[modul],
+      );
+    }
+  });
+
+  it("şube yöneticisi zeka testi belgesi yükleyemez", () => {
+    // Koordinatörle aynı sınır: belge yükleme/silme Test Uygulayıcısı
+    // unvanının işi, yöneticilik onu kendiliğinden getirmiyor.
+    expect(YETKI_MATRISI.SUBE_YONETICISI.zekaTestleri).toBe("GORUNTULE");
   });
 });
 

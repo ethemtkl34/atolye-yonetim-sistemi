@@ -159,8 +159,13 @@ function enYakinDeyim(dugum: ts.Node): ts.Node {
  * Kurallar (sırayla):
  * 1. Ne model şubeye ait ne de iç içe okuma şubeli bir ilişkiye giriyorsa —
  *    atlanır.
- * 2. Çevreleyen fonksiyon `adminZorunlu()` çağırıyorsa — atlanır. Yönetici
- *    şubeler üstü çalışır, süzgeç zaten olmamalı.
+ * 2. Çevreleyen fonksiyon `adminZorunlu()` çağırıyorsa — atlanır. Kurum
+ *    Yöneticisi şubeler üstü çalışır, süzgeç zaten olmamalı.
+ *
+ *    `kullaniciYonetimiZorunlu()` bilerek bu listede DEĞİL: o kapıdan Şube
+ *    Yöneticisi de geçiyor ve onun görüşü kendi şubesiyle sınırlı. Kullanıcı
+ *    yönetimi ekranındaki sorgular bu yüzden kapsamla süzülmek ya da tek tek
+ *    gerekçelendirilmek zorunda.
  * 3. Çağrının kendisi şube süzgeci taşıyorsa — geçer.
  * 4. Üstünde `// şube-muaf: <gerekçe>` yorumu varsa — geçer.
  * 5. Tekil kayda ya da doğrulanmış bir üst kayda (çapa) bağlıysa VE fonksiyon

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { adminZorunlu } from "@/lib/yetki-kapisi";
+import { kullaniciYonetimiZorunlu } from "@/lib/yetki-kapisi";
 import {
   alanHatalari,
   formDegerleri,
@@ -14,12 +14,20 @@ import { rolEtiketi } from "@/lib/roller";
 import type { Role } from "@/generated/prisma/enums";
 
 /**
- * Yönetici hesap ve rol yönetimi.
+ * Hesap ve rol yönetimi.
  *
- * Koordinatörün stajyer ekranı yerinde duruyor ve kendi şubesiyle sınırlı;
- * burası ise bütün şubelere bakan tek ekran. İkisi ayrı çünkü yetkileri ayrı:
- * koordinatör yalnızca stajyer açıp kapatabilir, yönetici rol ve şube de
- * değiştirebilir.
+ * Koordinatörün stajyer ekranı yerinde duruyor ve yalnızca stajyer açıp
+ * kapatabiliyor; burası rol ve şube de değiştiren ekran. İki rol giriyor:
+ * Kurum Yöneticisi bütün şubelere bakar, Şube Yöneticisi yalnızca kendi
+ * şubesine.
+ *
+ * KAPSAM her eylemin ilk satırında çözülür (`kullaniciYonetimiZorunlu`) ve
+ * İKİ yerde birden kullanılır: yeni/güncellenen kaydın şubesi kapsama
+ * çekilir (`rolleriCoz`) ve dokunulan satırın kapsamda olduğu doğrulanır
+ * (`kapsamdaMi`). Yalnızca birincisi olsaydı şube yöneticisi başka şubenin
+ * hesabını kendi şubesine taşıyarak devralabilirdi; yalnızca ikincisi
+ * olsaydı kendi şubesinden çıkarıp erişimini kaybettiği bir hesap
+ * bırakabilirdi.
  *
  * Bir kullanıcı birden çok rol taşıyabilir (örn. psikolog + test uygulayıcısı).
  * KOMBİNASYON KURALLARI tek yerde: `rolleriCoz`. ADMIN tek başınadır ve
@@ -31,6 +39,7 @@ import type { Role } from "@/generated/prisma/enums";
 
 const ROLLER = [
   "ADMIN",
+  "SUBE_YONETICISI",
   "KOORDINATOR",
   "ATOLYE_PSIKOLOGU",
   "TEST_UYGULAYICISI",
@@ -68,11 +77,15 @@ function formRolleri(formVerisi: FormData): string[] {
  * hatası döner.
  *
  * Yöneticide form ne gönderirse göndersin şube null'a çekilir — ekranda
- * seçici gizli ama gizli bir alan elle doldurulabilir.
+ * seçici gizli ama gizli bir alan elle doldurulabilir. Aynı gerekçeyle şube
+ * yöneticisinde formdaki şube seçimi HİÇ okunmaz: kapsam neyse o yazılır.
+ * Şube yöneticisi kendi gibi bir şube yöneticisi atayabilir (kendi şubesinde
+ * vekil bırakabilmeli) ama Kurum Yöneticisi atayamaz — o yetki şubeler üstü.
  */
 async function rolleriCoz(
   roles: Role[],
   subeId: string,
+  kapsamSubeId: string | null,
 ): Promise<
   { hata: Record<string, string> } | { roles: Role[]; branchId: string | null }
 > {
@@ -86,6 +99,18 @@ async function rolleriCoz(
     return {
       hata: { roles: "Stajyer başka bir rolle birleştirilemez." },
     };
+  }
+
+  if (kapsamSubeId !== null) {
+    if (roles.includes("ADMIN")) {
+      return {
+        hata: {
+          roles:
+            "Kurum Yöneticisi yetkisini yalnızca bir Kurum Yöneticisi verebilir.",
+        },
+      };
+    }
+    return { roles, branchId: kapsamSubeId };
   }
 
   if (roles.includes("ADMIN")) return { roles, branchId: null };
@@ -105,6 +130,30 @@ async function rolleriCoz(
 
   return { roles, branchId: sube.id };
 }
+
+/**
+ * Dokunulmak istenen satır çağıranın kapsamında mı.
+ *
+ * Kurum Yöneticisinde (kapsam null) her satır kapsamdadır. Şube
+ * yöneticisinde şube EŞİT olmalı: şubesiz hesap (Kurum Yöneticisi) da,
+ * diğer şubenin hesabı da dışarıda kalır. Kayıt hiç yoksa da `false` döner
+ * — "bulunamadı" ile "yetkiniz yok" arasında bilerek ayrım yapılmıyor,
+ * ikisi de aynı mesajı alır (var olan e-postaları taramaya yaramasın).
+ */
+async function kapsamdaMi(
+  kullaniciId: string,
+  kapsamSubeId: string | null,
+): Promise<boolean> {
+  if (kapsamSubeId === null) return true;
+
+  const hedef = await db.user.count({
+    where: { id: kullaniciId, branchId: kapsamSubeId },
+  });
+  return hedef > 0;
+}
+
+const KAPSAM_DISI_HATASI =
+  "Bu hesap sizin şubenizde değil; yalnızca kendi şubenizin hesaplarını yönetebilirsiniz.";
 
 /**
  * "Sistemde en az bir aktif yönetici kalmalı" değişmezi.
@@ -146,7 +195,7 @@ export async function kullaniciEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await adminZorunlu();
+  const { kapsamSubeId } = await kullaniciYonetimiZorunlu();
 
   const girilenler = formDegerleri(formVerisi, ["name", "email", "branchId"]);
   // Çoklu seçim `formDegerleri`nin tekil düzenine sığmıyor; hata durumunda
@@ -170,7 +219,7 @@ export async function kullaniciEkle(
 
   const veri = cozumlenen.data;
 
-  const cozum = await rolleriCoz(veri.roles, veri.branchId);
+  const cozum = await rolleriCoz(veri.roles, veri.branchId, kapsamSubeId);
   if ("hata" in cozum) {
     return { alanHatalari: cozum.hata, degerler: girilenler };
   }
@@ -179,6 +228,11 @@ export async function kullaniciEkle(
   // aynı biçimde yapılmalı ki eşleşsin (bkz. auth.ts).
   const email = veri.email.toLowerCase();
 
+  // şube-muaf: e-posta bütün sistemde tekil (`User.email @unique`), bu yüzden
+  // arama da şubesiz olmak ZORUNDA. Kapsamla süzülseydi şube yöneticisi diğer
+  // şubede kayıtlı bir e-postayı "boş" görüp kaydetmeye çalışır ve anlamsız
+  // bir veritabanı hatasına düşerdi. Dönen satırdan yalnızca "var mı" bilgisi
+  // okunuyor, hiçbir alanı ekrana çıkmıyor.
   const mevcut = await db.user.findUnique({ where: { email } });
   if (mevcut) {
     return {
@@ -219,13 +273,17 @@ export async function kullaniciRolVeSubeGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const yonetici = await adminZorunlu();
+  const yonetici = await kullaniciYonetimiZorunlu();
 
   // Öz-koruma: yönetici kendi rolünü düşüremez. Düşürebilseydi tek yönetici
   // hesabı kendini koordinatöre çevirip sistemde hiç yönetici bırakmayabilir
   // ve kullanıcı yönetimi ekranına bir daha girilemezdi.
   if (kullaniciId === yonetici.id) {
     return { hata: "Kendi rollerinizi ve şubenizi değiştiremezsiniz." };
+  }
+
+  if (!(await kapsamdaMi(kullaniciId, yonetici.kapsamSubeId))) {
+    return { hata: KAPSAM_DISI_HATASI };
   }
 
   const rolDegerleri = formRolleri(formVerisi);
@@ -237,7 +295,11 @@ export async function kullaniciRolVeSubeGuncelle(
   }
   const roles = rolDegerleri as Role[];
 
-  const cozum = await rolleriCoz(roles, String(formVerisi.get("branchId") ?? ""));
+  const cozum = await rolleriCoz(
+    roles,
+    String(formVerisi.get("branchId") ?? ""),
+    yonetici.kapsamSubeId,
+  );
   if ("hata" in cozum) return { alanHatalari: cozum.hata };
 
   const hedef = await db.user.findUnique({
@@ -284,7 +346,7 @@ export async function kullaniciAdiGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await adminZorunlu();
+  const { kapsamSubeId } = await kullaniciYonetimiZorunlu();
 
   const ad = String(formVerisi.get("name") ?? "").trim();
   if (ad.length < 2) {
@@ -292,6 +354,10 @@ export async function kullaniciAdiGuncelle(
   }
   if (ad.length > 120) {
     return { alanHatalari: { name: "Ad soyad en fazla 120 karakter olabilir" } };
+  }
+
+  if (!(await kapsamdaMi(kullaniciId, kapsamSubeId))) {
+    return { hata: KAPSAM_DISI_HATASI };
   }
 
   const sonuc = await db.user.updateMany({
@@ -316,10 +382,14 @@ export async function kullaniciAdiGuncelle(
 export async function kullaniciDurumDegistir(
   kullaniciId: string,
 ): Promise<EylemDurumu> {
-  const yonetici = await adminZorunlu();
+  const yonetici = await kullaniciYonetimiZorunlu();
 
   if (kullaniciId === yonetici.id) {
     return { hata: "Kendi hesabınızı pasife alamazsınız." };
+  }
+
+  if (!(await kapsamdaMi(kullaniciId, yonetici.kapsamSubeId))) {
+    return { hata: KAPSAM_DISI_HATASI };
   }
 
   const hedef = await db.user.findUnique({
@@ -351,7 +421,7 @@ export async function kullaniciParolaSifirla(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await adminZorunlu();
+  const { kapsamSubeId } = await kullaniciYonetimiZorunlu();
 
   const parola = String(formVerisi.get("password") ?? "");
   if (parola.length < 8) {
@@ -361,6 +431,10 @@ export async function kullaniciParolaSifirla(
     return {
       alanHatalari: { password: "Parola en fazla 100 karakter olabilir" },
     };
+  }
+
+  if (!(await kapsamdaMi(kullaniciId, kapsamSubeId))) {
+    return { hata: KAPSAM_DISI_HATASI };
   }
 
   const sonuc = await db.user.updateMany({
