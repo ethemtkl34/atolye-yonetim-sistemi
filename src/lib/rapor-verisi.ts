@@ -30,6 +30,8 @@ export type KapsamKaydi = {
   tur: "Dönem" | "Kulüp";
   aktif: boolean;
   puanlanmisOturumSayisi: number;
+  /** Kayda atanmış stajyerin adı; atanmamışsa null ve rapor üretilemez. */
+  stajyerAdi: string | null;
 };
 
 /** Rapor kapsamına alınabilecek kayıtlar ve her birinde kaç form dolu. */
@@ -43,6 +45,7 @@ export async function raporKapsamSecenekleri(
     select: {
       id: true,
       status: true,
+      intern: { select: { name: true } },
       _count: { select: { scores: true } },
       group: {
         select: {
@@ -61,6 +64,7 @@ export async function raporKapsamSecenekleri(
     tur: kayit.group.term ? "Dönem" : "Kulüp",
     aktif: kayit.status === "AKTIF",
     puanlanmisOturumSayisi: kayit._count.scores,
+    stajyerAdi: kayit.intern?.name ?? null,
   }));
 }
 

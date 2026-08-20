@@ -62,11 +62,37 @@ export async function raporOlustur(
       studentId: ogrenciId,
       group: { branchId: subeId },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      internId: true,
+      group: {
+        select: {
+          name: true,
+          term: { select: { name: true } },
+          club: { select: { name: true } },
+        },
+      },
+    },
   });
 
   if (gecerliKayitlar.length !== kayitIdleri.length) {
     return { hata: "Seçilen kayıtlardan biri bu öğrenciye ait değil." };
+  }
+
+  // Rapor, stajyerin puanlama ve gözlemlerinden doğar; stajyeri atanmamış
+  // bir kayıtta bu veriler var olamaz. Boş bölümlü bir belge üretmek yerine
+  // eksik açıkça söylenir (§11.1).
+  const stajyersiz = gecerliKayitlar.filter((kayit) => !kayit.internId);
+  if (stajyersiz.length > 0) {
+    const adlar = stajyersiz
+      .map(
+        (kayit) =>
+          `${kayit.group.term?.name ?? kayit.group.club?.name ?? "Program"} · ${kayit.group.name}`,
+      )
+      .join(", ");
+    return {
+      hata: `Şu kayıtlara stajyer atanmadan rapor üretilemez: ${adlar}. Atamayı öğrenci profilindeki "Stajyer atamaları" bölümünden yapabilirsiniz.`,
+    };
   }
 
   // Üretim zamanı puanlar okunmadan ÖNCE alınır. Varsayılan now() kullanılsa
@@ -158,13 +184,46 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
     where: { id: raporId, student: { branchId: subeId } },
     select: {
       studentId: true,
-      enrollmentLinks: { select: { enrollmentId: true } },
+      enrollmentLinks: {
+        select: {
+          enrollment: {
+            select: {
+              id: true,
+              internId: true,
+              group: {
+                select: {
+                  name: true,
+                  term: { select: { name: true } },
+                  club: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
   if (!eski) return { hata: "Rapor bulunamadı." };
 
-  const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollmentId);
+  // Yeni üretim de stajyer kuralına tabi: atama sonradan kaldırıldıysa
+  // güncel puanlarla üretim, kaynağı olmayan bir rapor doğurmamalı.
+  const stajyersizYeniden = eski.enrollmentLinks.filter(
+    (bag) => !bag.enrollment.internId,
+  );
+  if (stajyersizYeniden.length > 0) {
+    const adlar = stajyersizYeniden
+      .map(
+        (bag) =>
+          `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
+      )
+      .join(", ");
+    return {
+      hata: `Şu kayıtlara stajyer atanmadan rapor yeniden üretilemez: ${adlar}.`,
+    };
+  }
+
+  const kayitIdleri = eski.enrollmentLinks.map((bag) => bag.enrollment.id);
   // Zaman damgası puanlar okunmadan önce — raporOlustur'daki açıklamaya bakın.
   const uretimZamani = new Date();
   const uretim = await govdeUret(

@@ -275,7 +275,7 @@ export function YeniRaporFormu({
 }) {
   const [secilenler, setSecilenler] = useState<string[]>(() =>
     kayitlar
-      .filter((kayit) => kayit.puanlanmisOturumSayisi > 0)
+      .filter((kayit) => kayit.puanlanmisOturumSayisi > 0 && kayit.stajyerAdi)
       .map((kayit) => kayit.id),
   );
 
@@ -316,6 +316,7 @@ export function YeniRaporFormu({
                     type="checkbox"
                     checked={secili}
                     onChange={() => degistir(kayit.id)}
+                    disabled={!kayit.stajyerAdi}
                     className="mt-0.5 size-4"
                   />
                   <span>
@@ -329,6 +330,14 @@ export function YeniRaporFormu({
                         ? `${kayit.puanlanmisOturumSayisi} doldurulmuş form`
                         : "Doldurulmuş form yok — bu kayıt rapora içerik katmaz"}
                     </span>
+                    {/* Rapor stajyerin puanlama ve gözlemlerinden doğar;
+                        stajyersiz kayıt rapora giremez (sunucu da reddeder). */}
+                    {!kayit.stajyerAdi ? (
+                      <span className="block text-xs font-medium text-vurgu-800">
+                        Stajyer atanmamış — bu kayıt rapora alınamaz. Atamayı
+                        “Stajyer atamaları” bölümünden yapın.
+                      </span>
+                    ) : null}
                   </span>
                 </label>
               </li>
