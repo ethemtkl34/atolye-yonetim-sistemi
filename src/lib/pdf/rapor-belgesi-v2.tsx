@@ -17,7 +17,8 @@ import {
 import { KURUM_ADI } from "@/lib/kurallar";
 import { tarihBicimle } from "@/lib/tarih";
 import { KADEMELER, type BantBilgisi, type Kademe } from "@/lib/rapor-bantlari";
-import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
+import { DUZEY_MERDIVENI } from "@/lib/rapor-duzeyleri";
+import type { BeceriKuresi, RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 
 /**
  * §11.5 — Rapor PDF'i, ikinci sürüm; kurum şablonuna göre dizilmiş hâli.
@@ -288,6 +289,46 @@ const stil = StyleSheet.create({
     fontSize: 8,
     color: "#a1a1aa",
     paddingVertical: 2,
+  },
+  // Beceri küreleri (yeni tasarım)
+  kureAdi: {
+    fontSize: 6.8,
+    fontWeight: "bold",
+    color: "#27272a",
+    textAlign: "center",
+    marginTop: 5,
+    lineHeight: 1.2,
+  },
+  kureIzgarasi: { flexDirection: "row", flexWrap: "wrap", marginBottom: 4 },
+  merdivenSatiri: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
+  merdivenEtiket: { width: 74, fontSize: 8.5, fontWeight: "bold" },
+  merdivenAciklama: { flex: 1, fontSize: 8 },
+  kavramKarti: {
+    width: "23.5%",
+    borderWidth: 0.8,
+    borderColor: "#d4d4d8",
+    borderRadius: 5,
+    padding: 8,
+    minHeight: 52,
+  },
+  kavramBasligi: { fontSize: 8.5, fontWeight: "bold", marginBottom: 3 },
+  kavramSorusu: { fontSize: 7.5, color: "#52525b" },
+  alanKarti: {
+    borderWidth: 0.8,
+    borderColor: "#d4d4d8",
+    borderRadius: 6,
+    padding: 11,
+    marginBottom: 9,
+  },
+  alanKartiBasligi: { fontSize: 11, fontWeight: "bold", marginBottom: 4 },
+  altiCizgiliNot: {
+    backgroundColor: "#eef2f7",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginTop: 6,
+    fontSize: 7.8,
+    fontWeight: "bold",
+    color: "#3f3f46",
   },
   madde: { fontSize: 8.5, marginBottom: 2, paddingLeft: 8, lineHeight: 1.4 },
   kucuk: { fontSize: 8.5, color: "#52525b" },
@@ -892,6 +933,181 @@ const ASIMETRI_YOK =
 // Belge
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Beceri küreleri — yeni tasarımın temel birimi
+// ---------------------------------------------------------------------------
+
+/**
+ * Parlak küre: İÇİNDE düzey adı, ALTINDA becerinin adı.
+ *
+ * İki metni birden kürenin içine sığdırmak beş basamaklı merdivende mümkün
+ * değil ("Merak ve Sorgulama" tek başına iki satıra sarıyor), bu yüzden ad
+ * dışarı alındı. Kürenin ÇAPI düzeyle büyür; renk kaybolsa da (gri baskı,
+ * renk körlüğü) sıralama boyuttan okunmaya devam eder.
+ *
+ * Düzeyi olmayan beceri hiç çizilmez: puanı olmayan bir davranış için küçük
+ * bir küre basmak, "gözlemedik"i "zayıf" gibi göstermek olurdu.
+ */
+function BeceriKuresiGorseli({
+  kure,
+  olcek = 1.75,
+  genislik = 92,
+}: {
+  kure: BeceriKuresi;
+  olcek?: number;
+  genislik?: number;
+}) {
+  const duzey = kure.duzey;
+  if (!duzey) return null;
+
+  const cap = duzey.cap * olcek;
+  // Hücre en büyük küre kadar: satırdaki küreler ortak tabana otursun.
+  const hucre = DUZEY_MERDIVENI[DUZEY_MERDIVENI.length - 1].cap * olcek;
+
+  return (
+    <View style={{ width: genislik, alignItems: "center", marginBottom: 12 }}>
+      <View style={{ height: hucre, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{
+            width: cap,
+            height: cap,
+            position: "relative",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Svg
+            width={cap}
+            height={cap}
+            viewBox="0 0 100 100"
+            style={{ position: "absolute" }}
+          >
+            <Defs>
+              <RadialGradient id={`kure-${duzey.duzey}`} cx="38%" cy="30%" r="80%">
+                <Stop offset="0%" stopColor={duzey.acik} />
+                <Stop offset="55%" stopColor={duzey.orta} />
+                <Stop offset="100%" stopColor={duzey.koyu} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx="50" cy="53" r="45" fill={duzey.koyu} fillOpacity={0.2} />
+            <Circle cx="50" cy="50" r="45" fill={`url(#kure-${duzey.duzey})`} />
+            <Ellipse cx="36" cy="28" rx="18" ry="11" fill="#ffffff" fillOpacity={0.45} />
+          </Svg>
+          <Text
+            style={{
+              fontSize: 6.6,
+              fontWeight: "bold",
+              color: duzey.icMetin,
+              textAlign: "center",
+            }}
+          >
+            {duzey.etiket}
+          </Text>
+        </View>
+      </View>
+      <Text style={stil.kureAdi}>{kure.ad.toLocaleUpperCase("tr-TR")}</Text>
+    </View>
+  );
+}
+
+/** Bir beceri kümesinin küre ızgarası; hiçbirinin düzeyi yoksa hiç çizilmez. */
+function KureIzgarasi({
+  kureler,
+  olcek,
+  genislik,
+}: {
+  kureler: readonly BeceriKuresi[];
+  olcek?: number;
+  genislik?: number;
+}) {
+  const gorunur = kureler.filter((kure) => kure.duzey);
+  if (gorunur.length === 0) return null;
+
+  return (
+    <View style={stil.kureIzgarasi}>
+      {gorunur.map((kure) => (
+        <BeceriKuresiGorseli
+          key={kure.ad}
+          kure={kure}
+          olcek={olcek}
+          genislik={genislik}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Merdivenin aileye açıklaması — rehber sayfasında bir kez basılır. */
+function DuzeyMerdiveniKutusu() {
+  return (
+    <View style={{ backgroundColor: SEFTALI, padding: 12 }} wrap={false}>
+      <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 9 }}>
+        BECERİ DÜZEYLERİ AİLEYE NE SÖYLER?
+      </Text>
+      {DUZEY_MERDIVENI.map((duzey) => (
+        <View key={duzey.duzey} style={stil.merdivenSatiri}>
+          <View style={{ width: 42, alignItems: "center" }}>
+            <Svg width={duzey.cap} height={duzey.cap} viewBox="0 0 100 100">
+              <Defs>
+                <RadialGradient id={`merdiven-${duzey.duzey}`} cx="38%" cy="30%" r="80%">
+                  <Stop offset="0%" stopColor={duzey.acik} />
+                  <Stop offset="55%" stopColor={duzey.orta} />
+                  <Stop offset="100%" stopColor={duzey.koyu} />
+                </RadialGradient>
+              </Defs>
+              <Circle cx="50" cy="50" r="46" fill={`url(#merdiven-${duzey.duzey})`} />
+              <Ellipse cx="36" cy="28" rx="18" ry="11" fill="#ffffff" fillOpacity={0.45} />
+            </Svg>
+          </View>
+          <Text style={[stil.merdivenEtiket, { color: duzey.koyu }]}>
+            {duzey.etiket}
+          </Text>
+          <Text style={stil.merdivenAciklama}>{duzey.aciklama}</Text>
+        </View>
+      ))}
+      <Text style={{ fontSize: 7.5, color: "#52525b", marginTop: 5 }}>
+        Düzeyler bir sıralama değil; davranışın ne kadar destekle
+        gerçekleştiğini anlatır. Katılım sağlanmayan oturumlar hiçbir
+        değerlendirmeye girmez.
+      </Text>
+    </View>
+  );
+}
+
+// Aile rehberi sayfasının dört kavramı — taslaktan.
+const KAVRAMLAR: readonly { ad: string; soru: string }[] = [
+  { ad: "ATÖLYE", soru: "Nerede gözlendi?" },
+  { ad: "BECERİ", soru: "Hangi beceriyi kullandı?" },
+  { ad: "DAVRANIŞ", soru: "Bunu nasıl gösterdi?" },
+  { ad: "DEĞİŞİM", soru: "Süreçte ne değişti?" },
+];
+
+// Gelişim alanlarının sabit kurum açıklamaları — taslaktan.
+const ALAN_ACIKLAMALARI: readonly {
+  baslik: string;
+  metin: string;
+  not: string;
+}[] = [
+  {
+    baslik: "BİLİŞSEL GELİŞİM",
+    metin:
+      "Çocuğun dikkatini kullanma, öğrenme, hatırlama, neden-sonuç kurma, planlama ve karşılaştığı sorunlara çözüm bulma gibi zihinsel süreçleri nasıl kullandığını anlatır.",
+    not: "Bu bölüm bir zekâ testi veya okul notu değildir.",
+  },
+  {
+    baslik: "DUYGUSAL GELİŞİM",
+    metin:
+      "Çocuğun kendi duygularını fark etme ve ifade etme, zorlandığında sakinleşme, hata ya da kaybetme karşısında sürece devam etme ve başkalarının duygularını anlama biçimini anlatır.",
+    not: "Amaç duyguları bastırmak değil, uygun biçimde yönetebilmektir.",
+  },
+  {
+    baslik: "SOSYAL GELİŞİM",
+    metin:
+      "Çocuğun akranları ve yetişkinlerle iletişim kurma, iş birliği yapma, fikir paylaşma, ortak kurallara uyma ve grup içinde sorumluluk alma biçimini anlatır.",
+    not: "Sessiz olmak tek başına sosyal becerinin zayıf olduğu anlamına gelmez.",
+  },
+];
+
 /** "Duygusal Gelişim Alanları" → "DUYGUSAL ALAN" (grafik sütunu adı). */
 function alanKisaAdi(ad: string): string {
   return ad.replace(/\s*Gelişim Alanları\s*/i, " ").trim() + " Alan";
@@ -919,6 +1135,22 @@ export function RaporBelgesiV2({
   const katilmayanlar = govde.atolyeKademeleri.filter(
     (a) => a.katilmadigiOturumSayisi > 0,
   );
+
+  // YENİ TASARIM mı ESKİ mi: gövde beceri küresi taşıyorsa yeni sayfalar
+  // basılır. Eski snapshot'lar bu alanları taşımaz ve kendi düzenleriyle
+  // basılmaya devam eder — alınmış bir rapor sonradan başka bir şey
+  // göstermemeli (§13.17).
+  const beceriAlanlari = govde.beceriAlanlari ?? [];
+  const atolyeKureleri = govde.atolyeKademeleri.filter((atolye) =>
+    (atolye.kategoriler ?? []).some((kategori) => kategori.duzey),
+  );
+  const yeniTasarim = beceriAlanlari.length > 0 || atolyeKureleri.length > 0;
+
+  /** Bir alandaki en yüksek düzeyli beceri — genel değerlendirme kartı için. */
+  const enGuclu = (kureler: readonly BeceriKuresi[]) =>
+    kureler
+      .filter((kure) => kure.duzey)
+      .sort((a, b) => (b.duzey?.basamak ?? 0) - (a.duzey?.basamak ?? 0))[0] ?? null;
 
   // Ham ortalama taşıyan (yeni) snapshot'larda 5'lik puan grafikleri çizilir;
   // eski snapshot'lar kademe eksenli grafiklerle basılmaya devam eder.
@@ -1067,6 +1299,56 @@ export function RaporBelgesiV2({
         </View>
       </Page>
 
+      {/* --------------------------------------- Raporu nasıl okuyabilirsiniz */}
+      {yeniTasarim ? (
+        <Page size="A4" style={stil.sayfa}>
+          <SayfaCercevesi
+            bolumBasligi="RAPORU NASIL OKUYABİLİRSİNİZ?"
+            altBilgi={altBilgi}
+          />
+
+          <Text style={[stil.kucuk, { marginBottom: 11 }]}>
+            Bu rapor bir sınav sonucu değil; dönem boyunca yapılan atölye
+            gözlemlerinin özetidir.
+          </Text>
+
+          <View style={{ backgroundColor: "#eaf5ec", padding: 11, marginBottom: 13 }}>
+            <Text
+              style={{
+                fontSize: 9.5,
+                fontWeight: "bold",
+                color: "#15803d",
+                marginBottom: 4,
+              }}
+            >
+              RAPORUN TEMEL SORUSU
+            </Text>
+            <Text style={{ fontSize: 9 }}>
+              Çocuğunuz hangi atölyelerde hangi becerilerini kullandı, bu
+              becerileri ne kadar destekle sergiledi ve dönem boyunca neler
+              değişti?
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              marginBottom: 15,
+            }}
+          >
+            {KAVRAMLAR.map((kavram) => (
+              <View key={kavram.ad} style={stil.kavramKarti}>
+                <Text style={stil.kavramBasligi}>{kavram.ad}</Text>
+                <Text style={stil.kavramSorusu}>{kavram.soru}</Text>
+              </View>
+            ))}
+          </View>
+
+          <DuzeyMerdiveniKutusu />
+        </Page>
+      ) : null}
+
       {/* ------------------------------------------------ Atölyeler ve içerikleri */}
       {govde.atolyeIcerikleri.length > 0 ? (
         <Page size="A4" style={stil.sayfa}>
@@ -1087,8 +1369,108 @@ export function RaporBelgesiV2({
         </Page>
       ) : null}
 
-      {/* ------------------------------------------------ Beceriler: giriş + grafik */}
-      {govde.gelisimAlanlari.length > 0 ? (
+      {/* ------------------------------------------------ Gelişim alanları (yeni) */}
+      {beceriAlanlari.length > 0 ? (
+        <>
+          <Page size="A4" style={stil.sayfa}>
+            <SayfaCercevesi
+              bolumBasligi="GELİŞİM ALANLARI NEYİ ANLATIR?"
+              altBilgi={altBilgi}
+            />
+
+            <Text style={[stil.kucuk, { marginBottom: 11 }]}>
+              Bilişsel, duygusal ve sosyal gelişim günlük yaşamda birbirini
+              tamamlayan alanlardır.
+            </Text>
+
+            {ALAN_ACIKLAMALARI.map((alan) => (
+              <View key={alan.baslik} style={stil.alanKarti} wrap={false}>
+                <Text style={stil.alanKartiBasligi}>{alan.baslik}</Text>
+                <Text style={{ fontSize: 8.8, textAlign: "justify" }}>
+                  {alan.metin}
+                </Text>
+                <Text style={stil.altiCizgiliNot}>{alan.not}</Text>
+              </View>
+            ))}
+
+            <View style={{ backgroundColor: "#eaf5ec", padding: 10, marginTop: 3 }}>
+              <Text
+                style={{
+                  fontSize: 9,
+                  fontWeight: "bold",
+                  color: "#15803d",
+                  marginBottom: 3,
+                }}
+              >
+                ÖNEMLİ
+              </Text>
+              <Text style={{ fontSize: 8.5 }}>
+                Bir davranışın tek bir etkinlikte görülmesi genel sonuç
+                oluşturmaz. Değerlendirme, farklı haftalarda tekrar eden
+                gözlemler birlikte ele alınarak yapılır.
+              </Text>
+            </View>
+          </Page>
+
+          {beceriAlanlari.map((alan) => {
+            // Alan cümlesi zaten kural tabanlı üretiliyor; yeni sayfa da onu
+            // kullanır ki panel ile PDF aynı metni göstersin.
+            const eslesen = govde.gelisimAlanlari.find(
+              (satir) => satir.ad === alan.alan,
+            );
+            return (
+              <Page key={alan.alan} size="A4" style={stil.sayfa}>
+                <SayfaCercevesi
+                  bolumBasligi={alan.alan
+                    .replace(/\s*Alanları\s*$/i, "")
+                    .toLocaleUpperCase("tr-TR")}
+                  altBilgi={altBilgi}
+                />
+
+                <Text style={[stil.kucuk, { marginBottom: 13 }]}>
+                  Bu alandaki beceriler ve çocuğunuzun dönem sonundaki düzeyi.
+                  Kürenin boyu düzeyle birlikte büyür.
+                </Text>
+
+                <KureIzgarasi kureler={alan.beceriler} />
+
+                {eslesen?.cumle ? (
+                  <View
+                    style={{
+                      borderWidth: 0.8,
+                      borderColor: "#d4d4d8",
+                      borderRadius: 6,
+                      padding: 11,
+                      marginTop: 8,
+                    }}
+                    wrap={false}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: "bold",
+                        marginBottom: 5,
+                      }}
+                    >
+                      ALAN DEĞERLENDİRMESİ
+                    </Text>
+                    <Text style={{ fontSize: 8.8, textAlign: "justify" }}>
+                      {eslesen.cumle}
+                    </Text>
+                    <Text style={{ fontSize: 7.5, color: "#52525b", marginTop: 6 }}>
+                      Düzeyler bir sıralama değil; davranışın ne kadar destekle
+                      gerçekleştiğini anlatır.
+                    </Text>
+                  </View>
+                ) : null}
+              </Page>
+            );
+          })}
+        </>
+      ) : null}
+
+      {/* --------------------------------- Beceriler: giriş + grafik (eski) */}
+      {beceriAlanlari.length === 0 && govde.gelisimAlanlari.length > 0 ? (
         <>
           <Page size="A4" style={stil.sayfa}>
             <SayfaCercevesi
@@ -1192,8 +1574,56 @@ export function RaporBelgesiV2({
         </>
       ) : null}
 
-      {/* ------------------------------------------------ İlgi ve başarı */}
-      {govde.atolyeKademeleri.length > 0 ? (
+      {/* --------------------------------- Atölyelerde gözlenen beceriler */}
+      {atolyeKureleri.length > 0 ? (
+        <Page size="A4" style={stil.sayfa}>
+          <SayfaCercevesi
+            bolumBasligi="ATÖLYELERDE GÖZLENEN BECERİLER"
+            altBilgi={altBilgi}
+          />
+
+          <Text style={[stil.kucuk, { marginBottom: 12 }]}>
+            Her atölyenin kendi beceri başlıkları vardır. Aşağıdaki düzeyler,
+            çocuğunuzun o atölyedeki bütün oturumları birlikte ele alınarak
+            belirlenmiştir.
+          </Text>
+
+          {atolyeKureleri.map((atolye) => (
+            // Atölye adı solda, küreleri sağda: dikey yığmak beş atölyeyi iki
+            // sayfaya taşırıyordu.
+            <View
+              key={atolye.atolyeAdi}
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                marginBottom: 6,
+              }}
+              wrap={false}
+            >
+              <View style={{ width: 112, paddingTop: 22, paddingRight: 8 }}>
+                <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1f2937" }}>
+                  {atolye.atolyeAdi}
+                </Text>
+                {atolye.katilmadigiOturumSayisi > 0 ? (
+                  <Text style={[stil.kucuk, { fontSize: 7 }]}>
+                    {atolye.katilmadigiOturumSayisi} oturuma katılım yok
+                  </Text>
+                ) : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <KureIzgarasi
+                  kureler={atolye.kategoriler ?? []}
+                  olcek={1.45}
+                  genislik={82}
+                />
+              </View>
+            </View>
+          ))}
+        </Page>
+      ) : null}
+
+      {/* ------------------------------------------ İlgi ve başarı (eski) */}
+      {atolyeKureleri.length === 0 && govde.atolyeKademeleri.length > 0 ? (
         <>
           <Page size="A4" style={stil.sayfa}>
             <SayfaCercevesi
@@ -1341,6 +1771,45 @@ export function RaporBelgesiV2({
             />
           </Page>
         </>
+      ) : null}
+
+      {/* ------------------------------------------------ Genel değerlendirme */}
+      {beceriAlanlari.length > 0 ? (
+        <Page size="A4" style={stil.sayfa}>
+          <SayfaCercevesi
+            bolumBasligi="GENEL DEĞERLENDİRME"
+            altBilgi={altBilgi}
+          />
+
+          <Text style={[stil.kucuk, { marginBottom: 12 }]}>
+            Bilişsel, duygusal ve sosyal alanların bütüncül özeti.
+          </Text>
+
+          {beceriAlanlari.map((alan) => {
+            const guclu = enGuclu(alan.beceriler);
+            const eslesen = govde.gelisimAlanlari.find(
+              (satir) => satir.ad === alan.alan,
+            );
+            return (
+              <View key={alan.alan} style={stil.alanKarti} wrap={false}>
+                <Text style={stil.alanKartiBasligi}>
+                  {alan.alan.replace(/\s*Gelişim Alanları\s*/i, "").trim()}
+                </Text>
+                {guclu ? (
+                  <Text style={{ fontSize: 8.8, marginBottom: 4 }}>
+                    <Text style={{ fontWeight: "bold" }}>Öne çıkan: </Text>
+                    {guclu.ad} ({guclu.duzey?.etiket})
+                  </Text>
+                ) : null}
+                {eslesen?.cumle ? (
+                  <Text style={{ fontSize: 8.8, textAlign: "justify" }}>
+                    {eslesen.cumle}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </Page>
       ) : null}
 
       {/* ------------------------------------------------ Gözlem raporu */}
