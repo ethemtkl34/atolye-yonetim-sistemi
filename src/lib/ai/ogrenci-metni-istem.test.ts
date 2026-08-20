@@ -82,6 +82,23 @@ describe("ogrenciMetniGirdisiYaz", () => {
 });
 
 describe("ogrenciMetniCozumle", () => {
+  it("iç etiket sızıntılarını metinden temizler", () => {
+    // İstemdeki seçim gerekçeleri eski üretimlerde metne kopyalanabiliyordu;
+    // "(ATOLYE_BAGI)" gibi kod veliye giden cümlede kalmamalı.
+    const ham = JSON.stringify({
+      giris: "Giriş.",
+      profil: "Profil.",
+      bloklar: [],
+      sonuc: "Sonuç.",
+      oneriler:
+        "GO Ahşap Zeka Oyunu (ATOLYE_BAGI) ile sıra bekleme çalışılabilir. Kod kartları (DESTEKLENECEK_ALAN) da kullanılabilir.",
+    });
+    const sonuc = ogrenciMetniCozumle(ham);
+    expect(sonuc?.oneriler).toBe(
+      "GO Ahşap Zeka Oyunu ile sıra bekleme çalışılabilir. Kod kartları da kullanılabilir.",
+    );
+  });
+
   const gecerli = JSON.stringify({
     giris: "Dönem tanıtımı.",
     profil: "Öğrenci profili.",

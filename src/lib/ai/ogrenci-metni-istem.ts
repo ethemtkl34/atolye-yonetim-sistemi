@@ -49,6 +49,25 @@ export type OgrenciMetniGirdisi = {
   urunler: { ad: string; url: string; gerekce: string }[];
 };
 
+/**
+ * Ürün seçim gerekçesinin modele giden okunur karşılığı.
+ *
+ * Ham enum kodu ("ATOLYE_BAGI") isteme aynen yazılınca model onu ürün
+ * adının parçası sanıp veliye giden metne kopyalıyordu.
+ */
+function gerekceAciklamasi(gerekce: string): string {
+  switch (gerekce) {
+    case "ATOLYE_BAGI":
+      return "ilgi duyduğu atölyeyle bağlantılı";
+    case "DESTEKLENECEK_ALAN":
+      return "desteklenecek alanına yönelik";
+    case "GUCLU_ALAN":
+      return "güçlü alanını ilerletmeye yönelik";
+    default:
+      return gerekce;
+  }
+}
+
 export const OGRENCI_METNI_TALIMATI = `Sen bir eğitim kurumunun dönem sonu veli raporunu yazan editörsün. Yazdığın metin doğrudan çocuğun velisine gidiyor.
 
 GÖREVİN: Sana verilen gözlem notlarını ve kademe bilgilerini, veliye sunulabilir bir rapor bölümüne çevirmek.
@@ -140,9 +159,11 @@ export function ogrenciMetniGirdisiYaz(girdi: OgrenciMetniGirdisi): string {
 
   bolumler.push(
     "",
-    "ÖNERİLEBİLECEK ÜRÜNLER:",
+    "ÖNERİLEBİLECEK ÜRÜNLER (parantez içi seçim gerekçesidir; bu gerekçeyi ve kod benzeri etiketleri metne AYNEN yazma, ürünü kendi cümlenle öner):",
     girdi.urunler.length > 0
-      ? girdi.urunler.map((u) => `- ${u.ad} (${u.gerekce})`).join("\n")
+      ? girdi.urunler
+          .map((u) => `- ${u.ad} (${gerekceAciklamasi(u.gerekce)})`)
+          .join("\n")
       : "(uygun ürün yok — ürün adı verme, tema düzeyinde öneri yaz)",
   );
 
@@ -180,9 +201,17 @@ export function ogrenciMetniCozumle(ham: string): OgrenciMetni | null {
   if (typeof cozulen !== "object" || cozulen === null) return null;
   const nesne = cozulen as Record<string, unknown>;
 
+  // Model, isteme yazılan iç etiketleri (eski üretimlerde "(ATOLYE_BAGI)"
+  // gibi) metne kopyalayabiliyor; veliye giden hiçbir alanda kod sızıntısı
+  // kalmasın diye çözümleme sırasında temizlenir.
+  const etiketTemizle = (deger: string): string =>
+    deger
+      .replace(/\s*\((ATOLYE_BAGI|DESTEKLENECEK_ALAN|GUCLU_ALAN)\)/g, "")
+      .trim();
+
   const metin = (anahtar: string): string | null =>
     typeof nesne[anahtar] === "string" && (nesne[anahtar] as string).trim()
-      ? (nesne[anahtar] as string).trim()
+      ? etiketTemizle(nesne[anahtar] as string)
       : null;
 
   const giris = metin("giris");
