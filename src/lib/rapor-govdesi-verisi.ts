@@ -126,6 +126,16 @@ export async function raporGovdesiV2Uret(
 
   if (kayitlar.length === 0) return null;
 
+  // "İlk kayıt" birçok şeyi belirliyor (kıyas grubu, eğitim yılı, program
+  // adı, YZ istemindeki hafta sayısı) ama id-in sorgusunda satır sırası
+  // tanımsızdı: dönem + kulüp kapsayan raporda asıl grup rastgele
+  // seçilebiliyordu. Sıra artık deterministik — dönem kayıtları önce.
+  kayitlar.sort(
+    (a, b) =>
+      (a.group.term ? 0 : 1) - (b.group.term ? 0 : 1) ||
+      a.id.localeCompare(b.id),
+  );
+
   // Eksik üretilen her bölüm buraya sebebiyle yazılır; rapor penceresi bu
   // listeyi gösterir. Sessizce eksik basmak, koordinatörün eksiği ancak
   // veliye gönderdikten sonra fark etmesi demekti.
@@ -209,9 +219,20 @@ export async function raporGovdesiV2Uret(
   const grupOgrenciSayisi =
     new Set(grupDegerlendirmeleri.map((d) => d.enrollment.studentId)).size || null;
 
+  // Grup ortalaması öğrencinin kendisini de içeriyor; değerlendirilmiş tek
+  // öğrenci raporun öğrencisiyse "kıyas" kendine karşı yapılır ve fark hep 0
+  // çıkardı — bütün cevaplar 5 olsa bile "yaşıtlarıyla benzer düzeyde"
+  // yazılırdı. Kıyas ancak grupta EN AZ BİR BAŞKA değerlendirilmiş öğrenci
+  // varsa yapılır; yoksa boş harita geçirilir ve gelisimBandi'nin mutlak
+  // eşikli dalı ile "grup kıyası yapılamadı" uyarısı devreye girer.
+  const kiyasOrtalamalari =
+    grupOgrenciSayisi !== null && grupOgrenciSayisi > 1
+      ? grupOrtalamalari
+      : new Map<string, number>();
+
   const gelisimAlanlari = gelisimAlanlariCikar(
     gelisimAlanOrtalamalari(gelisimCevaplari),
-    grupOrtalamalari,
+    kiyasOrtalamalari,
     kazanimHaritasi(),
   );
 
@@ -223,7 +244,7 @@ export async function raporGovdesiV2Uret(
       cozum:
         "Öğrencinin profilindeki “Gelişim değerlendirmesi” bölümünden dönem sonu formunu doldurup raporu yeniden üretin.",
     });
-  } else if (grupOrtalamalari.size === 0) {
+  } else if (kiyasOrtalamalari.size === 0) {
     uyarilar.push({
       bolum: "gelisim",
       mesaj:
@@ -456,24 +477,17 @@ export async function raporGovdesiV2Uret(
     asimetriler: asimetriBul(
       atolyeKademeleri.map((a) => ({
         atolyeAdi: a.atolyeAdi,
-        // Asimetri ham ortalamayla ölçülür ama kademe adımları da yeterli
-        // bir yaklaşım veriyor: üç kademe arasındaki fark bir tam adım.
-        ilgi: kademeSayisi(a.ilgi?.kademe),
-        basari: kademeSayisi(a.basari?.kademe),
+        // Ham ortalamalarla: kademe temsilcisi (4,5/3,5/2,5) kullanılınca
+        // eşiğin iki yanındaki 0,01'lik fark "belirgin asimetri" diye
+        // basılıyor, aynı kademede kalan 0,9'luk fark hiç görünmüyordu.
+        ilgi: a.ilgiOrtalamasi ?? null,
+        basari: a.basariOrtalamasi ?? null,
       })),
     ),
     gozlem,
     uyarilar,
     metinKaynagi: gozlem ? "ai" : "sablon",
   };
-}
-
-/** Kademeyi asimetri karşılaştırması için sayıya çevirir. */
-function kademeSayisi(kademe: string | undefined): number | null {
-  if (kademe === "YUKSEK") return 4.5;
-  if (kademe === "ORTALAMA") return 3.5;
-  if (kademe === "DUSUK") return 2.5;
-  return null;
 }
 
 export { beceriEtiketiCikar };

@@ -139,8 +139,16 @@ function kategoriBul(
   kategoriler: readonly { kategori: string; ortalama: number | null }[],
   anahtar: string,
 ): number | null {
+  // KELİME eşleşmesi, alt-dize değil: "Bilgi ve Kavram Gelişimi" başlığı
+  // içinde "ilgi" geçer (b-İLGİ) ve düz includes onu ilgi kategorisi sanıp
+  // İlgi grafiğini yanlış sorulardan beslerdi. Kategori adı kelimelere
+  // ayrılır; kelimelerden biri anahtarla BAŞLIYORSA ("ilgi", "ilgisi",
+  // "yetenek", "yetenekleri"...) eşleşir.
   const bulunan = kategoriler.find((k) =>
-    k.kategori.toLocaleLowerCase("tr-TR").includes(anahtar),
+    k.kategori
+      .toLocaleLowerCase("tr-TR")
+      .split(/[^a-zçğıiöşü]+/)
+      .some((kelime) => kelime.startsWith(anahtar)),
   );
   return bulunan?.ortalama ?? null;
 }

@@ -212,10 +212,47 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
 
   const rapor = await db.report.findFirst({
     where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
-    select: { id: true, studentId: true, bodyJson: true },
+    select: {
+      id: true,
+      studentId: true,
+      bodyJson: true,
+      student: { select: { firstName: true, lastName: true } },
+      enrollmentLinks: {
+        select: {
+          enrollment: {
+            select: {
+              group: {
+                select: {
+                  name: true,
+                  term: { select: { name: true } },
+                  club: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  // v2 gövde öğrenci adını ve kapsamı kendi içinde taşıyor; v1 (arşiv)
+  // gövde taşımıyordu ve rota bunları CANLI tablodan okuyordu — öğrenci adı
+  // sonradan düzeltilince alınmış belge de değişiyordu (§13.17 ihlali).
+  // Yeni üretilen her v1 PDF'te bu değerler üretim anında snapshot'a
+  // dondurulur; eski v1 snapshot'lar için rota canlı okumaya devam eder.
+  const surumlu = rapor.bodyJson as { surum?: number };
+  const arsivEki =
+    surumlu?.surum === 2
+      ? {}
+      : {
+          arsivOgrenciAdi: `${rapor.student.firstName} ${rapor.student.lastName}`,
+          arsivKapsam: rapor.enrollmentLinks.map(
+            (bag) =>
+              `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
+          ),
+        };
 
   // İki adım tek transaction'da: satır oluşturma ile adresin yazılması
   // arasında bir hata olursa, silinemeyen (onDelete: Restrict) ama adressiz
@@ -227,7 +264,10 @@ export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
         // Adres kaydın kendisinden türetiliyor; nesne deposuna geçilirse
         // yalnızca burası değişir.
         fileUrl: "",
-        snapshotJson: rapor.bodyJson as unknown as object,
+        snapshotJson: {
+          ...(rapor.bodyJson as unknown as object),
+          ...arsivEki,
+        },
       },
       select: { id: true },
     });
@@ -265,6 +305,14 @@ export async function raporMetniDuzenle(
   });
 
   if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  // v2 gövdede `metin` alanı yok; arayüz bu eylemi v2'de göstermiyor ama
+  // bayat bir sekmeden çağrılırsa okunur bir hata dönmeli, çökme değil.
+  if ((rapor.bodyJson as { surum?: number })?.surum === 2) {
+    return {
+      hata: "Bu rapor yeni biçimde; metinleri kutuların üzerindeki kalemle düzenleyin.",
+    };
+  }
 
   const govde = rapor.bodyJson as unknown as RaporGovdesi;
 

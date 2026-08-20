@@ -267,6 +267,17 @@ export async function raporOzetleri(kosul: {
         : kapsamZamanlari.reduce((a, b) => (a.getTime() > b.getTime() ? a : b));
 
     const govde = rapor.bodyJson as unknown as RaporGovdesi;
+    // Gövde biçimi sürümlü: v2'de atölyeler `atolyeKademeleri`nde, v1'de
+    // `analiz.atolyeler`de. Tek yapıdan okumak yeni raporların listesini
+    // "0 atölye" gösteriyordu.
+    const surumlu = rapor.bodyJson as unknown as {
+      surum?: number;
+      atolyeKademeleri?: unknown[];
+    };
+    const atolyeSayisi =
+      surumlu?.surum === 2
+        ? (surumlu.atolyeKademeleri?.length ?? 0)
+        : (govde?.analiz?.atolyeler?.length ?? 0);
 
     return {
       id: rapor.id,
@@ -280,7 +291,7 @@ export async function raporOzetleri(kosul: {
           `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
       ),
       guncel: raporGuncelMi(rapor.generatedAt, enYeni),
-      atolyeSayisi: govde?.analiz?.atolyeler?.length ?? 0,
+      atolyeSayisi,
     };
   });
 }

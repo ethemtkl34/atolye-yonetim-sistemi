@@ -920,6 +920,10 @@ export function RaporBelgesiV2({
     (a) => a.katilmadigiOturumSayisi > 0,
   );
 
+  // "10 hafta" ifadeleri dönem raporlarına ait; birkaç günlük kulüp
+  // raporunda aynı iddia veliye yanlış bilgi olurdu.
+  const donemMi = govde.kapsam.some((k) => k.tur === "Dönem");
+
   // Ham ortalama taşıyan (yeni) snapshot'larda 5'lik puan grafikleri çizilir;
   // eski snapshot'lar kademe eksenli grafiklerle basılmaya devam eder.
   const sayisalAtolyeVerisiVar = govde.atolyeKademeleri.some(
@@ -927,6 +931,11 @@ export function RaporBelgesiV2({
       typeof a.ilgiOrtalamasi === "number" ||
       typeof a.basariOrtalamasi === "number",
   );
+  const sayisalVeriVar =
+    sayisalAtolyeVerisiVar ||
+    govde.gelisimAlanlari.some(
+      (alan) => typeof alan.ogrenciOrtalamasi === "number",
+    );
 
   return (
     <Document
@@ -985,9 +994,9 @@ export function RaporBelgesiV2({
           hazırlandığını hatırlatmak isteriz.
         </Text>
         <Text style={stil.paragraf}>
-          Rapor, çocuğunuzun atölyeye katılmış olduğu 10 haftalık süreçte,
-          katıldığı her bir atölyede sergilediği performansa göre
-          oluşturulmuştur. Çocuğunuzun katıldığı her bir atölye ve etkinlikte
+          Rapor, çocuğunuzun atölyeye katılmış olduğu
+          {donemMi ? " 10 haftalık " : " "}süreçte, katıldığı her bir atölyede
+          sergilediği performansa göre oluşturulmuştur. Çocuğunuzun katıldığı her bir atölye ve etkinlikte
           gerek öğretmeni gerekse arkadaşları ile etkileşimi takip edilip
           gözlemlenerek oluşturulan bu raporda, sizlere neler sunulduğunu ve bu
           raporu okurken bahsedilen mevzuları nasıl anlamlandırmanız gerektiği
@@ -1001,9 +1010,9 @@ export function RaporBelgesiV2({
           kişisel (eğitmen, psikolog, yardımcı eğitmen gibi) hataları en aza
           indirmek üzere çapraz kontrol ile oluşturulmuştur. Her ne kadar
           raporun sistematik kontrole sahip olması hataları en aza indirgese
-          de bu gözlem sürecinin yoğun okul dönemi içerisinde devam ettiği ve
-          10 hafta gibi sınırlı bir süre içerisinde yürütülüyor olmasının
-          rapora olabilecek etkileri unutulmamalıdır.
+          de bu gözlem sürecinin yoğun okul dönemi içerisinde devam ettiği
+          ve{donemMi ? " 10 hafta gibi" : ""} sınırlı bir süre içerisinde
+          yürütülüyor olmasının rapora olabilecek etkileri unutulmamalıdır.
         </Text>
         <Text style={stil.paragraf}>
           Bu rapor; atölye sürecini özetleyen, çocuğunuzun bu atölye sürecinde
@@ -1039,13 +1048,18 @@ export function RaporBelgesiV2({
           <View style={stil.notlarBaslik}>
             <Text style={stil.notlarBaslikMetin}>NOTLAR:</Text>
           </View>
-          <View style={stil.notSatiri}>
-            <Text style={stil.notNumara}>1</Text>
-            <Text style={stil.notMetin}>
-              Grafiklerin değerlendirmesi 5 (beş) puan üzerinden yapılmıştır.
-              (1: Desteklenmeli, 5: İleri Düzey)
-            </Text>
-          </View>
+          {/* Eski snapshot'lar kademe eksenli grafik basar; "5 puan
+              üzerinden" notu orada belgeyle çelişirdi. Not yalnızca sayısal
+              grafik basılacaksa görünür (Not 2'deki desenle aynı). */}
+          {sayisalVeriVar ? (
+            <View style={stil.notSatiri}>
+              <Text style={stil.notNumara}>1</Text>
+              <Text style={stil.notMetin}>
+                Grafiklerin değerlendirmesi 5 (beş) puan üzerinden yapılmıştır.
+                (1: Desteklenmeli, 5: İleri Düzey)
+              </Text>
+            </View>
+          ) : null}
           {govde.grupOgrenciSayisi ? (
             <View style={stil.notSatiri}>
               <Text style={stil.notNumara}>2</Text>

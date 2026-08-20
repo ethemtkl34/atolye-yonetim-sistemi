@@ -69,11 +69,22 @@ export async function GET(
 
   if (!pdf) return new Response("Rapor bulunamadı.", { status: 404 });
 
-  const ogrenciAdi = `${pdf.report.student.firstName} ${pdf.report.student.lastName}`;
-  const kapsam = pdf.report.enrollmentLinks.map(
-    (bag) =>
-      `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
-  );
+  // v1 belgelerde ad/kapsam önce snapshot'tan okunur (PDF üretiminde
+  // donduruluyor); alan taşımayan eski snapshot'lar canlı tabloya düşer —
+  // onların davranışı değişmedi. v2 gövde bunları zaten kendi içinde taşır.
+  const dondurulmus = pdf.snapshotJson as unknown as {
+    arsivOgrenciAdi?: string;
+    arsivKapsam?: string[];
+  };
+  const ogrenciAdi =
+    dondurulmus?.arsivOgrenciAdi ??
+    `${pdf.report.student.firstName} ${pdf.report.student.lastName}`;
+  const kapsam =
+    dondurulmus?.arsivKapsam ??
+    pdf.report.enrollmentLinks.map(
+      (bag) =>
+        `${bag.enrollment.group.term?.name ?? bag.enrollment.group.club?.name ?? "Program"} · ${bag.enrollment.group.name}`,
+    );
 
   // §13.17 — Gövde biçimi zamanla değişti; belge snapshot'ın sürümüne göre
   // seçilir. Sürüm alanı taşımayan arşiv kayıtları eski düzeniyle basılmaya

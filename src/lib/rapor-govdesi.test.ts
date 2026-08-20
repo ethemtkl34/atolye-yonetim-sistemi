@@ -40,6 +40,26 @@ describe("atolyeKademesiCikar", () => {
     expect(sonuc.basari?.kademe).toBe("YUKSEK");
   });
 
+  it("'bilgi' içeren kategori adı 'ilgi' sanılmaz", () => {
+    // "Bilgi ve Kavram Gelişimi" alt-dize olarak "ilgi" içerir (b-İLGİ);
+    // eski includes eşleşmesi İlgi grafiğini bu sorulardan besliyordu.
+    // Kelime eşleşmesiyle: bilgi kategorisi ilgiye sayılmaz, gerçek ilgi
+    // kategorisi formda daha sonra da gelse doğru bulunur.
+    const sonuc = atolyeKademesiCikar({
+      atolyeAdi: "Bilim Atölyesi",
+      soruOrtalamalari: [
+        soru("Bilgi ve Kavram Gelişimi", 20, 10, 0), // ort 2,0 — ilgi DEĞİL
+        soru(ILGI, 46, 10, 1), // ort 4,6 — gerçek ilgi
+        soru(YETENEK, 40, 10, 2),
+      ],
+      katildigiOturumSayisi: 10,
+      katilmadigiOturumSayisi: 0,
+    });
+
+    expect(sonuc.ilgiOrtalamasi).toBeCloseTo(4.6);
+    expect(sonuc.ilgi?.kademe).toBe("YUKSEK");
+  });
+
   it("ilgi yüksek başarı düşük olduğunda kademeler ayrışır", () => {
     const sonuc = atolyeKademesiCikar({
       atolyeAdi: "Astronomi Atölyesi",
