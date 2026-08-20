@@ -6,10 +6,8 @@ import {
   type Asimetri,
   type BantBilgisi,
 } from "./rapor-bantlari";
-import { duzeyCikar, type DuzeyBilgisi } from "./rapor-duzeyleri";
 import { kategoriOrtalamalari } from "./puan-hesaplari";
 import type { SoruOrtalamasi } from "./puan-hesaplari";
-import type { GelisimCevabi } from "./gelisim-degerlendirmesi";
 
 /**
  * Raporun ikinci sürüm gövdesi — §11.2.
@@ -42,36 +40,8 @@ export type GelisimAlaniSatiri = KademeSatiri & {
   grupOrtalamasi?: number | null;
 };
 
-/**
- * §11.2 — Raporun küre birimi: bir beceri ve o becerideki düzey.
- *
- * İki yerde kullanılıyor ve ikisinde de adı KURUMUN yazdığı metinden gelir:
- * atölye sayfalarında sorunun kategorisi ("Problem Çözme"), gelişim alanı
- * sayfalarında dönem sonu formundaki beceri başlığı ("Duygu Düzenleme").
- * Sistem beceri adı üretmez; yalnızca puanı düzeye çevirir.
- */
-export type BeceriKuresi = {
-  ad: string;
-  /** Ham ortalama — düzeyin nereden çıktığı denetlenebilsin diye saklanır. */
-  ortalama: number | null;
-  /** Puan yoksa null; rapor o küreyi hiç basmaz. */
-  duzey: DuzeyBilgisi | null;
-};
-
-/** Üç gelişim alanından biri ve içindeki beceri küreleri. */
-export type BeceriAlani = {
-  alan: string;
-  beceriler: BeceriKuresi[];
-};
-
 export type AtolyeKademesi = {
   atolyeAdi: string;
-  /**
-   * Atölyenin kendi soru kategorilerinden çıkan beceri küreleri — yeni
-   * tasarımın atölye sayfası bunu basar. Kategoriler kurum tarafından soru
-   * yönetiminden yazıldığı için atölyeden atölyeye değişir.
-   */
-  kategoriler?: BeceriKuresi[];
   /** "İlgi ve Merak Alanları" ortalamasının kademesi. */
   ilgi: BantBilgisi | null;
   /** "Yetenek Gelişim Alanları" ortalamasının kademesi. */
@@ -144,11 +114,6 @@ export type RaporGovdesiV2 = {
   /** Program düzeyinde üretilen atölye içerik paragrafları. */
   atolyeIcerikleri: { atolyeAdi: string; metin: string }[];
   gelisimAlanlari: GelisimAlaniSatiri[];
-  /**
-   * Alan bazlı beceri küreleri — dönem sonu gelişim değerlendirmesinden.
-   * Eski snapshot'larda yok; o raporlar eski düzeniyle basılmaya devam eder.
-   */
-  beceriAlanlari?: BeceriAlani[];
   atolyeKademeleri: AtolyeKademesi[];
   asimetriler: Asimetri[];
   gozlem: GozlemBolumu | null;
@@ -198,13 +163,6 @@ export function atolyeKademesiCikar(atolye: {
 
   return {
     atolyeAdi: atolye.atolyeAdi,
-    // Her kategori bir küre. Puanı olmayan kategori listede kalır ama
-    // düzeyi null'dır; basıp basmamaya çizim katmanı karar verir.
-    kategoriler: kategoriler.map((kategori) => ({
-      ad: kategori.kategori,
-      ortalama: kategori.ortalama,
-      duzey: duzeyCikar(kategori.ortalama),
-    })),
     ilgi: atolyeBandi(ilgiOrtalamasi),
     basari: atolyeBandi(basariOrtalamasi),
     // Ham ortalamalar 5'lik grafik için taşınır; kademe hesabı değişmez.
@@ -253,44 +211,6 @@ export function gelisimAlanlariCikar(
         : null,
     };
   });
-}
-
-/**
- * §11.2 — Dönem sonu gelişim değerlendirmesinden alan bazlı beceri küreleri.
- *
- * Her cevap bir beceridir: adı formdaki başlık, düzeyi o becerinin 1–5
- * puanından çıkar. Ortalama ALINMAZ — taslak beceriyi tek tek gösteriyor ve
- * bir alanın ortalaması "empatisi güçlü ama duygu düzenlemesi desteklenmeli"
- * gibi bir ayrımı görünmez kılardı.
- *
- * Alan sırası `GELISIM_SORULARI` listesindeki ilk görünme sırasına sabit;
- * beceri sırası da kayıttaki değil form sırasıdır, rapordan rapora değişmez.
- */
-export function beceriAlanlariCikar(
-  cevaplar: readonly GelisimCevabi[],
-  soruSirasi: readonly { anahtar: string; kategori: string }[],
-): BeceriAlani[] {
-  const cevapHaritasi = new Map(cevaplar.map((c) => [c.anahtar, c]));
-  const alanlar = new Map<string, BeceriKuresi[]>();
-
-  for (const soru of soruSirasi) {
-    const cevap = cevapHaritasi.get(soru.anahtar);
-    // Hiç doldurulmamış soru küre üretmez; uydurulmuş bir düzey basmaktansa
-    // beceri listede görünmez (uyarı katmanı sebebi zaten yazıyor).
-    if (!cevap) continue;
-
-    const mevcut = alanlar.get(soru.kategori) ?? [];
-    mevcut.push({
-      ad: cevap.baslik,
-      ortalama: cevap.deger,
-      duzey: duzeyCikar(cevap.deger),
-    });
-    alanlar.set(soru.kategori, mevcut);
-  }
-
-  return [...alanlar.entries()]
-    .map(([alan, beceriler]) => ({ alan, beceriler }))
-    .filter((alan) => alan.beceriler.some((b) => b.duzey !== null));
 }
 
 /**
