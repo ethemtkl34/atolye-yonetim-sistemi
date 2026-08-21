@@ -409,7 +409,10 @@ export async function grupGelisimOrtalamalari(
   donem: AssessmentPeriod,
 ): Promise<Map<string, number>> {
   const degerlendirmeler = await db.developmentAssessment.findMany({
-    where: { period: donem, enrollment: { groupId: grupId } },
+    // İptal edilen kayıtların formları grubun ortalamasını çekmesin: rapor
+    // "değerlendirilen grup" derken hâlâ programda olan öğrencileri kastediyor
+    // ve kapaktaki öğrenci sayısı da aynı AKTIF kümesinden sayılıyor.
+    where: { period: donem, enrollment: { groupId: grupId, status: "AKTIF" } },
     select: { answersJson: true },
   });
 

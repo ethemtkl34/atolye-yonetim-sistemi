@@ -213,7 +213,12 @@ export async function raporGovdesiV2Uret(
   // dönem sonu değerlendirmesi girilmiş farklı öğrencilerin sayısı — grup
   // ortalamasını besleyen kümenin ta kendisi.
   const grupDegerlendirmeleri = await db.developmentAssessment.findMany({
-    where: { period: "DONEM_SONU", enrollment: { groupId: kayitlar[0].groupId } },
+    where: {
+      period: "DONEM_SONU",
+      // İptal edilen kayıtların formları kıyasa girmez; ortalama sorgusuyla
+      // (grupGelisimOrtalamalari) aynı kümeyi saymak zorunda.
+      enrollment: { groupId: kayitlar[0].groupId, status: "AKTIF" },
+    },
     select: { enrollment: { select: { studentId: true } } },
   });
   const grupOgrenciSayisi =
@@ -251,6 +256,20 @@ export async function raporGovdesiV2Uret(
         "Beceriler grafiğinde grup ortalaması çizilemedi: grupta dönem sonu değerlendirmesi girilmiş başka öğrenci yok.",
       cozum:
         "Gruptaki diğer öğrencilerin dönem sonu formları doldurulduktan sonra raporu yeniden üretin; kıyas o zaman yapılabilir.",
+    });
+  }
+
+  // Havuz tamamen boşsa (seçilen kayıtlarda puanlanmış tek oturum bile yok)
+  // aşağıdaki iki uyarı da tetiklenemez: kademe süzgeci boş listede çalışmaz,
+  // içerik sorgusu boş atölye kümesiyle boş döner. Bu en eksik rapor hâli
+  // en sessiz hâl olurdu — kapsayıcı uyarı burada üretilir.
+  if (atolyeHavuzu.size === 0) {
+    uyarilar.push({
+      bolum: "kademe",
+      mesaj:
+        "Atölye bölümleri boş: seçilen kayıtlarda puanlanmış hiçbir oturum yok. İlgi ve başarı kademeleri ile atölye içerik paragrafları bu yüzden rapora giremedi.",
+      cozum:
+        "Puanlamalar sayfasından bu öğrencinin oturum formlarını doldurun ve raporu yeniden üretin.",
     });
   }
 
