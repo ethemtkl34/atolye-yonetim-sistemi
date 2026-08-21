@@ -69,8 +69,20 @@ export function PuanlamaFormu({
    *
    * Sunucu zaten eksikleri `eksikSatirlar` ile döndürüyordu; bu kontrol aynı
    * işaretlemeyi ağa hiç çıkmadan yapıyor.
+   *
+   * Liste kaydet anının fotoğrafı olarak kalmaz: soru cevaplanır cevaplanmaz
+   * anahtarı düşer — kırmızı çerçeve ve sayaç bir sonraki kaydeti beklemeden
+   * söner, son eksik de dolunca uyarı kutusu kalkar.
    */
   const [istemciEksikleri, setIstemciEksikleri] = useState<string[]>([]);
+
+  function soruCevaplandi(anahtar: string) {
+    setIstemciEksikleri((mevcut) =>
+      mevcut.includes(anahtar)
+        ? mevcut.filter((eksik) => eksik !== anahtar)
+        : mevcut,
+    );
+  }
   /** Katılım hiç seçilmeden kaydete basıldığında gösterilir. */
   const [katilimEksik, setKatilimEksik] = useState(false);
 
@@ -194,6 +206,10 @@ export function PuanlamaFormu({
                     onChange={(olay) => {
                       setKatilim(olay.target.value);
                       setKatilimEksik(false);
+                      // Katılım değişince eksik fotoğrafı geçersizleşir:
+                      // "katılmadı"da soru zorunluluğu yok, "katıldı"ya dönüşte
+                      // liste zaten kaydette yeniden çıkarılıyor.
+                      setIstemciEksikleri([]);
                     }}
                     className="sr-only"
                     required
@@ -241,6 +257,7 @@ export function PuanlamaFormu({
                       satir={satir}
                       sira={sira + 1}
                       eksik={eksikler.has(satir.anahtar)}
+                      onCevaplandi={() => soruCevaplandi(satir.anahtar)}
                     />
                   </div>
                 );
@@ -327,11 +344,14 @@ function SoruSatiri({
   satir,
   sira,
   eksik,
+  onCevaplandi,
 }: {
   alanId: string;
   satir: FormSatiri;
   sira: number;
   eksik: boolean;
+  /** Herhangi bir seçenek işaretlendiğinde — eksik uyarısını anında düşürür. */
+  onCevaplandi: () => void;
 }) {
   const alanAdi = `cevap:${satir.anahtar}`;
 
@@ -388,7 +408,14 @@ function SoruSatiri({
         </p>
       ) : null}
 
-      <PuanSecici alanAdi={alanAdi} secim={secim} onSecim={setSecim} />
+      <PuanSecici
+        alanAdi={alanAdi}
+        secim={secim}
+        onSecim={(deger) => {
+          setSecim(deger);
+          onCevaplandi();
+        }}
+      />
     </fieldset>
   );
 }
