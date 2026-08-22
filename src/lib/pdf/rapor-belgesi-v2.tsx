@@ -387,18 +387,25 @@ const stil = StyleSheet.create({
  * "değerlendirilmedi" olarak en sona yazılır.
  */
 function kademeSayimi(bantlar: readonly (BantBilgisi | null)[]): string {
-  const sayilar = new Map<string, number>();
+  // Gruplama KADEME'ye göre, etiket metnine göre değil: kademe adları
+  // kurumun ayarına açık ("Düşük" yerine "Gelişmekte" olabilir) ve sabit bir
+  // ad listesiyle süzmek o raporlarda satırı bomboş bırakırdı. Ad yine
+  // snapshot'taki bandın kendi etiketinden okunur.
+  const sayilar = new Map<Kademe, { adet: number; etiket: string }>();
   let bos = 0;
   for (const bant of bantlar) {
     if (!bant) {
       bos += 1;
       continue;
     }
-    sayilar.set(bant.etiket, (sayilar.get(bant.etiket) ?? 0) + 1);
+    const mevcut = sayilar.get(bant.kademe);
+    if (mevcut) mevcut.adet += 1;
+    else sayilar.set(bant.kademe, { adet: 1, etiket: bant.etiket });
   }
-  const parcalar = ["Yüksek", "Ortalama", "Düşük"]
-    .filter((etiket) => sayilar.has(etiket))
-    .map((etiket) => `${sayilar.get(etiket)} atölyede ${etiket}`);
+  const parcalar = (["YUKSEK", "ORTALAMA", "DUSUK"] as const)
+    .map((kademe) => sayilar.get(kademe))
+    .filter((veri): veri is { adet: number; etiket: string } => Boolean(veri))
+    .map((veri) => `${veri.adet} atölyede ${veri.etiket}`);
   if (bos > 0) parcalar.push(`${bos} atölyede değerlendirilmedi`);
   return parcalar.join(", ");
 }
@@ -565,9 +572,13 @@ const SKALA_SIRASI: Kademe[] = ["DUSUK", "ORTALAMA", "YUKSEK"];
  */
 function KademeSkalasi({
   bant,
+  etiketler,
   dar = false,
 }: {
   bant: BantBilgisi | null;
+  /** Üç kademenin adı — seçili olmayanlarınki gövdedeki banttan okunamaz,
+   *  bu yüzden ayrıca geçirilir (bkz. `kademeEtiketleri`). */
+  etiketler: Record<Kademe, string>;
   /** Atölye kutusunun sağ sütununa sığan sıkışık ölçüler. */
   dar?: boolean;
 }) {
@@ -600,10 +611,10 @@ function KademeSkalasi({
               </View>
               {secili ? (
                 <Text style={[stil.kademeSeridi, { backgroundColor: gorunum.orta }]}>
-                  {KADEMELER[kademe].etiket}
+                  {etiketler[kademe]}
                 </Text>
               ) : (
-                <Text style={stil.skalaSolukEtiket}>{KADEMELER[kademe].etiket}</Text>
+                <Text style={stil.skalaSolukEtiket}>{etiketler[kademe]}</Text>
               )}
             </View>
           );
@@ -1049,6 +1060,14 @@ export function RaporBelgesiV2({
 }) {
   fontuKaydet();
 
+  // Kademe adları üretim anında donduruldu; alan taşımayan eski
+  // snapshot'lar koddaki varsayılan adlarla basılmaya devam eder (§13.17).
+  const kademeEtiketleri: Record<Kademe, string> = govde.kademeEtiketleri ?? {
+    YUKSEK: KADEMELER.YUKSEK.etiket,
+    ORTALAMA: KADEMELER.ORTALAMA.etiket,
+    DUSUK: KADEMELER.DUSUK.etiket,
+  };
+
   const programAdi = govde.kapsam[0]?.programAdi ?? "atölye";
   const altBilgi = `${KURUM_ADI} · ${govde.ogrenci.adSoyad} · ${tarihBicimle(uretimZamani)}`;
   const grupAdi = govde.kapsam.map((k) => k.grupAdi).join(" · ");
@@ -1484,7 +1503,7 @@ export function RaporBelgesiV2({
                       Bu kazanımlar çerçevesinde çocuğunuzun almış olduğu
                       değerlendirme şu şekildedir:
                     </Text>
-                    <KademeSkalasi bant={alan.bant} />
+                    <KademeSkalasi bant={alan.bant} etiketler={kademeEtiketleri} />
                     {alan.cumle ? (
                       <Text style={{ fontSize: 8.5, marginTop: 6, textAlign: "justify" }}>
                         {alan.cumle}
@@ -1526,7 +1545,11 @@ export function RaporBelgesiV2({
               </View>
               <View style={stil.atolyeSag}>
                 <Text style={stil.atolyeSagBaslik}>KAZANIMLARA ULAŞMA</Text>
-                <KademeSkalasi bant={atolye.basari} dar />
+                <KademeSkalasi
+                  bant={atolye.basari}
+                  etiketler={kademeEtiketleri}
+                  dar
+                />
               </View>
             </View>
           ))}

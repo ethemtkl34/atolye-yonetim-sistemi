@@ -248,6 +248,7 @@ model User {
   filledDevelopmentAssessments DevelopmentAssessment[] @relation("GelisimiDolduran")
   generatedWorkshopContents    AtolyeIcerigi[]         @relation("AtolyeIcerigiUreten")
   termAssignments     TermIntern[] @relation("DonemStajyeri")
+  updatedReportSettings        RaporAyari[]            @relation("RaporAyariniGuncelleyen")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
   @@index([role, active])
@@ -1311,4 +1312,54 @@ model OneriUrunu {
   updatedAt DateTime @updatedAt
 
   @@index([active, yasMin, yasMax])
+}
+
+// ---------------------------------------------------------------------------
+// Rapor ayarları
+// ---------------------------------------------------------------------------
+
+/// §11.2 — Rapor kademe eşikleri, kıyas kuralı ve kademe etiketleri.
+///
+/// Bu değerler eskiden `rapor-bantlari.ts` içinde sabitti: kurum bir
+/// ortalamanın hangi noktadan sonra "Yüksek" sayılacağını, kaç kişilik bir
+/// grupta akran kıyası yapılabileceğini ya da en alt kademenin veliye nasıl
+/// adlandırılacağını ("Düşük" mü, "Gelişmekte" mi) değiştiremiyordu.
+///
+/// TEK SATIR: `id` sabit `"tek"`. Satır hiç yoksa kod kendi varsayılanlarını
+/// kullanır (`VARSAYILAN_ESIKLER`), yani ayar sayfası hiç açılmadan da sistem
+/// çalışır. Şube başına ayrı değer TUTULMAZ — rapor kurumun belgesi ve iki
+/// şubede aynı ölçütle okunmalı (atölye kataloğuyla aynı gerekçe).
+///
+/// GEÇMİŞ RAPORLAR ETKİLENMEZ: kademeler üretim anında `bodyJson` içine
+/// donuyor (§13.17). Ayar değişikliği yalnızca bundan sonra üretilecek
+/// raporlara işler; eskisini taşımak için "güncel puanlarla yeniden üret"
+/// gerekir.
+model RaporAyari {
+  id String @id @default("tek")
+
+  /// Atölye ilgi/başarı kademesi — mutlak eşik, akran kıyası yok.
+  /// Ortalama >= yüksek eşiği ise Yüksek, < düşük eşiği ise Düşük.
+  atolyeYuksekEsigi Float @default(4.0)
+  atolyeDusukEsigi  Float @default(3.0)
+
+  /// Gelişim alanları grupla kıyaslanır: öğrenci ile grup ortalaması
+  /// arasındaki fark bu değeri aşarsa Yüksek, eksisini aşarsa Düşük.
+  gelisimFarkEsigi Float @default(0.25)
+
+  /// İlgi ile başarı arasındaki farkın "belirgin asimetri" sayılma eşiği.
+  asimetriEsigi Float @default(0.75)
+
+  /// Akran kıyasının yapılabilmesi için grupta dönem sonu değerlendirmesi
+  /// girilmiş en az kaç öğrenci gerektiği (raporun öğrencisi dahil). Altında
+  /// kalınırsa kıyas yapılmaz ve rapor mutlak eşiklere düşer.
+  kiyasAsgariOgrenci Int @default(3)
+
+  /// Kademelerin veliye yazılan adları.
+  etiketYuksek   String @default("Yüksek")
+  etiketOrtalama String @default("Ortalama")
+  etiketDusuk    String @default("Düşük")
+
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+  updatedBy       User?    @relation("RaporAyariniGuncelleyen", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 }

@@ -3,8 +3,11 @@ import {
   atolyeBandi,
   gelisimBandi,
   gelisimCumlesi,
+  VARSAYILAN_ESIKLER,
   type Asimetri,
   type BantBilgisi,
+  type Kademe,
+  type RaporEsikleri,
 } from "./rapor-bantlari";
 import { kategoriOrtalamalari } from "./puan-hesaplari";
 import type { SoruOrtalamasi } from "./puan-hesaplari";
@@ -123,6 +126,16 @@ export type RaporGovdesiV2 = {
   gozlem: GozlemBolumu | null;
   /** Üretilemeyen bölümler ve sebepleri; eski snapshot'larda yok. */
   uyarilar?: RaporUyarisi[];
+  /**
+   * Üretim anında geçerli olan kademe adları.
+   *
+   * Kademe skalası üç adı da basar (seçili olan ve olmayanlar); seçili
+   * olmayanların adı gövdedeki `bant` alanlarından okunamaz. Etiketler
+   * panelden değiştirilebildiği için canlı tablodan okumak, alınmış bir
+   * belgenin skalasını sonradan değiştirirdi (§13.17). Eski snapshot'larda
+   * yok; okuyan taraf o durumda koddaki varsayılan adlara düşer.
+   */
+  kademeEtiketleri?: Record<Kademe, string>;
   /** Metnin nasıl üretildiği — denetlenebilirlik için saklanır. */
   metinKaynagi: "sablon" | "ai";
 };
@@ -163,20 +176,23 @@ function kategoriBul(
  * Bu iki ölçüm KIYASLANMAZ (örnek rapor: "akran grubu veya sınıf içi
  * kıyaslamayı kapsamamaktadır"), bu yüzden mutlak eşiklerle değerlendirilir.
  */
-export function atolyeKademesiCikar(atolye: {
-  atolyeAdi: string;
-  soruOrtalamalari: readonly SoruOrtalamasi[];
-  katildigiOturumSayisi: number;
-  katilmadigiOturumSayisi: number;
-}): AtolyeKademesi {
+export function atolyeKademesiCikar(
+  atolye: {
+    atolyeAdi: string;
+    soruOrtalamalari: readonly SoruOrtalamasi[];
+    katildigiOturumSayisi: number;
+    katilmadigiOturumSayisi: number;
+  },
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
+): AtolyeKademesi {
   const kategoriler = kategoriOrtalamalari(atolye.soruOrtalamalari);
   const ilgiOrtalamasi = kategoriBul(kategoriler, ILGI_ANAHTARI);
   const basariOrtalamasi = kategoriBul(kategoriler, BASARI_ANAHTARI);
 
   return {
     atolyeAdi: atolye.atolyeAdi,
-    ilgi: atolyeBandi(ilgiOrtalamasi),
-    basari: atolyeBandi(basariOrtalamasi),
+    ilgi: atolyeBandi(ilgiOrtalamasi, esikler),
+    basari: atolyeBandi(basariOrtalamasi, esikler),
     // Ham ortalamalar 5'lik grafik için taşınır; kademe hesabı değişmez.
     ilgiOrtalamasi,
     basariOrtalamasi,
@@ -328,10 +344,11 @@ export function gelisimAlanlariCikar(
   }[],
   grupOrtalamalari: ReadonlyMap<string, number>,
   kazanimlar: ReadonlyMap<string, string[]>,
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
 ): GelisimAlaniSatiri[] {
   return ogrenciOrtalamalari.map((alan) => {
     const grupOrtalamasi = grupOrtalamalari.get(alan.kategori) ?? null;
-    const bant = gelisimBandi(alan.ortalama, grupOrtalamasi);
+    const bant = gelisimBandi(alan.ortalama, grupOrtalamasi, esikler);
     const alanKazanimlari = kazanimlar.get(alan.kategori) ?? [];
 
     return {

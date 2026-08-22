@@ -29,9 +29,12 @@ export type BantBilgisi = {
 };
 
 /**
- * Kademelerin tek tanımı. Etiket metnini değiştirmek isteyen buraya
- * dokunur; "Düşük" yerine "Gelişmekte" gibi daha yumuşak bir dil tercih
- * edilirse tek satır yeter, eşikler ve renkler etkilenmez.
+ * Kademelerin temel tanımı: renk, segment sayısı ve VARSAYILAN etiket.
+ *
+ * Etiketler artık panelden değiştirilebiliyor (`RaporAyari.etiketDusuk` vb.);
+ * buradaki adlar ayar girilmemişken ve ayar alanı taşımayan eski raporlarda
+ * geçerli olan değerlerdir. Renk ve segment sayısı ayara açık değil — ikisi
+ * de kademenin ikinci okuma kanalı (bkz. dosya başı).
  */
 export const KADEMELER: Record<Kademe, BantBilgisi> = {
   YUKSEK: {
@@ -62,26 +65,77 @@ export const KADEMELER: Record<Kademe, BantBilgisi> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Gelişim alanları (Duygusal / Sosyal / Bilişsel) GRUPLA KIYASLANIR.
+ * Raporun sayıdan kademeye geçerken kullandığı bütün ölçütler.
  *
- * Örnek raporun bu bölümünde öğrenci çubuğunun yanında grup ortalaması
- * çubuğu duruyor ve metin "yaşıtlarının üzerinde" diyor; yani kademe mutlak
- * puandan değil, gruba göre farktan çıkıyor. 4,2 puan zayıf bir grupta
- * yüksek, güçlü bir grupta ortalamadır.
+ * Bu değerler eskiden bu dosyada sabitti. Kurum bir ortalamanın hangi
+ * noktadan sonra "Yüksek" sayılacağını, kaç kişilik grupta akran kıyası
+ * yapılabileceğini ve en alt kademeyi veliye nasıl adlandıracağını panelden
+ * değiştirebiliyor (`RaporAyari` tablosu, `rapor-ayarlari.ts`).
+ *
+ * Fonksiyonlar bunu PARAMETRE olarak alır ve varsayılanı koddadır: dosya saf
+ * kalır, testler eşik geçirmeden çalışmaya devam eder ve ayar tablosu boşken
+ * sistem eski davranışını sürdürür.
  */
-const GELISIM_YUKSEK_FARKI = 0.25;
-const GELISIM_DUSUK_FARKI = -0.25;
+export type RaporEsikleri = {
+  /** Atölye ilgi/başarı: bu değer ve üstü Yüksek. */
+  atolyeYuksek: number;
+  /** Atölye ilgi/başarı: bu değerin altı Düşük. */
+  atolyeDusuk: number;
+  /** Gelişim alanı: öğrenci–grup farkı bu kadarsa Yüksek, eksisiyse Düşük. */
+  gelisimFark: number;
+  /** İlgi–başarı farkının "belirgin asimetri" sayılma eşiği. */
+  asimetri: number;
+  /**
+   * Akran kıyası için grupta değerlendirilmiş en az öğrenci sayısı (raporun
+   * öğrencisi dahil). Bu dosya kıyası kendisi yapmaz; eşiği `rapor-govdesi-verisi.ts`
+   * uygular ama tek ölçüt kümesi dağılmasın diye tanım burada durur.
+   */
+  kiyasAsgariOgrenci: number;
+  /** Kademelerin veliye yazılan adları. */
+  etiketler: Record<Kademe, string>;
+};
 
 /**
- * Atölye ilgi ve başarı düzeyleri KIYASLANMAZ.
+ * Ayar tablosu boşken geçerli olan değerler.
  *
- * Örnek rapor bunu açıkça yazıyor: "Değerlendirme her öğrenci özelinde
- * sadece öğrencinin kendi ilgi düzeyini göstermekte olup akran grubu veya
- * sınıf içi kıyaslamayı kapsamamaktadır." Bu yüzden burada 1–5 ölçeğinin
- * kendi mutlak eşikleri kullanılır.
+ * Gelişim alanları GRUPLA KIYASLANIR: örnek raporun bu bölümünde öğrenci
+ * çubuğunun yanında grup ortalaması çubuğu duruyor ve metin "yaşıtlarının
+ * üzerinde" diyor; yani kademe mutlak puandan değil, gruba göre farktan
+ * çıkıyor. 4,2 puan zayıf bir grupta yüksek, güçlü bir grupta ortalamadır.
+ *
+ * Atölye ilgi ve başarı düzeyleri ise KIYASLANMAZ. Örnek rapor bunu açıkça
+ * yazıyor: "Değerlendirme her öğrenci özelinde sadece öğrencinin kendi ilgi
+ * düzeyini göstermekte olup akran grubu veya sınıf içi kıyaslamayı
+ * kapsamamaktadır." Bu yüzden orada 1–5 ölçeğinin mutlak eşikleri kullanılır.
+ *
+ * Asimetride bir tam kademe farkı aranır: 0,3–0,4'lük oynamalar ölçüm
+ * gürültüsü sayılır ve veliye "asimetri" diye sunulmaz.
  */
-const ATOLYE_YUKSEK_ESIGI = 4.0;
-const ATOLYE_DUSUK_ESIGI = 3.0;
+export const VARSAYILAN_ESIKLER: RaporEsikleri = {
+  atolyeYuksek: 4.0,
+  atolyeDusuk: 3.0,
+  gelisimFark: 0.25,
+  asimetri: 0.75,
+  kiyasAsgariOgrenci: 3,
+  etiketler: {
+    YUKSEK: KADEMELER.YUKSEK.etiket,
+    ORTALAMA: KADEMELER.ORTALAMA.etiket,
+    DUSUK: KADEMELER.DUSUK.etiket,
+  },
+};
+
+/**
+ * Kademenin, seçili etiket adıyla birlikte bant bilgisi.
+ *
+ * Renk, segment sayısı ve zemin kurumun ayarına açık değil — bunlar
+ * erişilebilirlik sözü (bkz. dosya başı) ve kademe sırasının görsel dili.
+ * Değişebilen tek şey ADI.
+ */
+function bantEtiketli(kademe: Kademe, esikler: RaporEsikleri): BantBilgisi {
+  const temel = KADEMELER[kademe];
+  const etiket = esikler.etiketler[kademe]?.trim() || temel.etiket;
+  return etiket === temel.etiket ? temel : { ...temel, etiket };
+}
 
 // ---------------------------------------------------------------------------
 // Bant hesabı
@@ -99,24 +153,28 @@ const ATOLYE_DUSUK_ESIGI = 3.0;
 export function gelisimBandi(
   ogrenciOrtalamasi: number | null,
   grupOrtalamasi: number | null,
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
 ): BantBilgisi | null {
   if (ogrenciOrtalamasi === null) return null;
-  if (grupOrtalamasi === null) return atolyeBandi(ogrenciOrtalamasi);
+  if (grupOrtalamasi === null) return atolyeBandi(ogrenciOrtalamasi, esikler);
 
   const fark = ogrenciOrtalamasi - grupOrtalamasi;
-  if (fark >= GELISIM_YUKSEK_FARKI) return KADEMELER.YUKSEK;
-  if (fark <= GELISIM_DUSUK_FARKI) return KADEMELER.DUSUK;
-  return KADEMELER.ORTALAMA;
+  if (fark >= esikler.gelisimFark) return bantEtiketli("YUKSEK", esikler);
+  if (fark <= -esikler.gelisimFark) return bantEtiketli("DUSUK", esikler);
+  return bantEtiketli("ORTALAMA", esikler);
 }
 
 /**
  * Atölye ilgi/başarı kademesi — mutlak puana göre, kıyas yok.
  */
-export function atolyeBandi(ortalama: number | null): BantBilgisi | null {
+export function atolyeBandi(
+  ortalama: number | null,
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
+): BantBilgisi | null {
   if (ortalama === null) return null;
-  if (ortalama >= ATOLYE_YUKSEK_ESIGI) return KADEMELER.YUKSEK;
-  if (ortalama < ATOLYE_DUSUK_ESIGI) return KADEMELER.DUSUK;
-  return KADEMELER.ORTALAMA;
+  if (ortalama >= esikler.atolyeYuksek) return bantEtiketli("YUKSEK", esikler);
+  if (ortalama < esikler.atolyeDusuk) return bantEtiketli("DUSUK", esikler);
+  return bantEtiketli("ORTALAMA", esikler);
 }
 
 // ---------------------------------------------------------------------------
@@ -172,11 +230,10 @@ export function gelisimCumlesi(
  * kastettiği yazmıyordu. Sistem farkı zaten hesaplayabildiği için atölyeyi
  * ismen söylüyoruz; genel bir uyarı yerine okunabilir bir bulgu oluyor.
  *
- * Eşik olarak bir tam kademe farkı aranır: 0,3–0,4'lük oynamalar ölçüm
- * gürültüsü sayılır ve veliye "asimetri" diye sunulmaz.
+ * Eşik `RaporEsikleri.asimetri` ile yönetilir (varsayılan 0,75 — bir tam
+ * kademe farkı): 0,3–0,4'lük oynamalar ölçüm gürültüsü sayılır ve veliye
+ * "asimetri" diye sunulmaz.
  */
-const ASIMETRI_ESIGI = 0.75;
-
 export type Asimetri = {
   atolyeAdi: string;
   yon: "ILGI_YUKSEK" | "BASARI_YUKSEK";
@@ -189,6 +246,7 @@ export function asimetriBul(
     ilgi: number | null;
     basari: number | null;
   }[],
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
 ): Asimetri[] {
   const bulgular: Asimetri[] = [];
 
@@ -196,7 +254,7 @@ export function asimetriBul(
     if (atolye.ilgi === null || atolye.basari === null) continue;
 
     const fark = atolye.ilgi - atolye.basari;
-    if (Math.abs(fark) < ASIMETRI_ESIGI) continue;
+    if (Math.abs(fark) < esikler.asimetri) continue;
 
     if (fark > 0) {
       bulgular.push({

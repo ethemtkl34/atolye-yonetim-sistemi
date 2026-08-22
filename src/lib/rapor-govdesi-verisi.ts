@@ -7,6 +7,7 @@ import {
   GELISIM_SORULARI,
 } from "./gelisim-degerlendirmesi";
 import { atolyeOzetiHesapla } from "./puan-hesaplari";
+import { raporEsikleriOku } from "./rapor-ayarlari";
 import {
   asimetriBul,
   atolyeKademesiCikar,
@@ -127,6 +128,11 @@ export async function raporGovdesiV2Uret(
 
   if (kayitlar.length === 0) return null;
 
+  // Kademe eşikleri, kıyas kuralı ve kademe adları kurumun ayarından gelir;
+  // tablo boşsa koddaki varsayılanlar. Tek kez okunur ve bütün hesaplara
+  // aynı küme geçirilir — rapor içinde iki farklı ölçüt olamaz.
+  const esikler = await raporEsikleriOku();
+
   // "İlk kayıt" birçok şeyi belirliyor (kıyas grubu, eğitim yılı, program
   // adı, YZ istemindeki hafta sayısı) ama id-in sorgusunda satır sırası
   // tanımsızdı: dönem + kulüp kapsayan raporda asıl grup rastgele
@@ -188,12 +194,15 @@ export async function raporGovdesiV2Uret(
     .sort((a, b) => a[1].sira - b[1].sira)
     .map(([, atolye]) => {
       const ozet = atolyeOzetiHesapla(atolye.puanlamalar);
-      const kademe = atolyeKademesiCikar({
-        atolyeAdi: atolye.ad,
-        soruOrtalamalari: ozet.soruOrtalamalari,
-        katildigiOturumSayisi: ozet.katildigiOturumSayisi,
-        katilmadigiOturumSayisi: ozet.katilmadigiOturumSayisi,
-      });
+      const kademe = atolyeKademesiCikar(
+        {
+          atolyeAdi: atolye.ad,
+          soruOrtalamalari: ozet.soruOrtalamalari,
+          katildigiOturumSayisi: ozet.katildigiOturumSayisi,
+          katilmadigiOturumSayisi: ozet.katilmadigiOturumSayisi,
+        },
+        esikler,
+      );
       // Öğrenciye özel atölye paragrafı — kademeyle aynı veriden, kural
       // tabanlı. Snapshot'a gömülür; PDF ve panel yeniden hesaplamaz.
       return {
@@ -240,11 +249,16 @@ export async function raporGovdesiV2Uret(
   // Grup ortalaması öğrencinin kendisini de içeriyor; değerlendirilmiş tek
   // öğrenci raporun öğrencisiyse "kıyas" kendine karşı yapılır ve fark hep 0
   // çıkardı — bütün cevaplar 5 olsa bile "yaşıtlarıyla benzer düzeyde"
-  // yazılırdı. Kıyas ancak grupta EN AZ BİR BAŞKA değerlendirilmiş öğrenci
-  // varsa yapılır; yoksa boş harita geçirilir ve gelisimBandi'nin mutlak
-  // eşikli dalı ile "grup kıyası yapılamadı" uyarısı devreye girer.
+  // yazılırdı. Kıyas ancak grupta yeterince değerlendirilmiş öğrenci varsa
+  // yapılır; yoksa boş harita geçirilir ve gelisimBandi'nin mutlak eşikli
+  // dalı ile "grup kıyası yapılamadı" uyarısı devreye girer.
+  //
+  // Asgari sayı ayarlanabilir (varsayılan 3, raporun öğrencisi dahil): iki
+  // kişilik bir kümede tek bir arkadaşın puanı "yaşıtlarının üzerinde"
+  // hükmünü tek başına belirliyordu.
   const kiyasOrtalamalari =
-    grupOgrenciSayisi !== null && grupOgrenciSayisi > 1
+    grupOgrenciSayisi !== null &&
+    grupOgrenciSayisi >= esikler.kiyasAsgariOgrenci
       ? grupOrtalamalari
       : new Map<string, number>();
 
@@ -252,6 +266,7 @@ export async function raporGovdesiV2Uret(
     gelisimAlanOrtalamalari(gelisimCevaplari),
     kiyasOrtalamalari,
     kazanimHaritasi(),
+    esikler,
   );
 
   if (gelisimCevaplari.length === 0) {
@@ -265,10 +280,9 @@ export async function raporGovdesiV2Uret(
   } else if (kiyasOrtalamalari.size === 0) {
     uyarilar.push({
       bolum: "gelisim",
-      mesaj:
-        "Beceriler grafiğinde grup ortalaması çizilemedi: grupta dönem sonu değerlendirmesi girilmiş başka öğrenci yok.",
+      mesaj: `Beceriler grafiğinde grup ortalaması çizilemedi: akran kıyası için grupta dönem sonu değerlendirmesi girilmiş en az ${esikler.kiyasAsgariOgrenci} öğrenci gerekiyor, ${grupOgrenciSayisi ?? 0} öğrenci var. Kademeler bu yüzden mutlak eşiklere göre belirlendi.`,
       cozum:
-        "Gruptaki diğer öğrencilerin dönem sonu formları doldurulduktan sonra raporu yeniden üretin; kıyas o zaman yapılabilir.",
+        "Gruptaki diğer öğrencilerin dönem sonu formları doldurulduktan sonra raporu yeniden üretin; kıyas o zaman yapılabilir. Asgari sayıyı “Rapor ayarları” sayfasından değiştirebilirsiniz.",
     });
   }
 
@@ -524,6 +538,7 @@ export async function raporGovdesiV2Uret(
     atolyeIcerikleri,
     gelisimAlanlari,
     atolyeKademeleri,
+    kademeEtiketleri: esikler.etiketler,
     asimetriler: asimetriBul(
       atolyeKademeleri.map((a) => ({
         atolyeAdi: a.atolyeAdi,
@@ -533,6 +548,7 @@ export async function raporGovdesiV2Uret(
         ilgi: a.ilgiOrtalamasi ?? null,
         basari: a.basariOrtalamasi ?? null,
       })),
+      esikler,
     ),
     gozlem,
     uyarilar,

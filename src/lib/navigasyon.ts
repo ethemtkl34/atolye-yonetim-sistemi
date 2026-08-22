@@ -150,9 +150,20 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Değerlendirme",
     simge: "puan",
   },
-  // Raporlar için ayrı bir menü maddesi yok: rapor öğrenciye ait bir belge
-  // ve öğrencinin kendi sayfasında üretilip düzenleniyor. Bütün raporların
-  // tek listesi pratikte "hangi öğrencinin raporu" sorusuna cevap vermiyordu.
+  // Rapor LİSTESİ için menü maddesi yok: rapor öğrenciye ait bir belge ve
+  // öğrencinin kendi sayfasında üretilip düzenleniyor. Bütün raporların tek
+  // listesi pratikte "hangi öğrencinin raporu" sorusuna cevap vermiyordu.
+  // Ayarlar ayrı: raporun hangi ölçütlerle üretileceği tek tek öğrencilerin
+  // değil kurumun kararı, dolayısıyla öğrenci sayfasında yeri yok.
+  {
+    etiket: "Rapor ayarları",
+    yol: "/koordinator/raporlar/ayarlar",
+    modul: "raporlar",
+    hazir: true,
+    paket: "P17",
+    bolum: "Değerlendirme",
+    simge: "rapor",
+  },
   {
     etiket: "Arşiv",
     yol: "/koordinator/arsiv",
