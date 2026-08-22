@@ -406,11 +406,29 @@ export async function raporGovdesiV2Uret(
   const programAdi =
     ilkKayit.group.term?.name ?? ilkKayit.group.club?.name ?? "Program";
 
+  // Programın (grubun) tam atölye listesi — öğrencinin puanlanmış atölyeleri
+  // programın tamamı olmayabilir (geç kayıt, devamsızlık); model programı
+  // öğrencinin verisinden değil buradan tanıtır.
+  const programOturumAtolyeleri = await db.session.findMany({
+    where: { groupId: kayitlar[0].groupId },
+    select: { workshopType: { select: { name: true, sortOrder: true } } },
+    distinct: ["workshopTypeId"],
+  });
+  const programAtolyeleri = programOturumAtolyeleri
+    .sort((a, b) => a.workshopType.sortOrder - b.workshopType.sortOrder)
+    .map((oturum) => oturum.workshopType.name);
+
   const metinSonucu = await ogrenciMetniUret({
     ilkAd: ogrenci.firstName,
     programAdi,
     haftaSayisi: ilkKayit.group.term?._count.weeks ?? null,
     atolyeSayisi: atolyeKademeleri.length,
+    programAtolyeleri,
+    katilim: atolyeKademeleri.map((a) => ({
+      atolyeAdi: a.atolyeAdi,
+      katildi: a.katildigiOturumSayisi,
+      kapsam: a.katildigiOturumSayisi + a.katilmadigiOturumSayisi,
+    })),
     atolyeler: atolyeKademeleri.map((a) => ({
       ad: a.atolyeAdi,
       ilgi: a.ilgi?.etiket ?? null,

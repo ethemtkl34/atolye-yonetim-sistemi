@@ -195,6 +195,25 @@ export function atolyeKademesiCikar(atolye: {
  * cümlesindeki oturum sayılarında geçer (örnek rapor da katılımı sayıyla
  * yazıyor), puan ortalamaları cümleye kademe diliyle çevrilir.
  */
+/**
+ * "8'ine", "6'sına", "10'una" — sayının okunuşuna uyan iyelik + yönelme eki.
+ * Katılım cümleleri sabit "'ine" ekiyle yazılınca "10'ine katıldı" gibi ek
+ * uyumu bozuk cümleler çıkıyordu (veli incelemesi bulgusu).
+ */
+export function oturumEki(sayi: number): string {
+  const SON_RAKAM: Record<number, string> = {
+    1: "'ine", 2: "'sine", 3: "'üne", 4: "'üne", 5: "'ine",
+    6: "'sına", 7: "'sine", 8: "'ine", 9: "'una",
+  };
+  const ONLUK: Record<number, string> = {
+    10: "'una", 20: "'sine", 30: "'una", 40: "'ına", 50: "'sine",
+    60: "'ına", 70: "'ine", 80: "'ine", 90: "'ına",
+  };
+  const son = sayi % 10;
+  if (son !== 0) return SON_RAKAM[son];
+  return ONLUK[sayi % 100] ?? "'ine";
+}
+
 export function atolyeMetniUret(girdi: {
   ilkAd: string;
   soruOrtalamalari: readonly SoruOrtalamasi[];
@@ -208,16 +227,19 @@ export function atolyeMetniUret(girdi: {
   // Hiç katılmamış: değerlendirme cümlesi kurulamaz, sebep açıkça yazılır.
   if (girdi.katildigiOturumSayisi === 0) {
     return (
-      `${girdi.ilkAd}, bu atölyede yapılan ${toplam} oturuma katılamadığı ` +
-      "için atölye içi değerlendirme oluşmamıştır."
+      `${girdi.ilkAd}, bu atölyede değerlendirme kapsamındaki ${toplam} ` +
+      "oturuma katılamadığı için atölye içi değerlendirme oluşmamıştır."
     );
   }
 
+  // "Değerlendirme kapsamındaki": döneme geç katılan öğrencide kayıt öncesi
+  // haftalar tabana girmez; "dönem boyunca yapılan 1 oturum" gibi yanıltıcı
+  // bir sayım yerine taban açıkça adlandırılır (veli incelemesi bulgusu).
   const cumleler: string[] = [];
   cumleler.push(
     girdi.katildigiOturumSayisi === toplam
-      ? `${girdi.ilkAd}, dönem boyunca yapılan ${toplam} oturumun tamamına katılmıştır.`
-      : `${girdi.ilkAd}, dönem boyunca yapılan ${toplam} oturumun ${girdi.katildigiOturumSayisi}'ine katılmıştır.`,
+      ? `${girdi.ilkAd}, değerlendirme kapsamındaki ${toplam} oturumun tamamına katılmıştır.`
+      : `${girdi.ilkAd}, değerlendirme kapsamındaki ${toplam} oturumun ${girdi.katildigiOturumSayisi}${oturumEki(girdi.katildigiOturumSayisi)} katılmıştır.`,
   );
 
   // Soru başlıkları cümleye küçük harfle girer ("Takım Çalışması ve İş
@@ -255,16 +277,13 @@ export function atolyeMetniUret(girdi: {
     }
   }
 
+  // Yüksek ve Ortalama için kapanış cümlesi yazılmaz: kutunun yanındaki
+  // skala aynı hükmü zaten veriyor, beş kutuda beş özdeş kalıp velide
+  // "şablon" hissi bırakıyordu (veli incelemesi bulgusu). Düşük'te skalayı
+  // yumuşatan çerçeve, kademesizlikte ise sebep cümlesi korunur.
   switch (girdi.basari?.kademe) {
     case "YUKSEK":
-      cumleler.push(
-        "Atölyedeki kazanımlara ulaşma düzeyi genel olarak yüksek bulunmuştur.",
-      );
-      break;
     case "ORTALAMA":
-      cumleler.push(
-        "Atölyedeki kazanımlara ulaşma düzeyi beklenen aralıkta ilerlemektedir.",
-      );
       break;
     case "DUSUK":
       cumleler.push(

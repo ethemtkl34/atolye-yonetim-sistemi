@@ -213,5 +213,37 @@ export function asimetriBul(
     }
   }
 
-  return bulgular;
+  return ayniYonluleriBirlestir(bulgular);
+}
+
+/**
+ * Aynı yöndeki bulgular 3 ve daha fazla atölyede tekrarlıyorsa tek cümlede
+ * birleştirilir. Beş atölye için kelimesi kelimesine aynı cümlenin beş kez
+ * basılması velide "şablon" hissi bırakıyordu (veli incelemesi bulgusu);
+ * 1-2 atölyelik bulgular atölyeye özgü kaldıkları için ayrı yazılmayı
+ * sürdürür.
+ */
+function ayniYonluleriBirlestir(bulgular: Asimetri[]): Asimetri[] {
+  const sonuc: Asimetri[] = [];
+
+  for (const yon of ["ILGI_YUKSEK", "BASARI_YUKSEK"] as const) {
+    const grup = bulgular.filter((b) => b.yon === yon);
+    if (grup.length < 3) {
+      sonuc.push(...grup);
+      continue;
+    }
+
+    const adlar = grup.map((b) => b.atolyeAdi.replace(/ Atölyesi$/u, ""));
+    const liste = `${adlar.slice(0, -1).join(", ")} ve ${adlar.at(-1)}`;
+    sonuc.push({
+      atolyeAdi: liste,
+      yon,
+      cumle:
+        yon === "ILGI_YUKSEK"
+          ? `${liste} atölyelerinin tümünde ilgisi belirgin biçimde yüksek olmakla birlikte, kazanımlara ulaşma düzeyi bu ilgiyle aynı oranda ilerlememiştir; bu alanlarda beceri desteği sağlanmasının öğrenciyi ilgisinden uzaklaştırmadan ilerletebileceği değerlendirilmektedir.`
+          : `${liste} atölyelerinin tümünde kazanımlara ulaşma düzeyi yüksek olmakla birlikte ilgisi aynı düzeyde seyretmemiştir; bu alanlarda sürekliliğin desteklenmesinin ilgi kaybını önleyebileceği değerlendirilmektedir.`,
+    });
+  }
+
+  return sonuc;
 }

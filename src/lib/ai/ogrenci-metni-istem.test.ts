@@ -11,6 +11,8 @@ const TEMEL: OgrenciMetniGirdisi = {
   programAdi: "2026 Sonbahar Dönemi",
   haftaSayisi: 10,
   atolyeSayisi: 5,
+  programAtolyeleri: ["Bilim Atölyesi", "Robotik ve Kodlama Atölyesi"],
+  katilim: [{ atolyeAdi: "Bilim Atölyesi", katildi: 9, kapsam: 10 }],
   atolyeler: [{ ad: "Bilim Atölyesi", ilgi: "Yüksek", basari: "Ortalama" }],
   gelisimAlanlari: [{ ad: "Duygusal Gelişim Alanları", kademe: "Yüksek" }],
   gozlemler: [],

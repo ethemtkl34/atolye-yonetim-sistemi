@@ -38,17 +38,34 @@ import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 let fontKayitli = false;
 
 function fontuKaydet() {
-  if (fontKayitli) return;
-  const klasor = path.join(process.cwd(), "public", "fonts");
-  Font.register({
-    family: "NotoSans",
-    fonts: [
-      { src: path.join(klasor, "NotoSans-Regular.ttf") },
-      { src: path.join(klasor, "NotoSans-Bold.ttf"), fontWeight: "bold" },
-    ],
-  });
-  Font.registerHyphenationCallback((kelime) => [kelime]);
-  fontKayitli = true;
+  if (!fontKayitli) {
+    const klasor = path.join(process.cwd(), "public", "fonts");
+    Font.register({
+      family: "NotoSans",
+      fonts: [
+        { src: path.join(klasor, "NotoSans-Regular.ttf") },
+        { src: path.join(klasor, "NotoSans-Bold.ttf"), fontWeight: "bold" },
+      ],
+    });
+    Font.registerHyphenationCallback((kelime) => [kelime]);
+    fontKayitli = true;
+  }
+
+  // Aynı süreçte art arda üretilen belgeler fontkit örneğini paylaşınca
+  // glif alt-kümesi belgeler arasında karışıyor ve harf düşürüyordu
+  // (kapakta "Şule" → "ule"; bir sonraki belgede metin katmanı bozuluyordu).
+  // Her belge taze örnek yüklesin diye kaynak önbelleği render başında
+  // boşaltılır; yeniden yükleme maliyeti birkaç milisaniye.
+  type FontKaynagi = { data: unknown; loadResultPromise: unknown };
+  const aile = (
+    Font as unknown as {
+      getRegisteredFonts: () => Record<string, { sources: FontKaynagi[] }>;
+    }
+  ).getRegisteredFonts()["NotoSans"];
+  for (const kaynak of aile?.sources ?? []) {
+    kaynak.data = null;
+    kaynak.loadResultPromise = null;
+  }
 }
 
 const MARKA = path.join(process.cwd(), "public", "marka");
@@ -341,7 +358,7 @@ const stil = StyleSheet.create({
   ilgiAciklama: { fontSize: 8, color: "#52525b", marginBottom: 8 },
   ilgiSatir: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   ilgiHucre: {
-    width: 92,
+    width: 88,
     alignItems: "center",
     backgroundColor: "#ffffff",
     borderRadius: 8,
@@ -357,6 +374,28 @@ const stil = StyleSheet.create({
   },
   ilgiEtiket: { fontSize: 7.5, fontWeight: "bold", marginTop: 4 },
 });
+
+/**
+ * "4 atölyede Yüksek, 1 atölyede Ortalama" — Bir Bakışta satırları için
+ * kademe sayımı. Sıra her zaman Yüksek → Ortalama → Düşük; boş bantlar
+ * "değerlendirilmedi" olarak en sona yazılır.
+ */
+function kademeSayimi(bantlar: readonly (BantBilgisi | null)[]): string {
+  const sayilar = new Map<string, number>();
+  let bos = 0;
+  for (const bant of bantlar) {
+    if (!bant) {
+      bos += 1;
+      continue;
+    }
+    sayilar.set(bant.etiket, (sayilar.get(bant.etiket) ?? 0) + 1);
+  }
+  const parcalar = ["Yüksek", "Ortalama", "Düşük"]
+    .filter((etiket) => sayilar.has(etiket))
+    .map((etiket) => `${sayilar.get(etiket)} atölyede ${etiket}`);
+  if (bos > 0) parcalar.push(`${bos} atölyede değerlendirilmedi`);
+  return parcalar.join(", ");
+}
 
 // ---------------------------------------------------------------------------
 // Sayfa iskeleti
@@ -384,6 +423,7 @@ function SayfaCercevesi({
       <Text style={stil.altBilgi} fixed>
         {altBilgi}
       </Text>
+
       <Image
         src={path.join(MARKA, "altbant.png")}
         style={stil.altBant}
@@ -958,7 +998,12 @@ const BASARI_YORUMU =
  *  yapmaz; grafikli eski snapshot sayfaları ASIMETRI_GIRISI ile basılmayı
  *  sürdürür. */
 const ASIMETRI_GIRISI_KUTULU =
-  "Her bir atölye özelinde ilgi ve başarı düzeylerinin birlikte okunması, gelişimin bütüncül değerlendirilmesi açısından fayda sağlayacaktır. Bir atölye özelinde ilgi ve başarı düzeyleri arasında asimetrik bir değişim varsa bunun bu dönemki değerlendirmesi şu şekildedir:";
+  "Her bir atölye özelinde ilgi ve başarı düzeylerinin birlikte okunması, gelişimin bütüncül değerlendirilmesi açısından fayda sağlayacaktır. Bir atölyede ilgi ile başarı düzeyleri birbirinden belirgin biçimde ayrışıyorsa bu dönemki değerlendirmesi şu şekildedir:";
+
+/** Kutulu sayfanın asimetri-yok cümlesi: "birbirini destekler görünümdedir"
+ *  gibi iddialı bir çıkarım yerine yalnızca gözlemi söyler. */
+const ASIMETRI_YOK_KUTULU =
+  "Bu dönem yapılan değerlendirmede öğrencinin ilgi ve başarı düzeyleri arasında belirgin bir farklılaşma gözlenmemiştir.";
 
 const ASIMETRI_GIRISI =
   "Her bir atölye özelinde bakıldığında, grafikte meydana gelmiş farklılıkları anlamlandırmak adına ilgi ve başarı düzeylerinin birlikte okunması fayda sağlayacaktır. Bir atölye özelinde ilgi ve başarı grafikleri arasında asimetrik bir değişim varsa bunun bu dönemki değerlendirmesi şu şekildedir:";
@@ -1015,6 +1060,18 @@ export function RaporBelgesiV2({
   const atolyeMetinleriVar = govde.atolyeKademeleri.some(
     (a) => typeof a.metin === "string" && a.metin.length > 0,
   );
+
+  // Toplam 3 ve daha az oturum gözlemine dayanan raporda düzeyler tam dönem
+  // hükmü gibi okunmasın: beceri sayfasının başına görünür bir kapsam ibaresi
+  // basılır (veli incelemesi bulgusu — tek günlük veri, tam dönem raporu
+  // gibi sunuluyordu). Yalnız yeni (kutulu) raporlarda; eski snapshot'ların
+  // basılı görünümü değişmez.
+  const toplamKatilim = govde.atolyeKademeleri.reduce(
+    (t, a) => t + a.katildigiOturumSayisi,
+    0,
+  );
+  const sinirliGozlem =
+    atolyeMetinleriVar && toplamKatilim > 0 && toplamKatilim <= 3;
 
   const sayisalVeriVar =
     sayisalAtolyeVerisiVar ||
@@ -1123,7 +1180,7 @@ export function RaporBelgesiV2({
         <Text style={stil.paragraf}>
           Sizlerle bir dönemi başarıyla tamamlamanın ve çocuklarımıza bu
           süreçte sağlamaya gayret ettiğimiz faydaların gerçekleşmiş olmasının
-          mutluğu ile ileriki yaşantılarınızda çocuklarınız ve sizlerin
+          mutluluğu ile ileriki yaşantılarınızda çocuklarınız ve sizlerin
           sağlıklı ve güzel günlerde kalmanızı dileriz.
         </Text>
         <Text style={stil.paragraf}>Saygılarımızla…</Text>
@@ -1145,9 +1202,22 @@ export function RaporBelgesiV2({
               </Text>
             </View>
           ) : null}
+          {atolyeMetinleriVar ? (
+            <View style={stil.notSatiri}>
+              <Text style={stil.notNumara}>{sayisalVeriVar ? "2" : "1"}</Text>
+              <Text style={stil.notMetin}>
+                Atölye düzeyleri puan ortalamasına göre belirlenir: 4,0 ve
+                üzeri Yüksek, 3,0 altı Düşük, aradaki değerler Ortalama.
+                Beceri alanlarındaki düzeyler ise grubun ortalamasına göre
+                belirlenir.
+              </Text>
+            </View>
+          ) : null}
           {govde.grupOgrenciSayisi ? (
             <View style={stil.notSatiri}>
-              <Text style={stil.notNumara}>2</Text>
+              <Text style={stil.notNumara}>
+                {(sayisalVeriVar ? 1 : 0) + (atolyeMetinleriVar ? 1 : 0) + 1}
+              </Text>
               <Text style={stil.notMetin}>
                 Bu raporlamada ilgili yaş düzeyinde değerlendirilen grubun
                 öğrenci sayısı
@@ -1165,6 +1235,96 @@ export function RaporBelgesiV2({
           ) : null}
         </View>
       </Page>
+
+      {/* ------------------------------------------------ Bir bakışta */}
+      {atolyeMetinleriVar ? (
+        <Page size="A4" style={stil.sayfa}>
+          <SayfaCercevesi bolumBasligi="BİR BAKIŞTA" altBilgi={altBilgi} />
+
+          <DikeyEtiketKutu
+            etiket="ÖZET"
+            zemin={SEFTALI}
+            etiketGenisligi={40}
+            minYukseklik={100}
+            cocuklar={
+              <>
+                <Text style={stil.madde}>
+                  – Katılım: değerlendirme kapsamındaki{" "}
+                  {govde.atolyeKademeleri.reduce(
+                    (t, a) =>
+                      t + a.katildigiOturumSayisi + a.katilmadigiOturumSayisi,
+                    0,
+                  )}{" "}
+                  oturumun{" "}
+                  {govde.atolyeKademeleri.reduce(
+                    (t, a) => t + a.katildigiOturumSayisi,
+                    0,
+                  )}
+                  {"'i tamamlanmıştır."}
+                </Text>
+                <Text style={stil.madde}>
+                  – Atölyelere ilgi düzeyi:{" "}
+                  {kademeSayimi(govde.atolyeKademeleri.map((a) => a.ilgi))}.
+                </Text>
+                <Text style={stil.madde}>
+                  – Kazanımlara ulaşma:{" "}
+                  {kademeSayimi(govde.atolyeKademeleri.map((a) => a.basari))}.
+                </Text>
+                {govde.gelisimAlanlari.length > 0 ? (
+                  <Text style={stil.madde}>
+                    – Beceri alanları:{" "}
+                    {govde.gelisimAlanlari
+                      .map((alan) =>
+                        alan.bant
+                          ? `${alan.ad.replace(/ Gelişim Alanları$/u, "")} ${alan.bant.etiket.toLocaleLowerCase("tr-TR")}`
+                          : null,
+                      )
+                      .filter(Boolean)
+                      .join(", ")}
+                    .
+                  </Text>
+                ) : null}
+                {govde.gozlem?.sonuc ? (
+                  <Text style={stil.madde}>
+                    – {govde.gozlem.sonuc.split(/(?<=\.)\s+/u)[0]}
+                  </Text>
+                ) : null}
+                <Text style={[stil.kucuk, { marginTop: 6, fontSize: 7.5 }]}>
+                  Bu özet, raporun ilerleyen bölümlerindeki değerlendirmelerden
+                  derlenmiştir; ayrıntılar ilgili bölümlerdedir.
+                </Text>
+              </>
+            }
+          />
+
+          <DikeyEtiketKutu
+            etiket="BÖLÜMLER"
+            zemin={LAVANTA}
+            etiketGenisligi={60}
+            minYukseklik={80}
+            cocuklar={
+              <>
+                {[
+                  govde.atolyeIcerikleri.length > 0
+                    ? "Atölyeler ve içerikleri hakkında"
+                    : null,
+                  govde.gelisimAlanlari.length > 0
+                    ? "Sosyal, duygusal ve bilişsel beceriler"
+                    : null,
+                  "Atölyelerde gelişim",
+                  govde.gozlem ? "Eğitmen gözlem raporu ve öneriler" : null,
+                ]
+                  .filter((bolum): bolum is string => bolum !== null)
+                  .map((bolum, sira) => (
+                    <Text key={bolum} style={stil.madde}>
+                      {sira + 1}. {bolum}
+                    </Text>
+                  ))}
+              </>
+            }
+          />
+        </Page>
+      ) : null}
 
       {/* ------------------------------------------------ Atölyeler ve içerikleri */}
       {govde.atolyeIcerikleri.length > 0 ? (
@@ -1194,6 +1354,23 @@ export function RaporBelgesiV2({
               bolumBasligi="ATÖLYELERDEKİ SOSYAL - DUYGUSAL VE BİLİŞSEL BECERİLER RAPORU"
               altBilgi={altBilgi}
             />
+
+            {sinirliGozlem ? (
+              <View
+                style={{
+                  backgroundColor: "#fef3c7",
+                  borderRadius: 6,
+                  padding: 10,
+                  marginBottom: 10,
+                }}
+              >
+                <Text style={{ fontSize: 8.5, fontWeight: "bold" }}>
+                  Bu dönemki değerlendirme, öğrencinin katılabildiği sınırlı
+                  sayıda oturumun gözlemine dayanmaktadır; bu bölümdeki
+                  düzeyler bu kapsamda yorumlanmalıdır.
+                </Text>
+              </View>
+            ) : null}
 
             <DikeyEtiketKutu
               etiket="BU KISIM HAKKINDA GENEL BİLGİ"
@@ -1302,8 +1479,8 @@ export function RaporBelgesiV2({
           <Text style={stil.atolyeGirisi}>
             Bu bölümde öğrencinizin her atölyedeki durumu, dönem boyunca
             eğitmen değerlendirmelerinden elde edilen puanlamalara dayanılarak
-            özetlenmiştir. Kazanımlara ulaşma düzeyi üç kademeli skalada
-            gösterilir; değerlendirme akran kıyaslaması içermez.
+            özetlenmiştir. Buradaki düzeyler yalnızca çocuğunuzun kendi
+            gelişimini gösterir; akran kıyaslaması içermez.
           </Text>
 
           {govde.atolyeKademeleri.map((atolye) => (
@@ -1317,12 +1494,6 @@ export function RaporBelgesiV2({
               <View style={stil.atolyeSag}>
                 <Text style={stil.atolyeSagBaslik}>KAZANIMLARA ULAŞMA</Text>
                 <KademeSkalasi bant={atolye.basari} dar />
-                <Text style={stil.atolyeKatilimNotu}>
-                  {atolye.katildigiOturumSayisi + atolye.katilmadigiOturumSayisi}
-                  {" oturumun "}
-                  {atolye.katildigiOturumSayisi}
-                  {"'ine katıldı"}
-                </Text>
               </View>
             </View>
           ))}
@@ -1379,16 +1550,9 @@ export function RaporBelgesiV2({
                   ))
                 ) : (
                   <Text style={[stil.paragraf, { fontSize: 8.5 }]}>
-                    {ASIMETRI_YOK}
+                    {ASIMETRI_YOK_KUTULU}
                   </Text>
                 )}
-                {katilmayanlar.map((atolye) => (
-                  <Text key={atolye.atolyeAdi} style={[stil.kucuk, { fontSize: 7.5 }]}>
-                    {atolye.atolyeAdi}: {atolye.katilmadigiOturumSayisi} oturuma
-                    katılım sağlanmamış ve bu oturumlar değerlendirmeye dahil
-                    edilmemiştir.
-                  </Text>
-                ))}
               </>
             }
           />

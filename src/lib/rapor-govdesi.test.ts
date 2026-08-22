@@ -3,6 +3,7 @@ import {
   atolyeKademesiCikar,
   atolyeMetniUret,
   gelisimAlanlariCikar,
+  oturumEki,
 } from "./rapor-govdesi";
 import { KADEMELER } from "./rapor-bantlari";
 import type { SoruOrtalamasi } from "./puan-hesaplari";
@@ -178,11 +179,14 @@ describe("atolyeMetniUret", () => {
       katildigiOturumSayisi: 10,
       katilmadigiOturumSayisi: 0,
     });
-    expect(metin).toContain("10 oturumun tamamına katılmıştır");
+    expect(metin).toContain(
+      "değerlendirme kapsamındaki 10 oturumun tamamına katılmıştır",
+    );
     expect(metin).toContain("takım çalışması ve iş birliği");
     expect(metin).toContain("bilimsel yöntemi kullanma");
     expect(metin).toContain("güçlü bir görünüm");
-    expect(metin).toContain("genel olarak yüksek bulunmuştur");
+    // Kapanış kalıbı yazılmaz: skaladaki "Yüksek" aynı hükmü zaten veriyor.
+    expect(metin).not.toContain("yüksek bulunmuştur");
     // 3,7 desteklenme eşiğinin (3,5) üstünde — eksik cümlesi zorlanmaz.
     expect(metin).not.toContain("desteklenmesinin faydalı");
   });
@@ -203,7 +207,8 @@ describe("atolyeMetniUret", () => {
     expect(metin).toContain(
       "Mantıksal akıl yürütme başlığındaki gelişimi sürmekte",
     );
-    expect(metin).toContain("beklenen aralıkta ilerlemektedir");
+    // Ortalama kademede de kapanış kalıbı yazılmaz.
+    expect(metin).not.toContain("beklenen aralıkta");
   });
 
   it("hiç katılmayan öğrencide değerlendirme cümlesi kurmaz", () => {
@@ -215,7 +220,7 @@ describe("atolyeMetniUret", () => {
       katilmadigiOturumSayisi: 1,
     });
     expect(metin).toBe(
-      "Şule, bu atölyede yapılan 1 oturuma katılamadığı için atölye içi değerlendirme oluşmamıştır.",
+      "Şule, bu atölyede değerlendirme kapsamındaki 1 oturuma katılamadığı için atölye içi değerlendirme oluşmamıştır.",
     );
   });
 
@@ -233,7 +238,6 @@ describe("atolyeMetniUret", () => {
     });
     expect(metin).toContain("tamamına katılmıştır");
     expect(metin).not.toContain("başlıklarında");
-    expect(metin).toContain("genel olarak yüksek bulunmuştur");
   });
 
   it("hiç oturum yoksa metin üretmez", () => {
@@ -257,5 +261,17 @@ describe("atolyeMetniUret", () => {
       katilmadigiOturumSayisi: 0,
     });
     expect(metin).toContain("yeterli değerlendirme oluşmamıştır");
+  });
+});
+
+describe("oturumEki", () => {
+  it("sayının okunuşuna uyan eki üretir", () => {
+    expect(oturumEki(6)).toBe("'sına");
+    expect(oturumEki(8)).toBe("'ine");
+    expect(oturumEki(9)).toBe("'una");
+    expect(oturumEki(10)).toBe("'una");
+    expect(oturumEki(12)).toBe("'sine");
+    expect(oturumEki(20)).toBe("'sine");
+    expect(oturumEki(30)).toBe("'una");
   });
 });

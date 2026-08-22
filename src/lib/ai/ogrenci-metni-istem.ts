@@ -16,6 +16,12 @@ export type OgrenciMetniGirdisi = {
   programAdi: string;
   haftaSayisi: number | null;
   atolyeSayisi: number;
+  /** Programın (grubun) atölye adları — öğrencinin verisi eksik olsa da
+   *  programın tamamı; giriş paragrafı programı buna göre tanıtır. */
+  programAtolyeleri: string[];
+  /** Atölye başına katılım: değerlendirme kapsamındaki oturum sayısı ve
+   *  öğrencinin katıldığı sayı. Metindeki her katılım iddiasının kaynağı. */
+  katilim: { atolyeAdi: string; katildi: number; kapsam: number }[];
 
   /** Atölye kademeleri — sayı değil, kademe adı verilir. */
   atolyeler: {
@@ -77,6 +83,8 @@ MUTLAK KURAL — UYDURMA YASAĞI:
 - Bir çocuğun ne söylediğini ancak notta yazıyorsa aktarabilirsin.
 - Kademe bilgileri (Yüksek/Ortalama/Düşük) genel bir çerçeve verir; onlardan somut olay üretme.
 - Gözlem notu az ise metni kısa tut. Az veriyle uzun yazmak uydurmaktır.
+- KATILIM verisi tek gerçektir: genel not katılımla çelişiyorsa (örn. not "tek oturum" derken katılım verisi dönem boyu katılım gösteriyorsa) KATILIM verisini esas al, nottaki çelişen ifadeyi metne taşıma.
+- Giriş paragrafında programı PROGRAMIN ATÖLYELERİ listesine göre tanıt; öğrencinin değerlendirildiği atölyeler daha azsa bunu programın kapsamı sanma.
 
 DİL:
 - Üçüncü tekil şahıs, geçmiş zaman: "... gözlemlenmiştir", "... görülmüştür".
@@ -84,6 +92,7 @@ DİL:
 - Profesyonel, sıcak ve gelişim odaklı. Tanı koyma, etiketleme ve kesin kişilik yargısı yok.
 - Olumsuz ifade kullanma: "yapamıyor" yerine "desteklenmesinin faydalı olacağı değerlendirilmektedir".
 - Abartılı övgü yok.
+- Akranlarla sıralama/yarış dili YOK: "en son bitirdi", "sınıfta ilk tamamlayan", "arkadaşlarından geride" gibi ifadeler yerine gereksinim dili kullan ("tamamlamak için ek süreye ihtiyaç duymuş ve verildiğinde tamamlamıştır").
 
 ÇIKTI BİÇİMİ — yalnızca şu JSON'u döndür, başka hiçbir şey yazma:
 {
@@ -106,6 +115,8 @@ BLOKLAR HAKKINDA:
 
 ÜRÜN ÖNERİSİ:
 - "oneriler" içinde ürün adı geçirebilirsin, ama YALNIZCA sana verilen ürün listesinden. Listede olmayan bir ürün, kitap veya oyun adı yazma.
+- Ürünün tam katalog adını ("... 100+ Deney 5+ Yaş" gibi) paragrafa YAZMA; ürünü kısa işleviyle an ("elektronik deney seti gibi bir materyal"). Tam adlar raporda ayrıca listelenir; paragrafta tekrarı velide katalog izlenimi bırakır.
+- Önce evdeki malzemeyle yapılabilecek etkinlikleri öner; ürünler isteğe bağlı destek olarak en sonda yer alsın.
 - Liste boşsa ürün adı hiç verme; bunun yerine tema düzeyinde öneri yaz ("paylaşma ve birlikte başarma temalı hikâyelerin birlikte okunması" gibi).`;
 
 /** Kademe bilgisini modele verilen satıra çevirir. */
@@ -118,6 +129,16 @@ export function ogrenciMetniGirdisiYaz(girdi: OgrenciMetniGirdisi): string {
     `ÖĞRENCİ: ${girdi.ilkAd}`,
     `PROGRAM: ${girdi.programAdi}${girdi.haftaSayisi ? ` (${girdi.haftaSayisi} hafta)` : ""}, ${girdi.atolyeSayisi} atölye`,
   ];
+
+  bolumler.push(
+    "",
+    `PROGRAMIN ATÖLYELERİ: ${girdi.programAtolyeleri.join(", ") || "bilinmiyor"}`,
+    "",
+    "KATILIM (değerlendirme kapsamındaki oturum / katıldığı):",
+    ...girdi.katilim.map(
+      (k) => `- ${k.atolyeAdi}: ${k.kapsam} oturumun ${k.katildi} tanesine katıldı`,
+    ),
+  );
 
   bolumler.push(
     "",

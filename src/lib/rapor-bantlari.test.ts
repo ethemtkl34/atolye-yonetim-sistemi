@@ -160,3 +160,26 @@ describe("asimetriBul", () => {
     expect(bulgular).toHaveLength(0);
   });
 });
+
+describe("asimetriBul birleştirme", () => {
+  it("aynı yönde 3+ atölyeyi tek cümlede birleştirir", () => {
+    const bulgular = asimetriBul([
+      { atolyeAdi: "Bilim Atölyesi", ilgi: 4.2, basari: 3.2 },
+      { atolyeAdi: "Robotik Atölyesi", ilgi: 4.3, basari: 3.1 },
+      { atolyeAdi: "Zekâ Atölyesi", ilgi: 4.5, basari: 3.2 },
+    ]);
+    expect(bulgular).toHaveLength(1);
+    expect(bulgular[0].yon).toBe("ILGI_YUKSEK");
+    expect(bulgular[0].cumle).toContain("Bilim, Robotik ve Zekâ");
+    expect(bulgular[0].cumle).toContain("tümünde ilgisi belirgin biçimde yüksek");
+  });
+
+  it("1-2 atölyelik bulguları ayrı bırakır", () => {
+    const bulgular = asimetriBul([
+      { atolyeAdi: "Bilim Atölyesi", ilgi: 4.2, basari: 3.2 },
+      { atolyeAdi: "Robotik Atölyesi", ilgi: 3.0, basari: 4.0 },
+    ]);
+    expect(bulgular).toHaveLength(2);
+    expect(bulgular[0].atolyeAdi).toBe("Bilim Atölyesi");
+  });
+});
