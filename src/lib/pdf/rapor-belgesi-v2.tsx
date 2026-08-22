@@ -17,7 +17,7 @@ import {
 import { KURUM_ADI } from "@/lib/kurallar";
 import { tarihBicimle } from "@/lib/tarih";
 import { KADEMELER, type BantBilgisi, type Kademe } from "@/lib/rapor-bantlari";
-import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
+import { iyelikEki, type RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 
 /**
  * §11.5 — Rapor PDF'i, ikinci sürüm; kurum şablonuna göre dizilmiş hâli.
@@ -1256,11 +1256,13 @@ export function RaporBelgesiV2({
                     0,
                   )}{" "}
                   oturumun{" "}
-                  {govde.atolyeKademeleri.reduce(
-                    (t, a) => t + a.katildigiOturumSayisi,
-                    0,
-                  )}
-                  {"'i tamamlanmıştır."}
+                  {(() => {
+                    const katilan = govde.atolyeKademeleri.reduce(
+                      (t, a) => t + a.katildigiOturumSayisi,
+                      0,
+                    );
+                    return `${katilan}${iyelikEki(katilan)} tamamlanmıştır.`;
+                  })()}
                 </Text>
                 <Text style={stil.madde}>
                   – Atölyelere ilgi düzeyi:{" "}

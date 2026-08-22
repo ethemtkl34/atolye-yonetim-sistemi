@@ -3,6 +3,7 @@ import {
   atolyeKademesiCikar,
   atolyeMetniUret,
   gelisimAlanlariCikar,
+  iyelikEki,
   oturumEki,
 } from "./rapor-govdesi";
 import { KADEMELER } from "./rapor-bantlari";
@@ -273,5 +274,14 @@ describe("oturumEki", () => {
     expect(oturumEki(12)).toBe("'sine");
     expect(oturumEki(20)).toBe("'sine");
     expect(oturumEki(30)).toBe("'una");
+  });
+});
+
+describe("iyelikEki", () => {
+  it("yalın iyelik ekini üretir", () => {
+    expect(iyelikEki(2)).toBe("'si");
+    expect(iyelikEki(43)).toBe("'ü");
+    expect(iyelikEki(50)).toBe("'si");
+    expect(iyelikEki(10)).toBe("'u");
   });
 });

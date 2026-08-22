@@ -214,6 +214,22 @@ export function oturumEki(sayi: number): string {
   return ONLUK[sayi % 100] ?? "'ine";
 }
 
+/** "43'ü", "2'si", "50'si" — sayının okunuşuna uyan yalın iyelik eki
+ *  (Bir Bakışta katılım satırı gibi "N oturumun M'ü" kalıpları için). */
+export function iyelikEki(sayi: number): string {
+  const SON_RAKAM: Record<number, string> = {
+    1: "'i", 2: "'si", 3: "'ü", 4: "'ü", 5: "'i",
+    6: "'sı", 7: "'si", 8: "'i", 9: "'u",
+  };
+  const ONLUK: Record<number, string> = {
+    10: "'u", 20: "'si", 30: "'u", 40: "'ı", 50: "'si",
+    60: "'ı", 70: "'i", 80: "'i", 90: "'ı",
+  };
+  const son = sayi % 10;
+  if (son !== 0) return SON_RAKAM[son];
+  return ONLUK[sayi % 100] ?? "'i";
+}
+
 export function atolyeMetniUret(girdi: {
   ilkAd: string;
   soruOrtalamalari: readonly SoruOrtalamasi[];
