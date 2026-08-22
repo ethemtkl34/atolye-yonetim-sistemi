@@ -84,12 +84,18 @@ const stil = StyleSheet.create({
   sayfa: {
     fontFamily: "NotoSans",
     fontSize: 9.5,
-    lineHeight: 1.5,
     color: METIN,
     paddingTop: 122,
     paddingBottom: ALTBANT_YUKSEKLIK + 16,
     paddingHorizontal: 46,
   },
+  // Satır aralığı Page yerine gövde sarmalayıcısında: react-pdf 4.5.1'de
+  // Page stilinde lineHeight varken render-prop'lu (sayfa numarası gibi)
+  // dinamik metinler hiç basılmıyor. Kalıtım bu View üzerinden aynı kalır.
+  // fontSize burada da tekrarlanır: lineHeight oranı sarmalayıcının kendi
+  // fontSize'ıyla çözülür; yalnız kalıtımla gelirse 1.5 varsayılan 18pt
+  // üzerinden hesaplanıp satırları çift aralığa açıyordu.
+  icerikGovdesi: { fontSize: 9.5, lineHeight: 1.5 },
   kapakSayfa: {
     fontFamily: "NotoSans",
     color: METIN,
@@ -423,6 +429,14 @@ function SayfaCercevesi({
       <Text style={stil.altBilgi} fixed>
         {altBilgi}
       </Text>
+      {/* Numara solda, kimlik sağda — ikisi de alt bandın hemen üstünde. */}
+      <Text
+        style={[stil.altBilgi, { right: undefined, left: 46 }]}
+        render={({ pageNumber, totalPages }) =>
+          `Sayfa ${pageNumber} / ${totalPages}`
+        }
+        fixed
+      />
 
       <Image
         src={path.join(MARKA, "altbant.png")}
@@ -1124,6 +1138,8 @@ export function RaporBelgesiV2({
           altBilgi={altBilgi}
         />
 
+          <View style={stil.icerikGovdesi}>
+
         {/* Bu sayfanın tamamı kurumun örnek raporundan birebir alınmış sabit
             metindir; yalnızca eğitim yılı ve program adı raporun verisinden
             gelir. Değişiklik isteği örnek raporla birlikte gelmeli. */}
@@ -1234,12 +1250,15 @@ export function RaporBelgesiV2({
             </View>
           ) : null}
         </View>
+          </View>
       </Page>
 
       {/* ------------------------------------------------ Bir bakışta */}
       {atolyeMetinleriVar ? (
         <Page size="A4" style={stil.sayfa}>
           <SayfaCercevesi bolumBasligi="BİR BAKIŞTA" altBilgi={altBilgi} />
+
+          <View style={stil.icerikGovdesi}>
 
           <DikeyEtiketKutu
             etiket="ÖZET"
@@ -1325,6 +1344,7 @@ export function RaporBelgesiV2({
               </>
             }
           />
+          </View>
         </Page>
       ) : null}
 
@@ -1335,6 +1355,8 @@ export function RaporBelgesiV2({
             bolumBasligi="ATÖLYELER VE İÇERİKLERİ HAKKINDA"
             altBilgi={altBilgi}
           />
+
+          <View style={stil.icerikGovdesi}>
           {govde.atolyeIcerikleri.map((atolye, sira) => (
             <DikeyEtiketKutu
               key={atolye.atolyeAdi}
@@ -1345,6 +1367,7 @@ export function RaporBelgesiV2({
               cocuklar={<Text style={{ fontSize: 9 }}>{atolye.metin}</Text>}
             />
           ))}
+          </View>
         </Page>
       ) : null}
 
@@ -1356,6 +1379,8 @@ export function RaporBelgesiV2({
               bolumBasligi="ATÖLYELERDEKİ SOSYAL - DUYGUSAL VE BİLİŞSEL BECERİLER RAPORU"
               altBilgi={altBilgi}
             />
+
+          <View style={stil.icerikGovdesi}>
 
             {sinirliGozlem ? (
               <View
@@ -1426,6 +1451,7 @@ export function RaporBelgesiV2({
               minYukseklik={40}
               cocuklar={<Text style={{ fontSize: 8.5 }}>{BECERILER_NOT}</Text>}
             />
+          </View>
           </Page>
 
           {/* ------------------------------------------------ Beceriler: alan kutuları */}
@@ -1434,6 +1460,8 @@ export function RaporBelgesiV2({
               bolumBasligi="ATÖLYELERDEKİ SOSYAL - DUYGUSAL VE BİLİŞSEL BECERİLER RAPORU"
               altBilgi={altBilgi}
             />
+
+          <View style={stil.icerikGovdesi}>
             {govde.gelisimAlanlari.map((alan, sira) => (
               <DikeyEtiketKutu
                 key={alan.ad}
@@ -1466,6 +1494,7 @@ export function RaporBelgesiV2({
                 }
               />
             ))}
+          </View>
           </Page>
         </>
       ) : null}
@@ -1477,6 +1506,8 @@ export function RaporBelgesiV2({
             bolumBasligi="ATÖLYELERDE GELİŞİM"
             altBilgi={altBilgi}
           />
+
+          <View style={stil.icerikGovdesi}>
 
           <Text style={stil.atolyeGirisi}>
             Bu bölümde öğrencinizin her atölyedeki durumu, dönem boyunca
@@ -1558,6 +1589,7 @@ export function RaporBelgesiV2({
               </>
             }
           />
+          </View>
         </Page>
       ) : null}
 
@@ -1568,6 +1600,8 @@ export function RaporBelgesiV2({
               bolumBasligi="ATÖLYELERDEKİ İLGİ VE BAŞARI DÜZEYİ DEĞERLENDİRME RAPORU"
               altBilgi={altBilgi}
             />
+
+          <View style={stil.icerikGovdesi}>
 
             <DikeyEtiketKutu
               etiket="BU KISIM HAKKINDA GENEL BİLGİ"
@@ -1615,6 +1649,7 @@ export function RaporBelgesiV2({
                 <Text style={{ fontSize: 8.5, textAlign: "justify" }}>{ILGI_YORUMU}</Text>
               }
             />
+          </View>
           </Page>
 
           <Page size="A4" style={stil.sayfa}>
@@ -1622,6 +1657,8 @@ export function RaporBelgesiV2({
               bolumBasligi="ATÖLYELERDEKİ İLGİ VE BAŞARI DÜZEYİ DEĞERLENDİRME RAPORU"
               altBilgi={altBilgi}
             />
+
+          <View style={stil.icerikGovdesi}>
 
             {sayisalAtolyeVerisiVar ? (
               <PuanGrafigi
@@ -1707,6 +1744,7 @@ export function RaporBelgesiV2({
                 </>
               }
             />
+          </View>
           </Page>
         </>
       ) : null}
@@ -1718,6 +1756,8 @@ export function RaporBelgesiV2({
             bolumBasligi="EĞİTMEN VE YARDIMCI EĞİTMEN GÖZLEM RAPORU"
             altBilgi={altBilgi}
           />
+
+          <View style={stil.icerikGovdesi}>
 
           <Text style={stil.paragraf}>{govde.gozlem.giris}</Text>
           <Text style={stil.paragraf}>{govde.gozlem.profil}</Text>
@@ -1780,6 +1820,7 @@ export function RaporBelgesiV2({
               </>
             }
           />
+          </View>
         </Page>
       ) : null}
     </Document>
