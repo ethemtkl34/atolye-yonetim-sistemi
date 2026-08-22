@@ -291,6 +291,71 @@ const stil = StyleSheet.create({
   },
   madde: { fontSize: 8.5, marginBottom: 2, paddingLeft: 8, lineHeight: 1.4 },
   kucuk: { fontSize: 8.5, color: "#52525b" },
+
+  // "Atölyelerde Gelişim" — öğrenciye özel atölye paragrafı + küre skalası.
+  // Onaylanan taslağın ölçüleri; ilgi/merak göstergeleri atölye kutusunun
+  // DIŞINDA ayrı kutuda durur (kullanıcı kararı).
+  atolyeGirisi: { fontSize: 9, color: "#52525b", marginBottom: 10 },
+  atolyeKutu: {
+    flexDirection: "row",
+    backgroundColor: SEFTALI,
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  atolyeSol: { flex: 1 },
+  atolyeAd: { fontSize: 10.5, fontWeight: "bold", marginBottom: 4 },
+  atolyeMetin: { fontSize: 8.8, lineHeight: 1.55, textAlign: "justify" },
+  atolyeSag: { width: 176, alignItems: "center", justifyContent: "center" },
+  atolyeSagBaslik: {
+    fontSize: 7.5,
+    fontWeight: "bold",
+    color: "#3f3f46",
+    letterSpacing: 0.6,
+    marginBottom: 5,
+    textAlign: "center",
+    width: 176,
+  },
+  atolyeKatilimNotu: {
+    fontSize: 7,
+    color: "#71717a",
+    marginTop: 5,
+    textAlign: "center",
+    width: 176,
+  },
+  darSkalaKutusu: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    borderWidth: 0.8,
+    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  darSkalaSutunu: { width: 50, alignItems: "center" },
+  ilgiKutu: { backgroundColor: LAVANTA, borderRadius: 6, padding: 12, marginBottom: 12 },
+  ilgiBaslik: { fontSize: 10, fontWeight: "bold", marginBottom: 2 },
+  ilgiAciklama: { fontSize: 8, color: "#52525b", marginBottom: 8 },
+  ilgiSatir: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  ilgiHucre: {
+    width: 92,
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  ilgiAtolyeAdi: {
+    fontSize: 7,
+    textAlign: "center",
+    lineHeight: 1.2,
+    marginBottom: 5,
+    minHeight: 16,
+  },
+  ilgiEtiket: { fontSize: 7.5, fontWeight: "bold", marginTop: 4 },
 });
 
 // ---------------------------------------------------------------------------
@@ -444,16 +509,23 @@ const SKALA_SIRASI: Kademe[] = ["DUSUK", "ORTALAMA", "YUKSEK"];
  * soluk. İşaret üç kanaldan okunur — halka, etiket şeridi ve soluk/dolu
  * farkı — bu yüzden siyah-beyaz baskıda da kaybolmaz.
  */
-function KademeSkalasi({ bant }: { bant: BantBilgisi | null }) {
+function KademeSkalasi({
+  bant,
+  dar = false,
+}: {
+  bant: BantBilgisi | null;
+  /** Atölye kutusunun sağ sütununa sığan sıkışık ölçüler. */
+  dar?: boolean;
+}) {
   return (
-    <View style={stil.skalaSatiri}>
-      <View style={stil.skalaKutusu}>
+    <View style={dar ? undefined : stil.skalaSatiri}>
+      <View style={dar ? stil.darSkalaKutusu : stil.skalaKutusu}>
         {SKALA_SIRASI.map((kademe) => {
           const gorunum = KADEME_GORUNUMU[kademe];
           const secili = bant?.kademe === kademe;
 
           return (
-            <View key={kademe} style={stil.skalaSutunu}>
+            <View key={kademe} style={dar ? stil.darSkalaSutunu : stil.skalaSutunu}>
               {/* Küre hücresi sabit yükseklikte; halka yalnızca seçilende. */}
               <View
                 style={
@@ -882,6 +954,12 @@ const ILGI_YORUMU =
 const BASARI_YORUMU =
   "Çocuğun becerilerini geliştirebilmek adına yaptığı her şey başarıdır. Yukarıdaki grafik, öğrencinin atölyelerde başarılı olduğu alanların dağılımını göstermektedir. Atölye kapsamında öğrencinin başarısı, bir etkinliği belirli bir sürede, doğru bir şekilde gerçekleştirebilme kapasitesine göre değerlendirilmiştir. Değerlendirme her öğrenci özelinde sadece öğrencinin kendi başarı düzeyini göstermekte olup akran grubu veya sınıf içi kıyaslamayı kapsamamaktadır.";
 
+/** Kutulu (grafiksiz) atölye sayfasının yorum girişi — grafik diline atıf
+ *  yapmaz; grafikli eski snapshot sayfaları ASIMETRI_GIRISI ile basılmayı
+ *  sürdürür. */
+const ASIMETRI_GIRISI_KUTULU =
+  "Her bir atölye özelinde ilgi ve başarı düzeylerinin birlikte okunması, gelişimin bütüncül değerlendirilmesi açısından fayda sağlayacaktır. Bir atölye özelinde ilgi ve başarı düzeyleri arasında asimetrik bir değişim varsa bunun bu dönemki değerlendirmesi şu şekildedir:";
+
 const ASIMETRI_GIRISI =
   "Her bir atölye özelinde bakıldığında, grafikte meydana gelmiş farklılıkları anlamlandırmak adına ilgi ve başarı düzeylerinin birlikte okunması fayda sağlayacaktır. Bir atölye özelinde ilgi ve başarı grafikleri arasında asimetrik bir değişim varsa bunun bu dönemki değerlendirmesi şu şekildedir:";
 
@@ -931,6 +1009,13 @@ export function RaporBelgesiV2({
       typeof a.ilgiOrtalamasi === "number" ||
       typeof a.basariOrtalamasi === "number",
   );
+  // Öğrenciye özel atölye paragrafı taşıyan (en yeni) snapshot'larda atölye
+  // bölümü kutulu "Atölyelerde Gelişim" tasarımıyla basılır; grafikli eski
+  // sayfalar yalnızca metinsiz eski snapshot'lar için kalır (§13.17).
+  const atolyeMetinleriVar = govde.atolyeKademeleri.some(
+    (a) => typeof a.metin === "string" && a.metin.length > 0,
+  );
+
   const sayisalVeriVar =
     sayisalAtolyeVerisiVar ||
     govde.gelisimAlanlari.some(
@@ -1207,7 +1292,110 @@ export function RaporBelgesiV2({
       ) : null}
 
       {/* ------------------------------------------------ İlgi ve başarı */}
-      {govde.atolyeKademeleri.length > 0 ? (
+      {govde.atolyeKademeleri.length > 0 && atolyeMetinleriVar ? (
+        <Page size="A4" style={stil.sayfa}>
+          <SayfaCercevesi
+            bolumBasligi="ATÖLYELERDE GELİŞİM"
+            altBilgi={altBilgi}
+          />
+
+          <Text style={stil.atolyeGirisi}>
+            Bu bölümde öğrencinizin her atölyedeki durumu, dönem boyunca
+            eğitmen değerlendirmelerinden elde edilen puanlamalara dayanılarak
+            özetlenmiştir. Kazanımlara ulaşma düzeyi üç kademeli skalada
+            gösterilir; değerlendirme akran kıyaslaması içermez.
+          </Text>
+
+          {govde.atolyeKademeleri.map((atolye) => (
+            <View key={atolye.atolyeAdi} style={stil.atolyeKutu} wrap={false}>
+              <View style={stil.atolyeSol}>
+                <Text style={stil.atolyeAd}>{atolye.atolyeAdi}</Text>
+                {atolye.metin ? (
+                  <Text style={stil.atolyeMetin}>{atolye.metin}</Text>
+                ) : null}
+              </View>
+              <View style={stil.atolyeSag}>
+                <Text style={stil.atolyeSagBaslik}>KAZANIMLARA ULAŞMA</Text>
+                <KademeSkalasi bant={atolye.basari} dar />
+                <Text style={stil.atolyeKatilimNotu}>
+                  {atolye.katildigiOturumSayisi + atolye.katilmadigiOturumSayisi}
+                  {" oturumun "}
+                  {atolye.katildigiOturumSayisi}
+                  {"'ine katıldı"}
+                </Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={stil.ilgiKutu} wrap={false}>
+            <Text style={stil.ilgiBaslik}>İlgi ve Merak Alanları</Text>
+            <Text style={stil.ilgiAciklama}>
+              Öğrencinizin her atölyeye duyduğu ilgi ve merak düzeyi aşağıda
+              özetlenmiştir.
+            </Text>
+            <View style={stil.ilgiSatir}>
+              {govde.atolyeKademeleri.map((atolye) => {
+                const kisaAd = atolye.atolyeAdi.replace(/ Atölyesi$/u, "");
+                if (!atolye.ilgi) {
+                  return (
+                    <View key={atolye.atolyeAdi} style={stil.ilgiHucre}>
+                      <Text style={stil.ilgiAtolyeAdi}>{kisaAd}</Text>
+                      <Text style={stil.skalaSolukEtiket}>Değerlendirilmedi</Text>
+                    </View>
+                  );
+                }
+                const gorunum = KADEME_GORUNUMU[atolye.ilgi.kademe];
+                return (
+                  <View key={atolye.atolyeAdi} style={stil.ilgiHucre}>
+                    <Text style={stil.ilgiAtolyeAdi}>{kisaAd}</Text>
+                    <KademeTopu kademe={atolye.ilgi.kademe} cap={gorunum.cap} />
+                    <Text style={[stil.ilgiEtiket, { color: gorunum.koyu }]}>
+                      {atolye.ilgi.etiket}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <DikeyEtiketKutu
+            etiket="EĞİTMENİN YORUMU"
+            zemin={SEFTALI}
+            etiketGenisligi={90}
+            minYukseklik={90}
+            cocuklar={
+              <>
+                <Text style={[stil.paragraf, { fontSize: 8.5 }]}>
+                  {ASIMETRI_GIRISI_KUTULU}
+                </Text>
+                {govde.asimetriler.length > 0 ? (
+                  govde.asimetriler.map((asimetri) => (
+                    <Text
+                      key={asimetri.atolyeAdi}
+                      style={[stil.paragraf, { fontSize: 8.5 }]}
+                    >
+                      – {asimetri.cumle}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={[stil.paragraf, { fontSize: 8.5 }]}>
+                    {ASIMETRI_YOK}
+                  </Text>
+                )}
+                {katilmayanlar.map((atolye) => (
+                  <Text key={atolye.atolyeAdi} style={[stil.kucuk, { fontSize: 7.5 }]}>
+                    {atolye.atolyeAdi}: {atolye.katilmadigiOturumSayisi} oturuma
+                    katılım sağlanmamış ve bu oturumlar değerlendirmeye dahil
+                    edilmemiştir.
+                  </Text>
+                ))}
+              </>
+            }
+          />
+        </Page>
+      ) : null}
+
+      {govde.atolyeKademeleri.length > 0 && !atolyeMetinleriVar ? (
         <>
           <Page size="A4" style={stil.sayfa}>
             <SayfaCercevesi

@@ -108,6 +108,11 @@ export function RaporIcerigiV2({
         {govde.atolyeKademeleri.map((atolye) => (
           <div key={atolye.atolyeAdi} className="kil-oyuk p-4">
             <h4 className="font-medium">{atolye.atolyeAdi}</h4>
+            {atolye.metin ? (
+              <p className="mt-1.5 text-sm leading-relaxed text-zinc-700">
+                {atolye.metin}
+              </p>
+            ) : null}
             <div className="mt-2 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm text-zinc-600">İlgi ve merak</span>

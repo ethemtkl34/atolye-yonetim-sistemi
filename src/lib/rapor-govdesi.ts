@@ -51,6 +51,10 @@ export type AtolyeKademesi = {
   basariOrtalamasi?: number | null;
   katildigiOturumSayisi: number;
   katilmadigiOturumSayisi: number;
+  /** Öğrenciye özel, puanlamalardan kural tabanlı üretilen atölye paragrafı.
+   *  Eski snapshot'larda yok; PDF o durumda grafik eksenli eski atölye
+   *  sayfalarına düşer. */
+  metin?: string | null;
 };
 
 export type BeceriBlogu = {
@@ -179,6 +183,101 @@ export function atolyeKademesiCikar(atolye: {
     katildigiOturumSayisi: atolye.katildigiOturumSayisi,
     katilmadigiOturumSayisi: atolye.katilmadigiOturumSayisi,
   };
+}
+
+/**
+ * §11.2 — Atölye paragrafı: öğrencinin o atölyedeki durumunu velinin
+ * okuyacağı dille anlatan, tamamen puanlamalardan türetilmiş metin.
+ *
+ * KURAL TABANLI ve deterministiktir — yapay zekâ yok, aynı puanlar hep aynı
+ * cümleleri üretir; koordinatör metnin her cümlesinin hangi veriden
+ * geldiğini bilebilir. Veliye ham puan gösterilmez: sayı yalnızca katılım
+ * cümlesindeki oturum sayılarında geçer (örnek rapor da katılımı sayıyla
+ * yazıyor), puan ortalamaları cümleye kademe diliyle çevrilir.
+ */
+export function atolyeMetniUret(girdi: {
+  ilkAd: string;
+  soruOrtalamalari: readonly SoruOrtalamasi[];
+  basari: BantBilgisi | null;
+  katildigiOturumSayisi: number;
+  katilmadigiOturumSayisi: number;
+}): string | null {
+  const toplam = girdi.katildigiOturumSayisi + girdi.katilmadigiOturumSayisi;
+  if (toplam === 0) return null;
+
+  // Hiç katılmamış: değerlendirme cümlesi kurulamaz, sebep açıkça yazılır.
+  if (girdi.katildigiOturumSayisi === 0) {
+    return (
+      `${girdi.ilkAd}, bu atölyede yapılan ${toplam} oturuma katılamadığı ` +
+      "için atölye içi değerlendirme oluşmamıştır."
+    );
+  }
+
+  const cumleler: string[] = [];
+  cumleler.push(
+    girdi.katildigiOturumSayisi === toplam
+      ? `${girdi.ilkAd}, dönem boyunca yapılan ${toplam} oturumun tamamına katılmıştır.`
+      : `${girdi.ilkAd}, dönem boyunca yapılan ${toplam} oturumun ${girdi.katildigiOturumSayisi}'ine katılmıştır.`,
+  );
+
+  // Soru başlıkları cümleye küçük harfle girer ("Takım Çalışması ve İş
+  // Birliği" özel ad değildir). Başlıksız eski cevaplar metin dışı kalır.
+  const basliklar = girdi.soruOrtalamalari
+    .filter(
+      (s): s is SoruOrtalamasi & { baslik: string; ortalama: number } =>
+        s.baslik !== null && s.ortalama !== null,
+    )
+    .sort((a, b) => b.ortalama - a.ortalama)
+    .map((s) => ({ ad: s.baslik.toLocaleLowerCase("tr-TR"), ortalama: s.ortalama }));
+
+  if (basliklar.length >= 2) {
+    const [birinci, ikinci] = basliklar;
+    const nitelik =
+      girdi.basari?.kademe === "YUKSEK"
+        ? "güçlü bir görünüm sergilemiştir"
+        : girdi.basari?.kademe === "DUSUK"
+          ? "görece daha olumlu bir görünüm sergilemiştir"
+          : "olumlu bir görünüm sergilemiştir";
+    cumleler.push(
+      `Değerlendirmelerde özellikle ${birinci.ad} ile ${ikinci.ad} başlıklarında ${nitelik}.`,
+    );
+
+    // Desteklenecek alan yalnızca gerçekten geride kalan bir başlık varsa
+    // anılır; her metne zorla bir eksik yazmak veriden çıkmayan bir sonuç
+    // üretmek olurdu.
+    const sonuncu = basliklar[basliklar.length - 1];
+    if (sonuncu.ortalama < 3.5 && birinci.ortalama - sonuncu.ortalama >= 0.5) {
+      cumleler.push(
+        `${sonuncu.ad
+          .charAt(0)
+          .toLocaleUpperCase("tr-TR")}${sonuncu.ad.slice(1)} başlığındaki gelişimi sürmekte olup bu alanın etkinliklerle desteklenmesinin faydalı olacağı değerlendirilmektedir.`,
+      );
+    }
+  }
+
+  switch (girdi.basari?.kademe) {
+    case "YUKSEK":
+      cumleler.push(
+        "Atölyedeki kazanımlara ulaşma düzeyi genel olarak yüksek bulunmuştur.",
+      );
+      break;
+    case "ORTALAMA":
+      cumleler.push(
+        "Atölyedeki kazanımlara ulaşma düzeyi beklenen aralıkta ilerlemektedir.",
+      );
+      break;
+    case "DUSUK":
+      cumleler.push(
+        "Atölyedeki kazanımlara ulaşma düzeyinin planlı etkinliklerle desteklenmesinin faydalı olacağı değerlendirilmektedir.",
+      );
+      break;
+    default:
+      cumleler.push(
+        "Bu atölyede kazanımlara ulaşma düzeyi için yeterli değerlendirme oluşmamıştır.",
+      );
+  }
+
+  return cumleler.join(" ");
 }
 
 /**

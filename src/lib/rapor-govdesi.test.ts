@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { atolyeKademesiCikar, gelisimAlanlariCikar } from "./rapor-govdesi";
+import {
+  atolyeKademesiCikar,
+  atolyeMetniUret,
+  gelisimAlanlariCikar,
+} from "./rapor-govdesi";
+import { KADEMELER } from "./rapor-bantlari";
 import type { SoruOrtalamasi } from "./puan-hesaplari";
 
 function soru(
@@ -145,5 +150,112 @@ describe("gelisimAlanlariCikar", () => {
 
     expect(sonuc[0].bant).toBeNull();
     expect(sonuc[0].cumle).toBeNull();
+  });
+});
+
+describe("atolyeMetniUret", () => {
+  const basliklar = (girdiler: [string, number][]): SoruOrtalamasi[] =>
+    girdiler.map(([baslik, ortalama], sira) => ({
+      anahtar: `s-${sira}`,
+      soruMetni: "Soru",
+      baslik,
+      kategori: sira < 2 ? ILGI : YETENEK,
+      ortalama,
+      puanlananOturumSayisi: 10,
+      puanToplami: ortalama * 10,
+      sortOrder: sira,
+    }));
+
+  it("tam katılımda güçlü başlıkları ve yüksek kapanışı yazar", () => {
+    const metin = atolyeMetniUret({
+      ilkAd: "Zeynep",
+      soruOrtalamalari: basliklar([
+        ["Takım Çalışması ve İş Birliği", 4.4],
+        ["Bilimsel Yöntemi Kullanma", 4.3],
+        ["Kavramları Anlama", 3.7],
+      ]),
+      basari: KADEMELER.YUKSEK,
+      katildigiOturumSayisi: 10,
+      katilmadigiOturumSayisi: 0,
+    });
+    expect(metin).toContain("10 oturumun tamamına katılmıştır");
+    expect(metin).toContain("takım çalışması ve iş birliği");
+    expect(metin).toContain("bilimsel yöntemi kullanma");
+    expect(metin).toContain("güçlü bir görünüm");
+    expect(metin).toContain("genel olarak yüksek bulunmuştur");
+    // 3,7 desteklenme eşiğinin (3,5) üstünde — eksik cümlesi zorlanmaz.
+    expect(metin).not.toContain("desteklenmesinin faydalı");
+  });
+
+  it("geride kalan başlığı yalnızca eşik altındaysa anar", () => {
+    const metin = atolyeMetniUret({
+      ilkAd: "Mert",
+      soruOrtalamalari: basliklar([
+        ["Stratejik Düşünme", 4.2],
+        ["Zihinsel Esneklik", 3.9],
+        ["Mantıksal Akıl Yürütme", 3.1],
+      ]),
+      basari: KADEMELER.ORTALAMA,
+      katildigiOturumSayisi: 8,
+      katilmadigiOturumSayisi: 2,
+    });
+    expect(metin).toContain("10 oturumun 8'ine katılmıştır");
+    expect(metin).toContain(
+      "Mantıksal akıl yürütme başlığındaki gelişimi sürmekte",
+    );
+    expect(metin).toContain("beklenen aralıkta ilerlemektedir");
+  });
+
+  it("hiç katılmayan öğrencide değerlendirme cümlesi kurmaz", () => {
+    const metin = atolyeMetniUret({
+      ilkAd: "Şule",
+      soruOrtalamalari: [],
+      basari: null,
+      katildigiOturumSayisi: 0,
+      katilmadigiOturumSayisi: 1,
+    });
+    expect(metin).toBe(
+      "Şule, bu atölyede yapılan 1 oturuma katılamadığı için atölye içi değerlendirme oluşmamıştır.",
+    );
+  });
+
+  it("başlıksız eski cevaplarda katılım ve kademe cümleleriyle yetinir", () => {
+    const eskiler: SoruOrtalamasi[] = basliklar([["X", 4]]).map((s) => ({
+      ...s,
+      baslik: null,
+    }));
+    const metin = atolyeMetniUret({
+      ilkAd: "Deniz",
+      soruOrtalamalari: eskiler,
+      basari: KADEMELER.YUKSEK,
+      katildigiOturumSayisi: 10,
+      katilmadigiOturumSayisi: 0,
+    });
+    expect(metin).toContain("tamamına katılmıştır");
+    expect(metin).not.toContain("başlıklarında");
+    expect(metin).toContain("genel olarak yüksek bulunmuştur");
+  });
+
+  it("hiç oturum yoksa metin üretmez", () => {
+    expect(
+      atolyeMetniUret({
+        ilkAd: "Bulut",
+        soruOrtalamalari: [],
+        basari: null,
+        katildigiOturumSayisi: 0,
+        katilmadigiOturumSayisi: 0,
+      }),
+    ).toBeNull();
+  });
+
+  it("katıldığı halde geçerli puanı yoksa yetersiz değerlendirme yazar", () => {
+    const metin = atolyeMetniUret({
+      ilkAd: "Alp",
+      soruOrtalamalari: [],
+      basari: null,
+      katildigiOturumSayisi: 3,
+      katilmadigiOturumSayisi: 0,
+    });
+    expect(metin).toContain("yeterli değerlendirme oluşmamıştır");
   });
 });

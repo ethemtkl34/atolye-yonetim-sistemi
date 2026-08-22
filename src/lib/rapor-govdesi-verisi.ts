@@ -10,6 +10,7 @@ import { atolyeOzetiHesapla } from "./puan-hesaplari";
 import {
   asimetriBul,
   atolyeKademesiCikar,
+  atolyeMetniUret,
   gelisimAlanlariCikar,
   type RaporGovdesiV2,
   type RaporUyarisi,
@@ -187,12 +188,24 @@ export async function raporGovdesiV2Uret(
     .sort((a, b) => a[1].sira - b[1].sira)
     .map(([, atolye]) => {
       const ozet = atolyeOzetiHesapla(atolye.puanlamalar);
-      return atolyeKademesiCikar({
+      const kademe = atolyeKademesiCikar({
         atolyeAdi: atolye.ad,
         soruOrtalamalari: ozet.soruOrtalamalari,
         katildigiOturumSayisi: ozet.katildigiOturumSayisi,
         katilmadigiOturumSayisi: ozet.katilmadigiOturumSayisi,
       });
+      // Öğrenciye özel atölye paragrafı — kademeyle aynı veriden, kural
+      // tabanlı. Snapshot'a gömülür; PDF ve panel yeniden hesaplamaz.
+      return {
+        ...kademe,
+        metin: atolyeMetniUret({
+          ilkAd: ogrenci.firstName,
+          soruOrtalamalari: ozet.soruOrtalamalari,
+          basari: kademe.basari,
+          katildigiOturumSayisi: ozet.katildigiOturumSayisi,
+          katilmadigiOturumSayisi: ozet.katilmadigiOturumSayisi,
+        }),
+      };
     });
 
   // --- Gelişim alanları --------------------------------------------------
