@@ -52,3 +52,6 @@ next-env.d.ts
 
 # Rapor doğrulama çıktıları (PDF ve gövde JSON) — üretilmiş, sürümlenmez
 scripts/test-verisi/cikti/
+
+# Rapor belgesinin gözle denenmesi için üretilen örnek çıktı (npm run rapor:ornek)
+ornek-rapor.pdf

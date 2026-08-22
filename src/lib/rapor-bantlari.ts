@@ -280,10 +280,13 @@ export function gelisimDegisimi(
     };
   }
 
+  // Cümle alan adıyla BAŞLAMAZ: alan adları küçük harfle geliyor ("duygusal
+  // beceriler") ve cümle küçük harfle açılıyordu. Üç yön de aynı kalıpla,
+  // "Dönem ortası..." ile başlar.
   return {
     yon: "KORUNDU",
     fark,
-    cumle: `${alanAdi} alanındaki düzeyini dönem ortasından bu yana korumuştur.`,
+    cumle: `Dönem ortasından bu yana ${alanAdi} alanındaki düzeyini korumuştur.`,
   };
 }
 

@@ -148,6 +148,16 @@ export type RaporGovdesiV2 = {
    */
   kademeEtiketleri?: Record<Kademe, string>;
   /**
+   * Üretim anında geçerli olan atölye kademe eşikleri.
+   *
+   * Belgenin NOTLAR bölümü "4,0 ve üzeri Yüksek, 3,0 altı Düşük" diye
+   * okurun elinde bir anahtar bırakıyor; eşikler ayarlanabilir olunca bu
+   * cümle belgenin geri kalanıyla çelişebilir hâle geldi. Sayılar da
+   * etiketler gibi donduruluyor. Eski snapshot'larda yok; belge o durumda
+   * eski sabit cümleyi basmayı sürdürür (o raporlar için doğruydu).
+   */
+  atolyeEsikleri?: { yuksek: number; dusuk: number };
+  /**
    * §11.4 — Elle düzenlenmiş metinlerin defteri: hangi kutu, kim, ne zaman
    * ve üretimin özgün metni.
    *

@@ -300,18 +300,20 @@ const stil = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
+  // Yazı boyutu ve yatay dolgu burada YOK: ikisi de kademe adının uzunluğuna
+  // göre hesaplanıyor (bkz. `seritOlculeri`). Adlar kurumun ayarına açık ve
+  // sabit ölçülerde "Gelişmekte" gibi uzun bir ad dar sütunun dışına taşıyordu.
   kademeSeridi: {
-    fontSize: 8,
     fontWeight: "bold",
     color: "#ffffff",
-    paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 3,
+    textAlign: "center",
   },
   skalaSolukEtiket: {
-    fontSize: 8,
     color: "#a1a1aa",
     paddingVertical: 2,
+    textAlign: "center",
   },
   madde: { fontSize: 8.5, marginBottom: 2, paddingLeft: 8, lineHeight: 1.4 },
   kucuk: { fontSize: 8.5, color: "#52525b" },
@@ -587,8 +589,34 @@ function puanBicimle(deger: number): string {
   return deger.toFixed(1).replace(".", ",");
 }
 
-/** Skaladaki soldan sağa sıra: gelişim yönünde Düşük → Yüksek. */
+/** Skaladaki soldan sağa sıra: gelişim yönünde en alttan en üste. */
 const SKALA_SIRASI: Kademe[] = ["DUSUK", "ORTALAMA", "YUKSEK"];
+
+/**
+ * Etiket şeridinin yazı boyutu ve yatay dolgusu, EN UZUN kademe adına göre.
+ *
+ * Kademe adları panelden değiştirilebiliyor; "Düşük" için ölçülmüş sabit
+ * değerlerle "Gelişmekte" dar sütunun (50pt) dışına taşıyordu. Üç sütun da
+ * aynı ölçüyü kullanır — biri küçülüp diğeri kalırsa skala eğri görünür.
+ */
+function seritOlculeri(
+  etiketler: Record<Kademe, string>,
+  dar: boolean,
+): { fontSize: number; paddingHorizontal: number } {
+  const enUzun = Math.max(...SKALA_SIRASI.map((k) => etiketler[k].length));
+  const sutun = dar ? 50 : 64;
+  // Noto Sans kalınında bir karakter kabaca 0,58 em; dolgu iki yandan.
+  for (const fontSize of [8, 7.5, 7, 6.5, 6]) {
+    for (const paddingHorizontal of [10, 7, 5, 3]) {
+      if (enUzun * fontSize * 0.58 + paddingHorizontal * 2 <= sutun) {
+        return { fontSize, paddingHorizontal };
+      }
+    }
+  }
+  // Ayar sayfası adı 14 karakterle sınırlıyor; buraya düşülmemeli ama
+  // düşülürse şerit kırpılmak yerine iki satıra sarar.
+  return { fontSize: 6, paddingHorizontal: 2 };
+}
 
 /**
  * Alan kutularındaki gösterge: üç kürelik skala, beyaz yuvarlak bir şerit
@@ -609,6 +637,8 @@ function KademeSkalasi({
   /** Atölye kutusunun sağ sütununa sığan sıkışık ölçüler. */
   dar?: boolean;
 }) {
+  const olcu = seritOlculeri(etiketler, dar);
+
   return (
     <View style={dar ? undefined : stil.skalaSatiri}>
       <View style={dar ? stil.darSkalaKutusu : stil.skalaKutusu}>
@@ -637,11 +667,20 @@ function KademeSkalasi({
                 <KademeTopu kademe={kademe} cap={gorunum.cap} soluk={!secili} />
               </View>
               {secili ? (
-                <Text style={[stil.kademeSeridi, { backgroundColor: gorunum.orta }]}>
+                <Text
+                  style={[
+                    stil.kademeSeridi,
+                    { backgroundColor: gorunum.orta, ...olcu },
+                  ]}
+                >
                   {etiketler[kademe]}
                 </Text>
               ) : (
-                <Text style={stil.skalaSolukEtiket}>{etiketler[kademe]}</Text>
+                <Text
+                  style={[stil.skalaSolukEtiket, { fontSize: olcu.fontSize }]}
+                >
+                  {etiketler[kademe]}
+                </Text>
               )}
             </View>
           );
@@ -1037,14 +1076,14 @@ const BECERILER_NOT =
   "Grafikte bulunan alanlar ile ilgili açıklama ve öğrencinin değerlendirme neticesi, her alan özelinde aşağıda ayrı ayrı sunulmuştur.";
 
 /**
- * Üç serili grafiğin okunma anahtarı.
+ * Üç serili grafiğin okunma anahtarı — TEK CÜMLE olması bilinçli.
  *
- * Ayrı bir not: iki ölçümlü grafikte veli "neden iki mavi çubuk var"
- * sorusunu soruyor ve cevabı yalnızca alt lejantta duruyordu. Yalnızca dönem
- * ortası ölçümü olan raporlarda basılır.
+ * İlk hâli üç cümleydi ve NOT kutusunu bir sonraki sayfaya taşıyıp arkasında
+ * neredeyse boş bir sayfa bırakıyordu. Bilgi zaten grafiğin altındaki
+ * lejantta da var; buradaki not onu bağlama oturtuyor, tekrarlamıyor.
  */
 const BECERILER_ORTA_NOT =
-  "Grafikteki iki mavi çubuk aynı çocuğun iki farklı zamandaki ölçümüdür: açık renkli çubuk dönem ortasında, koyu renkli çubuk dönem sonunda yapılan değerlendirmedir. Turuncu çubuk ise aynı gruptaki öğrencilerin ortalamasıdır. Aradaki fark, çocuğunuzun dönem içindeki yönünü gösterir.";
+  "Grafikteki iki mavi çubuk aynı çocuğun iki farklı zamandaki ölçümüdür (açık: dönem ortası, koyu: dönem sonu); aradaki fark çocuğunuzun dönem içindeki yönünü gösterir.";
 
 const ILGI_BASARI_GENEL_BILGI = [
   "Atölye dönemi boyunca yapılan gözlemler doğrultusunda; eğitmen ve yardımcı eğitmenlerden alınan veriler, çapraz teyitle karnelendirme programında puanlama grafiğine dönüştürülmüştür. Bu grafikler, çocuğunuzun atölyede katıldığı programlara karşı olan ilgi düzeyleri ile bu atölyelerde sergilediği performans doğrultusunda sağladığı başarıyı yansıtmaktadır.",
@@ -1114,6 +1153,10 @@ export function RaporBelgesiV2({
   const ortaOlcumVar = govde.gelisimAlanlari.some(
     (alan) => typeof alan.ortaOrtalamasi === "number",
   );
+
+  // NOTLAR'daki eşik cümlesi gövdedeki sayılardan kurulur; alan taşımayan
+  // eski snapshot'lar o günkü sabit değerlerle basılmayı sürdürür.
+  const esikler = govde.atolyeEsikleri ?? { yuksek: 4.0, dusuk: 3.0 };
 
   const programAdi = govde.kapsam[0]?.programAdi ?? "atölye";
   const altBilgi = `${KURUM_ADI} · ${govde.ogrenci.adSoyad} · ${tarihBicimle(uretimZamani)}`;
@@ -1288,10 +1331,13 @@ export function RaporBelgesiV2({
             <View style={stil.notSatiri}>
               <Text style={stil.notNumara}>{sayisalVeriVar ? "2" : "1"}</Text>
               <Text style={stil.notMetin}>
-                Atölye düzeyleri puan ortalamasına göre belirlenir: 4,0 ve
-                üzeri Yüksek, 3,0 altı Düşük, aradaki değerler Ortalama.
-                Beceri alanlarındaki düzeyler ise grubun ortalamasına göre
-                belirlenir.
+                {`Atölye düzeyleri puan ortalamasına göre belirlenir: ${puanBicimle(
+                  esikler.yuksek,
+                )} ve üzeri ${kademeEtiketleri.YUKSEK}, ${puanBicimle(
+                  esikler.dusuk,
+                )} altı ${kademeEtiketleri.DUSUK}, aradaki değerler ${
+                  kademeEtiketleri.ORTALAMA
+                }. Beceri alanlarındaki düzeyler ise grubun ortalamasına göre belirlenir.`}
               </Text>
             </View>
           ) : null}

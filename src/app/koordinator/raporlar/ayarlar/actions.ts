@@ -45,7 +45,9 @@ const etiket = z
   .string()
   .trim()
   .min(2, "Kademe adı en az 2 karakter olmalı.")
-  .max(24, "Kademe adı en fazla 24 karakter olabilir.");
+  // 14 karakter, raporun kademe skalasındaki dar sütuna sığan en uzun ad
+  // (şerit kendini küçültüyor ama bir yerden sonra okunmaz oluyor).
+  .max(14, "Kademe adı en fazla 14 karakter olabilir.");
 
 const SEMA = z
   .object({

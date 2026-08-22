@@ -569,6 +569,7 @@ export async function raporGovdesiV2Uret(
     gelisimAlanlari,
     atolyeKademeleri,
     kademeEtiketleri: esikler.etiketler,
+    atolyeEsikleri: { yuksek: esikler.atolyeYuksek, dusuk: esikler.atolyeDusuk },
     asimetriler: asimetriBul(
       atolyeKademeleri.map((a) => ({
         atolyeAdi: a.atolyeAdi,

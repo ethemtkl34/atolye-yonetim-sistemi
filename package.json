@@ -16,6 +16,7 @@
     "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
+    "rapor:ornek": "RAPOR_CIKTISI=ornek-rapor.pdf vitest run src/lib/pdf/ornek-belge.test.tsx",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:generate": "prisma generate",
