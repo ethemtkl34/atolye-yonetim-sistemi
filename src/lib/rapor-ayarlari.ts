@@ -31,6 +31,7 @@ export const ESIK_SINIRLARI = {
   atolyeYuksek: { enAz: 1, enFazla: 5 },
   atolyeDusuk: { enAz: 1, enFazla: 5 },
   gelisimFark: { enAz: 0.05, enFazla: 2 },
+  gelisimIlerleme: { enAz: 0.05, enFazla: 2 },
   asimetri: { enAz: 0.1, enFazla: 4 },
   kiyasAsgariOgrenci: { enAz: 2, enFazla: 30 },
 } as const;
@@ -64,6 +65,7 @@ export async function raporEsikleriOku(): Promise<RaporEsikleri> {
     atolyeYuksek: g.atolyeYuksek,
     atolyeDusuk: g.atolyeDusuk,
     gelisimFark: g.gelisimFark,
+    gelisimIlerleme: g.gelisimIlerleme,
     asimetri: g.asimetri,
     kiyasAsgariOgrenci: g.kiyasAsgariOgrenci,
     etiketler: g.etiketler,
@@ -78,6 +80,7 @@ export async function raporAyariOku(): Promise<RaporAyariGorunumu> {
       atolyeYuksekEsigi: true,
       atolyeDusukEsigi: true,
       gelisimFarkEsigi: true,
+      gelisimIlerlemeEsigi: true,
       asimetriEsigi: true,
       kiyasAsgariOgrenci: true,
       etiketYuksek: true,
@@ -119,6 +122,11 @@ export async function raporAyariOku(): Promise<RaporAyariGorunumu> {
       ESIK_SINIRLARI.gelisimFark,
       VARSAYILAN_ESIKLER.gelisimFark,
     ),
+    gelisimIlerleme: aralikta(
+      satir.gelisimIlerlemeEsigi,
+      ESIK_SINIRLARI.gelisimIlerleme,
+      VARSAYILAN_ESIKLER.gelisimIlerleme,
+    ),
     asimetri: aralikta(
       satir.asimetriEsigi,
       ESIK_SINIRLARI.asimetri,
@@ -149,6 +157,7 @@ export async function raporAyariYaz(
     atolyeYuksekEsigi: esikler.atolyeYuksek,
     atolyeDusukEsigi: esikler.atolyeDusuk,
     gelisimFarkEsigi: esikler.gelisimFark,
+    gelisimIlerlemeEsigi: esikler.gelisimIlerleme,
     asimetriEsigi: esikler.asimetri,
     kiyasAsgariOgrenci: esikler.kiyasAsgariOgrenci,
     etiketYuksek: esikler.etiketler.YUKSEK,

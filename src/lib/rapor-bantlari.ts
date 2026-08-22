@@ -83,6 +83,12 @@ export type RaporEsikleri = {
   atolyeDusuk: number;
   /** Gelişim alanı: öğrenci–grup farkı bu kadarsa Yüksek, eksisiyse Düşük. */
   gelisimFark: number;
+  /**
+   * Aynı öğrencinin dönem ortası ile dönem sonu ölçümü arasındaki farkın
+   * "belirgin ilerleme" sayılma eşiği. `gelisimFark` akran kıyasını ölçer,
+   * bu öğrencinin kendi değişimini — ikisi ayrı sorular.
+   */
+  gelisimIlerleme: number;
   /** İlgi–başarı farkının "belirgin asimetri" sayılma eşiği. */
   asimetri: number;
   /**
@@ -115,6 +121,7 @@ export const VARSAYILAN_ESIKLER: RaporEsikleri = {
   atolyeYuksek: 4.0,
   atolyeDusuk: 3.0,
   gelisimFark: 0.25,
+  gelisimIlerleme: 0.3,
   asimetri: 0.75,
   kiyasAsgariOgrenci: 3,
   etiketler: {
@@ -221,6 +228,63 @@ export function gelisimCumlesi(
     case "DUSUK":
       return `${giris} öğrencinin bu alandaki gelişimi sürmekte olup desteklenmesinin faydalı olacağı değerlendirilmektedir.`;
   }
+}
+
+/**
+ * §11.2 — Dönem ortası ile dönem sonu ölçümü arasındaki değişim.
+ *
+ * Stajyer aynı 18 soruluk formu dönemde İKİ KEZ dolduruyor; sistem bugüne
+ * kadar yalnızca dönem sonunu okuyup ilk ölçümü hiç kullanmıyordu. İki nokta
+ * arasındaki fark, tek bir düzey bildirmekten daha çok şey söyler: aynı
+ * "Ortalama" kademesi, ilerleyerek gelinmişse başka bir haberdir.
+ *
+ * YÖN ÜÇE AYRILIR ve hiçbirinde "gerileme" denmez. Aradaki fark ölçüm
+ * gürültüsü de olabilir (iki farklı haftada, farklı günlerde doldurulmuş iki
+ * form); veliye "çocuğunuz geriledi" demek veriden çıkmayan bir sonuç olurdu
+ * (§11.3). Düşüş "dalgalanma" olarak, desteğe işaret ederek yazılır.
+ *
+ * Eşiğin altındaki fark DEĞİŞİM SAYILMAZ ve "düzeyini korudu" olarak
+ * anlatılır — sıfır fark ile 0,1'lik fark veli için aynı şeydir.
+ */
+export type GelisimDegisimi = {
+  yon: "ILERLEME" | "KORUNDU" | "DALGALANMA";
+  /** Dönem sonu − dönem ortası; işaretli. */
+  fark: number;
+  cumle: string;
+};
+
+export function gelisimDegisimi(
+  ortaOrtalamasi: number | null,
+  sonOrtalamasi: number | null,
+  alanAdi: string,
+  esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
+): GelisimDegisimi | null {
+  // İki ölçümden biri yoksa değişim diye bir şey yok; bölüm hiç basılmaz.
+  if (ortaOrtalamasi === null || sonOrtalamasi === null) return null;
+
+  const fark = sonOrtalamasi - ortaOrtalamasi;
+
+  if (fark >= esikler.gelisimIlerleme) {
+    return {
+      yon: "ILERLEME",
+      fark,
+      cumle: `Dönem ortasındaki değerlendirmeye göre ${alanAdi} alanında belirgin bir ilerleme kaydedilmiştir.`,
+    };
+  }
+
+  if (fark <= -esikler.gelisimIlerleme) {
+    return {
+      yon: "DALGALANMA",
+      fark,
+      cumle: `Dönem ortasındaki değerlendirmeye göre ${alanAdi} alanında bir dalgalanma gözlenmiştir; bu alanın önümüzdeki dönemde de desteklenmesinin faydalı olacağı değerlendirilmektedir.`,
+    };
+  }
+
+  return {
+    yon: "KORUNDU",
+    fark,
+    cumle: `${alanAdi} alanındaki düzeyini dönem ortasından bu yana korumuştur.`,
+  };
 }
 
 /**

@@ -1346,6 +1346,11 @@ model RaporAyari {
   /// arasındaki fark bu değeri aşarsa Yüksek, eksisini aşarsa Düşük.
   gelisimFarkEsigi Float @default(0.25)
 
+  /// Aynı öğrencinin dönem ortası ile dönem sonu ölçümü arasındaki farkın
+  /// "belirgin ilerleme" sayılma eşiği. `gelisimFarkEsigi` akran kıyasını
+  /// ölçer, bu alan öğrencinin kendi değişimini — ikisi ayrı sorular.
+  gelisimIlerlemeEsigi Float @default(0.3)
+
   /// İlgi ile başarı arasındaki farkın "belirgin asimetri" sayılma eşiği.
   asimetriEsigi Float @default(0.75)
 

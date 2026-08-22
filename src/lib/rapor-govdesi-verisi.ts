@@ -119,9 +119,11 @@ export async function raporGovdesiV2Uret(
           },
         },
       },
+      // İKİ dönem noktası da çekilir. Dönem sonu kademeyi belirler, dönem
+      // ortası ilerleme kıyasını besler; rapor uzun süre yalnızca ikincisini
+      // okuyup elde duran ilk ölçümü hiç kullanmıyordu.
       developmentAssessments: {
-        where: { period: "DONEM_SONU" },
-        select: { answersJson: true },
+        select: { period: true, answersJson: true },
       },
     },
   });
@@ -218,10 +220,24 @@ export async function raporGovdesiV2Uret(
     });
 
   // --- Gelişim alanları --------------------------------------------------
-  const gelisimCevaplari = kayitlar.flatMap((kayit) =>
-    kayit.developmentAssessments.flatMap((d) =>
-      gelisimCevaplariCozumle(d.answersJson),
-    ),
+  const donemCevaplari = (donem: "DONEM_ORTASI" | "DONEM_SONU") =>
+    kayitlar.flatMap((kayit) =>
+      kayit.developmentAssessments
+        .filter((d) => d.period === donem)
+        .flatMap((d) => gelisimCevaplariCozumle(d.answersJson)),
+    );
+
+  const gelisimCevaplari = donemCevaplari("DONEM_SONU");
+  const ortaCevaplari = donemCevaplari("DONEM_ORTASI");
+
+  // Dönem ortası ortalamaları alan adına göre; cevaplanmamış alan haritaya
+  // hiç girmez ve o alanda değişim yorumu yazılmaz.
+  const ortaOrtalamalari = new Map(
+    gelisimAlanOrtalamalari(ortaCevaplari)
+      .filter((alan): alan is typeof alan & { ortalama: number } =>
+        alan.ortalama !== null,
+      )
+      .map((alan) => [alan.kategori, alan.ortalama] as const),
   );
 
   // Kıyas grubu ilk kaydın grubu: rapor tek bir programın raporu, birden
@@ -267,6 +283,7 @@ export async function raporGovdesiV2Uret(
     kiyasOrtalamalari,
     kazanimHaritasi(),
     esikler,
+    ortaOrtalamalari,
   );
 
   if (gelisimCevaplari.length === 0) {
@@ -277,7 +294,20 @@ export async function raporGovdesiV2Uret(
       cozum:
         "Öğrencinin profilindeki “Gelişim değerlendirmesi” bölümünden dönem sonu formunu doldurup raporu yeniden üretin.",
     });
-  } else if (kiyasOrtalamalari.size === 0) {
+  } else if (ortaOrtalamalari.size === 0) {
+    // Dönem ortası formu raporun ZORUNLU parçası değil: yokluğunda rapor
+    // eksiksiz basılır, yalnızca ilerleme kıyası yapılamaz. Yine de sessiz
+    // kalmıyor — koordinatör bu formun doldurulmadığını rapordan öğrenir.
+    uyarilar.push({
+      bolum: "gelisim",
+      mesaj:
+        "Dönem ortasına göre ilerleme yazılamadı: bu öğrenci için dönem ortası gelişim değerlendirmesi girilmemiş. Beceri grafiğinde tek ölçüm görünür.",
+      cozum:
+        "Dönem ortası formu geç de olsa doldurulabilir (son tarih yok); doldurulduktan sonra raporu yeniden üretin.",
+    });
+  }
+
+  if (gelisimCevaplari.length > 0 && kiyasOrtalamalari.size === 0) {
     uyarilar.push({
       bolum: "gelisim",
       mesaj: `Beceriler grafiğinde grup ortalaması çizilemedi: akran kıyası için grupta dönem sonu değerlendirmesi girilmiş en az ${esikler.kiyasAsgariOgrenci} öğrenci gerekiyor, ${grupOgrenciSayisi ?? 0} öğrenci var. Kademeler bu yüzden mutlak eşiklere göre belirlendi.`,

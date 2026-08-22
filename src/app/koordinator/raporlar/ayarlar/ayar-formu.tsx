@@ -75,9 +75,10 @@ export function RaporAyarFormu({ ayar }: { ayar: RaporAyariGorunumu }) {
         <p className="mt-1 text-sm text-zinc-600">
           Duygusal, sosyal ve bilişsel beceriler grubun ortalamasıyla
           karşılaştırılır — raporda “yaşıtlarının üzerinde” diyen cümleyi bu
-          bölüm belirler.
+          bölüm belirler. Dönem ortasındaki ölçümle karşılaştırma da burada
+          ayarlanır.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Alan
             etiket="Kıyas farkı"
             hata={durum.alanHatalari?.gelisimFark}
@@ -87,6 +88,20 @@ export function RaporAyarFormu({ ayar }: { ayar: RaporAyariGorunumu }) {
               name="gelisimFark"
               inputMode="decimal"
               defaultValue={deger("gelisimFark", sayi(ayar.gelisimFark))}
+            />
+          </Alan>
+          <Alan
+            etiket="İlerleme eşiği"
+            hata={durum.alanHatalari?.gelisimIlerleme}
+            ipucu="Dönem sonu ölçümü, dönem ortasındakinden bu kadar yüksekse rapora “belirgin ilerleme” yazılır; bu kadar düşükse “dalgalanma”. Aradaki farklar “düzeyini korudu” sayılır."
+          >
+            <Girdi
+              name="gelisimIlerleme"
+              inputMode="decimal"
+              defaultValue={deger(
+                "gelisimIlerleme",
+                sayi(ayar.gelisimIlerleme),
+              )}
             />
           </Alan>
           <Alan

@@ -6,7 +6,7 @@ import {
   iyelikEki,
   oturumEki,
 } from "./rapor-govdesi";
-import { KADEMELER } from "./rapor-bantlari";
+import { KADEMELER, VARSAYILAN_ESIKLER } from "./rapor-bantlari";
 import type { SoruOrtalamasi } from "./puan-hesaplari";
 
 function soru(
@@ -152,6 +152,31 @@ describe("gelisimAlanlariCikar", () => {
 
     expect(sonuc[0].bant).toBeNull();
     expect(sonuc[0].cumle).toBeNull();
+  });
+
+  it("dönem ortası ölçümü verilirse ilerleme yorumu üretir", () => {
+    const sonuc = gelisimAlanlariCikar(
+      [{ kategori: "Duygusal Gelişim Alanları", ortalama: 4.4 }],
+      new Map([["Duygusal Gelişim Alanları", 4.3]]),
+      kazanimlar,
+      VARSAYILAN_ESIKLER,
+      new Map([["Duygusal Gelişim Alanları", 3.6]]),
+    );
+
+    expect(sonuc[0].ortaOrtalamasi).toBe(3.6);
+    expect(sonuc[0].degisim?.yon).toBe("ILERLEME");
+    expect(sonuc[0].degisim?.cumle).toContain("duygusal beceriler");
+  });
+
+  it("dönem ortası ölçümü yoksa değişim alanı boş kalır", () => {
+    const sonuc = gelisimAlanlariCikar(
+      [{ kategori: "Duygusal Gelişim Alanları", ortalama: 4.4 }],
+      new Map([["Duygusal Gelişim Alanları", 4.3]]),
+      kazanimlar,
+    );
+
+    expect(sonuc[0].ortaOrtalamasi).toBeNull();
+    expect(sonuc[0].degisim).toBeNull();
   });
 });
 

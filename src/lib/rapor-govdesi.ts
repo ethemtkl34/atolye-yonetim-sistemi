@@ -3,9 +3,11 @@ import {
   atolyeBandi,
   gelisimBandi,
   gelisimCumlesi,
+  gelisimDegisimi,
   VARSAYILAN_ESIKLER,
   type Asimetri,
   type BantBilgisi,
+  type GelisimDegisimi,
   type Kademe,
   type RaporEsikleri,
 } from "./rapor-bantlari";
@@ -41,6 +43,15 @@ export type GelisimAlaniSatiri = KademeSatiri & {
    *  durumda kademe eksenli grafiğe düşer. */
   ogrenciOrtalamasi?: number | null;
   grupOrtalamasi?: number | null;
+  /**
+   * Aynı öğrencinin DÖNEM ORTASI ölçümü. Stajyer 18 soruluk formu dönemde
+   * iki kez dolduruyor; rapor uzun süre yalnızca ikincisini okudu. Dönem
+   * ortası formu doldurulmamışsa ve eski snapshot'larda yok — grafiğe üçüncü
+   * çubuk o durumda hiç çizilmez.
+   */
+  ortaOrtalamasi?: number | null;
+  /** İki ölçüm arasındaki değişimin veliye yazılan yorumu. */
+  degisim?: GelisimDegisimi | null;
 };
 
 export type AtolyeKademesi = {
@@ -345,11 +356,18 @@ export function gelisimAlanlariCikar(
   grupOrtalamalari: ReadonlyMap<string, number>,
   kazanimlar: ReadonlyMap<string, string[]>,
   esikler: RaporEsikleri = VARSAYILAN_ESIKLER,
+  /** Aynı öğrencinin dönem ortası ortalamaları; form doldurulmadıysa boş. */
+  ortaOrtalamalari: ReadonlyMap<string, number> = new Map(),
 ): GelisimAlaniSatiri[] {
   return ogrenciOrtalamalari.map((alan) => {
     const grupOrtalamasi = grupOrtalamalari.get(alan.kategori) ?? null;
+    const ortaOrtalamasi = ortaOrtalamalari.get(alan.kategori) ?? null;
     const bant = gelisimBandi(alan.ortalama, grupOrtalamasi, esikler);
     const alanKazanimlari = kazanimlar.get(alan.kategori) ?? [];
+    // "Duygusal Gelişim Alanları" → "duygusal beceriler"
+    const kisaAd = alan.kategori
+      .replace(/Gelişim Alanları/i, "beceriler")
+      .toLocaleLowerCase("tr-TR");
 
     return {
       ad: alan.kategori,
@@ -357,13 +375,12 @@ export function gelisimAlanlariCikar(
       kazanimlar: alanKazanimlari,
       ogrenciOrtalamasi: alan.ortalama,
       grupOrtalamasi,
+      ortaOrtalamasi,
+      degisim: gelisimDegisimi(ortaOrtalamasi, alan.ortalama, kisaAd, esikler),
       cumle: bant
         ? gelisimCumlesi(
             bant,
-            // "Duygusal Gelişim Alanları" → "duygusal beceriler"
-            alan.kategori
-              .replace(/Gelişim Alanları/i, "beceriler")
-              .toLocaleLowerCase("tr-TR"),
+            kisaAd,
             kazanimOzeti(alanKazanimlari),
             grupOrtalamasi !== null,
           )

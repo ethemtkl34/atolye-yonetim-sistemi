@@ -416,6 +416,7 @@ export async function raporMetniDuzenle(
 export type DuzenlenebilirAlan =
   | { tur: "atolyeIcerik"; atolyeAdi: string }
   | { tur: "gelisimCumle"; alanAdi: string }
+  | { tur: "gelisimDegisim"; alanAdi: string }
   | { tur: "asimetriCumle"; atolyeAdi: string }
   | { tur: "gozlem"; bolum: "giris" | "profil" | "sonuc" | "oneriler" }
   | { tur: "gozlemBlok"; beceriAdi: string };
@@ -465,6 +466,14 @@ export async function raporBolumunuDuzenle(
       const hedef = govde.gelisimAlanlari.find((a) => a.ad === alan.alanAdi);
       if (!hedef) return { hata: "Gelişim alanı bulunamadı." };
       hedef.cumle = yeniMetin;
+      break;
+    }
+    case "gelisimDegisim": {
+      const hedef = govde.gelisimAlanlari.find((a) => a.ad === alan.alanAdi);
+      // Yön ve fark DEĞİŞMEZ; koordinatör yalnızca cümleyi yumuşatabilir.
+      // Yönü de düzenlemeye açmak, ölçümle metnin çelişmesine izin verirdi.
+      if (!hedef?.degisim) return { hata: "İlerleme yorumu bulunamadı." };
+      hedef.degisim.cumle = yeniMetin;
       break;
     }
     case "asimetriCumle": {

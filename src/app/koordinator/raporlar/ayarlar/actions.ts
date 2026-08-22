@@ -19,6 +19,7 @@ const AYAR_ALANLARI = [
   "atolyeYuksek",
   "atolyeDusuk",
   "gelisimFark",
+  "gelisimIlerleme",
   "asimetri",
   "kiyasAsgariOgrenci",
   "etiketYuksek",
@@ -51,6 +52,10 @@ const SEMA = z
     atolyeYuksek: ondalik(ESIK_SINIRLARI.atolyeYuksek, "Yüksek eşiği"),
     atolyeDusuk: ondalik(ESIK_SINIRLARI.atolyeDusuk, "Düşük eşiği"),
     gelisimFark: ondalik(ESIK_SINIRLARI.gelisimFark, "Kıyas farkı"),
+    gelisimIlerleme: ondalik(
+      ESIK_SINIRLARI.gelisimIlerleme,
+      "İlerleme eşiği",
+    ),
     asimetri: ondalik(ESIK_SINIRLARI.asimetri, "Asimetri eşiği"),
     kiyasAsgariOgrenci: z
       .string()
@@ -100,6 +105,7 @@ export async function raporAyariniKaydet(
       atolyeYuksek: veri.atolyeYuksek,
       atolyeDusuk: veri.atolyeDusuk,
       gelisimFark: veri.gelisimFark,
+      gelisimIlerleme: veri.gelisimIlerleme,
       asimetri: veri.asimetri,
       kiyasAsgariOgrenci: veri.kiyasAsgariOgrenci,
       etiketler: {

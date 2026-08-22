@@ -410,6 +410,32 @@ function kademeSayimi(bantlar: readonly (BantBilgisi | null)[]): string {
   return parcalar.join(", ");
 }
 
+/**
+ * "2 alanda ilerleme, 1 alanda düzey korundu" — Bir Bakışta satırı.
+ *
+ * Ölçümü olmayan alan hiç sayılmaz: "1 alanda değişim bilinmiyor" demek,
+ * eksik bir formu velinin okuduğu özete taşımak olurdu (o eksik zaten
+ * koordinatörün panelindeki uyarı listesinde duruyor).
+ */
+function degisimSayimi(
+  alanlar: readonly { degisim?: { yon: string } | null }[],
+): string {
+  const ADLAR: Record<string, string> = {
+    ILERLEME: "ilerleme",
+    KORUNDU: "düzeyini koruma",
+    DALGALANMA: "dalgalanma",
+  };
+  const sayilar = new Map<string, number>();
+  for (const alan of alanlar) {
+    if (!alan.degisim) continue;
+    sayilar.set(alan.degisim.yon, (sayilar.get(alan.degisim.yon) ?? 0) + 1);
+  }
+  const parcalar = ["ILERLEME", "KORUNDU", "DALGALANMA"]
+    .filter((yon) => sayilar.has(yon))
+    .map((yon) => `${sayilar.get(yon)} alanda ${ADLAR[yon]}`);
+  return parcalar.join(", ");
+}
+
 // ---------------------------------------------------------------------------
 // Sayfa iskeleti
 // ---------------------------------------------------------------------------
@@ -809,6 +835,9 @@ const PUAN_PLOT = PUAN_ADIMI * 5;
 // Örnek raporun beceriler grafiğindeki seri renkleri (öğrenci / grup).
 const OGRENCI_MAVI = "#4472C4";
 const GRUP_TURUNCU = "#ED7D31";
+/** Dönem ortası ölçümü — aynı çocuk, önceki ölçüm: mavinin açık tonu.
+ *  Aynı rengin iki tonu "aynı kişi", turuncu "başkaları" demek oluyor. */
+const ORTA_MAVI = "#A6BCE6";
 
 type PuanSutunu = {
   ad: string;
@@ -1006,6 +1035,16 @@ const BECERILER_GENEL_BILGI = [
 const BECERILER_NOT =
   "Grafikte bulunan alanlar ile ilgili açıklama ve öğrencinin değerlendirme neticesi, her alan özelinde aşağıda ayrı ayrı sunulmuştur.";
 
+/**
+ * Üç serili grafiğin okunma anahtarı.
+ *
+ * Ayrı bir not: iki ölçümlü grafikte veli "neden iki mavi çubuk var"
+ * sorusunu soruyor ve cevabı yalnızca alt lejantta duruyordu. Yalnızca dönem
+ * ortası ölçümü olan raporlarda basılır.
+ */
+const BECERILER_ORTA_NOT =
+  "Grafikteki iki mavi çubuk aynı çocuğun iki farklı zamandaki ölçümüdür: açık renkli çubuk dönem ortasında, koyu renkli çubuk dönem sonunda yapılan değerlendirmedir. Turuncu çubuk ise aynı gruptaki öğrencilerin ortalamasıdır. Aradaki fark, çocuğunuzun dönem içindeki yönünü gösterir.";
+
 const ILGI_BASARI_GENEL_BILGI = [
   "Atölye dönemi boyunca yapılan gözlemler doğrultusunda; eğitmen ve yardımcı eğitmenlerden alınan veriler, çapraz teyitle karnelendirme programında puanlama grafiğine dönüştürülmüştür. Bu grafikler, çocuğunuzun atölyede katıldığı programlara karşı olan ilgi düzeyleri ile bu atölyelerde sergilediği performans doğrultusunda sağladığı başarıyı yansıtmaktadır.",
   "Bu grafikler ayrı ayrı değerlendirildiğinde;",
@@ -1067,6 +1106,13 @@ export function RaporBelgesiV2({
     ORTALAMA: KADEMELER.ORTALAMA.etiket,
     DUSUK: KADEMELER.DUSUK.etiket,
   };
+
+  // Dönem ortası ölçümü taşıyan raporlarda beceriler grafiği üç serili
+  // (ortası / sonu / grup) çizilir; taşımayanlarda eski iki serili düzen
+  // aynen kalır — eski snapshot'ların görünümü değişmemeli (§13.17).
+  const ortaOlcumVar = govde.gelisimAlanlari.some(
+    (alan) => typeof alan.ortaOrtalamasi === "number",
+  );
 
   const programAdi = govde.kapsam[0]?.programAdi ?? "atölye";
   const altBilgi = `${KURUM_ADI} · ${govde.ogrenci.adSoyad} · ${tarihBicimle(uretimZamani)}`;
@@ -1324,6 +1370,12 @@ export function RaporBelgesiV2({
                     .
                   </Text>
                 ) : null}
+                {ortaOlcumVar ? (
+                  <Text style={stil.madde}>
+                    – Dönem ortasına göre:{" "}
+                    {degisimSayimi(govde.gelisimAlanlari)}.
+                  </Text>
+                ) : null}
                 {govde.gozlem?.sonuc ? (
                   <Text style={stil.madde}>
                     – {govde.gozlem.sonuc.split(/(?<=\.)\s+/u)[0]}
@@ -1444,13 +1496,27 @@ export function RaporBelgesiV2({
                   baslik="DUYGUSAL - SOSYAL - BİLİŞSEL BECERİLER GRAFİĞİ"
                   sutunlar={govde.gelisimAlanlari.map((alan) => ({
                     ad: alanKisaAdi(alan.ad),
-                    degerler: [
-                      alan.ogrenciOrtalamasi ?? null,
-                      alan.grupOrtalamasi ?? null,
-                    ],
+                    degerler: ortaOlcumVar
+                      ? [
+                          alan.ortaOrtalamasi ?? null,
+                          alan.ogrenciOrtalamasi ?? null,
+                          alan.grupOrtalamasi ?? null,
+                        ]
+                      : [
+                          alan.ogrenciOrtalamasi ?? null,
+                          alan.grupOrtalamasi ?? null,
+                        ],
                   }))}
-                  seriRenkleri={[OGRENCI_MAVI, GRUP_TURUNCU]}
-                  seriAdlari={["Öğrenci Ortalaması", "Grup Ortalaması"]}
+                  seriRenkleri={
+                    ortaOlcumVar
+                      ? [ORTA_MAVI, OGRENCI_MAVI, GRUP_TURUNCU]
+                      : [OGRENCI_MAVI, GRUP_TURUNCU]
+                  }
+                  seriAdlari={
+                    ortaOlcumVar
+                      ? ["Dönem Ortası", "Dönem Sonu", "Grup Ortalaması"]
+                      : ["Öğrenci Ortalaması", "Grup Ortalaması"]
+                  }
                 />
               ) : (
                 <KademeGrafigi
@@ -1468,7 +1534,16 @@ export function RaporBelgesiV2({
               zemin={LAVANTA}
               etiketGenisligi={30}
               minYukseklik={40}
-              cocuklar={<Text style={{ fontSize: 8.5 }}>{BECERILER_NOT}</Text>}
+              cocuklar={
+                <>
+                  {ortaOlcumVar ? (
+                    <Text style={{ fontSize: 8.5, marginBottom: 4 }}>
+                      {BECERILER_ORTA_NOT}
+                    </Text>
+                  ) : null}
+                  <Text style={{ fontSize: 8.5 }}>{BECERILER_NOT}</Text>
+                </>
+              }
             />
           </View>
           </Page>
@@ -1507,6 +1582,21 @@ export function RaporBelgesiV2({
                     {alan.cumle ? (
                       <Text style={{ fontSize: 8.5, marginTop: 6, textAlign: "justify" }}>
                         {alan.cumle}
+                      </Text>
+                    ) : null}
+                    {/* Dönem ortasına göre değişim — kademenin söylemediği
+                        şeyi söyler: aynı "Ortalama", ilerleyerek gelinmişse
+                        başka bir haberdir. Ölçüm yoksa satır hiç basılmaz. */}
+                    {alan.degisim ? (
+                      <Text
+                        style={{
+                          fontSize: 8.5,
+                          marginTop: 4,
+                          textAlign: "justify",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {alan.degisim.cumle}
                       </Text>
                     ) : null}
                   </>

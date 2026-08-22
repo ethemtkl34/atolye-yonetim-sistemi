@@ -18,6 +18,13 @@ import { raporBolumunuDuzenle, type DuzenlenebilirAlan } from "./rapor-eylemleri
  * kaydedilir. Eski "tüm raporu tek formda düzenle" ekranı v2 raporlarda
  * kullanılmıyor. `raporId` verilmezse görünüm salt okunurdur.
  */
+/** Değişim yönünün rozet metni — cümle düzenlense de yön görünür kalır. */
+const DEGISIM_ETIKETLERI: Record<string, string> = {
+  ILERLEME: "Dönem ortasına göre ilerleme",
+  KORUNDU: "Düzeyini korudu",
+  DALGALANMA: "Dalgalanma",
+};
+
 export function RaporIcerigiV2({
   govde,
   raporId,
@@ -98,6 +105,31 @@ export function RaporIcerigiV2({
                 onGuncellendi={onGuncellendi}
                 sinif="mt-2"
               />
+            ) : null}
+            {/* Dönem ortasına göre değişim. Ölçüm çifti yoksa satır hiç
+                yok; hangi yönde olduğu rozetten de okunur ki koordinatör
+                metni yumuşatırken yönü kaybetmesin. */}
+            {alan.degisim ? (
+              <div className="mt-2 flex flex-wrap items-start gap-2">
+                <Rozet
+                  tur={
+                    alan.degisim.yon === "ILERLEME"
+                      ? "olumlu"
+                      : alan.degisim.yon === "DALGALANMA"
+                        ? "uyari"
+                        : "notr"
+                  }
+                >
+                  {DEGISIM_ETIKETLERI[alan.degisim.yon]}
+                </Rozet>
+                <DuzenlenebilirMetin
+                  raporId={raporId}
+                  alan={{ tur: "gelisimDegisim", alanAdi: alan.ad }}
+                  metin={alan.degisim.cumle}
+                  onGuncellendi={onGuncellendi}
+                  sinif="min-w-[16rem] flex-1"
+                />
+              </div>
             ) : null}
           </div>
         ))}

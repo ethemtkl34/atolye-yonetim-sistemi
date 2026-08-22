@@ -4,7 +4,9 @@ import {
   atolyeBandi,
   gelisimBandi,
   gelisimCumlesi,
+  gelisimDegisimi,
   KADEMELER,
+  VARSAYILAN_ESIKLER,
 } from "./rapor-bantlari";
 
 describe("gelisimBandi — gruba göre kıyas", () => {
@@ -181,5 +183,90 @@ describe("asimetriBul birleştirme", () => {
     ]);
     expect(bulgular).toHaveLength(2);
     expect(bulgular[0].atolyeAdi).toBe("Bilim Atölyesi");
+  });
+});
+
+
+describe("ayarlanabilir eşikler", () => {
+  it("atölye eşikleri yükseltilince aynı ortalama alt kademeye düşer", () => {
+    const siki = { ...VARSAYILAN_ESIKLER, atolyeYuksek: 4.6 };
+    expect(atolyeBandi(4.2)?.kademe).toBe("YUKSEK");
+    expect(atolyeBandi(4.2, siki)?.kademe).toBe("ORTALAMA");
+  });
+
+  it("kıyas farkı büyütülünce küçük farklar ortalama sayılır", () => {
+    const genis = { ...VARSAYILAN_ESIKLER, gelisimFark: 0.6 };
+    expect(gelisimBandi(4.3, 4.0)?.kademe).toBe("YUKSEK");
+    expect(gelisimBandi(4.3, 4.0, genis)?.kademe).toBe("ORTALAMA");
+    // Simetri: aşağı yönde de aynı eşik geçerli olmalı.
+    expect(gelisimBandi(3.7, 4.0, genis)?.kademe).toBe("ORTALAMA");
+    expect(gelisimBandi(3.3, 4.0, genis)?.kademe).toBe("DUSUK");
+  });
+
+  it("asimetri eşiği düşürülünce daha çok atölyede bulgu çıkar", () => {
+    const atolyeler = [{ atolyeAdi: "Bilim Atölyesi", ilgi: 4.2, basari: 3.7 }];
+    expect(asimetriBul(atolyeler)).toHaveLength(0);
+    expect(
+      asimetriBul(atolyeler, { ...VARSAYILAN_ESIKLER, asimetri: 0.4 }),
+    ).toHaveLength(1);
+  });
+
+  it("kademe adı değiştirilebilir; renk ve segment sayısı sabit kalır", () => {
+    const yumusak = {
+      ...VARSAYILAN_ESIKLER,
+      etiketler: { ...VARSAYILAN_ESIKLER.etiketler, DUSUK: "Gelişmekte" },
+    };
+    const bant = atolyeBandi(2.4, yumusak);
+    expect(bant?.etiket).toBe("Gelişmekte");
+    expect(bant?.kademe).toBe("DUSUK");
+    expect(bant?.dolu).toBe(KADEMELER.DUSUK.dolu);
+    expect(bant?.renk).toBe(KADEMELER.DUSUK.renk);
+  });
+
+  it("boş bırakılmış etiket varsayılana döner", () => {
+    const bosluklu = {
+      ...VARSAYILAN_ESIKLER,
+      etiketler: { ...VARSAYILAN_ESIKLER.etiketler, YUKSEK: "   " },
+    };
+    expect(atolyeBandi(4.8, bosluklu)?.etiket).toBe(KADEMELER.YUKSEK.etiket);
+  });
+});
+
+describe("gelisimDegisimi — dönem ortası ile dönem sonu kıyası", () => {
+  it("eşiği aşan yükseliş ilerlemedir", () => {
+    const degisim = gelisimDegisimi(3.4, 4.0, "duygusal beceriler");
+    expect(degisim?.yon).toBe("ILERLEME");
+    expect(degisim?.cumle).toContain("belirgin bir ilerleme");
+  });
+
+  it("eşik altındaki fark düzeyin korunmasıdır", () => {
+    expect(gelisimDegisimi(4.0, 4.2, "sosyal beceriler")?.yon).toBe("KORUNDU");
+    expect(gelisimDegisimi(4.0, 3.85, "sosyal beceriler")?.yon).toBe("KORUNDU");
+  });
+
+  it("düşüş dalgalanma olarak yazılır; 'gerileme' geçmez", () => {
+    const degisim = gelisimDegisimi(4.2, 3.5, "bilişsel beceriler");
+    expect(degisim?.yon).toBe("DALGALANMA");
+    expect(degisim?.cumle).toContain("dalgalanma");
+    // §11.3 — veliye giden metin olumsuz yargı kurmaz.
+    expect(degisim?.cumle).not.toMatch(/geriled|düşüş|yetersiz/i);
+  });
+
+  it("ölçümlerden biri yoksa değişim yorumu üretilmez", () => {
+    expect(gelisimDegisimi(null, 4.0, "duygusal beceriler")).toBeNull();
+    expect(gelisimDegisimi(4.0, null, "duygusal beceriler")).toBeNull();
+  });
+
+  it("ilerleme eşiği ayarlanabilir ve kıyas eşiğinden bağımsızdır", () => {
+    const hassas = { ...VARSAYILAN_ESIKLER, gelisimIlerleme: 0.1 };
+    expect(gelisimDegisimi(4.0, 4.2, "sosyal beceriler")?.yon).toBe("KORUNDU");
+    expect(gelisimDegisimi(4.0, 4.2, "sosyal beceriler", hassas)?.yon).toBe(
+      "ILERLEME",
+    );
+  });
+
+  it("fark işaretli taşınır", () => {
+    expect(gelisimDegisimi(3.0, 4.0, "x")?.fark).toBeCloseTo(1);
+    expect(gelisimDegisimi(4.0, 3.0, "x")?.fark).toBeCloseTo(-1);
   });
 });

@@ -536,6 +536,22 @@ Genel rapor şu alanlara odaklanabilir:
 - Güçlü yönler
 - Desteklenebilecek alanlar
 
+#### C. Gelişim ölçümleri ve kademeler
+
+Öğrencinin duygusal, sosyal ve bilişsel becerileri dönem içinde iki kez
+ölçülür (dönem ortası ve dönem sonu). Rapor:
+
+- Dönem sonu ölçümünü grubun ortalamasıyla karşılaştırarak kademe belirler.
+- Dönem ortası ile dönem sonu ölçümünü karşılaştırarak öğrencinin kendi
+  yönünü yazar (ilerleme / düzeyini koruma / dalgalanma). Bu karşılaştırma
+  akranla değil, öğrencinin kendisiyle yapılır.
+- İki ölçümden biri yoksa yön yazılmaz; eksik, koordinatörün panelindeki
+  uyarı listesinde belirtilir.
+
+Puanların kademeye çevrilme ölçütleri kurum tarafından yönetilir (bkz.
+§11.6): eşikler, akran kıyası için gereken asgari grup büyüklüğü ve
+kademelerin veliye yazılan adları.
+
 ### 11.3 Rapor üretim ilkeleri
 
 - Metin yalnızca mevcut puanlardan çıkarılabilecek sonuçları içermelidir.
@@ -575,6 +591,24 @@ PDF en az şu bilgileri içermelidir:
 - Kurum adı
 
 Her oluşturulan PDF öğrencinin rapor geçmişinde saklanır.
+
+### 11.6 Rapor ayarları
+
+Raporun puanları kademeye çevirirken kullandığı ölçütler kurum genelinde tek
+yerden yönetilir; şube başına ayrı değer tutulmaz.
+
+Yönetilebilen ölçütler:
+
+- Atölye ilgi/başarı kademelerinin yüksek ve düşük eşiği.
+- Akran kıyasında "belirgin fark" sayılan puan farkı.
+- Dönem ortası → dönem sonu değişiminde "belirgin ilerleme" sayılan fark.
+- Akran kıyasının yapılabilmesi için grupta değerlendirilmiş asgari öğrenci
+  sayısı; altında kalınırsa kıyas yapılmaz ve rapora sebebi yazılır.
+- Kademelerin veliye yazılan adları.
+
+Ayar değişikliği yalnızca bundan sonra üretilecek raporlara işler. Üretilmiş
+bir raporun içeriği dondurulmuştur (§13.17); eskisini yeni ölçütlerle görmek
+için rapor yeniden üretilmelidir.
 
 ---
 
