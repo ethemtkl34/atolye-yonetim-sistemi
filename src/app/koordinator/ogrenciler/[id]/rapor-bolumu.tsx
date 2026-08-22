@@ -91,6 +91,9 @@ export function RaporBolumu({
   const [surenIslem, setSurenIslem] = useState<
     "pdf" | "yeniden" | "sil" | null
   >(null);
+  // Elle düzenlenmiş metin varsa yeniden üretim doğrudan başlamaz: önce
+  // "düzenlemeler taşınsın mı" sorulur (§11.4).
+  const [yenidenOnayi, setYenidenOnayi] = useState(false);
 
   const veri =
     pencere?.mod === "detay" && veriKutusu?.raporId === pencere.raporId
@@ -117,12 +120,14 @@ export function RaporBolumu({
   function ac(hedef: { mod: "yeni" } | { mod: "detay"; raporId: string }) {
     setIslemSonucu(null);
     setDuzenleniyor(false);
+    setYenidenOnayi(false);
     setPencere(hedef);
   }
 
   function kapat() {
     setPencere(null);
     setDuzenleniyor(false);
+    setYenidenOnayi(false);
     setIslemSonucu(null);
     // Adresteki ?rapor= izi kalırsa pencere her tazelemede yeniden açılırdı.
     if (acilisParametresi) router.replace(pathname, { scroll: false });
@@ -197,12 +202,32 @@ export function RaporBolumu({
     });
   }
 
+  /** Raporun elle düzenlenmiş metinleri — yeniden üretimde sorulur. */
+  const duzenlemeler =
+    (
+      veri?.detay.govde as unknown as {
+        duzenlemeler?: { etiket: string }[];
+      }
+    )?.duzenlemeler ?? [];
+
   function yenidenUret() {
+    // Düzenleme varsa önce seçim: koordinatörün yazdığı veli metni sessizce
+    // kaybolmasın ama puanlar değiştiyse sıfırdan üretmek de bir seçenek.
+    if (duzenlemeler.length > 0 && !yenidenOnayi) {
+      setIslemSonucu(null);
+      setYenidenOnayi(true);
+      return;
+    }
+    uret(true);
+  }
+
+  function uret(duzenlemeleriKoru: boolean) {
     if (pencere?.mod !== "detay") return;
     const raporId = pencere.raporId;
+    setYenidenOnayi(false);
     setSurenIslem("yeniden");
     basla(async () => {
-      const sonuc = await raporYenidenUret(raporId);
+      const sonuc = await raporYenidenUret(raporId, duzenlemeleriKoru);
       setIslemSonucu(sonuc);
       // Yeniden üretim yeni bir rapor açar; eskisi geçmişte kalır (§13.17).
       if (sonuc.raporId) {
@@ -341,6 +366,45 @@ export function RaporBolumu({
             <Bildirim tur="hata">{islemSonucu.hata}</Bildirim>
           ) : null}
 
+          {yenidenOnayi ? (
+            <div className="kil-uyari space-y-3 p-4">
+              <div>
+                <p className="text-sm font-semibold text-vurgu-900">
+                  Bu raporda elle düzenlenmiş {duzenlemeler.length} metin var
+                </p>
+                <ul className="mt-1 list-inside list-disc text-xs text-vurgu-800">
+                  {duzenlemeler.map((duzenleme) => (
+                    <li key={duzenleme.etiket}>{duzenleme.etiket}</li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-xs text-vurgu-800">
+                Taşırsanız yazdıklarınız yeni rapora aynen geçer; puanlar
+                değiştiyse bu metinleri gözden geçirmeniz gerekir. Sıfırdan
+                üretirseniz bütün metinler güncel puanlardan yeniden yazılır.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Buton onClick={() => uret(true)} disabled={islemde}>
+                  Düzenlemeleri koruyarak üret
+                </Buton>
+                <Buton
+                  tur="ikincil"
+                  onClick={() => uret(false)}
+                  disabled={islemde}
+                >
+                  Sıfırdan üret
+                </Buton>
+                <Buton
+                  tur="sade"
+                  onClick={() => setYenidenOnayi(false)}
+                  disabled={islemde}
+                >
+                  Vazgeç
+                </Buton>
+              </div>
+            </div>
+          ) : null}
+
           {islemde && surenIslem === "yeniden" ? (
             <div
               role="status"
@@ -393,7 +457,46 @@ export function RaporBolumu({
               disabled={islemde}
               onClick={yenidenUret}
             >
-              {islemde && surenIslem === "yeniden" ? (
+              {yenidenOnayi ? (
+            <div className="kil-uyari space-y-3 p-4">
+              <div>
+                <p className="text-sm font-semibold text-vurgu-900">
+                  Bu raporda elle düzenlenmiş {duzenlemeler.length} metin var
+                </p>
+                <ul className="mt-1 list-inside list-disc text-xs text-vurgu-800">
+                  {duzenlemeler.map((duzenleme) => (
+                    <li key={duzenleme.etiket}>{duzenleme.etiket}</li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-xs text-vurgu-800">
+                Taşırsanız yazdıklarınız yeni rapora aynen geçer; puanlar
+                değiştiyse bu metinleri gözden geçirmeniz gerekir. Sıfırdan
+                üretirseniz bütün metinler güncel puanlardan yeniden yazılır.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Buton onClick={() => uret(true)} disabled={islemde}>
+                  Düzenlemeleri koruyarak üret
+                </Buton>
+                <Buton
+                  tur="ikincil"
+                  onClick={() => uret(false)}
+                  disabled={islemde}
+                >
+                  Sıfırdan üret
+                </Buton>
+                <Buton
+                  tur="sade"
+                  onClick={() => setYenidenOnayi(false)}
+                  disabled={islemde}
+                >
+                  Vazgeç
+                </Buton>
+              </div>
+            </div>
+          ) : null}
+
+          {islemde && surenIslem === "yeniden" ? (
                 <span className="inline-flex items-center gap-2">
                   <DonenHalka />
                   Yeniden üretiliyor…
@@ -420,7 +523,8 @@ export function RaporBolumu({
           </div>
           <p className="text-xs text-zinc-500">
             Yeniden üretim yeni bir rapor oluşturur; bu rapor ve varsa PDF’leri
-            geçmişte kalır.
+            geçmişte kalır. Elle düzenlenmiş metinler varsa taşınıp
+            taşınmayacağı sorulur.
           </p>
         </footer>
       ) : null}

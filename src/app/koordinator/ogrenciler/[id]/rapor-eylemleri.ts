@@ -13,6 +13,15 @@ import {
 } from "@/lib/rapor-verisi";
 import type { RaporGovdesi } from "@/lib/rapor-motoru";
 import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
+import {
+  alanAnahtari,
+  duzenlemeIsle,
+  duzenlemeSil,
+  duzenlemeleriTasi,
+  metniOku,
+  metniYaz,
+  type DuzenlenebilirAlan,
+} from "@/lib/rapor-duzenleme";
 import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
 
 /**
@@ -176,7 +185,15 @@ function uyariNotu(govde: unknown): string {
  * (§13.17). Böylece "hangi rapor hangi PDF'in kaynağıydı" sorusu her zaman
  * cevaplanabilir.
  */
-export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
+export async function raporYenidenUret(
+  raporId: string,
+  /**
+   * Elle düzenlenmiş metinler yeni rapora taşınsın mı? Arayüz düzenleme
+   * varsa soruyor. Varsayılan taşımak: emek harcanmış bir veli metnini
+   * sessizce kaybetmek, hiç sormamaktan da kötüydü.
+   */
+  duzenlemeleriKoru = true,
+): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("raporlar", "TAM");
   const subeId = kullanici.aktifSubeId;
 
@@ -184,6 +201,7 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
     where: { id: raporId, student: { branchId: subeId } },
     select: {
       studentId: true,
+      bodyJson: true,
       enrollmentLinks: {
         select: {
           enrollment: {
@@ -239,11 +257,33 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   const govde = uretim.govde;
   if (!govde) return { hata: "Rapor verisi hazırlanamadı." };
 
+  // §11.4 — Elle yazılmış metinleri yeni gövdeye taşı. Taşınamayanlar
+  // (bölümü bu kez hiç üretilmemiş olanlar) kullanıcıya ismen bildirilir;
+  // "korundu" deyip sessizce düşürmek en kötü davranış olurdu.
+  const eskiGovde = eski.bodyJson as unknown as RaporGovdesiV2 & {
+    surum?: number;
+  };
+  const tasima =
+    duzenlemeleriKoru &&
+    eskiGovde?.surum === 2 &&
+    (govde as { surum?: number })?.surum === 2
+      ? duzenlemeleriTasi(
+          eskiGovde,
+          govde as unknown as RaporGovdesiV2,
+          uretimZamani,
+        )
+      : { tasinan: [], tasinamayan: [] };
+
   const yeni = await db.report.create({
     data: {
       studentId: eski.studentId,
       generatedAt: uretimZamani,
       bodyJson: govde as unknown as object,
+      // Taşınan metinler elle yazılmış sayılır: rozet ve "özgüne dön"
+      // düğmesi yeni raporda da çalışsın diye düzenleme damgası taşınıyor.
+      ...(tasima.tasinan.length > 0
+        ? { editedByUserId: kullanici.id, editedAt: uretimZamani }
+        : {}),
       enrollmentLinks: {
         create: kayitIdleri.map((kayitId) => ({ enrollmentId: kayitId })),
       },
@@ -254,9 +294,28 @@ export async function raporYenidenUret(raporId: string): Promise<EylemDurumu> {
   revalidatePath(`/koordinator/ogrenciler/${eski.studentId}`);
   revalidatePath("/koordinator");
   return {
-    basari: `Güncel puanlarla yeni rapor üretildi. Eski rapor geçmişte kaldı.${uyariNotu(govde)}`,
+    basari: `Güncel puanlarla yeni rapor üretildi. Eski rapor geçmişte kaldı.${tasimaNotu(tasima)}${uyariNotu(govde)}`,
     raporId: yeni.id,
   };
+}
+
+/** Yeniden üretimde düzenlemelere ne olduğunu anlatan cümle. */
+function tasimaNotu(tasima: {
+  tasinan: string[];
+  tasinamayan: string[];
+}): string {
+  const parcalar: string[] = [];
+  if (tasima.tasinan.length > 0) {
+    parcalar.push(
+      ` Elle düzenlenmiş ${tasima.tasinan.length} metin yeni rapora taşındı; puanlar değiştiyse bu metinleri gözden geçirin.`,
+    );
+  }
+  if (tasima.tasinamayan.length > 0) {
+    parcalar.push(
+      ` Şu düzenlemeler taşınamadı çünkü karşılıkları bu kez üretilmedi: ${tasima.tasinamayan.join(", ")}.`,
+    );
+  }
+  return parcalar.join("");
 }
 
 /**
@@ -412,14 +471,15 @@ export async function raporMetniDuzenle(
   return { basari: "Rapor metni güncellendi.", raporId };
 }
 
-/** İkinci sürüm raporda yerinde düzenlenebilen metin alanları. */
-export type DuzenlenebilirAlan =
-  | { tur: "atolyeIcerik"; atolyeAdi: string }
-  | { tur: "gelisimCumle"; alanAdi: string }
-  | { tur: "gelisimDegisim"; alanAdi: string }
-  | { tur: "asimetriCumle"; atolyeAdi: string }
-  | { tur: "gozlem"; bolum: "giris" | "profil" | "sonuc" | "oneriler" }
-  | { tur: "gozlemBlok"; beceriAdi: string };
+/**
+ * İkinci sürüm raporda yerinde düzenlenebilen metin alanları.
+ *
+ * Tanım `lib/rapor-duzenleme.ts`'te (saf katman); burada yalnızca yeniden
+ * dışa aktarılıyor ki istemci bileşenleri tipi kendi eylem dosyasından
+ * almayı sürdürsün — "use server" dosyasından yalnızca tip dışa
+ * aktarılabildiği için bu güvenli.
+ */
+export type { DuzenlenebilirAlan };
 
 /**
  * §11.4 — İkinci sürüm raporda tek bir metin kutusunun yerinde düzenlenmesi.
@@ -453,51 +513,14 @@ export async function raporBolumunuDuzenle(
 
   // Alan adları istemciden geliyor; hedef bulunamazsa sessizce hiçbir şeyi
   // değiştirmeden dönmek yerine hata verilir.
-  switch (alan.tur) {
-    case "atolyeIcerik": {
-      const hedef = govde.atolyeIcerikleri.find(
-        (a) => a.atolyeAdi === alan.atolyeAdi,
-      );
-      if (!hedef) return { hata: "Atölye içeriği bulunamadı." };
-      hedef.metin = yeniMetin;
-      break;
-    }
-    case "gelisimCumle": {
-      const hedef = govde.gelisimAlanlari.find((a) => a.ad === alan.alanAdi);
-      if (!hedef) return { hata: "Gelişim alanı bulunamadı." };
-      hedef.cumle = yeniMetin;
-      break;
-    }
-    case "gelisimDegisim": {
-      const hedef = govde.gelisimAlanlari.find((a) => a.ad === alan.alanAdi);
-      // Yön ve fark DEĞİŞMEZ; koordinatör yalnızca cümleyi yumuşatabilir.
-      // Yönü de düzenlemeye açmak, ölçümle metnin çelişmesine izin verirdi.
-      if (!hedef?.degisim) return { hata: "İlerleme yorumu bulunamadı." };
-      hedef.degisim.cumle = yeniMetin;
-      break;
-    }
-    case "asimetriCumle": {
-      const hedef = govde.asimetriler.find(
-        (a) => a.atolyeAdi === alan.atolyeAdi,
-      );
-      if (!hedef) return { hata: "Değerlendirme notu bulunamadı." };
-      hedef.cumle = yeniMetin;
-      break;
-    }
-    case "gozlem": {
-      if (!govde.gozlem) return { hata: "Gözlem bölümü yok." };
-      govde.gozlem[alan.bolum] = yeniMetin;
-      break;
-    }
-    case "gozlemBlok": {
-      const hedef = govde.gozlem?.bloklar.find(
-        (b) => b.beceriAdi === alan.beceriAdi,
-      );
-      if (!hedef) return { hata: "Gözlem bloğu bulunamadı." };
-      hedef.gozlem = yeniMetin;
-      break;
-    }
+  const ozgunMetin = metniOku(govde, alan);
+  if (ozgunMetin === null || !metniYaz(govde, alan, yeniMetin)) {
+    return { hata: "Düzenlenecek metin bu raporda bulunamadı." };
   }
+
+  // Defter, üretimin yazdığı metni saklıyor: koordinatör vazgeçebilsin ve
+  // rapor yeniden üretilince düzenleme sessizce kaybolmasın (§11.4).
+  duzenlemeIsle(govde, alan, ozgunMetin, kullanici.name, new Date());
 
   await db.report.update({
     where: { id: raporId },
@@ -510,6 +533,53 @@ export async function raporBolumunuDuzenle(
 
   revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
   return { basari: "Metin güncellendi.", raporId };
+}
+
+/**
+ * §11.4 — Elle düzenlenmiş bir metni üretimin yazdığı hâline döndürür.
+ *
+ * Düzenleme yerinde ve tek tıkla yapılıyor; geri dönüşü olmayan bir düzenleme
+ * koordinatörü "yanlış kutuyu düzelttim, özgün cümle neydi" durumunda
+ * bırakıyordu. Özgün metin ilk düzenlemede deftere yazıldığı için burada
+ * yeniden üretmeye gerek yok.
+ */
+export async function raporBolumunuGeriAl(
+  raporId: string,
+  alan: DuzenlenebilirAlan,
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    select: { bodyJson: true, studentId: true },
+  });
+  if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  const govde = rapor.bodyJson as unknown as RaporGovdesiV2 & { surum?: number };
+  if (govde?.surum !== 2) return { hata: "Bu rapor eski biçimde." };
+
+  const anahtar = alanAnahtari(alan);
+  const kayit = govde.duzenlemeler?.find((k) => k.anahtar === anahtar);
+  if (!kayit) {
+    return { hata: "Bu metnin özgün hâli kayıtlı değil; geri alınamaz." };
+  }
+
+  if (!metniYaz(govde, alan, kayit.ozgunMetin)) {
+    return { hata: "Geri alınacak metin bu raporda bulunamadı." };
+  }
+  duzenlemeSil(govde, alan);
+
+  await db.report.update({
+    where: { id: raporId },
+    data: {
+      bodyJson: govde as unknown as object,
+      editedByUserId: kullanici.id,
+      editedAt: new Date(),
+    },
+  });
+
+  revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
+  return { basari: "Metin üretimin yazdığı hâline döndürüldü.", raporId };
 }
 
 /**

@@ -571,11 +571,17 @@ kademelerin veliye yazılan adları.
 
 ### 11.4 Rapor düzenleme ve güncellik
 
-- Koordinatör otomatik oluşturulan raporu düzenleyebilir.
+- Koordinatör otomatik oluşturulan raporu düzenleyebilir. Düzenlenen her
+  metnin üretimdeki özgün hâli saklanır; koordinatör tek tıkla ona
+  dönebilir ve hangi metinlerin elle yazıldığı raporda görünür.
 - Rapor oluşturulduktan sonra puanlar değiştirilebilir.
 - Puan değişikliği olduğunda mevcut rapor `Güncel değil` olarak işaretlenir.
 - Koordinatör yeni puanlarla raporu yeniden oluşturabilir.
 - Yeniden oluşturma, daha önce kaydedilmiş PDF raporları silmez.
+- Raporda elle düzenlenmiş metin varsa yeniden oluşturmadan önce bunların
+  yeni rapora taşınıp taşınmayacağı sorulur. Taşınanlar elle düzenlenmiş
+  olarak işaretli kalır; karşılığı bu kez üretilmeyen metinler taşınmaz ve
+  ismen bildirilir.
 
 ### 11.5 PDF rapor
 

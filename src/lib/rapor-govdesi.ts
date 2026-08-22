@@ -147,6 +147,25 @@ export type RaporGovdesiV2 = {
    * yok; okuyan taraf o durumda koddaki varsayılan adlara düşer.
    */
   kademeEtiketleri?: Record<Kademe, string>;
+  /**
+   * §11.4 — Elle düzenlenmiş metinlerin defteri: hangi kutu, kim, ne zaman
+   * ve üretimin özgün metni.
+   *
+   * Üç işe yarıyor: kutunun yanında "elle düzenlendi" işaretini göstermek,
+   * "özgüne dön" düğmesini çalıştırmak ve rapor yeniden üretildiğinde
+   * düzenlemeleri sessizce kaybetmemek. Eski snapshot'larda yok — o
+   * raporlarda düzenleme izi tutulmuyordu, geriye dönük uydurulamaz.
+   *
+   * Tip `rapor-duzenleme.ts`'te; bu dosya ona bağlanmıyor (o bu dosyaya
+   * bağlı) diye alan yapısal olarak yazıldı.
+   */
+  duzenlemeler?: {
+    anahtar: string;
+    etiket: string;
+    ozgunMetin: string;
+    kisi: string | null;
+    zaman: string;
+  }[];
   /** Metnin nasıl üretildiği — denetlenebilirlik için saklanır. */
   metinKaynagi: "sablon" | "ai";
 };
