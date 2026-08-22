@@ -6,6 +6,7 @@ import {
   Ellipse,
   Font,
   Image,
+  Link,
   Page,
   RadialGradient,
   Stop,
@@ -1923,10 +1924,19 @@ export function RaporBelgesiV2({
                     <Text style={[stil.kucuk, { marginTop: 5, marginBottom: 2 }]}>
                       Önerilen materyaller:
                     </Text>
+                    {/* Ürün adı artık bağlantı: rapor çoğunlukla ekrandan
+                        okunuyor ve veli önerilen materyali adıyla aramak
+                        zorunda kalıyordu. `Link`in kendi mavisi yerine
+                        belgenin kendi mavisi kullanılıyor — bağlantı
+                        olduğu görünsün ama palete yabancı düşmesin. */}
                     {govde.gozlem.urunler.map((urun) => (
-                      <Text key={urun.url} style={stil.madde}>
+                      <Link
+                        key={urun.url}
+                        src={urun.url}
+                        style={[stil.madde, { color: OGRENCI_MAVI }]}
+                      >
                         – {urun.ad}
-                      </Text>
+                      </Link>
                     ))}
                   </>
                 ) : null}

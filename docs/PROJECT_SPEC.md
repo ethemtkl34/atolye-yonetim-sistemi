@@ -598,6 +598,10 @@ PDF en az şu bilgileri içermelidir:
 
 Her oluşturulan PDF öğrencinin rapor geçmişinde saklanır.
 
+Koordinatör, PDF üretmeden önce raporun belge hâlini önizleyebilir.
+Önizleme rapor geçmişine kayıt eklemez ve raporun o anki hâlini gösterir;
+veliye verilecek belge yalnızca "PDF oluştur" ile üretilir.
+
 ### 11.6 Rapor ayarları
 
 Raporun puanları kademeye çevirirken kullandığı ölçütler kurum genelinde tek

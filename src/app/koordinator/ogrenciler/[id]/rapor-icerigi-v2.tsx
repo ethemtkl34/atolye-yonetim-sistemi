@@ -14,10 +14,13 @@ import {
 } from "./rapor-eylemleri";
 
 /**
- * §11.2 — İkinci sürüm rapor gövdesinin pencere görünümü.
+ * §11.2 — İkinci sürüm rapor gövdesinin DÜZENLEME görünümü.
  *
- * PDF ile aynı bölümleri aynı sırayla gösterir: koordinatörün gördüğü ile
- * velinin eline geçen belge ayrışmamalı.
+ * Belgenin birebir kopyası DEĞİL, düzenlenebilir metinlerinin listesi: kapak,
+ * "Bir Bakışta", grafikler ve sayfa düzeni burada yok, çünkü hiçbiri elle
+ * yazılmıyor. Veliye giden belgenin kendisi aynı pencerede "Velinin göreceği
+ * belge" anahtarıyla açılıyor (`/api/rapor-onizleme`) — ikisini burada
+ * taklit etmeye çalışmak, iki çizimin zamanla ayrışması demekti.
  *
  * DÜZENLEME: veliye giden her metin kutusunun sağ üstünde kalem var;
  * tıklanınca kutu yerinde düzenleyiciye dönüşür ve yalnızca o metin
@@ -261,10 +264,21 @@ export function RaporIcerigiV2({
                 onGuncellendi={onGuncellendi}
                 duzenlemeler={govde.duzenlemeler}
               />
+              {/* Ürün adresi bugüne kadar hiçbir yerde görünmüyordu;
+                  koordinatör önerdiği materyali kontrol edemiyordu. */}
               {govde.gozlem.urunler.length > 0 ? (
                 <ul className="mt-1 list-inside list-disc text-xs text-zinc-600">
                   {govde.gozlem.urunler.map((urun) => (
-                    <li key={urun.url}>{urun.ad}</li>
+                    <li key={urun.url}>
+                      <a
+                        href={urun.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-marka-700 hover:underline"
+                      >
+                        {urun.ad}
+                      </a>
+                    </li>
                   ))}
                 </ul>
               ) : null}

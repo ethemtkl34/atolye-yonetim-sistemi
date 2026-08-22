@@ -94,6 +94,10 @@ export function RaporBolumu({
   // Elle düzenlenmiş metin varsa yeniden üretim doğrudan başlamaz: önce
   // "düzenlemeler taşınsın mı" sorulur (§11.4).
   const [yenidenOnayi, setYenidenOnayi] = useState(false);
+  // Pencerede iki görünüm var: düzenlenebilir kutular ve veliye giden
+  // belgenin kendisi. Anahtar, belge her tazelemede yeniden çizilsin diye.
+  const [belgeGorunumu, setBelgeGorunumu] = useState(false);
+  const [onizlemeAnahtari, setOnizlemeAnahtari] = useState(0);
 
   const veri =
     pencere?.mod === "detay" && veriKutusu?.raporId === pencere.raporId
@@ -121,6 +125,7 @@ export function RaporBolumu({
     setIslemSonucu(null);
     setDuzenleniyor(false);
     setYenidenOnayi(false);
+    setBelgeGorunumu(false);
     setPencere(hedef);
   }
 
@@ -128,6 +133,7 @@ export function RaporBolumu({
     setPencere(null);
     setDuzenleniyor(false);
     setYenidenOnayi(false);
+    setBelgeGorunumu(false);
     setIslemSonucu(null);
     // Adresteki ?rapor= izi kalırsa pencere her tazelemede yeniden açılırdı.
     if (acilisParametresi) router.replace(pathname, { scroll: false });
@@ -136,6 +142,7 @@ export function RaporBolumu({
   /** Pencerede duran raporu ve arkadaki listeyi tazeler. */
   async function tazele(raporId: string) {
     setVeriKutusu({ raporId, veri: await raporPenceresiVerisi(raporId) });
+    setOnizlemeAnahtari((sayac) => sayac + 1);
     router.refresh();
   }
 
@@ -327,6 +334,39 @@ export function RaporBolumu({
       {/* Gövdenin kendi yüzeyi yok: pencere (kil-pencere) zaten kabarık tek
           yüzey, rapor bölümleri onun içine tek tek gömülüyor. Buraya da bir
           zemin konsaydı gömük kutular gömük zemine karışırdı. */}
+      {/* Düzenleme kutuları ile veliye giden belge arasında anahtar.
+          Koordinatör eskiden belgeyi ancak PDF üretip indirdikten sonra
+          görebiliyordu; her bakış rapor geçmişine silinemez bir kayıt
+          bırakıyordu (§13.17). Önizleme kayıt açmaz. */}
+      {pencere.mod === "detay" && veri && !duzenleniyor ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Buton
+            tur={belgeGorunumu ? "sade" : "ikincil"}
+            onClick={() => setBelgeGorunumu(false)}
+            className="px-3 py-1.5 text-xs"
+          >
+            Düzenleme görünümü
+          </Buton>
+          <Buton
+            tur={belgeGorunumu ? "ikincil" : "sade"}
+            onClick={() => setBelgeGorunumu(true)}
+            className="px-3 py-1.5 text-xs"
+          >
+            Velinin göreceği belge
+          </Buton>
+          {belgeGorunumu ? (
+            <a
+              href={`/api/rapor-onizleme/${pencere.raporId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-marka-700 hover:underline"
+            >
+              Ayrı sekmede aç
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
       <div>
         {pencere.mod === "yeni" ? (
           <YeniRaporFormu
@@ -345,6 +385,23 @@ export function RaporBolumu({
             eylem={duzenlemeEylemi}
             onVazgec={() => setDuzenleniyor(false)}
           />
+        ) : belgeGorunumu ? (
+          <div className="space-y-2">
+            <iframe
+              // Anahtar tazelemede artıyor: rapor düzenlenince belge de
+              // yeniden çizilmeli (rota `no-store` ama iframe kendi
+              // kendine yeniden istek atmaz).
+              key={onizlemeAnahtari}
+              src={`/api/rapor-onizleme/${pencere.raporId}`}
+              title="Rapor önizlemesi"
+              className="kil-oyuk h-[70vh] min-h-[24rem] w-full"
+            />
+            <p className="text-xs text-zinc-500">
+              Bu, raporun şu anki hâlinin belge görüntüsüdür; rapor
+              geçmişine kayıt eklemez. Veliye vermek için “PDF oluştur”
+              düğmesini kullanın — o belge alındığı günkü hâliyle saklanır.
+            </p>
+          </div>
         ) : (
           <RaporIcerigi
             veri={veri}
