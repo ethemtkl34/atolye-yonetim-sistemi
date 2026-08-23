@@ -58,6 +58,18 @@ export async function raporGovdesiV2Uret(
   kayitIdleri: readonly string[],
   subeId: string,
   bugun: Date,
+  secenekler: {
+    /**
+     * Gözlem metni bu çağrıda üretilsin mi?
+     *
+     * VARSAYILAN FALSE ve bu bilinçli: model çağrısı tek başına ~55 saniye
+     * sürüyor, barındırma katmanının istek tavanı 60. Rapor üretimi o
+     * çağrıyı beklerse istek tavanı aşıp ölüyor ve kullanıcı raporu HİÇ
+     * alamıyor. Gövde önce puanlardan üretilip kaydediliyor (~2 sn), gözlem
+     * metni ayrı bir istekte ekleniyor (`raporGozlemiUret`).
+     */
+    gozlemUret?: boolean;
+  } = {},
 ): Promise<RaporGovdesiV2 | null> {
   const ogrenci = await db.student.findFirst({
     where: { id: ogrenciId, branchId: subeId },
@@ -462,7 +474,9 @@ export async function raporGovdesiV2Uret(
     .sort((a, b) => a.workshopType.sortOrder - b.workshopType.sortOrder)
     .map((oturum) => oturum.workshopType.name);
 
-  const metinSonucu = await ogrenciMetniUret({
+  const metinSonucu = !secenekler.gozlemUret
+    ? ({ durum: "atlandi" } as const)
+    : await ogrenciMetniUret({
     ilkAd: ogrenci.firstName,
     programAdi,
     haftaSayisi: ilkKayit.group.term?._count.weeks ?? null,
@@ -521,6 +535,16 @@ export async function raporGovdesiV2Uret(
   // geçici bir arıza) ve çözümleri de farklı.
   if (!gozlem) {
     switch (metinSonucu.durum) {
+      case "atlandi":
+        uyarilar.push({
+          bolum: "gozlem",
+          beklenen: true,
+          mesaj:
+            "Eğitmen gözlem raporu henüz yazılmadı: bu bölüm raporun geri kalanıyla aynı anda üretilmiyor.",
+          cozum:
+            "Raporun altındaki “Gözlem metnini üret” düğmesine basın; yazımı bir dakikaya kadar sürebilir.",
+        });
+        break;
       case "gozlem-yok":
         uyarilar.push({
           bolum: "gozlem",

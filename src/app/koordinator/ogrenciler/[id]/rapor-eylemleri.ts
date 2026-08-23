@@ -184,10 +184,27 @@ async function govdeUret<T>(
  * raporun kendi penceresinde duruyor, burada yalnızca sayı verilir.
  */
 function uyariNotu(govde: unknown): string {
-  const sayi = (govde as { uyarilar?: unknown[] })?.uyarilar?.length ?? 0;
-  return sayi > 0
-    ? ` Ancak ${sayi} bölüm eksik üretildi; sebepleri raporun üstünde listelendi.`
-    : "";
+  const uyarilar =
+    (govde as { uyarilar?: { beklenen?: boolean }[] })?.uyarilar ?? [];
+
+  // Bekleyen adımlar (gözlem metni) eksiklik sayılmaz; ayrı cümleyle
+  // anlatılır. "1 bölüm eksik üretildi" demek, olağan akışı arıza gibi
+  // gösterirdi.
+  const eksikler = uyarilar.filter((uyari) => !uyari.beklenen);
+  const bekleyenler = uyarilar.filter((uyari) => uyari.beklenen);
+
+  const parcalar: string[] = [];
+  if (bekleyenler.length > 0) {
+    parcalar.push(
+      " Gözlem metni ayrı üretiliyor: raporun altındaki “Gözlem metnini üret” düğmesine basın.",
+    );
+  }
+  if (eksikler.length > 0) {
+    parcalar.push(
+      ` Ayrıca ${eksikler.length} bölüm eksik üretildi; sebepleri raporun üstünde listelendi.`,
+    );
+  }
+  return parcalar.join("");
 }
 
 /**
@@ -337,6 +354,94 @@ function tasimaNotu(tasima: {
     );
   }
   return parcalar.join("");
+}
+
+/**
+ * §11.2 — Raporun gözlem metnini AYRI bir istekte üretir.
+ *
+ * NEDEN AYRI: model çağrısı tek başına ~55 saniye sürüyor, barındırma
+ * katmanının istek tavanı 60 saniye ve plan gereği yükseltilemiyor. Gözlem
+ * metni rapor üretiminin içinde kalsaydı her üretim o tavana yaslanır ve
+ * aşan isteklerde kullanıcı raporu HİÇ alamazdı — üstelik hata da bizim
+ * nazik mesajımız değil, barındırma katmanının ham hatası olurdu.
+ *
+ * Bölünmenin ikinci faydası: metin üretimi başarısız olduğunda rapor yerinde
+ * duruyor ve düğmeye yeniden basmak yetiyor; eskiden bütün üretim çöpe
+ * gidiyordu.
+ *
+ * SADECE GÖZLEM YAMALANIR: gövde yeniden hesaplanıyor ama kaydedilen yalnızca
+ * `gozlem`, `metinKaynagi` ve gözleme ait uyarılar. Kademeler, cümleler ve
+ * elle düzenlenmiş metinler olduğu gibi kalır — aradan geçen sürede puanlar
+ * ya da eşikler değişmiş olabilir ve raporun geri kalanı üretildiği günkü
+ * veriye ait (§13.17).
+ */
+export async function raporGozlemiUret(raporId: string): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+  const subeId = kullanici.aktifSubeId;
+
+  const rapor = await db.report.findFirst({
+    where: { id: raporId, student: { branchId: subeId } },
+    select: {
+      studentId: true,
+      bodyJson: true,
+      enrollmentLinks: { select: { enrollmentId: true } },
+    },
+  });
+  if (!rapor) return { hata: "Rapor bulunamadı." };
+
+  const govde = rapor.bodyJson as unknown as RaporGovdesiV2 & {
+    surum?: number;
+  };
+  if (govde?.surum !== 2) {
+    return { hata: "Bu rapor eski biçimde; gözlem metni üretilemez." };
+  }
+  if (govde.gozlem) {
+    return { hata: "Bu raporun gözlem metni zaten yazılmış." };
+  }
+
+  const uretim = await govdeUret(() =>
+    raporGovdesiV2Uret(
+      rapor.studentId,
+      rapor.enrollmentLinks.map((bag) => bag.enrollmentId),
+      subeId,
+      new Date(),
+      { gozlemUret: true },
+    ),
+  );
+  if ("hata" in uretim) return uretim;
+
+  const taze = uretim.govde;
+  if (!taze) return { hata: "Rapor verisi hazırlanamadı." };
+
+  // Gözleme ait eski uyarı ("henüz yazılmadı") düşer, yerine yeni üretimin
+  // gözlem uyarıları gelir. Diğer bölümlerin uyarıları korunur.
+  const gozlemDisiUyarilar = (govde.uyarilar ?? []).filter(
+    (uyari) => uyari.bolum !== "gozlem",
+  );
+  const yeniGozlemUyarilari = (taze.uyarilar ?? []).filter(
+    (uyari) => uyari.bolum === "gozlem",
+  );
+
+  const yeniGovde: RaporGovdesiV2 = {
+    ...govde,
+    gozlem: taze.gozlem,
+    metinKaynagi: taze.gozlem ? "ai" : govde.metinKaynagi,
+    uyarilar: [...gozlemDisiUyarilar, ...yeniGozlemUyarilari],
+  };
+
+  await db.report.update({
+    where: { id: raporId },
+    data: { bodyJson: yeniGovde as unknown as object },
+  });
+
+  revalidatePath(`/koordinator/ogrenciler/${rapor.studentId}`);
+
+  if (!taze.gozlem) {
+    const sebep = yeniGozlemUyarilari[0]?.mesaj ?? "Gözlem metni üretilemedi.";
+    return { hata: sebep, raporId };
+  }
+
+  return { basari: "Gözlem metni rapora eklendi.", raporId };
 }
 
 /**
@@ -493,14 +598,18 @@ export async function raporMetniDuzenle(
 }
 
 /**
- * İkinci sürüm raporda yerinde düzenlenebilen metin alanları.
+ * DİKKAT — bu dosyadan TİP DE YENİDEN DIŞA AKTARILMAZ.
  *
- * Tanım `lib/rapor-duzenleme.ts`'te (saf katman); burada yalnızca yeniden
- * dışa aktarılıyor ki istemci bileşenleri tipi kendi eylem dosyasından
- * almayı sürdürsün — "use server" dosyasından yalnızca tip dışa
- * aktarılabildiği için bu güvenli.
+ * `DuzenlenebilirAlan` bir süre buradan geçiyordu (`export type { ... }`).
+ * Tip ifadesi derlemede silinmesi gerekirken, "use server" modülünün istemci
+ * vekili üretilirken çalışma zamanı bağı olarak kaldı ve SSR paketi
+ * yüklenirken `ReferenceError: DuzenlenebilirAlan is not defined` ile
+ * öğrenci profili sayfasını 500'e düşürdü. Tip kontrolü, testler ve derleme
+ * bunu YAKALAMADI; yalnızca canlıdaki çalışma kaydı gösterdi.
+ *
+ * Kural: istemci bileşenleri bu tipleri kaynağından (`lib/rapor-duzenleme.ts`)
+ * alır. "use server" dosyasından yalnızca async fonksiyon dışa aktarılır.
  */
-export type { DuzenlenebilirAlan };
 
 /**
  * §11.4 — İkinci sürüm raporda tek bir metin kutusunun yerinde düzenlenmesi.

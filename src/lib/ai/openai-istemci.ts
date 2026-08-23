@@ -29,11 +29,18 @@ export const MODELLER = {
 } as const;
 
 /**
- * Bir istek en fazla bu kadar bekler. Rapor penceresi kullanıcının önünde
- * açık duruyor; süresiz bekleyen bir çağrı, pencereyi kilitlenmiş gibi
- * gösterirdi.
+ * Bir istek en fazla bu kadar bekler.
+ *
+ * BARINDIRMA TAVANININ ALTINDA OLMAK ZORUNDA. Değer 90 saniyeydi, oysa
+ * fonksiyonların istek tavanı 60: platform isteği bizim zaman aşımımız
+ * çalışmadan öldürüyordu ve kullanıcı buradaki nazik "tekrar deneyin"
+ * mesajını hiç göremiyor, ham bir sunucu hatası görüyordu. 50 saniye,
+ * tavanın altında kalırken modele de yeterli süreyi bırakıyor.
+ *
+ * Tavan değişirse (plan yükseltmesi) burası da güncellenmeli; ikisi
+ * birbirine bağlı ve ters sıralandığında hata mesajı sessizce kayboluyor.
  */
-const ZAMAN_ASIMI_MS = 90_000;
+const ZAMAN_ASIMI_MS = 50_000;
 
 export type UretimSonucu =
   | { durum: "tamam"; metin: string }

@@ -21,6 +21,7 @@ import {
   raporMetniDuzenle,
   raporOlustur,
   raporPenceresiVerisi,
+  raporGozlemiUret,
   raporSil,
   raporYenidenUret,
   type EylemDurumu,
@@ -97,7 +98,7 @@ export function RaporBolumu({
   // Hangi uzun işlemin sürdüğü — buton kendi spinner'ını gösterir, diğeri
   // yalnızca kilitlenir. `islemde` bitince kendiliğinden anlamsızlaşır.
   const [surenIslem, setSurenIslem] = useState<
-    "pdf" | "yeniden" | "sil" | null
+    "pdf" | "yeniden" | "sil" | "gozlem" | null
   >(null);
   // Elle düzenlenmiş metin varsa yeniden üretim doğrudan başlamaz: önce
   // "düzenlemeler taşınsın mı" sorulur (§11.4).
@@ -181,6 +182,22 @@ export function RaporBolumu({
     }
     return sonuc;
   }, {});
+
+  /**
+   * Gözlem metni AYRI bir istekte üretiliyor: model çağrısı tek başına
+   * barındırma katmanının istek tavanına yaklaşıyor ve rapor üretiminin
+   * içinde kalırsa üretimin tamamını götürüyordu (bkz. `raporGozlemiUret`).
+   */
+  function gozlemUret() {
+    if (pencere?.mod !== "detay") return;
+    const raporId = pencere.raporId;
+    setSurenIslem("gozlem");
+    basla(async () => {
+      const sonuc = await raporGozlemiUret(raporId);
+      setIslemSonucu(sonuc);
+      if (sonuc.basari) await tazele(raporId);
+    });
+  }
 
   function pdfUret() {
     if (pencere?.mod !== "detay") return;
@@ -481,6 +498,19 @@ export function RaporBolumu({
             </div>
           ) : null}
 
+          {islemde && surenIslem === "gozlem" ? (
+            <div
+              role="status"
+              className="kil-oyuk flex items-center gap-3 px-3 py-2.5 text-sm text-marka-700"
+            >
+              <DonenHalka />
+              <span>
+                Gözlem metni stajyerin gözlem notlarından yazılıyor; bu işlem
+                bir dakikaya kadar sürebilir. Sayfadan ayrılmayın.
+              </span>
+            </div>
+          ) : null}
+
           {islemde && surenIslem === "yeniden" ? (
             <div
               role="status"
@@ -495,6 +525,20 @@ export function RaporBolumu({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
+            {(veri.detay.govde as unknown as { surum?: number })?.surum ===
+              2 &&
+            !(veri.detay.govde as unknown as { gozlem?: unknown }).gozlem ? (
+              <Buton tur="birincil" disabled={islemde} onClick={gozlemUret}>
+                {islemde && surenIslem === "gozlem" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <DonenHalka />
+                    Gözlem metni yazılıyor…
+                  </span>
+                ) : (
+                  "Gözlem metnini üret"
+                )}
+              </Buton>
+            ) : null}
             <Buton disabled={islemde} onClick={pdfUret}>
               {islemde && surenIslem === "pdf" ? (
                 <span className="inline-flex items-center gap-2">

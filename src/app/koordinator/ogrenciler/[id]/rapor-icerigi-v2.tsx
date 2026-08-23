@@ -6,11 +6,16 @@ import { KademeGostergesi, KademeYok } from "@/components/kademe-gostergesi";
 import { cn } from "@/lib/utils";
 import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
 import { alanAnahtari } from "@/lib/rapor-duzenleme";
-import type { RaporDuzenlemesi } from "@/lib/rapor-duzenleme";
+// Tipler KAYNAĞINDAN alınır, eylem dosyasından değil: "use server"
+// modülünden tip yeniden dışa aktarmak SSR paketinde çalışma zamanı bağı
+// bırakıp sayfayı 500'e düşürmüştü (bkz. `rapor-eylemleri.ts` notu).
+import type {
+  DuzenlenebilirAlan,
+  RaporDuzenlemesi,
+} from "@/lib/rapor-duzenleme";
 import {
   raporBolumunuDuzenle,
   raporBolumunuGeriAl,
-  type DuzenlenebilirAlan,
 } from "./rapor-eylemleri";
 
 /**
@@ -63,7 +68,11 @@ export function RaporIcerigiV2({
       {govde.uyarilar && govde.uyarilar.length > 0 ? (
         <div className="kil-uyari space-y-2 p-4">
           <h3 className="text-sm font-semibold text-vurgu-900">
-            Bu rapor eksik üretildi ({govde.uyarilar.length})
+            {/* Bekleyen adım (gözlem metni) eksiklik değil; başlık ona göre
+                yazılır, yoksa olağan akış arıza gibi görünür. */}
+            {govde.uyarilar.every((uyari) => uyari.beklenen)
+              ? `Bu raporda bekleyen adım var (${govde.uyarilar.length})`
+              : `Bu rapor eksik üretildi (${govde.uyarilar.filter((u) => !u.beklenen).length})`}
           </h3>
           <ul className="space-y-2">
             {govde.uyarilar.map((uyari) => (

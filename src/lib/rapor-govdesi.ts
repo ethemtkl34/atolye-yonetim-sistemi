@@ -111,6 +111,15 @@ export type RaporUyarisi = {
   mesaj: string;
   /** Bunu gidermek için ne yapılmalı. */
   cozum: string;
+  /**
+   * Bu bir EKSİKLİK değil, akışın bekleyen bir adımı mı?
+   *
+   * Gözlem metni artık raporla aynı anda üretilmiyor (istek tavanı); yeni
+   * üretilmiş her raporda o bölüm boş başlıyor ve bu olağan. Aynı listede
+   * durması doğru — koordinatör ne eksik olduğunu tek yerden görmeli — ama
+   * "rapor eksik üretildi" diye sayılması yanlış olurdu.
+   */
+  beklenen?: boolean;
 };
 
 export type RaporGovdesiV2 = {

@@ -72,6 +72,15 @@ export async function generateMetadata(
  * her seferinde aynı uzun sayfayı kaydırıyordu; oysa günlük iş ilk kattaki
  * dört bölümde geçiyor.
  */
+/**
+ * Bu sayfadaki sunucu eylemlerinin (rapor üretimi, gözlem metni) süre tavanı.
+ *
+ * Açıkça yazılıyor çünkü varsayılan, çalışma ortamına göre değişebiliyor ve
+ * gözlem metni üretimi modelden ~55 saniye bekliyor. 60, barındırma planının
+ * izin verdiği en yüksek değer; daha fazlası için plan yükseltmesi gerekir.
+ */
+export const maxDuration = 60;
+
 export default async function OgrenciProfilSayfasi(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ) {
