@@ -55,3 +55,6 @@ scripts/test-verisi/cikti/
 
 # Rapor belgesinin gözle denenmesi için üretilen örnek çıktı (npm run rapor:ornek)
 ornek-rapor.pdf
+
+# Geçmiş veri aktarımının ara çıktıları — veli telefonları içerir.
+scripts/gecmis-veri/cikti/

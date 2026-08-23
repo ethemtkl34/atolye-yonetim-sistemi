@@ -976,6 +976,52 @@ katmanıyla değiştirilecek olan katman; analiz, veri modeli ve PDF aynı kalac
 
 ---
 
+## Geçmiş veri aktarımı (Ağustos 2026)
+
+Panel açılmadan önce yaşanmış dönemler kütükten (Excel) ve PDF rapor
+arşivinden sisteme aktarıldı. Amaç yalnızca geçmişi takip etmek: öğrencinin
+profilinde hangi dönemde hangi sınıfta olduğu ve o dönemin raporu görünsün.
+
+| | |
+|---|---|
+| Öğrenci | 431 |
+| Kayıt | 599 |
+| Arşiv raporu (PDF) | 351 · 133 MB |
+| Dönem | Kış 1. Kur, Bahar 2. Kur, 2025 Yaz, 2026 Yaz |
+| Kulüp | Drama 2026, Robotik Kodlama 2026 |
+| Şube | Ümraniye |
+
+Betikler `scripts/gecmis-veri/` altında; kullanımı oradaki `README.md`'de.
+Kararların gerekçesi `docs/DECISIONS.md` → "Geçmiş veri aktarımı".
+
+**Bu dönemler rapor üretemez.** `Term.gecmisVerisi` / `Club.gecmisVerisi`
+bayrağı rapor kapsam listesini, rapor üretme eylemini, puanlama ve gelişim
+testi listelerini birden kapatır — o dönemlerin puanlaması ve müfredatı hiç
+girilmedi.
+
+**Kütükte eksik kalanlar** (aktarım sırasında tespit edildi, denetim raporunda
+tek tek listeli):
+
+- 248 kaydın raporu bulunamadı. Büyük kısmı 2025 Yaz (85) — o yaz için hiç PDF
+  yok. Liste: `scripts/gecmis-veri/cikti/raporsuz-ogrenciler.xlsx`.
+- 4 öğrenci kütükte hiç yoktu, yalnız PDF kapağından oluşturuldu (velisiz):
+  EMİR OĞUZ YÜCE, SERDEM DİNÇER, MİLAN BAŞKUT, FERİHA YILMAZ.
+- 7 kayıt kütükte yoktu, öğrencinin o döneme ait raporundan türetildi.
+- 9 telefon numarası bozuk olduğu için boş bırakıldı (`X`, `pu`, eksik hane).
+- 8 PDF'te ad Excel'den farklı yazılmış; elle doğrulanmış eşleme tablosuyla
+  bağlandı (`AD_ESLEMESI`).
+
+**Açık soru — şube.** Bütün veri Ümraniye'ye yazıldı (351 PDF kapağının
+hepsinde "ÜMRANİYE - DAHİ PARK" yazıyor). Ama Excel ana sayfasında satır
+229'dan sonra "1.Kur - Ümraniye" etiketli ayrı bir blok var ve üst blok tek
+başına Bahar için 211 kayıt üretiyor — elde tam 211 Bahar raporu var. Alt blok
+eklendiğinde Bahar mevcudu 305'e çıkıyor ve 94 kayıt raporsuz kalıyor. İki
+bloğun iki ayrı şube olması muhtemel. Karar değişirse
+`hazirla.py` → `ALT_BLOK_SUBE = "gunesli"` yapılıp `geri-al` + `aktar`
+yeniden koşulur.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

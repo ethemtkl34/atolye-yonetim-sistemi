@@ -207,8 +207,8 @@ model Branch {
 /// Bütün kullanıcılar aynı tabloda tutulur; ayrım `roles` dizisindedir.
 /// Stajyerin kendi hesabı olması gerekiyor çünkü puanlamayı kendisi giriyor.
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String @id @default(cuid())
+  email        String @unique
   passwordHash String
   name         String
 
@@ -227,9 +227,9 @@ model User {
   /// sayfasına yönlendirir; başka hiçbir sayfa açılmaz.
   mustChangePassword Boolean @default(false)
 
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   /// ADMIN (Kurum Yöneticisi) hiçbir şubeye bağlı değildir (null); diğer
   /// bütün roller her zaman bir şubeye bağlıdır. Kural veritabanında CHECK
@@ -238,16 +238,16 @@ model User {
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   /// §8 — Stajyer ataması kayıt bazındadır, öğrenci profiline bağlı değildir.
-  assignedEnrollments Enrollment[] @relation("AtananStajyer")
-  enteredScores       Score[]      @relation("PuanlamayiGiren")
-  editedReports       Report[]     @relation("RaporuDuzenleyen")
-  addedCounselingSessions CounselingSession[] @relation("GorusmeyiEkleyen")
-  addedParentMeetings     ParentMeeting[]     @relation("VeliGorusmesiEkleyen")
-  addedTherapyIntakes     TherapyIntake[]     @relation("DanisanBasvurusuEkleyen")
-  addedIntelligenceTests  IntelligenceTest[]  @relation("ZekaTestiEkleyen")
+  assignedEnrollments          Enrollment[]            @relation("AtananStajyer")
+  enteredScores                Score[]                 @relation("PuanlamayiGiren")
+  editedReports                Report[]                @relation("RaporuDuzenleyen")
+  addedCounselingSessions      CounselingSession[]     @relation("GorusmeyiEkleyen")
+  addedParentMeetings          ParentMeeting[]         @relation("VeliGorusmesiEkleyen")
+  addedTherapyIntakes          TherapyIntake[]         @relation("DanisanBasvurusuEkleyen")
+  addedIntelligenceTests       IntelligenceTest[]      @relation("ZekaTestiEkleyen")
   filledDevelopmentAssessments DevelopmentAssessment[] @relation("GelisimiDolduran")
   generatedWorkshopContents    AtolyeIcerigi[]         @relation("AtolyeIcerigiUreten")
-  termAssignments     TermIntern[] @relation("DonemStajyeri")
+  termAssignments              TermIntern[]            @relation("DonemStajyeri")
   updatedReportSettings        RaporAyari[]            @relation("RaporAyariniGuncelleyen")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
@@ -326,8 +326,17 @@ model Term {
   /// ("Kış 1. Kur") yıldan bağımsız değişebiliyor. Eski dönemlerde boş.
   egitimYili String?
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  /// Panel açılmadan önce yaşanmış, dışarıdan aktarılmış dönem.
+  ///
+  /// Bu dönemlerin haftası, oturumu ve puanı YOK — geçmişin kanıtı arşivdeki
+  /// PDF'in kendisi (`LegacyReport`). Bayrak üç kapıyı birden kapatır: rapor
+  /// kapsam listesi, rapor üretme eylemi, müfredat/puanlama seçicileri.
+  /// `status: ARSIVLENDI` bunu tek başına yapamazdı; arşiv geri alınabilir
+  /// bir görünürlük ayarı, oysa bu dönemlerin puanı hiçbir zaman gelmeyecek.
+  gecmisVerisi Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   workshops         TermWorkshop[]
   weeks             TermWeek[]
@@ -430,8 +439,12 @@ model Club {
 
   description String?
   status      ClubStatus @default(TASLAK)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+
+  /// Dışarıdan aktarılmış geçmiş kulüp — bkz. `Term.gecmisVerisi`.
+  gecmisVerisi Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   workshops         ClubWorkshop[]
   groups            Group[]
@@ -499,7 +512,7 @@ model CurriculumEntry {
   workshopTypeId String
   /// Restrict: TermWorkshop/ClubWorkshop ile aynı kural — programda
   /// kullanılan atölye çeşidi silinemez.
-  workshopType WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
 
   /// Programın kaçıncı haftası (1'den başlar; `CurriculumEntry_hafta_pozitif`
   /// CHECK kısıtı). Dönemde `TermWeek.weekNumber`, kulüpte `weekDates`
@@ -609,6 +622,7 @@ model Student {
   parentMeetings     ParentMeeting[]
   parentReferrals    ParentMeetingReferral[]
   intelligenceTests  IntelligenceTest[]
+  legacyReports      LegacyReport[]
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
   @@index([branchId, searchName])
@@ -685,7 +699,7 @@ model CounselingSession {
   notes         String
 
   createdByUserId String?
-  createdBy       User?   @relation("GorusmeyiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?    @relation("GorusmeyiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
 
   @@index([studentId, date])
@@ -986,6 +1000,7 @@ model Enrollment {
   scores                 Score[]
   reportLinks            ReportEnrollment[]
   developmentAssessments DevelopmentAssessment[]
+  legacyReports          LegacyReport[]
 
   @@unique([studentId, groupId])
   @@index([groupId, status])
@@ -1199,6 +1214,50 @@ model ReportPdf {
   @@index([reportId, createdAt])
 }
 
+/// Panel açılmadan önce, dışarıda (Excel'de) üretilmiş öğrenci değerlendirme
+/// raporu. Amaç yalnızca GEÇMİŞİ TAKİP: öğrencinin profilinde hangi dönemde
+/// hangi sınıfta olduğu ve o dönemin raporu görülebilsin.
+///
+/// Neden `Report`/`ReportPdf` değil: onların `bodyJson`/`snapshotJson` alanları
+/// zorunlu ve bu belgelerin öyle bir gövdesi yok — bu dönemlerin puanlaması da
+/// müfredatı da hiç girilmedi. Sahte JSON yazmak rapor motorunu kirletir ve
+/// "yeniden üret" düğmesi anlamsız bir belge üretirdi. Bağlı oldukları dönem
+/// `Term.gecmisVerisi` ile zaten rapor üretimine kapalı.
+///
+/// DOSYA: ikili veri doğrudan veritabanında — `IntelligenceTest` ile aynı
+/// gerekçe ve aynı desen (nesne deposu kurulmadı). 351 belge ≈ 133 MB.
+model LegacyReport {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Hangi kayda ait olduğu biliniyorsa bağlanır. Excel'de karşılığı olmayan
+  /// (yalnız PDF'ten tanınan) öğrencilerde boş kalır; belge yine de öğrenciye
+  /// bağlı durur.
+  enrollmentId String?
+  enrollment   Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  /// Anlık kopyalar — dönem/grup sonradan yeniden adlandırılsa da belge
+  /// kapağındaki bilgi değişmez.
+  termLabel  String
+  groupLabel String?
+
+  /// Raporun ait olduğu tarih (PDF'in üretim tarihi).
+  reportDate DateTime @db.Date
+
+  /// Aktarımın izi: orijinal klasör + dosya adı. Aynı yol iki kez
+  /// aktarılmaz — betiğin idempotanlığı buna dayanır.
+  sourcePath String @unique
+
+  fileName  String
+  mimeType  String
+  fileSize  Int
+  fileData  Bytes
+  createdAt DateTime @default(now())
+
+  @@index([studentId, reportDate])
+}
+
 // ---------------------------------------------------------------------------
 // Rapor içeriği — öğrenciye özel OLMAYAN metinler
 // ---------------------------------------------------------------------------
@@ -1225,7 +1284,7 @@ model AtolyeIcerigi {
   workshopTypeId String
   /// Restrict: programda kullanılan atölye çeşidi silinemez (TermWorkshop
   /// ve CurriculumEntry ile aynı kural).
-  workshopType WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
+  workshopType   WorkshopType @relation(fields: [workshopTypeId], references: [id], onDelete: Restrict)
 
   metin String
 

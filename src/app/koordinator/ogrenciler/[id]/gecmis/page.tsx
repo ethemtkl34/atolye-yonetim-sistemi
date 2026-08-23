@@ -3,7 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { db } from "@/lib/db";
-import { BosDurum, Buton, Girdi, Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili, kartBasligiStili } from "@/components/ui";
+import {
+  Bildirim,
+  BosDurum,
+  Buton,
+  Girdi,
+  Kart,
+  Rozet,
+  SayfaBasligi,
+  butonStili,
+  geriBaglantiStili,
+  kartBasligiStili,
+} from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { ortalamaBicimle, puanlamaOrtalamasi } from "@/lib/puan-hesaplari";
 import { tarihCozumle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
@@ -151,8 +162,8 @@ export default async function OgrenciGecmisiSayfasi(
       select: {
         group: {
           select: {
-            term: { select: { id: true, name: true } },
-            club: { select: { id: true, name: true } },
+            term: { select: { id: true, name: true, gecmisVerisi: true } },
+            club: { select: { id: true, name: true, gecmisVerisi: true } },
           },
         },
       },
@@ -174,19 +185,46 @@ export default async function OgrenciGecmisiSayfasi(
     }),
   ]);
 
+  /**
+   * Bu sayfa PUANLAMA satırlarından besleniyor; geçmişten aktarılan dönemlerin
+   * oturumu hiç açılmadığı için buraya tek satır bile düşmezler. Süzgeç
+   * listesinde durmaları, seçilince hep boş sonuç veren bir seçenek olurdu —
+   * bu yüzden ayıklanıyorlar ve bunun yerine tablonun üstünde bir not var.
+   * Kayıtların kendisi öğrenci profilindeki "Geçmiş kayıtlar" kutusunda,
+   * belgeleri "Arşiv raporları" kutusunda görünüyor.
+   */
+  const gecmisProgramlari = [
+    ...new Set(
+      kayitlar
+        .map((kayit) =>
+          kayit.group.term?.gecmisVerisi
+            ? kayit.group.term.name
+            : kayit.group.club?.gecmisVerisi
+              ? kayit.group.club.name
+              : null,
+        )
+        .filter((ad): ad is string => Boolean(ad)),
+    ),
+  ];
+
   const programlar = [
     ...new Map(
-      kayitlar.map((kayit) => {
-        const kaynak = kayit.group.term ?? kayit.group.club;
-        return [
-          kaynak?.id ?? "",
-          {
-            id: kaynak?.id ?? "",
-            ad: kaynak?.name ?? "Program",
-            tur: kayit.group.term ? "Dönem" : "Kulüp",
-          },
-        ];
-      }),
+      kayitlar
+        .filter(
+          (kayit) =>
+            !kayit.group.term?.gecmisVerisi && !kayit.group.club?.gecmisVerisi,
+        )
+        .map((kayit) => {
+          const kaynak = kayit.group.term ?? kayit.group.club;
+          return [
+            kaynak?.id ?? "",
+            {
+              id: kaynak?.id ?? "",
+              ad: kaynak?.name ?? "Program",
+              tur: kayit.group.term ? "Dönem" : "Kulüp",
+            },
+          ];
+        }),
     ).values(),
   ].filter((secenek) => secenek.id);
 
@@ -293,6 +331,15 @@ export default async function OgrenciGecmisiSayfasi(
           ) : null}
         </form>
       </SuzgecCubugu>
+
+      {gecmisProgramlari.length > 0 ? (
+        <Bildirim tur="bilgi">
+          {gecmisProgramlari.join(", ")} kütükten aktarıldı: o dönemlerin
+          puanlaması sistemde yok, bu yüzden bu listede görünmezler. Kayıtları
+          öğrenci profilindeki “Geçmiş kayıtlar”, raporları ise “Arşiv
+          raporları” bölümünde.
+        </Bildirim>
+      ) : null}
 
       {puanlamalar.length === 0 ? (
         <BosDurum

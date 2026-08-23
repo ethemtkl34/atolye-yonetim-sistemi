@@ -39,6 +39,7 @@ export default async function DonemMufredatSayfasi(
       id: true,
       name: true,
       status: true,
+      gecmisVerisi: true,
       dayMode: true,
       weeks: {
         orderBy: { weekNumber: "asc" },
@@ -90,7 +91,14 @@ export default async function DonemMufredatSayfasi(
         </div>
       </div>
 
-      {arsivli ? (
+      {donem.gecmisVerisi ? (
+        <Bildirim tur="bilgi">
+          Bu dönem panel açılmadan önce yaşandı ve kütükten aktarıldı.
+          Puanlaması ve müfredatı hiç girilmedi; bu yüzden burada gösterilecek
+          bir şey yok ve sistem bu dönem için rapor üretemez. Öğrencilerin
+          o dönemki raporları profillerindeki “Arşiv raporları” bölümündedir.
+        </Bildirim>
+      ) : arsivli ? (
         <Bildirim tur="bilgi">
           Bu dönem arşivlenmiş; müfredat yalnızca görüntülenebilir.
         </Bildirim>

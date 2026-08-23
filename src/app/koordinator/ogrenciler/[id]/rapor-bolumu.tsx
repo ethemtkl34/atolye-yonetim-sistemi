@@ -45,12 +45,19 @@ export function RaporBolumu({
   ogrenciAdi,
   raporlar,
   kapsamKayitlari,
+  yalnizcaGecmisKayit = false,
   acilisParametresi,
 }: {
   ogrenciId: string;
   ogrenciAdi: string;
   raporlar: RaporOzeti[];
   kapsamKayitlari: KapsamKaydi[];
+  /**
+   * Öğrencinin kaydı var ama hepsi geçmişten aktarılmış — puanlaması olmayan
+   * dönemler. "Önce bir kayıt oluşturun" demek yanlış yönlendirir; kayıt
+   * zaten var, üretilemeyen şey rapor.
+   */
+  yalnizcaGecmisKayit?: boolean;
   /** `?rapor=` değeri: "yeni", bir rapor kimliği ya da yok. */
   acilisParametresi?: string;
 }) {
@@ -261,7 +268,9 @@ export function RaporBolumu({
             disabled={kapsamKayitlari.length === 0}
             engelSebebi={
               kapsamKayitlari.length === 0
-                ? "Rapor üretebilmek için önce bir dönem veya kulüp kaydı oluşturun."
+                ? yalnizcaGecmisKayit
+                  ? "Bu öğrencinin kayıtları geçmişten aktarıldı; o dönemlerin puanlaması olmadığı için rapor üretilemez. Belgeleri “Arşiv raporları” bölümünde."
+                  : "Rapor üretebilmek için önce bir dönem veya kulüp kaydı oluşturun."
                 : undefined
             }
           >
@@ -271,8 +280,9 @@ export function RaporBolumu({
 
         {raporlar.length === 0 ? (
           <p className="kil-bos p-6 text-center text-sm text-zinc-600">
-            Henüz rapor üretilmemiş. Rapor, mevcut puanlamalardan istenildiği
-            anda üretilebilir.
+            {yalnizcaGecmisKayit
+              ? "Bu öğrencinin sistemde puanlanmış kaydı yok. Geçmiş dönemlerden aktarılan raporları “Arşiv raporları” bölümünde."
+              : "Henüz rapor üretilmemiş. Rapor, mevcut puanlamalardan istenildiği anda üretilebilir."}
           </p>
         ) : (
           <div className="space-y-2">

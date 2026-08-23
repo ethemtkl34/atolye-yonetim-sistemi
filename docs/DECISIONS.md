@@ -114,3 +114,28 @@ Karar gerekçeleri:
 - `puan-hesaplari.ts` yalnızca saf ortalama/biçimleme hesapları içerir:
   kontenjan `kayit-kurallari.ts`'e, rapor güncelliği `rapor-motoru.ts`'a
   taşındı — dosya adı içeriğini anlatmak zorunda.
+
+## Geçmiş veri aktarımı (Ağustos 2026)
+
+- Panel açılmadan önce yaşanmış dönemler ve o dönemlerin PDF raporları
+  sisteme aktarıldı. Amaç **yalnızca geçmişi takip**: öğrencinin profilinde
+  hangi dönemde hangi sınıfta olduğu ve o dönemin raporu görünsün.
+- Aktarılan dönem ve kulüpler `gecmisVerisi = true` işaretlidir. Bu programlar
+  için sistem **rapor üretemez**: puanlaması ve müfredatı hiç girilmedi, boş
+  bir puan kümesinden üretilecek rapor gerçek arşiv belgesinin yanında ikinci
+  ve yanlış bir belge olurdu. Bayrak dört yeri birden kapatır — rapor kapsam
+  listesi, rapor üretme eylemi, puanlama listesi, gelişim testi listesi.
+- `status = ARSIVLENDI` bu işin yerine geçmez: arşiv geri alınabilir bir
+  görünürlük ayarı (`ARSIVLENDI → TAMAMLANDI` geçişi var), oysa bu dönemlerin
+  puanı hiçbir zaman gelmeyecek. İkisi birlikte kullanılıyor.
+- Geçmiş raporlar `Report`/`ReportPdf` değil, ayrı bir `LegacyReport`
+  tablosunda durur. Sebep: o modellerin `bodyJson`/`snapshotJson` alanları
+  zorunlu ve bu belgelerin öyle bir gövdesi yok. Belge ikili veri olarak
+  veritabanında (`IntelligenceTest` ile aynı gerekçe ve desen).
+- Aktarılan dönemlerin `TermWeek`, `Session` ve `Score` satırları
+  **üretilmedi**. Uydurulmuş oturum, geçmişi olduğundan zengin gösterirdi;
+  geçmişin kanıtı arşivdeki PDF'in kendisi.
+- Aktarım iki aşamalı: `scripts/gecmis-veri/hazirla.py` kaynakları okuyup
+  denetlenebilir bir JSON + denetim raporu üretir (DB'ye dokunmaz),
+  `aktar.ts` onu yazar. Yazılan her satırın kimliği `manifest.json`'a düşer;
+  `geri-al.ts` yalnızca o listeye dokunur.

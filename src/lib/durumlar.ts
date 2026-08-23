@@ -131,6 +131,37 @@ export function atanmamisKayitKosulu(
  * listeleri tam olarak bu koşulun dışında kalanları gösterir; böylece her
  * program tam olarak bir listede görünür, hiçbiri iki yerde çıkmaz.
  */
+/**
+ * Geçmişten aktarılmış program — bkz. `Term.gecmisVerisi`.
+ *
+ * Bu dönemlerin haftası, oturumu ve puanı YOK; panel açılmadan önce yaşandılar
+ * ve kütükten aktarıldılar. Rapor üretimi, müfredat ve puanlama ekranları
+ * bunları HİÇ görmemeli: boş puan kümesinden üretilen bir rapor, gerçek arşiv
+ * PDF'inin yanında ikinci ve yanlış bir belge olurdu.
+ *
+ * `ARSIV_DONEM_KOSULU` bunun yerine geçemez: arşiv geri alınabilir bir
+ * görünürlük ayarı (`DONEM_DURUM_GECISLERI` içinde ARSIVLENDI → TAMAMLANDI
+ * var), oysa bu dönemlerin puanı hiçbir zaman gelmeyecek.
+ */
+export const GUNCEL_DONEM_KOSULU = {
+  gecmisVerisi: false,
+} satisfies Prisma.TermWhereInput;
+
+export const GUNCEL_KULUP_KOSULU = {
+  gecmisVerisi: false,
+} satisfies Prisma.ClubWhereInput;
+
+/**
+ * Puanlanabilir/raporlanabilir gruplar — geçmişten aktarılanlar hariç.
+ *
+ * Grup ya döneme ya kulübe bağlı (şemadaki `Group_term_xor_club`), bu yüzden
+ * iki koşul OR ile duruyor: dönem grubu ilk dalı, kulüp grubu ikinciyi
+ * karşılar. Boş olan ilişki hiçbir dalı geçmez.
+ */
+export const GUNCEL_PROGRAM_GRUBU = {
+  OR: [{ term: GUNCEL_DONEM_KOSULU }, { club: GUNCEL_KULUP_KOSULU }],
+} satisfies Prisma.GroupWhereInput;
+
 export const ARSIV_DONEM_KOSULU = {
   status: "ARSIVLENDI",
 } satisfies Prisma.TermWhereInput;

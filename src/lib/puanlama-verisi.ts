@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { aktifGrupKosulu } from "./durumlar";
+import { aktifGrupKosulu, GUNCEL_PROGRAM_GRUBU } from "./durumlar";
 import { bugun, tarihMetni } from "./tarih";
 import { puanlamaOrtalamasi } from "./puan-hesaplari";
 import {
@@ -367,9 +367,13 @@ export async function kayitIlerlemeleri(kosul: {
       ...(kosul.internId ? { internId: kosul.internId } : {}),
       ...(kosul.studentId ? { studentId: kosul.studentId } : {}),
       ...(kosul.yalnizcaAktif ? { status: "AKTIF" } : {}),
+      // Geçmişten aktarılan programlar HER İKİ kapsamda da dışarıda: bu
+      // kayıtların oturumu hiç açılmadı, puanlanmaları mümkün değil.
+      // "İptal ve arşiv dahil" görünümünde de listelenselerdi hiç
+      // doldurulamayacak yüzlerce satır olarak dururlardı.
       group: kosul.yalnizcaAktifProgram
         ? aktifGrupKosulu(kosul.subeId)
-        : { branchId: kosul.subeId },
+        : { branchId: kosul.subeId, ...GUNCEL_PROGRAM_GRUBU },
     },
     orderBy: { createdAt: "desc" },
     select: {

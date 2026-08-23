@@ -1,5 +1,6 @@
 import type { AssessmentPeriod } from "@/generated/prisma/enums";
 import { db } from "./db";
+import { GUNCEL_PROGRAM_GRUBU } from "./durumlar";
 import { gelisimCevaplariCozumle } from "./gelisim-degerlendirmesi";
 import { raporGuncelMi } from "./rapor-motoru";
 import {
@@ -40,7 +41,13 @@ export async function raporKapsamSecenekleri(
   subeId: string,
 ): Promise<KapsamKaydi[]> {
   const kayitlar = await db.enrollment.findMany({
-    where: { studentId: ogrenciId, group: { branchId: subeId } },
+    // Geçmişten aktarılan kayıtlar KAPSAM DIŞI: o dönemlerin puanlaması hiç
+    // girilmedi, seçilirlerse boş bir rapor üretilirdi. Onların belgesi
+    // öğrenci profilindeki "Arşiv raporları" bölümünde duruyor.
+    where: {
+      studentId: ogrenciId,
+      group: { branchId: subeId, ...GUNCEL_PROGRAM_GRUBU },
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

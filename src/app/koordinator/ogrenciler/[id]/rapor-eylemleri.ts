@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import {
+  gecmisProgramHatasi,
+  gecmisProgramKaydi,
+} from "@/lib/gecmis-veri";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { yetkiYeter } from "@/lib/yetkiler";
 import { raporGovdesiV2Uret } from "@/lib/rapor-govdesi-verisi";
@@ -78,8 +82,8 @@ export async function raporOlustur(
       group: {
         select: {
           name: true,
-          term: { select: { name: true } },
-          club: { select: { name: true } },
+          term: { select: { name: true, gecmisVerisi: true } },
+          club: { select: { name: true, gecmisVerisi: true } },
         },
       },
     },
@@ -87,6 +91,13 @@ export async function raporOlustur(
 
   if (gecerliKayitlar.length !== kayitIdleri.length) {
     return { hata: "Seçilen kayıtlardan biri bu öğrenciye ait değil." };
+  }
+
+  // Kapsam listesi geçmiş kayıtları zaten göstermiyor (`raporKapsamSecenekleri`),
+  // ama liste istemcide çiziliyor; kapı burada da duruyor.
+  const gecmisKayitlar = gecerliKayitlar.filter(gecmisProgramKaydi);
+  if (gecmisKayitlar.length > 0) {
+    return { hata: gecmisProgramHatasi(gecmisKayitlar) };
   }
 
   // Rapor, stajyerin puanlama ve gözlemlerinden doğar; stajyeri atanmamış
@@ -212,8 +223,8 @@ export async function raporYenidenUret(
               group: {
                 select: {
                   name: true,
-                  term: { select: { name: true } },
-                  club: { select: { name: true } },
+                  term: { select: { name: true, gecmisVerisi: true } },
+                  club: { select: { name: true, gecmisVerisi: true } },
                 },
               },
             },
@@ -224,6 +235,15 @@ export async function raporYenidenUret(
   });
 
   if (!eski) return { hata: "Rapor bulunamadı." };
+
+  // Aktarımdan önce üretilmiş bir rapor sonradan geçmiş bir programa
+  // bağlanmış olabilir; yeniden üretim orada da durur.
+  const gecmisBaglar = eski.enrollmentLinks
+    .map((bag) => bag.enrollment)
+    .filter(gecmisProgramKaydi);
+  if (gecmisBaglar.length > 0) {
+    return { hata: gecmisProgramHatasi(gecmisBaglar) };
+  }
 
   // Yeni üretim de stajyer kuralına tabi: atama sonradan kaldırıldıysa
   // güncel puanlarla üretim, kaynağı olmayan bir rapor doğurmamalı.

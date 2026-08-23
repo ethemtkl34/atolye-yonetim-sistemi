@@ -14,6 +14,10 @@ import type { CikisGunu } from "@/components/kayit-cikar-butonu";
 import { ProfilKutusu } from "./profil-kutulari";
 import { raporKapsamSecenekleri, raporOzetleri } from "@/lib/rapor-verisi";
 import { RaporBolumu } from "./rapor-bolumu";
+import {
+  ArsivRaporBolumu,
+  type ArsivRaporSatiri,
+} from "./arsiv-rapor-bolumu";
 import { GelisimBolumu } from "@/components/gelisim-bolumu";
 import { gelisimListesi } from "@/lib/gelisim-verisi";
 import { StajyerAtamalari, type AtamaKaydi } from "./stajyer-atamalari";
@@ -147,6 +151,7 @@ export default async function OgrenciProfilSayfasi(
     gelisimKayitlari,
     oturumGunleri,
     veliFormuAtolyeKayitlari,
+    arsivRaporKayitlari,
   ] = await Promise.all([
     raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
     // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
@@ -248,7 +253,35 @@ export default async function OgrenciProfilSayfasi(
           },
         })
       : [],
+    // Geçmişten aktarılan raporlar rapor yetkisine tabi (üretilenlerle aynı
+    // kapı). `fileData` seçilmiyor — belge yalnızca indirme rotasından okunur,
+    // 400 KB'lık bir PDF'i profil sorgusuna almak sayfayı boğardı.
+    raporGorebilir
+      ? db.legacyReport.findMany({
+          where: { studentId: id, student: { branchId: subeId } },
+          orderBy: [{ reportDate: "desc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            termLabel: true,
+            groupLabel: true,
+            reportDate: true,
+            fileName: true,
+            fileSize: true,
+          },
+        })
+      : [],
   ]);
+
+  const arsivRaporlar: ArsivRaporSatiri[] = arsivRaporKayitlari.map(
+    (rapor) => ({
+      id: rapor.id,
+      donemAdi: rapor.termLabel,
+      grupAdi: rapor.groupLabel,
+      tarih: rapor.reportDate,
+      dosyaAdi: rapor.fileName,
+      boyut: rapor.fileSize,
+    }),
+  );
 
   /** Grup id → grubun eğitim günleri. Kayıt başına sorgu açmamak için tek seferde. */
   const gruplarinGunleri = new Map<string, CikisGunu[]>();
@@ -628,8 +661,27 @@ export default async function OgrenciProfilSayfasi(
               ogrenciAdi={`${ogrenci.firstName} ${ogrenci.lastName}`}
               raporlar={raporlar}
               kapsamKayitlari={kapsamKayitlari}
+              yalnizcaGecmisKayit={
+                ogrenci.enrollments.length > 0 && kapsamKayitlari.length === 0
+              }
               acilisParametresi={acilisRaporu}
             />
+          </ProfilKutusu>
+        ) : null}
+
+        {/* Geçmişten aktarılan belgeler ayrı kutuda: üretilen raporlarla
+            aynı listeye konsalardı "yeniden üret" düğmesi onlar için de
+            varmış gibi görünürdü. Kaydı hiç olmayan öğrencide de dolu
+            olabilir, o yüzden rapor kutusundan bağımsız çiziliyor. */}
+        {raporGorebilir && arsivRaporlar.length > 0 ? (
+          <ProfilKutusu
+            renk="gecmis"
+            baslik="Arşiv raporları"
+            altyazi={`${arsivRaporlar.length} geçmiş dönem raporu`}
+            adet={arsivRaporlar.length}
+            genislik="56rem"
+          >
+            <ArsivRaporBolumu raporlar={arsivRaporlar} />
           </ProfilKutusu>
         ) : null}
 

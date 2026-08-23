@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { aktifGrupKosulu } from "./durumlar";
+import { aktifGrupKosulu, GUNCEL_DONEM_KOSULU } from "./durumlar";
 import { bugun } from "./tarih";
 import type { AssessmentPeriod } from "@/generated/prisma/enums";
 import {
@@ -69,7 +69,9 @@ export async function gelisimListesi(kosul: {
         ...(kosul.yalnizcaAktifProgram
           ? aktifGrupKosulu(kosul.subeId)
           : { branchId: kosul.subeId }),
-        termId: { not: null },
+        // Gelişim testi yalnızca dönem kayıtlarında var; geçmişten aktarılan
+        // dönemlerde ise hiç doldurulamaz (haftası yok).
+        term: { is: GUNCEL_DONEM_KOSULU },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -161,7 +163,7 @@ export async function gelisimFormu(
   const kayit = await db.enrollment.findFirst({
     where: {
       id: kayitId,
-      group: { branchId: subeId, termId: { not: null } },
+      group: { branchId: subeId, term: { is: GUNCEL_DONEM_KOSULU } },
     },
     select: {
       id: true,

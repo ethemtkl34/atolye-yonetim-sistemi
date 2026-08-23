@@ -35,6 +35,7 @@ export default async function KulupMufredatSayfasi(
       id: true,
       name: true,
       status: true,
+      gecmisVerisi: true,
       date: true,
       weekDates: true,
       workshops: {
@@ -86,7 +87,14 @@ export default async function KulupMufredatSayfasi(
         </div>
       </div>
 
-      {kilitli ? (
+      {kulup.gecmisVerisi ? (
+        <Bildirim tur="bilgi">
+          Bu kulüp panel açılmadan önce yaşandı ve kütükten aktarıldı.
+          Puanlaması ve müfredatı hiç girilmedi; bu yüzden burada gösterilecek
+          bir şey yok ve sistem bu kulüp için rapor üretemez. Öğrencilerin
+          o dönemki raporları profillerindeki “Arşiv raporları” bölümündedir.
+        </Bildirim>
+      ) : kilitli ? (
         <Bildirim tur="bilgi">
           Bu kulüp {kulup.status === "ARSIVLENDI" ? "arşivlenmiş" : "iptal edilmiş"};
           müfredat yalnızca görüntülenebilir.
