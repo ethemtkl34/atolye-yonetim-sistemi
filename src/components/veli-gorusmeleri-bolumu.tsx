@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   GonderButonu,
   Pencere,
@@ -21,6 +21,7 @@ import {
   BosDurum,
   Buton,
   CokSatirli,
+  DonenHalka,
   Girdi,
   secimStili,
 } from "@/components/ui";
@@ -47,12 +48,14 @@ import {
   type VeliBriefi,
   type VeliGorusmeFormu,
 } from "@/lib/veli-gorusmesi";
+import type { GorusmeOnerileri } from "@/lib/veli-gorusmesi-onerisi";
 import {
   YONLENDIRME_TURLERI,
   yonlendirmeKayitYolu,
   type YonlendirmeTuru,
 } from "@/lib/yonlendirme-turleri";
 import {
+  gorusmeOnerileriGetir,
   veliGorusmesiGonder,
   veliGorusmesiNotuKaydet,
   veliGorusmesiSil,
@@ -130,6 +133,15 @@ function useIsaretYankisi(baslangic: string[] | undefined) {
     () => new Set(baslangic ?? []),
   );
 
+  /**
+   * Kutular DENETİMSİZ (`defaultChecked`, bkz. `PuanSatiri` notu); durumu
+   * koddan değiştirmek DOM'u güncellemiyor. Sürüm sayacı kutunun `key`ine
+   * giriyor: arttığında kutu yeniden kuruluyor ve güncel varsayılanı alıyor.
+   * Yalnızca PROGRAMATİK değişimde artar — kullanıcı tıklaması zaten DOM'u
+   * kendi günceller ve orada remount imleci sıfırlardı.
+   */
+  const [surum, setSurum] = useState(0);
+
   // Önizleme dönüşünde sunucu işaretleri geri yolluyor; yankı da tazelenmeli
   // ("adjust state during render" deseni, `useEklemePaneli` ile aynı).
   const [gorulen, setGorulen] = useState(baslangic);
@@ -147,7 +159,14 @@ function useIsaretYankisi(baslangic: string[] | undefined) {
     });
   }
 
-  return { secili, degistir };
+  /** Öneri kabulü — var olan işaretlere ekler, hiçbirini kaldırmaz. */
+  function isaretle(anahtarlar: readonly string[]) {
+    if (anahtarlar.length === 0) return;
+    setSecili((onceki) => new Set([...onceki, ...anahtarlar]));
+    setSurum((sayac) => sayac + 1);
+  }
+
+  return { secili, degistir, isaretle, surum };
 }
 
 /** Formdaki tek onay kutusu — grubun adını `name` olarak paylaşır. */
@@ -204,6 +223,8 @@ function PuanSatiri({
   sira,
   hata,
   varsayilan,
+  oneri,
+  onOneriUygula,
 }: {
   anahtar: string;
   baslik: string;
@@ -211,8 +232,12 @@ function PuanSatiri({
   sira: number;
   hata?: string;
   varsayilan?: string;
+  /** Sistemin bu alan için önerdiği puan ve gerekçesi; yoksa rozet çizilmez. */
+  oneri?: { deger: number; dayanak: string };
+  onOneriUygula?: (deger: number) => void;
 }) {
   const [secim, setSecim] = useState<string>(varsayilan ?? "");
+  const oneriUygulandi = oneri !== undefined && secim === String(oneri.deger);
 
   return (
     <fieldset
@@ -228,6 +253,28 @@ function PuanSatiri({
         <span className="font-medium">{baslik}</span>{" "}
         <span className="text-zinc-500">— {metin}</span>
       </legend>
+
+      {/* Öneri KARAR DEĞİL: kutu kendiliğinden seçilmez, dayanağı yanında
+          durur ve uzman tıklayarak kabul eder. */}
+      {oneri ? (
+        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+          <span className="kil-satir px-2 py-0.5 font-medium text-marka-700">
+            Öneri: {oneri.deger}
+          </span>
+          {oneriUygulandi ? (
+            <span className="text-zinc-500">uygulandı</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOneriUygula?.(oneri.deger)}
+              className="text-marka-700 underline-offset-2 hover:underline"
+            >
+              Uygula
+            </button>
+          )}
+          <span className="text-zinc-500">{oneri.dayanak}</span>
+        </p>
+      ) : null}
 
       <div className="mt-2 grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
         {["1", "2", "3", "4", "5"].map((deger) => (
@@ -571,6 +618,12 @@ function GorusmeFormuPenceresi({
   const [tarihMetni, setTarihMetni] = useState(deger("tarih") ?? bugunMetni);
   const [elleYas, setElleYas] = useState(deger("yas") ?? "");
 
+  // Öğrenci seçimi denetimli: ön-doldurma önerileri kimin için hesaplanacağı
+  // buradan çıkıyor. Tarih alanı da zaten denetimli (bant hesabı için).
+  const [ogrenciId, setOgrenciId] = useState(
+    sabitOgrenci?.id ?? deger("ogrenciId") ?? "",
+  );
+
   const dogum = dogumTarihiMetni ? tarihCozumle(dogumTarihiMetni) : null;
   const gorusmeTarihi = tarihCozumle(tarihMetni);
   const hesaplananYas =
@@ -586,6 +639,67 @@ function GorusmeFormuPenceresi({
   const [yonlendirmeNotlari, setYonlendirmeNotlari] = useState<
     Record<string, string>
   >({});
+
+  // --- Ön-doldurma önerileri -------------------------------------------
+  //
+  // Öneriler (öğrenci, tarih) çiftine ait; ikisi de değişince eskisi geçersiz.
+  // Bu yüzden hem çekilen veri hem kabul edilen puanlar KENDİ anahtarlarıyla
+  // saklanıyor ve "yükleniyor" durumu karşılaştırmayla türetiliyor — effect
+  // içinde senkron setState yok (`rapor-bolumu.tsx`teki `veriKutusu` deseni).
+  const oneriAnahtari = ogrenciId && tarihMetni ? `${ogrenciId}|${tarihMetni}` : null;
+
+  const [oneriKutusu, setOneriKutusu] = useState<{
+    anahtar: string;
+    veri: GorusmeOnerileri | null;
+  } | null>(null);
+
+  const [uygulananKutusu, setUygulananKutusu] = useState<{
+    anahtar: string;
+    puanlar: Record<string, string>;
+  }>({ anahtar: "", puanlar: {} });
+
+  useEffect(() => {
+    if (!acik || !oneriAnahtari) return;
+
+    let iptal = false;
+    gorusmeOnerileriGetir(ogrenciId, tarihMetni).then((sonuc) => {
+      if (!iptal) setOneriKutusu({ anahtar: oneriAnahtari, veri: sonuc });
+    });
+
+    return () => {
+      iptal = true;
+    };
+  }, [acik, oneriAnahtari, ogrenciId, tarihMetni]);
+
+  const oneriler =
+    oneriAnahtari && oneriKutusu?.anahtar === oneriAnahtari
+      ? oneriKutusu.veri
+      : null;
+  const oneriDurumu: "kapali" | "yukleniyor" | "hazir" = !oneriAnahtari
+    ? "kapali"
+    : oneriKutusu?.anahtar === oneriAnahtari
+      ? "hazir"
+      : "yukleniyor";
+
+  const uygulananPuanlar =
+    oneriAnahtari && uygulananKutusu.anahtar === oneriAnahtari
+      ? uygulananKutusu.puanlar
+      : {};
+
+  function puanlariUygula(girdiler: Record<string, string>) {
+    if (!oneriAnahtari) return;
+    setUygulananKutusu({
+      anahtar: oneriAnahtari,
+      puanlar: { ...uygulananPuanlar, ...girdiler },
+    });
+  }
+
+  const puanOnerileri = new Map(
+    (oneriler?.gozlemPuanlari ?? []).map((oneri) => [
+      oneri.anahtar,
+      { deger: oneri.deger, dayanak: oneri.dayanak },
+    ]),
+  );
 
   const bandaOzel = BANDA_OZEL_ZORLANMA[band];
 
@@ -654,7 +768,8 @@ function GorusmeFormuPenceresi({
             <Alan etiket="Öğrenci" hata={durum.alanHatalari?.ogrenciId}>
               <select
                 name="ogrenciId"
-                defaultValue={deger("ogrenciId") ?? ""}
+                value={ogrenciId}
+                onChange={(olay) => setOgrenciId(olay.target.value)}
                 className={secimStili}
               >
                 <option value="">Öğrenci seçin…</option>
@@ -729,6 +844,10 @@ function GorusmeFormuPenceresi({
                 atolyeler={atolyeler}
                 deger={deger}
                 alanHatalari={durum.alanHatalari}
+                oneriler={puanOnerileri}
+                oneriDurumu={oneriDurumu}
+                uygulanan={uygulananPuanlar}
+                onUygula={puanlariUygula}
               />
             </SekmePaneli>
 
@@ -737,6 +856,7 @@ function GorusmeFormuPenceresi({
                 band={band}
                 bandaOzel={bandaOzel}
                 yankı={zorlanma}
+                oneriler={oneriler?.zorlanmalar ?? []}
               />
             </SekmePaneli>
 
@@ -947,7 +1067,7 @@ function GenelSekmesi({
             </p>
             {grup.anahtarlar.map((anahtar) => (
               <IsaretKutusu
-                key={anahtar}
+                key={`${anahtar}-${yankı.surum}`}
                 ad="genel"
                 deger={anahtar}
                 etiket={sozluk[anahtar]?.baslik ?? anahtar}
@@ -1040,29 +1160,98 @@ function AtolyeSekmesi({
   atolyeler,
   deger,
   alanHatalari,
+  oneriler,
+  oneriDurumu,
+  uygulanan,
+  onUygula,
 }: {
   atolyeler: { id: string; ad: string }[];
   deger: (alan: string) => string | undefined;
   alanHatalari?: Record<string, string>;
+  /** Sistemin puan önerileri — anahtar bazlı. */
+  oneriler: Map<string, { deger: number; dayanak: string }>;
+  oneriDurumu: "kapali" | "yukleniyor" | "hazir";
+  /** Kabul edilen öneriler; satırın varsayılanını bu belirler. */
+  uygulanan: Record<string, string>;
+  onUygula: (girdiler: Record<string, string>) => void;
 }) {
+  const uygulanmamis = [...oneriler].filter(
+    ([anahtar, oneri]) => uygulanan[anahtar] !== String(oneri.deger),
+  );
+
   return (
     <>
       <p className="text-sm text-zinc-600">
         Dokuz gözlem alanını 1–5 arasında puanlayın (1 düşük · 5 yüksek).
         Puanlar brief&apos;in gözlem yorumunu üretir.
       </p>
+
+      {/* Ön-doldurma: puanların çoğu sistemde zaten ölçülü. Yine de forma
+          yazılmıyor, öneri olarak duruyor — uzmanın kendi gözlemi sistemin
+          ortalamasının önünde. */}
+      {oneriDurumu === "yukleniyor" ? (
+        <p className="flex items-center gap-2 text-xs text-zinc-500">
+          <DonenHalka className="size-3" />
+          Stajyer verisinden öneriler hesaplanıyor…
+        </p>
+      ) : oneriler.size > 0 ? (
+        <div className="kil-oyuk flex flex-wrap items-center justify-between gap-2 p-3">
+          <p className="text-sm text-zinc-700">
+            Atölye puanlamaları ve gelişim testinden{" "}
+            <span className="font-medium">{oneriler.size} alan</span> için puan
+            önerildi. Her satırdaki gerekçeyi görüp tek tek kabul edebilir ya da
+            hepsini uygulayıp düzeltebilirsiniz.
+          </p>
+          <Buton
+            tur="ikincil"
+            type="button"
+            disabled={uygulanmamis.length === 0}
+            onClick={() =>
+              onUygula(
+                Object.fromEntries(
+                  [...oneriler].map(([anahtar, oneri]) => [
+                    anahtar,
+                    String(oneri.deger),
+                  ]),
+                ),
+              )
+            }
+            className="px-2.5 py-1.5 text-xs"
+          >
+            {uygulanmamis.length === 0
+              ? "Öneriler uygulandı"
+              : `Tümünü uygula (${uygulanmamis.length})`}
+          </Buton>
+        </div>
+      ) : oneriDurumu === "hazir" ? (
+        <p className="text-xs text-zinc-500">
+          Bu öğrenci için öneri üretilemedi: yeterli atölye puanlaması ve
+          gelişim testi cevabı yok. Alanları elle puanlayın.
+        </p>
+      ) : null}
+
       <div className="space-y-3">
-        {GOZLEM_ALANLARI.map((alan, sira) => (
-          <PuanSatiri
-            key={alan.anahtar}
-            anahtar={alan.anahtar}
-            baslik={alan.baslik}
-            metin={alan.metin}
-            sira={sira + 1}
-            hata={alanHatalari?.[`cevap-${alan.anahtar}`]}
-            varsayilan={deger(`cevap-${alan.anahtar}`)}
-          />
-        ))}
+        {GOZLEM_ALANLARI.map((alan, sira) => {
+          const varsayilan =
+            uygulanan[alan.anahtar] ?? deger(`cevap-${alan.anahtar}`);
+          return (
+            <PuanSatiri
+              // Öneri kabul edilince satır yeniden kurulur; denetimsiz
+              // radio'lar ancak böyle güncel varsayılanı alır.
+              key={`${alan.anahtar}-${uygulanan[alan.anahtar] ?? ""}`}
+              anahtar={alan.anahtar}
+              baslik={alan.baslik}
+              metin={alan.metin}
+              sira={sira + 1}
+              hata={alanHatalari?.[`cevap-${alan.anahtar}`]}
+              varsayilan={varsayilan}
+              oneri={oneriler.get(alan.anahtar)}
+              onOneriUygula={(deger) =>
+                onUygula({ [alan.anahtar]: String(deger) })
+              }
+            />
+          );
+        })}
       </div>
 
       <div className="space-y-2">
@@ -1102,12 +1291,21 @@ function ZorlanmaSekmesi({
   band,
   bandaOzel,
   yankı,
+  oneriler,
 }: {
   band: string;
   bandaOzel: { anahtar: string; sutun: string; etiket: string };
   yankı: Yanki;
+  /** Ölçümlerden çıkan zorlanma önerileri; kutular kendiliğinden işaretlenmez. */
+  oneriler: readonly { anahtar: string; dayanak: string }[];
 }) {
   const sozluk = ZORLANMA_ALANLARI[band as keyof typeof ZORLANMA_ALANLARI];
+
+  // Sözlükte karşılığı olmayan öneri gösterilmez (banda özel maddeler farklı
+  // bantlarda farklı anahtarlar taşıyor); işaretlenmişler de listeden düşer.
+  const bekleyen = oneriler.filter(
+    (oneri) => sozluk[oneri.anahtar] && !yankı.secili.has(oneri.anahtar),
+  );
 
   return (
     <>
@@ -1115,6 +1313,49 @@ function ZorlanmaSekmesi({
         Zorlandığı alanları işaretleyin — yaşa göre yorum ve öneriler aşağıda
         oluşur.
       </p>
+
+      {/* Kutular KENDİLİĞİNDEN işaretlenmiyor. Bir çocuğun kaydına "zorlanma"
+          işareti koymak, puan önermekten ağır bir davranış; sistemin sessizce
+          yapıp uzmanın onaylamadan geçmesi riskli. */}
+      {bekleyen.length > 0 ? (
+        <div className="kil-oyuk space-y-2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-zinc-800">
+              Ölçümler {bekleyen.length} alanda zorlanmaya işaret ediyor
+            </p>
+            <Buton
+              tur="ikincil"
+              type="button"
+              onClick={() => yankı.isaretle(bekleyen.map((o) => o.anahtar))}
+              className="px-2.5 py-1.5 text-xs"
+            >
+              Hepsini işaretle
+            </Buton>
+          </div>
+          <ul className="space-y-1.5">
+            {bekleyen.map((oneri) => (
+              <li
+                key={oneri.anahtar}
+                className="flex flex-wrap items-baseline gap-2 text-xs text-zinc-600"
+              >
+                <button
+                  type="button"
+                  onClick={() => yankı.isaretle([oneri.anahtar])}
+                  className="font-medium text-marka-700 underline-offset-2 hover:underline"
+                >
+                  {sozluk[oneri.anahtar]?.baslik ?? oneri.anahtar}
+                </button>
+                <span>{oneri.dayanak}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-zinc-500">
+            Kaygı, duyu hassasiyeti, mükemmeliyetçilik ve içe kapanıklık burada
+            hiç önerilmez: sistemde bunları ölçen veri yok, klinik gözlemle
+            işaretlenir.
+          </p>
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-3">
         {ZORLANMA_GRUPLARI.map((grup) => (
           <div key={grup.sutun} className="kil-oyuk space-y-2 p-3">
@@ -1123,7 +1364,7 @@ function ZorlanmaSekmesi({
             </p>
             {grup.anahtarlar.map((anahtar) => (
               <IsaretKutusu
-                key={anahtar}
+                key={`${anahtar}-${yankı.surum}`}
                 ad="zorlanma"
                 deger={anahtar}
                 etiket={sozluk[anahtar]?.baslik ?? anahtar}
@@ -1133,6 +1374,7 @@ function ZorlanmaSekmesi({
             ))}
             {grup.sutun === bandaOzel.sutun ? (
               <IsaretKutusu
+                key={`${bandaOzel.anahtar}-${yankı.surum}`}
                 ad="zorlanma"
                 deger={bandaOzel.anahtar}
                 etiket={bandaOzel.etiket}

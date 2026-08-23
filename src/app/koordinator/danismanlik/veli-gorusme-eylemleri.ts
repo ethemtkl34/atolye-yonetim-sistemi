@@ -30,7 +30,11 @@ import {
   yonlendirmeTuruMu,
   type YonlendirmeTuru,
 } from "@/lib/yonlendirme-turleri";
-import { veliBriefGirdisiHazirla } from "@/lib/veli-gorusmesi-verisi";
+import {
+  gorusmeOnerileriHazirla,
+  veliBriefGirdisiHazirla,
+} from "@/lib/veli-gorusmesi-verisi";
+import type { GorusmeOnerileri } from "@/lib/veli-gorusmesi-onerisi";
 import type { EylemDurumu } from "@/lib/formlar";
 
 /**
@@ -489,4 +493,25 @@ export async function veliGorusmesiSil(
   return {
     basari: `${tarihBicimle(gorusme.date)} tarihli veli görüşmesi silindi.`,
   };
+}
+
+/**
+ * §11.4 — Formun ön-doldurma önerileri.
+ *
+ * İstemci öğrenci ve tarih belli olur olmaz çağırır. Öneriler forma
+ * YAZILMAZ; ekranda dayanaklarıyla durur ve uzman tek tek kabul eder
+ * (bkz. `veli-gorusmesi-onerisi.ts`).
+ *
+ * Ayrı bir eylem çünkü form gönderilmeden, kullanıcı yazmaya başlamadan
+ * çalışması gerekiyor; `veliGorusmesiGonder` içine sıkıştırılsaydı öneri
+ * almak için önizleme üretmek zorunda kalınırdı.
+ */
+export async function gorusmeOnerileriGetir(
+  ogrenciId: string,
+  tarihMetni: string,
+): Promise<GorusmeOnerileri | null> {
+  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
+
+  const tarih = tarihCozumle(tarihMetni) ?? bugun();
+  return gorusmeOnerileriHazirla(ogrenciId, kullanici.aktifSubeId, tarih);
 }
