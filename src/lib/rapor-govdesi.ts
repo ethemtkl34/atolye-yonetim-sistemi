@@ -192,20 +192,35 @@ export type RaporGovdesiV2 = {
 const ILGI_ANAHTARI = "ilgi";
 const BASARI_ANAHTARI = "yetenek";
 
+/**
+ * Bir kategori adının anahtarla eşleşip eşleşmediği.
+ *
+ * KELİME eşleşmesi, alt-dize değil: "Bilgi ve Kavram Gelişimi" başlığı
+ * içinde "ilgi" geçer (b-İLGİ) ve düz `includes` onu ilgi kategorisi sanıp
+ * İlgi grafiğini yanlış sorulardan beslerdi. Kategori adı kelimelere
+ * ayrılır; kelimelerden biri anahtarla BAŞLIYORSA ("ilgi", "ilgisi",
+ * "yetenek", "yetenekleri"...) eşleşir.
+ *
+ * Dışa açık: veli görüşmesi ön-doldurması da ilgi sorularını yetenek
+ * sorularından ayırmak zorunda ve aynı kuralı kullanmalı.
+ */
+export function kategoriEslesirMi(
+  kategori: string | null,
+  anahtar: string,
+): boolean {
+  if (!kategori) return false;
+  return kategori
+    .toLocaleLowerCase("tr-TR")
+    .split(/[^a-zçğıiöşü]+/)
+    .some((kelime) => kelime.startsWith(anahtar));
+}
+
 function kategoriBul(
   kategoriler: readonly { kategori: string; ortalama: number | null }[],
   anahtar: string,
 ): number | null {
-  // KELİME eşleşmesi, alt-dize değil: "Bilgi ve Kavram Gelişimi" başlığı
-  // içinde "ilgi" geçer (b-İLGİ) ve düz includes onu ilgi kategorisi sanıp
-  // İlgi grafiğini yanlış sorulardan beslerdi. Kategori adı kelimelere
-  // ayrılır; kelimelerden biri anahtarla BAŞLIYORSA ("ilgi", "ilgisi",
-  // "yetenek", "yetenekleri"...) eşleşir.
   const bulunan = kategoriler.find((k) =>
-    k.kategori
-      .toLocaleLowerCase("tr-TR")
-      .split(/[^a-zçğıiöşü]+/)
-      .some((kelime) => kelime.startsWith(anahtar)),
+    kategoriEslesirMi(k.kategori, anahtar),
   );
   return bulunan?.ortalama ?? null;
 }

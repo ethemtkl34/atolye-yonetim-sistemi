@@ -3,6 +3,7 @@ import { yasYil } from "./tarih";
 import { gelisimCevaplariCozumle, DONEM_ETIKETLERI } from "./gelisim-degerlendirmesi";
 import { raporGirdisiHazirla } from "./rapor-verisi";
 import { raporAnaliziUret, type RaporGirdisi } from "./rapor-motoru";
+import { kategoriEslesirMi } from "./rapor-govdesi";
 import {
   gorusmeOnerileriUret,
   type GorusmeOnerileri,
@@ -62,13 +63,21 @@ export async function gorusmeOnerileriHazirla(
 
   const analiz = raporAnaliziUret(girdi);
 
-  // Başlıksız (eski) cevaplar ortak sözcüğe indirgenemez; motora hiç
-  // gitmezler — soru cümlesinden etiket çıkarmak yanlış eşleşme üretirdi.
+  // İLGİ SORULARI DIŞARIDA. Bunlar çocuğun bir konuya merakını ölçüyor,
+  // becerisini değil; raporun kendisi de ikisini ayrı ölçüp ayrı basıyor.
+  // Ortak sözcük sözlüğü ise metne bakıyor ve "Planetaryum Gözlemlerine
+  // İlgi" başlığını "gözlem" kelimesinden akıl yürütme sanıyordu — çok
+  // ilgili ama becerisi gelişmekte olan bir çocukta öneri yanlış yükselirdi.
+  //
+  // Başlıksız (eski) cevaplar da motora hiç gitmez: soru cümlesinden etiket
+  // çıkarmak yanlış eşleşme üretirdi.
   const atolyeBasliklari = analiz.atolyeler.flatMap((atolye) =>
     atolye.soruOrtalamalari
       .filter(
         (soru): soru is typeof soru & { baslik: string; ortalama: number } =>
-          soru.baslik !== null && soru.ortalama !== null,
+          soru.baslik !== null &&
+          soru.ortalama !== null &&
+          !kategoriEslesirMi(soru.kategori, "ilgi"),
       )
       .map((soru) => ({
         baslik: soru.baslik,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   atolyeKademesiCikar,
+  kategoriEslesirMi,
   atolyeMetniUret,
   gelisimAlanlariCikar,
   iyelikEki,
@@ -308,5 +309,23 @@ describe("iyelikEki", () => {
     expect(iyelikEki(43)).toBe("'ü");
     expect(iyelikEki(50)).toBe("'si");
     expect(iyelikEki(10)).toBe("'u");
+  });
+});
+
+
+describe("kategoriEslesirMi", () => {
+  it("kelime başlangıcıyla eşleşir", () => {
+    expect(kategoriEslesirMi("İlgi ve Merak Alanları", "ilgi")).toBe(true);
+    expect(kategoriEslesirMi("Yetenek Gelişim Alanları", "yetenek")).toBe(true);
+  });
+
+  it("kelime İÇİNDE geçen anahtarı eşleştirmez", () => {
+    // "Bilgi" içinde "ilgi" var; alt-dize karşılaştırması burayı yakalar ve
+    // bilgi sorularını ilgi grafiğine taşırdı.
+    expect(kategoriEslesirMi("Bilgi ve Kavram Gelişimi", "ilgi")).toBe(false);
+  });
+
+  it("kategorisi olmayan cevap hiçbir anahtarla eşleşmez", () => {
+    expect(kategoriEslesirMi(null, "ilgi")).toBe(false);
   });
 });
