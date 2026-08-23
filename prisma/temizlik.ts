@@ -10,6 +10,14 @@
  * Yıkıcı bir migration bir preview dalı uzaklıkta felakettir. Bu yüzden
  * silme işi bilinçli olarak elle çalıştırılan bu betikte duruyor.
  *
+ * ⚠ ARTIK DENEME VERİSİ DEĞİL. Bu betik yazıldığında üretimde yalnızca
+ * deneme kayıtları vardı. Ağustos 2026'da 431 gerçek öğrenci, 599 kayıt ve
+ * 351 arşiv raporu (`LegacyReport`) kütükten aktarıldı; bunlar geri
+ * getirilemez, çünkü kaynağı panelin dışında. `Student` silinince
+ * `LegacyReport` de cascade ile gider. Bu betiği bir daha çalıştırmadan önce
+ * gerçekten her şeyin silinmesinin istendiğinden emin olun — geçmiş veriyi
+ * tek başına geri almak için `scripts/gecmis-veri/geri-al.ts` var.
+ *
  * KORUNANLAR: `Branch`, `WorkshopType`, `Question` ve `User`. Atölye kataloğu
  * ile 60 değerlendirme sorusu kurumun gerçek verisidir; hesaplar da
  * korunur, şube ataması `seed.ts` ile düzeltilir.
