@@ -328,3 +328,44 @@ function dayanakMetni(
     ? `${kaynakMetni}; tek ölçüm, değeri ${ortalamaMetni(ortalama)}.`
     : `${kaynakMetni}; ${kanit.adet} ölçümün ortalaması ${ortalamaMetni(ortalama)}.`;
 }
+
+// ---------------------------------------------------------------------------
+// Ürün eşlemesi
+// ---------------------------------------------------------------------------
+
+/**
+ * Zorlanma alanının ürün kataloğundaki beceri karşılığı.
+ *
+ * `ZORLANMA_KAYNAKLARI`den AYRI ve bilerek: orası "bu alanı hangi ölçüm
+ * gösterir" sorusunu cevaplıyor, burası "bu alan için hangi ürün işe yarar".
+ * İkisi aynı olamaz — Hafıza'yı `odaklanma` ölçümünden ÇIKARMAK dikkat ile
+ * hafızayı karıştırmak olurdu ama Hafıza için odaklanma etiketli bir oyun
+ * önermek doğru.
+ *
+ * Kaygı ve mükemmeliyetçilik gibi klinik alanlar burada VAR: uzman kutuyu
+ * kendi kararıyla işaretlemişse ona uygun materyal önermek yerinde. Sistemin
+ * o kutuyu kendiliğinden işaretlemesi ise ayrı bir şey ve yapılmıyor.
+ *
+ * `gorsel` (Görsel Algı) listede YOK: katalogdaki 14 beceri etiketinin
+ * hiçbiri görsel-mekânsal algıyı karşılamıyor. Zorlama bir eşleme, veliye
+ * alakasız bir ürün önerirdi; o alan için ekrandaki ZetZeka kategori metni
+ * tek başına kalır.
+ */
+export const ZORLANMA_BECERILERI: Record<string, BeceriEtiketi> = {
+  dikkat: "odaklanma",
+  hafiza: "odaklanma",
+  problem: "problem-cozme",
+  mantik: "akil-yurutme",
+  sirali: "stratejik-dusunme",
+  iletisim: "iletisim",
+  grup: "is-birligi",
+  paylasma: "is-birligi",
+  liderlik: "iletisim",
+  duyguduzenleme: "duygu-yonetimi",
+  ozguven: "oz-guven",
+  kaygi: "duygu-yonetimi",
+  bagimsizlik: "oz-guven",
+  duyuhassasiyeti: "duygu-yonetimi",
+  mukemmeliyetcilik: "duygu-yonetimi",
+  icekapaniklik: "iletisim",
+};

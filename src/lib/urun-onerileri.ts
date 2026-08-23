@@ -171,3 +171,26 @@ export function urunsuzAlanlar(
   );
   return istenenAlanlar.filter((alan) => !karsilananlar.has(alan));
 }
+
+/**
+ * Bir beceri etiketi için yaşa uygun ürünler — veli görüşmesi formu kullanır.
+ *
+ * `urunOnerileriSec`ten AYRI çünkü oradaki kurallar rapora ait: en fazla üç
+ * ürün, beceri başına bir tane, öncelik sırası atölye bağı → desteklenecek →
+ * güçlü alan. Görüşme formunda uzman beş alan işaretleyebilir ve her biri
+ * için somut ürün görmek ister; raporun üç ürünlük bütçesi burada yanlış
+ * kısıt olurdu.
+ *
+ * Sıra katalog sırasıdır (rastgelelik yok): aynı seçim her açılışta aynı
+ * ürünleri gösterir.
+ */
+export function beceriyeGoreUrunler(
+  adaylar: readonly OneriAdayi[],
+  etiket: BeceriEtiketi,
+  yas: number | null,
+  enFazla = 2,
+): OneriAdayi[] {
+  return adaylar
+    .filter((urun) => urun.beceriler.includes(etiket) && yasaUygun(urun, yas))
+    .slice(0, enFazla);
+}

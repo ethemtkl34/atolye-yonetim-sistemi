@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { yasYil } from "./tarih";
 import { gelisimCevaplariCozumle, DONEM_ETIKETLERI } from "./gelisim-degerlendirmesi";
 import { raporGirdisiHazirla } from "./rapor-verisi";
 import { raporAnaliziUret, type RaporGirdisi } from "./rapor-motoru";
@@ -6,6 +7,7 @@ import {
   gorusmeOnerileriUret,
   type GorusmeOnerileri,
 } from "./veli-gorusmesi-onerisi";
+import type { OneriAdayi } from "./urun-onerileri";
 
 /**
  * Veli görüşmesi brief'inin veri katmanı.
@@ -102,4 +104,116 @@ export async function gorusmeOnerileriHazirla(
       katildi: analiz.genel.katildigiOturumSayisi,
     },
   });
+}
+
+/**
+ * §11.4 — Görüşme formunun ihtiyaç duyduğu bütün yardımcı veri, tek çağrıda.
+ *
+ * Dördü de aynı anda ve aynı öğrenci için gerekiyor; ayrı ayrı çağrılsaydı
+ * form açılışında dört gidiş-dönüş olurdu. Ürün adayları yaşa göre burada
+ * SÜZÜLÜR: katalogda 108 ürün var, tamamını istemciye taşımanın anlamı yok.
+ *
+ * `zekaTestleri` yalnızca ÜSTVERİ taşır — dosyanın kendisi asla buradan
+ * geçmez, indirme rotasından okunur (bkz. `IntelligenceTest` şema notu).
+ * Çağıran taraf zekâ testi yetkisini ayrıca doğrular.
+ */
+export type GorusmeYardimi = {
+  oneriler: GorusmeOnerileri;
+  /** Yaşa uygun ürün kataloğu — işaretlenen alanlara göre istemci eşler. */
+  urunAdaylari: OneriAdayi[];
+  /** Görüşme anındaki yaş; ürün eşlemesi ve ekrandaki not için. */
+  yas: number | null;
+  /** Öğrencinin yüklü zekâ testi belgeleri (üstveri). */
+  zekaTestleri: { id: string; testAdi: string; tarih: Date }[];
+  /** Önceki görüşmelerde alınmış yönlendirme kararları, en yeniden eskiye. */
+  yonlendirmeGecmisi: {
+    id: string;
+    etiket: string;
+    not: string | null;
+    tarih: Date;
+  }[];
+};
+
+export async function gorusmeYardimiHazirla(
+  ogrenciId: string,
+  subeId: string,
+  gorusmeTarihi: Date,
+  secenekler: { zekaTestiGorebilir: boolean },
+): Promise<GorusmeYardimi | null> {
+  const ogrenci = await db.student.findFirst({
+    where: { id: ogrenciId, branchId: subeId },
+    select: { birthDate: true },
+  });
+  if (!ogrenci) return null;
+
+  const oneriler = await gorusmeOnerileriHazirla(
+    ogrenciId,
+    subeId,
+    gorusmeTarihi,
+  );
+  if (!oneriler) return null;
+
+  const yas = ogrenci.birthDate
+    ? yasYil(ogrenci.birthDate, gorusmeTarihi)
+    : null;
+
+  const [urunler, zekaTestleri, yonlendirmeler] = await Promise.all([
+    db.oneriUrunu.findMany({
+      where: {
+        active: true,
+        // Yaş bilinmiyorsa süzülmez (`yasaUygun` ile aynı ilke): yaş alanı
+        // isteğe bağlı ve boş olması öneri üretmemek için gerekçe değil.
+        ...(yas === null ? {} : { yasMin: { lte: yas }, yasMax: { gte: yas } }),
+      },
+      orderBy: { ad: "asc" },
+      select: {
+        id: true,
+        ad: true,
+        url: true,
+        kategori: true,
+        yasMin: true,
+        yasMax: true,
+        alanlar: true,
+        beceriler: true,
+        workshopTypeId: true,
+      },
+    }),
+    secenekler.zekaTestiGorebilir
+      ? db.intelligenceTest.findMany({
+          where: { studentId: ogrenciId, student: { branchId: subeId } },
+          orderBy: { date: "desc" },
+          // `fileData` SEÇİLMEZ — megabaytlarca veri forma taşınmamalı.
+          select: { id: true, testName: true, date: true },
+        })
+      : [],
+    db.parentMeetingReferral.findMany({
+      where: { studentId: ogrenciId, student: { branchId: subeId } },
+      orderBy: { createdAt: "desc" },
+      // Geçmiş bir hatırlatma, arşiv değil: son on karar yeter.
+      take: 10,
+      select: {
+        id: true,
+        label: true,
+        note: true,
+        meeting: { select: { date: true } },
+      },
+    }),
+  ]);
+
+  return {
+    oneriler,
+    urunAdaylari: urunler,
+    yas,
+    zekaTestleri: zekaTestleri.map((test) => ({
+      id: test.id,
+      testAdi: test.testName,
+      tarih: test.date,
+    })),
+    yonlendirmeGecmisi: yonlendirmeler.map((satir) => ({
+      id: satir.id,
+      etiket: satir.label,
+      not: satir.note,
+      tarih: satir.meeting.date,
+    })),
+  };
 }

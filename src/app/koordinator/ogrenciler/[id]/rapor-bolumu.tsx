@@ -24,6 +24,7 @@ import {
   raporSil,
   raporYenidenUret,
   type EylemDurumu,
+  type RaporBaglami,
   type RaporPenceresiVerisi,
 } from "./rapor-eylemleri";
 
@@ -334,6 +335,14 @@ export function RaporBolumu({
       {/* Gövdenin kendi yüzeyi yok: pencere (kil-pencere) zaten kabarık tek
           yüzey, rapor bölümleri onun içine tek tek gömülüyor. Buraya da bir
           zemin konsaydı gömük kutular gömük zemine karışırdı. */}
+      {/* Raporun yanındaki bağlam — panelde kalır, veliye gitmez.
+          Koordinatör metni onaylarken öğrencinin zekâ testi dosyası ya da
+          veli görüşmesi kaydı olduğunu bilmiyordu; ikisi de aynı sayfanın
+          başka kutularında ama rapor penceresi açıkken görünmüyorlar. */}
+      {pencere.mod === "detay" && veri && !duzenleniyor ? (
+        <RaporBaglamSeridi baglam={veri.baglam} />
+      ) : null}
+
       {/* Düzenleme kutuları ile veliye giden belge arasında anahtar.
           Koordinatör eskiden belgeyi ancak PDF üretip indirdikten sonra
           görebiliyordu; her bakış rapor geçmişine silinemez bir kayıt
@@ -585,6 +594,58 @@ export function RaporBolumu({
           </p>
         </footer>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Raporun üstündeki bağlam şeridi.
+ *
+ * Bilinçli olarak KISA ve bağlantılı: burada bir özet üretmek, veli
+ * görüşmesinin kendi kutusunu ikinci kez çizmek olurdu. Söylediği tek şey
+ * "şu kayıtlar var, bakmak istersen buradalar".
+ */
+function RaporBaglamSeridi({ baglam }: { baglam: RaporBaglami }) {
+  const bosMu =
+    baglam.zekaTestleri.length === 0 && baglam.veliGorusmesiSayisi === 0;
+  if (bosMu) return null;
+
+  return (
+    <div className="kil-oyuk flex flex-wrap items-center gap-x-4 gap-y-1.5 p-3 text-xs text-zinc-600">
+      <span className="font-medium text-zinc-800">
+        Bu öğrenciye ait diğer kayıtlar
+      </span>
+
+      {baglam.zekaTestleri.length > 0 ? (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span>Zekâ testi:</span>
+          {baglam.zekaTestleri.map((test) => (
+            <a
+              key={test.id}
+              href={`/api/zeka-testi/${test.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-marka-700 hover:underline"
+            >
+              {test.testAdi} ({tarihBicimle(test.tarih)})
+            </a>
+          ))}
+        </span>
+      ) : null}
+
+      {baglam.veliGorusmesiSayisi > 0 ? (
+        <span>
+          {baglam.veliGorusmesiSayisi} veli görüşmesi kaydı
+          {baglam.sonVeliGorusmesi
+            ? ` · son: ${tarihBicimle(baglam.sonVeliGorusmesi)}`
+            : ""}{" "}
+          — bu sayfadaki “Veli görüşmeleri” kutusunda.
+        </span>
+      ) : null}
+
+      <span className="text-zinc-500">
+        Bu satır yalnızca panelde; veliye giden belgeye basılmaz.
+      </span>
     </div>
   );
 }

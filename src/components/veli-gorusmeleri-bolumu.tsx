@@ -48,14 +48,16 @@ import {
   type VeliBriefi,
   type VeliGorusmeFormu,
 } from "@/lib/veli-gorusmesi";
-import type { GorusmeOnerileri } from "@/lib/veli-gorusmesi-onerisi";
+import { ZORLANMA_BECERILERI } from "@/lib/veli-gorusmesi-onerisi";
+import { beceriyeGoreUrunler, type OneriAdayi } from "@/lib/urun-onerileri";
+import type { GorusmeYardimi } from "@/lib/veli-gorusmesi-verisi";
 import {
   YONLENDIRME_TURLERI,
   yonlendirmeKayitYolu,
   type YonlendirmeTuru,
 } from "@/lib/yonlendirme-turleri";
 import {
-  gorusmeOnerileriGetir,
+  gorusmeYardimiGetir,
   veliGorusmesiGonder,
   veliGorusmesiNotuKaydet,
   veliGorusmesiSil,
@@ -450,6 +452,30 @@ export function VeliGorusmeleriBolumu({
     />
   );
 
+  /**
+   * Öğrencinin dönemler arası yönlendirme özeti.
+   *
+   * `ParentMeetingReferral` satırlarının var oluş sebebi tam olarak buydu
+   * ("öğrenci bir sonraki döneme geldiğinde ekip ne önerilmiş bilgisine
+   * hızlıca ulaşsın") ama hiçbir yerde toplu görünmüyordu: karar ancak
+   * ilgili görüşmenin penceresi açılarak bulunuyordu.
+   *
+   * Yeni sorgu yok — gelen görüşmelerin içinden türetiliyor. Aynı
+   * yönlendirme birkaç dönem üst üste önerilmiş olabilir; tür başına yalnızca
+   * EN SON karar gösterilir, liste tekrarla dolmasın.
+   */
+  const yonlendirmeOzeti = sabitOgrenci
+    ? [...gorusmeler]
+        .sort((a, b) => b.tarih.getTime() - a.tarih.getTime())
+        .flatMap((gorusme) =>
+          gorusme.yonlendirmeler.map((y) => ({ ...y, tarih: gorusme.tarih })),
+        )
+        .filter(
+          (karar, sira, hepsi) =>
+            hepsi.findIndex((k) => k.tur === karar.tur) === sira,
+        )
+    : [];
+
   // Not kaydı silmeyle aynı desende (useTransition + doğrudan çağrı): eylemin
   // hedefi o an açık olan görüşme, `useActionState`e önceden bağlanamıyor.
   function notKaydet(formVerisi: FormData) {
@@ -498,6 +524,25 @@ export function VeliGorusmeleriBolumu({
           dogumTarihiMetni={dogumTarihiMetni}
           atolyeler={atolyeler}
         />
+      ) : null}
+
+      {yonlendirmeOzeti.length > 0 ? (
+        <div className="kil-oyuk space-y-1.5 p-3">
+          <p className="text-sm font-medium text-zinc-800">
+            Önceki dönemlerde önerilenler
+          </p>
+          <ul className="space-y-1">
+            {yonlendirmeOzeti.map((karar) => (
+              <li key={karar.tur} className="text-xs text-zinc-600">
+                <span className="text-zinc-500">
+                  {tarihBicimle(karar.tarih)}
+                </span>{" "}
+                <span className="font-medium text-zinc-800">{karar.etiket}</span>
+                {karar.not ? ` — ${karar.not}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {gorusmeler.length === 0 ? (
@@ -650,7 +695,7 @@ function GorusmeFormuPenceresi({
 
   const [oneriKutusu, setOneriKutusu] = useState<{
     anahtar: string;
-    veri: GorusmeOnerileri | null;
+    veri: GorusmeYardimi | null;
   } | null>(null);
 
   const [uygulananKutusu, setUygulananKutusu] = useState<{
@@ -662,7 +707,7 @@ function GorusmeFormuPenceresi({
     if (!acik || !oneriAnahtari) return;
 
     let iptal = false;
-    gorusmeOnerileriGetir(ogrenciId, tarihMetni).then((sonuc) => {
+    gorusmeYardimiGetir(ogrenciId, tarihMetni).then((sonuc) => {
       if (!iptal) setOneriKutusu({ anahtar: oneriAnahtari, veri: sonuc });
     });
 
@@ -671,10 +716,11 @@ function GorusmeFormuPenceresi({
     };
   }, [acik, oneriAnahtari, ogrenciId, tarihMetni]);
 
-  const oneriler =
+  const yardim =
     oneriAnahtari && oneriKutusu?.anahtar === oneriAnahtari
       ? oneriKutusu.veri
       : null;
+  const oneriler = yardim?.oneriler ?? null;
   const oneriDurumu: "kapali" | "yukleniyor" | "hazir" = !oneriAnahtari
     ? "kapali"
     : oneriKutusu?.anahtar === oneriAnahtari
@@ -836,7 +882,12 @@ function GorusmeFormuPenceresi({
             </SekmePaneli>
 
             <SekmePaneli deger="guclu" etkin={sekme}>
-              <GucluSekmesi band={band} yankı={guclu} deger={deger} />
+              <GucluSekmesi
+                band={band}
+                yankı={guclu}
+                deger={deger}
+                zekaTestleri={yardim?.zekaTestleri ?? []}
+              />
             </SekmePaneli>
 
             <SekmePaneli deger="atolye" etkin={sekme}>
@@ -857,6 +908,8 @@ function GorusmeFormuPenceresi({
                 bandaOzel={bandaOzel}
                 yankı={zorlanma}
                 oneriler={oneriler?.zorlanmalar ?? []}
+                urunAdaylari={yardim?.urunAdaylari ?? []}
+                yas={yardim?.yas ?? null}
               />
             </SekmePaneli>
 
@@ -871,6 +924,7 @@ function GorusmeFormuPenceresi({
                   }))
                 }
                 deger={deger}
+                gecmis={yardim?.yonlendirmeGecmisi ?? []}
               />
             </SekmePaneli>
 
@@ -1105,10 +1159,13 @@ function GucluSekmesi({
   band,
   yankı,
   deger,
+  zekaTestleri,
 }: {
   band: string;
   yankı: Yanki;
   deger: (alan: string) => string | undefined;
+  /** Öğrencinin yüklü test belgeleri — bu bölüm CAS/WISC alanlarına dayanıyor. */
+  zekaTestleri: readonly { id: string; testAdi: string; tarih: Date }[];
 }) {
   const sozluk = GUCLU_YONLER[band as keyof typeof GUCLU_YONLER];
 
@@ -1120,6 +1177,37 @@ function GucluSekmesi({
         alanlarına dayalıdır. Bu bir test skoru yorumu değil, gözleme dayalı güç
         profilini yapılandıran bir rehber çerçevedir.
       </p>
+      {/* Bu bölüm CAS/WISC-IV alanlarına dayanıyor; öğrencinin gerçek test
+          belgesi varsa uzman kutuları işaretlemeden önce ona bakabilmeli.
+          Belge sistemde YAPILANDIRILMIŞ skor tutmuyor (yalnızca PDF/görsel),
+          o yüzden buradan bir çıkarım YAPILMIYOR — yalnızca bağlantı. */}
+      {zekaTestleri.length > 0 ? (
+        <div className="kil-oyuk space-y-1.5 p-3">
+          <p className="text-sm font-medium text-zinc-800">
+            Bu öğrencinin yüklü zekâ testi belgeleri
+          </p>
+          <ul className="space-y-1">
+            {zekaTestleri.map((test) => (
+              <li key={test.id} className="text-xs text-zinc-600">
+                <a
+                  href={`/api/zeka-testi/${test.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-marka-700 hover:underline"
+                >
+                  {test.testAdi}
+                </a>{" "}
+                · {tarihBicimle(test.tarih)}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-zinc-500">
+            Aşağıdaki işaretler test skorundan türetilmez; belge yalnızca
+            uzmanın kendi değerlendirmesine dayanak olsun diye bağlanıyor.
+          </p>
+        </div>
+      ) : null}
+
       <div className="kil-oyuk grid gap-2 p-3 sm:grid-cols-2">
         {GUCLU_YON_ANAHTARLARI.map((anahtar) => (
           <IsaretKutusu
@@ -1292,12 +1380,17 @@ function ZorlanmaSekmesi({
   bandaOzel,
   yankı,
   oneriler,
+  urunAdaylari,
+  yas,
 }: {
   band: string;
   bandaOzel: { anahtar: string; sutun: string; etiket: string };
   yankı: Yanki;
   /** Ölçümlerden çıkan zorlanma önerileri; kutular kendiliğinden işaretlenmez. */
   oneriler: readonly { anahtar: string; dayanak: string }[];
+  /** Yaşa süzülmüş ürün kataloğu; işaretlenen alana göre eşlenir. */
+  urunAdaylari: readonly OneriAdayi[];
+  yas: number | null;
 }) {
   const sozluk = ZORLANMA_ALANLARI[band as keyof typeof ZORLANMA_ALANLARI];
 
@@ -1393,14 +1486,17 @@ function ZorlanmaSekmesi({
         anahtarlar={[...yankı.secili]}
         cikar={(anahtar) => {
           const d = sozluk[anahtar];
-          return d
-            ? {
-                baslik: `${d.baslik} · ${d.alan}`,
-                yorum: d.yorum,
-                oneriler: d.oneriler,
-                aile: d.aile,
-              }
-            : null;
+          if (!d) return null;
+          const beceri = ZORLANMA_BECERILERI[anahtar];
+          return {
+            baslik: `${d.baslik} · ${d.alan}`,
+            yorum: d.yorum,
+            oneriler: d.oneriler,
+            aile: d.aile,
+            urunler: beceri
+              ? beceriyeGoreUrunler(urunAdaylari, beceri, yas)
+              : [],
+          };
         }}
       />
 
@@ -1421,11 +1517,19 @@ function YonlendirmeSekmesi({
   notlar,
   onNot,
   deger,
+  gecmis,
 }: {
   yankı: Yanki;
   notlar: Record<string, string>;
   onNot: (tur: string, metin: string) => void;
   deger: (alan: string) => string | undefined;
+  /** Önceki görüşmelerin yönlendirme kararları, en yeniden eskiye. */
+  gecmis: readonly {
+    id: string;
+    etiket: string;
+    not: string | null;
+    tarih: Date;
+  }[];
 }) {
   return (
     <>
@@ -1435,6 +1539,30 @@ function YonlendirmeSekmesi({
         tutulur. İşaretlemek kaydı KENDİLİĞİNDEN açmaz — ilgili ekranın
         bağlantısı gösterilir.
       </p>
+
+      {/* Bölümün var oluş sebebi tam olarak buydu ama geçmiş hiçbir yerde
+          görünmüyordu: uzman "geçen dönem ne önerilmişti" sorusunu ancak
+          eski görüşmeleri tek tek açarak cevaplayabiliyordu. */}
+      {gecmis.length > 0 ? (
+        <div className="kil-oyuk space-y-1.5 p-3">
+          <p className="text-sm font-medium text-zinc-800">
+            Önceki dönemlerde önerilenler
+          </p>
+          <ul className="space-y-1">
+            {gecmis.map((karar) => (
+              <li key={karar.id} className="text-xs text-zinc-600">
+                <span className="text-zinc-500">
+                  {tarihBicimle(karar.tarih)}
+                </span>{" "}
+                <span className="font-medium text-zinc-800">
+                  {karar.etiket}
+                </span>
+                {karar.not ? ` — ${karar.not}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {YONLENDIRME_TURLERI.map((tur) => {
           const isaretli = yankı.secili.has(tur.deger);
@@ -1493,6 +1621,8 @@ function SecilenlerinYorumu({
     yorum: string;
     oneriler: readonly string[];
     aile?: readonly string[];
+    /** Katalogdan seçilmiş gerçek ürünler — adları bağlantılı basılır. */
+    urunler?: readonly { id: string; ad: string; url: string }[];
   } | null;
 }) {
   const maddeler = anahtarlar
@@ -1520,6 +1650,31 @@ function SecilenlerinYorumu({
               <ul className="list-disc pl-4 text-xs text-zinc-600">
                 {veri.oneriler.map((oneri, sira) => (
                   <li key={sira}>{oneri}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {/* Sözlükteki satırlar kategori tarif ediyor ("… “Problem Çözme”
+              kategorisi"); veli hangi ürünü alacağını bulmak için siteyi
+              elle taramak zorundaydı. Katalogdaki gerçek ürün burada, yaşa
+              süzülmüş ve bağlantılı. */}
+          {veri.urunler && veri.urunler.length > 0 ? (
+            <>
+              <p className="mt-2 text-xs font-semibold text-zinc-700">
+                Katalogdan yaşa uygun ürünler:
+              </p>
+              <ul className="list-disc pl-4 text-xs text-zinc-600">
+                {veri.urunler.map((urun) => (
+                  <li key={urun.id}>
+                    <a
+                      href={urun.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-marka-700 hover:underline"
+                    >
+                      {urun.ad}
+                    </a>
+                  </li>
                 ))}
               </ul>
             </>

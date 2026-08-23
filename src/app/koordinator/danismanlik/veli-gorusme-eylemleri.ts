@@ -31,10 +31,11 @@ import {
   type YonlendirmeTuru,
 } from "@/lib/yonlendirme-turleri";
 import {
-  gorusmeOnerileriHazirla,
+  gorusmeYardimiHazirla,
   veliBriefGirdisiHazirla,
+  type GorusmeYardimi,
 } from "@/lib/veli-gorusmesi-verisi";
-import type { GorusmeOnerileri } from "@/lib/veli-gorusmesi-onerisi";
+import { yetkiYeter } from "@/lib/yetkiler";
 import type { EylemDurumu } from "@/lib/formlar";
 
 /**
@@ -496,22 +497,31 @@ export async function veliGorusmesiSil(
 }
 
 /**
- * §11.4 — Formun ön-doldurma önerileri.
+ * §11.4 — Formun ihtiyaç duyduğu yardımcı veri: ön-doldurma önerileri, yaşa
+ * uygun ürün kataloğu, öğrencinin zekâ testi belgeleri ve önceki dönemlerin
+ * yönlendirme kararları.
  *
- * İstemci öğrenci ve tarih belli olur olmaz çağırır. Öneriler forma
+ * İstemci öğrenci ve tarih belli olur olmaz bir kez çağırır. Öneriler forma
  * YAZILMAZ; ekranda dayanaklarıyla durur ve uzman tek tek kabul eder
  * (bkz. `veli-gorusmesi-onerisi.ts`).
  *
  * Ayrı bir eylem çünkü form gönderilmeden, kullanıcı yazmaya başlamadan
- * çalışması gerekiyor; `veliGorusmesiGonder` içine sıkıştırılsaydı öneri
+ * çalışması gerekiyor; `veliGorusmesiGonder` içine sıkıştırılsaydı yardım
  * almak için önizleme üretmek zorunda kalınırdı.
+ *
+ * YETKİ: görüşme formunun kendisi gibi `danismanlik` TAM. Zekâ testi listesi
+ * AYRICA süzülür — matriste `danismanlik` TAM olup `zekaTestleri` YOK olan
+ * bir rol bugün yok ama yarın eklenebilir ve o rol testleri görmemeli.
+ * Belgenin kendisi zaten yalnızca indirme rotasından, GORUNTULE ile açılır.
  */
-export async function gorusmeOnerileriGetir(
+export async function gorusmeYardimiGetir(
   ogrenciId: string,
   tarihMetni: string,
-): Promise<GorusmeOnerileri | null> {
+): Promise<GorusmeYardimi | null> {
   const kullanici = await yonetimZorunlu("danismanlik", "TAM");
 
   const tarih = tarihCozumle(tarihMetni) ?? bugun();
-  return gorusmeOnerileriHazirla(ogrenciId, kullanici.aktifSubeId, tarih);
+  return gorusmeYardimiHazirla(ogrenciId, kullanici.aktifSubeId, tarih, {
+    zekaTestiGorebilir: yetkiYeter(kullanici.roller, "zekaTestleri", "LISTE"),
+  });
 }

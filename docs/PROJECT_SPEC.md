@@ -549,7 +549,7 @@ Genel rapor şu alanlara odaklanabilir:
   uyarı listesinde belirtilir.
 
 Puanların kademeye çevrilme ölçütleri kurum tarafından yönetilir (bkz.
-§11.6): eşikler, akran kıyası için gereken asgari grup büyüklüğü ve
+§11.7): eşikler, akran kıyası için gereken asgari grup büyüklüğü ve
 kademelerin veliye yazılan adları.
 
 ### 11.3 Rapor üretim ilkeleri
@@ -602,7 +602,14 @@ Koordinatör, PDF üretmeden önce raporun belge hâlini önizleyebilir.
 Önizleme rapor geçmişine kayıt eklemez ve raporun o anki hâlini gösterir;
 veliye verilecek belge yalnızca "PDF oluştur" ile üretilir.
 
-### 11.6 Rapor ayarları
+### 11.6 Rapordaki bağlam
+
+Rapor penceresinde, öğrencinin zekâ testi belgeleri ve veli görüşmesi
+kayıtlarının varlığı koordinatöre gösterilir. Bu bilgi veliye giden belgeye
+BASILMAZ: veli görüşmesi kayıtları uzmanın kendi çerçeveleme notlarını
+içerir, zekâ testi sonuçları ise sağlık bilgisi sınıfındadır.
+
+### 11.7 Rapor ayarları
 
 Raporun puanları kademeye çevirirken kullandığı ölçütler kurum genelinde tek
 yerden yönetilir; şube başına ayrı değer tutulmaz.
@@ -619,6 +626,26 @@ Yönetilebilen ölçütler:
 Ayar değişikliği yalnızca bundan sonra üretilecek raporlara işler. Üretilmiş
 bir raporun içeriği dondurulmuştur (§13.17); eskisini yeni ölçütlerle görmek
 için rapor yeniden üretilmelidir.
+
+---
+
+## 11.8 Veli görüşmesi formu
+
+Görüşme formu doldurulurken sistem, stajyerin girdiği atölye puanlamalarından
+ve gelişim testinden yararlanır:
+
+- Dokuz gözlem alanı için 1–5 puan **önerilir**; öneri forma yazılmaz, uzman
+  dayanağını görüp tek tek ya da toplu kabul eder.
+- Zorlanma alanları için öneri listesi gösterilir; kutular kendiliğinden
+  işaretlenmez.
+- Sistemde ölçümü olmayan alanlar (kaygı, duyu hassasiyeti,
+  mükemmeliyetçilik, içe kapanıklık, görsel algı) hiçbir koşulda önerilmez.
+- İşaretlenen zorlanma alanları için katalogdan yaşa uygun gerçek ürünler
+  bağlantılarıyla listelenir.
+- Öğrencinin yüklü zekâ testi belgeleri Bölüm 2'de bağlanır; işaretler test
+  skorundan türetilmez.
+- Önceki dönemlerde alınmış yönlendirme kararları hem formda hem öğrenci
+  profilinde özetlenir.
 
 ---
 

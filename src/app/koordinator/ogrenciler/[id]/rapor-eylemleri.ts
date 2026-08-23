@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { yetkiYeter } from "@/lib/yetkiler";
 import { raporGovdesiV2Uret } from "@/lib/rapor-govdesi-verisi";
 import {
   pdfGecmisi,
@@ -612,9 +613,29 @@ export async function raporSil(raporId: string): Promise<EylemDurumu> {
   return { basari: "Rapor ve PDF'leri silindi." };
 }
 
+/**
+ * §11 — Raporun yanında duran, RAPORA GİRMEYEN bağlam.
+ *
+ * Koordinatör raporu gözden geçirirken öğrencinin zekâ testi dosyası ya da
+ * veli görüşmesi kaydı olduğunu bilmiyordu; ikisi de aynı sayfada başka
+ * kutularda duruyor ama rapor penceresi açıkken görünmüyorlar.
+ *
+ * VELİYE GİTMEZ: bu bilgi yalnızca panelde. Veli görüşmesi kayıtları uzmanın
+ * kendine yazdığı çerçeveleme notlarını içeriyor ("görüşmede nazikçe
+ * çerçevelenecek"), zekâ testi de sağlık bilgisi sınıfında; ikisini de
+ * veliye giden belgeye taşımak gizlilik sınıflarını değiştirirdi.
+ */
+export type RaporBaglami = {
+  zekaTestleri: { id: string; testAdi: string; tarih: Date }[];
+  /** Yalnızca sayı ve son tarih: kayıtların içeriği bu pencerede işimiz değil. */
+  veliGorusmesiSayisi: number;
+  sonVeliGorusmesi: Date | null;
+};
+
 export type RaporPenceresiVerisi = {
   detay: RaporDetayi;
   pdfler: PdfKaydi[];
+  baglam: RaporBaglami;
 };
 
 /**
@@ -637,5 +658,53 @@ export async function raporPenceresiVerisi(
   ]);
 
   if (!detay) return null;
-  return { detay, pdfler };
+
+  // Bağlam yetkiye göre süzülür: raporu görebilen herkesin zekâ testi ya da
+  // danışmanlık yetkisi olmak zorunda değil (matriste bugün öyle bir rol yok
+  // ama süzgeç arayüzde değil burada durmalı).
+  const zekaGorebilir = yetkiYeter(kullanici.roller, "zekaTestleri", "LISTE");
+  const gorusmeGorebilir = yetkiYeter(
+    kullanici.roller,
+    "danismanlik",
+    "GORUNTULE",
+  );
+
+  const [zekaTestleri, gorusmeler] = await Promise.all([
+    zekaGorebilir
+      ? db.intelligenceTest.findMany({
+          where: {
+            studentId: detay.ozet.ogrenciId,
+            student: { branchId: subeId },
+          },
+          orderBy: { date: "desc" },
+          // `fileData` SEÇİLMEZ (bkz. `IntelligenceTest` şema notu).
+          select: { id: true, testName: true, date: true },
+        })
+      : [],
+    gorusmeGorebilir
+      ? db.parentMeeting.findMany({
+          where: {
+            studentId: detay.ozet.ogrenciId,
+            student: { branchId: subeId },
+          },
+          orderBy: { date: "desc" },
+          // İçerik değil yalnızca varlık: tarih yeter.
+          select: { date: true },
+        })
+      : [],
+  ]);
+
+  return {
+    detay,
+    pdfler,
+    baglam: {
+      zekaTestleri: zekaTestleri.map((test) => ({
+        id: test.id,
+        testAdi: test.testName,
+        tarih: test.date,
+      })),
+      veliGorusmesiSayisi: gorusmeler.length,
+      sonVeliGorusmesi: gorusmeler[0]?.date ?? null,
+    },
+  };
 }
