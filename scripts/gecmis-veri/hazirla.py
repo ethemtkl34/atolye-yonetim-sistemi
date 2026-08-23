@@ -75,8 +75,19 @@ KLASOR_DONEMI = [
     ("YAZ ÖĞRENCİ RAPORLARI", D_YAZ26, None, date(2026, 8, 14)),
 ]
 
-# PDF kapağındaki ad Excel'de başka türlü yazılmış — elle doğrulanmış eşleme.
-# Anahtar da değer de normalize edilmiş hâlidir.
+# Aynı çocuk kütüğe iki farklı yazımla girilmiş ya da PDF kapağındaki ad
+# Excel'den farklı — elle doğrulanmış eşleme. Anahtar da değer de normalize
+# edilmiş hâlidir; eşleşen satırlar tek öğrencide toplanır.
+#
+# Kütük içi mükerrerler için ölçüt: doğum tarihi VE her iki velinin telefonu
+# birebir aynı olacak. Yalnız ad benzerliği yetmez — "Ahya Naz Örnek" ile
+# "Meva Duru Örnek" aynı doğum tarihini ve aynı telefonları paylaşıyor ama
+# ikizler, ikisinin de kendi raporu var.
+#
+# BİLEREK DIŞARIDA: "muhammet akif aktas" (r243) ile "muhammed akif aktas"
+# (r57) da bu ölçütü karşılıyor, ama iki satır AYNI dönemlerde FARKLI
+# sınıflarda (B-1 / B-2). Tek çocuk mu, iki ayrı kayıt mı olduğu kütükten
+# çözülemedi; kullanıcı karar verene kadar iki öğrenci olarak duruyorlar.
 AD_ESLEMESI = {
     "ahmet hasan kopucuoglu": "ahmet hasan kapucuoglu",
     "atlas balkan asdemir": "atlas balkan astemir",
@@ -85,6 +96,9 @@ AD_ESLEMESI = {
     "oguz kaan yalcin": "oguz kagan yalcin",
     "alya naz ornek": "ahya naz ornek",
     "ayse melis beyazit": "melis beyazit",
+    # Yaz sayfasında göbek adı yazılmamış; doğum tarihi ve iki veli telefonu
+    # da ana sayfadaki satırla birebir aynı.
+    "alp dilsiz": "alp asaf dilsiz",
 }
 
 # Aynı ad, iki farklı doğum tarihi — elle verilmiş karar.
