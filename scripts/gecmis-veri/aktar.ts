@@ -156,6 +156,21 @@ function manifestiBirlestir(yeni: Manifest): Manifest {
 async function main() {
   const paket = JSON.parse(readFileSync(VERI_YOLU, "utf8")) as Paket;
 
+  /**
+   * Gerçekten OLUŞTURULAN satırlar. Manifest'in uzunluğu bu sayıyı vermez:
+   * yarım kalmış koşu tamamlanırken var olan satırlar da deftere işleniyor,
+   * dolayısıyla hiçbir şey yazmayan ikinci bir koşu bile dolu bir manifest
+   * üretir. Kullanıcıya "429 yeni" demek yanlış olurdu.
+   */
+  const olusan = {
+    donem: 0,
+    kulup: 0,
+    grup: 0,
+    ogrenci: 0,
+    kayit: 0,
+    rapor: 0,
+  };
+
   const manifest: Manifest = {
     olusturmaZamani: new Date().toISOString(),
     termIdleri: [],
@@ -191,7 +206,7 @@ async function main() {
       manifest.termIdleri.push(mevcut.id);
       continue;
     }
-    const olusan = await db.term.create({
+    const yeniDonem = await db.term.create({
       data: {
         name: donem.name,
         egitimYili: donem.egitimYili,
@@ -204,8 +219,9 @@ async function main() {
       },
       select: { id: true },
     });
-    donemId.set(donem.name, olusan.id);
-    manifest.termIdleri.push(olusan.id);
+    donemId.set(donem.name, yeniDonem.id);
+    manifest.termIdleri.push(yeniDonem.id);
+    olusan.donem += 1;
   }
 
   // --- Kulüpler ------------------------------------------------------------
@@ -220,7 +236,7 @@ async function main() {
       manifest.clubIdleri.push(mevcut.id);
       continue;
     }
-    const olusan = await db.club.create({
+    const yeniKulup = await db.club.create({
       data: {
         name: kulup.name,
         date: KULUP_YER_TUTUCU_TARIH,
@@ -233,8 +249,9 @@ async function main() {
       },
       select: { id: true },
     });
-    kulupId.set(kulup.name, olusan.id);
-    manifest.clubIdleri.push(olusan.id);
+    kulupId.set(kulup.name, yeniKulup.id);
+    manifest.clubIdleri.push(yeniKulup.id);
+    olusan.kulup += 1;
   }
 
   // --- Gruplar -------------------------------------------------------------
@@ -269,7 +286,7 @@ async function main() {
       manifest.groupIdleri.push(mevcut.id);
       continue;
     }
-    const olusan = await db.group.create({
+    const yeniGrup = await db.group.create({
       data: {
         ...kapsam,
         name: grupAdi,
@@ -282,8 +299,9 @@ async function main() {
       },
       select: { id: true },
     });
-    grupId.set(anahtar, olusan.id);
-    manifest.groupIdleri.push(olusan.id);
+    grupId.set(anahtar, yeniGrup.id);
+    manifest.groupIdleri.push(yeniGrup.id);
+    olusan.grup += 1;
   }
 
   // Program iskeleti bitti; defteri şimdiden diske al.
@@ -311,7 +329,7 @@ async function main() {
       }
       continue;
     }
-    const olusan = await db.student.create({
+    const yeniOgrenci = await db.student.create({
       data: {
         firstName: ogrenci.firstName,
         lastName: ogrenci.lastName,
@@ -335,8 +353,9 @@ async function main() {
       },
       select: { id: true },
     });
-    ogrenciId.set(ogrenci.anahtar, olusan.id);
-    manifest.studentIdleri.push(olusan.id);
+    ogrenciId.set(ogrenci.anahtar, yeniOgrenci.id);
+    manifest.studentIdleri.push(yeniOgrenci.id);
+    olusan.ogrenci += 1;
   }
 
   manifestiYaz(manifest);
@@ -359,7 +378,7 @@ async function main() {
       manifest.enrollmentIdleri.push(mevcut.id);
       continue;
     }
-    const olusan = await db.enrollment.create({
+    const yeniKayit = await db.enrollment.create({
       data: {
         studentId: ogr,
         groupId: grup,
@@ -373,8 +392,9 @@ async function main() {
       },
       select: { id: true },
     });
-    kayitId.set(`${kayit.ogrenciAnahtari}|${kayit.programAdi}`, olusan.id);
-    manifest.enrollmentIdleri.push(olusan.id);
+    kayitId.set(`${kayit.ogrenciAnahtari}|${kayit.programAdi}`, yeniKayit.id);
+    manifest.enrollmentIdleri.push(yeniKayit.id);
+    olusan.kayit += 1;
   }
 
   manifestiYaz(manifest);
@@ -382,7 +402,6 @@ async function main() {
   // --- Arşiv raporları -----------------------------------------------------
   // En uzun aşama: 351 PDF, 133 MB. Defter her 25 belgede bir diske düşüyor
   // ki koşu kesilirse yazılanlar geri alınabilir kalsın.
-  let atlanan = 0;
   let yazilan = 0;
   for (const rapor of paket.raporlar) {
     const mevcut = await db.legacyReport.findUnique({
@@ -392,11 +411,10 @@ async function main() {
     if (mevcut) {
       // `sourcePath` yalnızca bu betikten yazılır; her zaman bizimdir.
       manifest.legacyReportIdleri.push(mevcut.id);
-      atlanan += 1;
       continue;
     }
     const icerik = readFileSync(rapor.mutlakYol);
-    const olusan = await db.legacyReport.create({
+    const yeniRapor = await db.legacyReport.create({
       data: {
         studentId: ogrenciId.get(rapor.ogrenciAnahtari)!,
         enrollmentId:
@@ -412,7 +430,8 @@ async function main() {
       },
       select: { id: true },
     });
-    manifest.legacyReportIdleri.push(olusan.id);
+    manifest.legacyReportIdleri.push(yeniRapor.id);
+    olusan.rapor += 1;
 
     yazilan += 1;
     if (yazilan % 25 === 0) {
@@ -429,12 +448,15 @@ async function main() {
   // gelirdi. Yarım kalmış bir koşudan sonra tamamlamak da bu sayede güvenli.
 
 
-  console.log(`Dönem       : ${manifest.termIdleri.length} yeni`);
-  console.log(`Kulüp       : ${manifest.clubIdleri.length} yeni`);
-  console.log(`Grup        : ${manifest.groupIdleri.length} yeni`);
-  console.log(`Öğrenci     : ${manifest.studentIdleri.length} yeni`);
-  console.log(`Kayıt       : ${manifest.enrollmentIdleri.length} yeni`);
-  console.log(`Arşiv raporu: ${manifest.legacyReportIdleri.length} yeni, ${atlanan} atlandı`);
+  const satir = (etiket: string, yeni: number, toplam: number) =>
+    `${etiket.padEnd(12)}: ${yeni} yeni${yeni === toplam ? "" : ` (${toplam - yeni} zaten vardı)`}`;
+
+  console.log(satir("Dönem", olusan.donem, manifest.termIdleri.length));
+  console.log(satir("Kulüp", olusan.kulup, manifest.clubIdleri.length));
+  console.log(satir("Grup", olusan.grup, manifest.groupIdleri.length));
+  console.log(satir("Öğrenci", olusan.ogrenci, manifest.studentIdleri.length));
+  console.log(satir("Kayıt", olusan.kayit, new Set(manifest.enrollmentIdleri).size));
+  console.log(satir("Arşiv raporu", olusan.rapor, manifest.legacyReportIdleri.length));
   console.log(`\nManifest: ${MANIFEST_YOLU}`);
 }
 
