@@ -227,8 +227,17 @@ export async function randevuVer(
   }
 
   const { tarih, saat, not } = cozumlenen.data;
-  const randevu = tarihCozumle(saat ? `${tarih}T${saat}` : tarih);
+
+  // Gün ve saat AYRI birleştiriliyor: `tarihCozumle` bilerek yalnız
+  // "YYYY-MM-DD" kabul ediyor (31 Şubat gibi taşmaları yakalamak için) ve
+  // "…T14:30" verilince null dönüyordu — ilk sürümde saat girilen her
+  // randevu bu yüzden kaydedilemiyordu.
+  const randevu = tarihCozumle(tarih);
   if (!randevu) return { hata: "Randevu zamanı çözümlenemedi." };
+  if (saat) {
+    const [saatKismi, dakikaKismi] = saat.split(":");
+    randevu.setUTCHours(Number(saatKismi), Number(dakikaKismi), 0, 0);
+  }
 
   const aday = await db.lead.findFirst({
     where: { id: adayId, branchId: kullanici.aktifSubeId },

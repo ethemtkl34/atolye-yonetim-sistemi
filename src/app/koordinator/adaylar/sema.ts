@@ -142,7 +142,9 @@ export const randevuSemasi = z.object({
     bosuNullYap,
     z
       .string()
-      .regex(/^\d{2}:\d{2}$/, "Saati SS:DD biçiminde girin")
+      // Saat ve dakika aralığı da kısıtlı: `\d{2}` "99:99"u geçirirdi ve
+      // sunucu tarayıcının `type="time"` kısıtına güvenmemeli.
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Saati SS:DD biçiminde girin")
       .nullable(),
   ),
   not: isteğeBagliMetin(500, "Not"),

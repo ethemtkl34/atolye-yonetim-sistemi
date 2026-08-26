@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LeadStage } from "@/generated/prisma/enums";
 import {
   adayiKaybet,
@@ -40,6 +40,22 @@ import { cn } from "@/lib/utils";
  */
 
 export type OgrenciSecenegi = { id: string; ad: string };
+
+/**
+ * Kaydedilince pencereyi kapatır.
+ *
+ * `useEklemePaneli` kendi `acik` durumunu başarıda kapatıyor ama buradaki
+ * pencerelerin açık/kapalı durumu ÜST bileşende (düğme şeridinde) duruyor;
+ * kancanınki kullanılmıyor. Bu olmadan kayıt başarılı olduğu hâlde pencere
+ * boş alanlarla açık kalıyor ve altındaki güncellenmiş sayfa görünmüyordu.
+ */
+function useBasaridaKapat(basari: string | undefined, onKapat: () => void) {
+  useEffect(() => {
+    if (basari) onKapat();
+    // `onKapat` her render'da yeniden üretiliyor; tetikleyici yalnız başarı.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basari]);
+}
 
 const HEDEF_ETIKETLERI: Record<DonusumHedefi, string> = {
   kayit: "Dönem / kulüp kaydı aç",
@@ -192,6 +208,7 @@ function RandevuPenceresi({
 }) {
   const { durum, eylem } = useEklemePaneli(randevuVer.bind(null, adayId));
   const h = durum.alanHatalari;
+  useBasaridaKapat(durum.basari, onKapat);
 
   return (
     <Pencere
@@ -236,6 +253,14 @@ function KayipPenceresi({
 }) {
   const { durum, eylem } = useEklemePaneli(adayiKaybet.bind(null, adayId));
   const h = durum.alanHatalari;
+  useBasaridaKapat(durum.basari, onKapat);
+
+  // Seçim DENETİMLİ tutuluyor: React eylem bitince kontrolsüz bir
+  // `<select>`in DOM değerini ilk seçeneğe düşürüyor ve `defaultValue`
+  // değişimini mount'tan sonra yansıtmıyor (öğrenci formunda da aynı tuzağa
+  // düşülmüştü). Durum bileşende yaşadığı için doğrulama hatasından sonra
+  // seçili sebep yerinde kalıyor; pencere kapanıp açılınca sıfırlanıyor.
+  const [sebep, setSebep] = useState("");
 
   return (
     <Pencere
@@ -247,7 +272,12 @@ function KayipPenceresi({
     >
       <form action={eylem} className="space-y-4">
         <Alan etiket="Kayıp sebebi" hata={h?.lossReason}>
-          <select name="lossReason" className={secimStili} defaultValue="">
+          <select
+            name="lossReason"
+            className={secimStili}
+            value={sebep}
+            onChange={(e) => setSebep(e.target.value)}
+          >
             <option value="">Seçin…</option>
             {Object.entries(ADAY_KAYIP_SEBEPLERI).map(([deger, etiket]) => (
               <option key={deger} value={deger}>
@@ -261,7 +291,11 @@ function KayipPenceresi({
           ipucu="“Diğer” seçtiyseniz zorunlu."
           hata={h?.lossNote}
         >
-          <CokSatirli name="lossNote" rows={2} />
+          <CokSatirli
+            name="lossNote"
+            rows={2}
+            defaultValue={durum.degerler?.lossNote}
+          />
         </Alan>
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
         <div className="flex flex-wrap gap-2">
