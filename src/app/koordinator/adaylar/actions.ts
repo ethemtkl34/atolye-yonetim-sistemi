@@ -84,9 +84,13 @@ export async function adayEkle(
         ? tarihCozumle(veri.nextActionDate)
         : null,
     },
-    // Elle açan kişi adayın sorumlusudur: telefonu o açtı, takibi o yürütür.
     createdByUserId: kullanici.id,
-    assignedToUserId: kullanici.id,
+    // Elle açan kişi adayın sorumlusudur: telefonu o açtı, takibi o yürütür.
+    // Kurum Yöneticisi istisna — şubesiz olduğu için şubenin sorumlu
+    // listesinde hiç görünmez; atanırsa seçici kendi değerini gösteremez ve
+    // aday "atanmamış" gibi okunur. O yüzden yalnız şubenin kadrosu atanır.
+    assignedToUserId:
+      kullanici.subeId === kullanici.aktifSubeId ? kullanici.id : null,
   });
 
   if (sonuc.sonuc === "benzer") {

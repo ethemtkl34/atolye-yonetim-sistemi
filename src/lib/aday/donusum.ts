@@ -75,13 +75,27 @@ export async function adayiKazanildiYap(
   tx: Prisma.TransactionClient,
   args: DonusumArgs,
 ): Promise<boolean> {
+  // Önceki aşama okunuyor çünkü günlük satırı GERÇEK geçişi yazmalı. Sabit
+  // bir `fromStage` yazmak (ilk sürümde öyleydi) geçmişi yalan söyletiyordu:
+  // yoldan gelen aile YENI'den doğrudan kazanılabiliyor, oysa günlükte
+  // "görüşme yapıldı" diye görünüyordu.
+  const aday = await tx.lead.findFirst({
+    where: {
+      id: args.adayId,
+      branchId: args.subeId,
+      stage: { in: ACIK_ASAMALAR },
+    },
+    select: { stage: true },
+  });
+  if (!aday) return false;
+
   const sonuc = await tx.lead.updateMany({
     // Aşama koşulda: kapanmış (kazanılmış/kaybedilmiş) aday yeniden
     // dönüştürülemez ve iki sekmeden aynı anda dönüşüm yarışı olmaz.
     where: {
       id: args.adayId,
       branchId: args.subeId,
-      stage: { in: ACIK_ASAMALAR },
+      stage: aday.stage,
     },
     data: {
       stage: "KAZANILDI",
@@ -99,7 +113,7 @@ export async function adayiKazanildiYap(
     data: {
       leadId: args.adayId,
       type: "ASAMA_DEGISIMI",
-      fromStage: "GORUSME_YAPILDI",
+      fromStage: aday.stage,
       toStage: "KAZANILDI",
       note: `Öğrenciye dönüştürüldü → ${args.ogrenciAdi} · sonraki adım: ${HEDEF_ETIKETLERI[args.hedef]}`,
       createdByUserId: args.kullaniciId,
