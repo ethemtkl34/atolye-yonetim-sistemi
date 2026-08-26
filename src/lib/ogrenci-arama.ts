@@ -13,7 +13,8 @@ import { normalizeArama, normalizeTelefon } from "./turkce";
  * sorgu anında sütunu dönüştürmek indeksi devre dışı bırakırdı.
  */
 
-export type AramaSonucu = Awaited<ReturnType<typeof ogrenciAra>>[number];
+export type AramaSonucu =
+  Awaited<ReturnType<typeof ogrenciAra>>["ogrenciler"][number];
 
 export type AramaSecenekleri = {
   /**
@@ -22,6 +23,8 @@ export type AramaSecenekleri = {
    */
   subeId: string;
   enFazla?: number;
+  /** Sayfalama için atlanacak kayıt sayısı. */
+  atla?: number;
   /**
    * "aktif" seçilirse yalnızca aktif bir programda aktif kaydı olan öğrenciler
    * döner — dashboardun "Aktif öğrenci" kartının karşılığı (§12.1).
@@ -29,8 +32,16 @@ export type AramaSecenekleri = {
   kapsam?: "tumu" | "aktif";
 };
 
+/**
+ * Bir sayfalık sonuç ve süzgece uyan TOPLAM sayı.
+ *
+ * Toplam ayrıca sayılıyor çünkü sayfa sayısı ondan çıkıyor; dönen dizinin
+ * uzunluğu yalnızca o sayfayı anlatır. Liste eskiden 200'lük tek bir dilimdi
+ * ve 200'e dayandığında "aramayı daraltın" diyordu — kurumun öğrenci sayısı
+ * geçmiş veri aktarımıyla o sınırı aştı.
+ */
 export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
-  const { subeId, enFazla = 50, kapsam = "tumu" } = secenekler;
+  const { subeId, enFazla = 50, atla = 0, kapsam = "tumu" } = secenekler;
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
   const telefonAnahtari = normalizeTelefon(temizSorgu);
@@ -56,26 +67,44 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
       }
     : {};
 
-  return db.student.findMany({
-    where: {
-      ...aramaKosulu,
-      ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
-    },
-    // §6.2 — Aynı isimli öğrencileri ayırt edebilmek için doğum tarihi,
-    // okul ve sınıf sonuçlarda gösterilir.
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      birthDate: true,
-      school: true,
-      grade: true,
-      guardians: {
-        select: { type: true, fullName: true, phone: true },
+  // Koşul TEK YERDE kuruluyor: liste ile sayım ayrı ayrı yazılsaydı biri
+  // güncellenip diğeri unutulduğunda sayfa sayısı sessizce yanlış olurdu.
+  const kosul = {
+    ...aramaKosulu,
+    ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
+  };
+
+  // şube-muaf: süzgeç üç satır yukarıdaki `kosul` içinde — `kapsam`a göre ya
+  // `branchId: subeId` ya da `aktifOgrenciKosulu(subeId)`. Tarayıcı `where`in
+  // içine bakamadığı için burada muafiyet yazılı. Koşulun liste ve sayım
+  // arasında ayrışmaması bilinçli: ikisi ayrı ayrı yazılsaydı biri
+  // güncellenip diğeri unutulduğunda sayfa sayısı sessizce yanlış olurdu.
+  const [ogrenciler, toplam] = await Promise.all([
+    db.student.findMany({
+      where: kosul,
+      // §6.2 — Aynı isimli öğrencileri ayırt edebilmek için doğum tarihi,
+      // okul ve sınıf sonuçlarda gösterilir.
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        school: true,
+        grade: true,
+        guardians: {
+          select: { type: true, fullName: true, phone: true },
+        },
+        _count: { select: { enrollments: true } },
       },
-      _count: { select: { enrollments: true } },
-    },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    take: enFazla,
-  });
+      // Sıralama SAYFALAMANIN parçası: kararlı bir sıra olmadan aynı öğrenci
+      // iki sayfada birden görünebilir ya da hiç görünmeyebilir. Ad-soyad
+      // ikilisi eşitse `id` ayırıyor.
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+      skip: atla,
+      take: enFazla,
+    }),
+    db.student.count({ where: kosul }),
+  ]);
+
+  return { ogrenciler, toplam };
 }

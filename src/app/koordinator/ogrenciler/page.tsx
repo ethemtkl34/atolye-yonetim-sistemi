@@ -4,6 +4,7 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
 import { Bildirim, BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { Sayfalama, sayfaNumarasiCoz } from "@/components/sayfalama";
 import { tarihBicimle } from "@/lib/tarih";
 
 export const metadata: Metadata = {
@@ -13,11 +14,14 @@ export const metadata: Metadata = {
 const TEMEL_YOL = "/koordinator/ogrenciler";
 
 /**
- * Listenin üst sınırı. Dashboardun "Aktif öğrenci" kartı gerçek sayıyı
- * gösterdiği için, liste bu sınıra dayandığında kesildiği açıkça yazılır —
- * sessizce eksik liste göstermek kartla çelişki gibi görünürdü.
+ * Bir sayfada gösterilen öğrenci sayısı.
+ *
+ * Liste eskiden 200'lük TEK bir dilimdi ve sınıra dayandığında "aramayı
+ * daraltın" diyordu. Geçmiş veri aktarımıyla kurumun öğrenci sayısı o sınırı
+ * aştı; 200 kartı tek sayfada çizmek hem telefonda okunmuyor hem de listenin
+ * sonundaki öğrencilere hiç ulaşılamıyordu.
  */
-const LISTE_SINIRI = 200;
+const SAYFA_BOYUTU = 25;
 
 /**
  * §6.2 — Öğrenci arama ve liste.
@@ -39,11 +43,35 @@ export default async function OgrencilerSayfasi(
   const silinen =
     typeof parametreler.silinen === "string" ? parametreler.silinen : "";
 
-  const ogrenciler = await ogrenciAra(sorgu, {
-    subeId: kullanici.aktifSubeId,
-    kapsam,
-    enFazla: LISTE_SINIRI,
-  });
+  const istenenSayfa = sayfaNumarasiCoz(parametreler.sayfa);
+
+  const ara = (sayfa: number) =>
+    ogrenciAra(sorgu, {
+      subeId: kullanici.aktifSubeId,
+      kapsam,
+      enFazla: SAYFA_BOYUTU,
+      atla: (sayfa - 1) * SAYFA_BOYUTU,
+    });
+
+  const ilkSonuc = await ara(istenenSayfa);
+  const sayfaSayisi = Math.max(1, Math.ceil(ilkSonuc.toplam / SAYFA_BOYUTU));
+
+  // Yer imine alınmış ya da elle yazılmış bir sayfa numarası artık var
+  // olmayabilir (öğrenci silindi, arama daraldı). O sayfanın sorgusu boş
+  // döner; boş liste göstermek yerine SON SAYFA yeniden çekilir. Ek sorgu
+  // yalnızca bu nadir durumda çalışır.
+  const sayfa = Math.min(istenenSayfa, sayfaSayisi);
+  const kaydiTasti = istenenSayfa > sayfaSayisi;
+  const { ogrenciler, toplam } = kaydiTasti ? await ara(sayfa) : ilkSonuc;
+
+  // Sayfa bağlantılarında korunacak süzgeçler — `sayfa` bilerek YOK.
+  const suzgecler: Record<string, string> = {
+    ...(sorgu ? { q: sorgu } : {}),
+    ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
+  };
+
+  const ilkSira = toplam === 0 ? 0 : (sayfa - 1) * SAYFA_BOYUTU + 1;
+  const sonSira = (sayfa - 1) * SAYFA_BOYUTU + ogrenciler.length;
 
   return (
     <div className="space-y-6">
@@ -98,26 +126,30 @@ export default async function OgrencilerSayfasi(
         />
       </SuzgecCubugu>
 
-      {sorgu ? (
+      {toplam > 0 ? (
         <p className="text-sm text-zinc-600">
-          <span className="font-medium">{ogrenciler.length}</span> sonuç ·{" "}
-          <Link
-            href={
-              kapsam === "aktif"
-                ? `${TEMEL_YOL}?kapsam=aktif`
-                : TEMEL_YOL
-            }
-            className={baglantiStili}
-          >
-            aramayı temizle
-          </Link>
+          <span className="font-medium">{toplam}</span>{" "}
+          {sorgu ? "sonuç" : "öğrenci"}
+          {sayfaSayisi > 1 ? ` · ${ilkSira}-${sonSira} arası gösteriliyor` : ""}
+          {sorgu ? (
+            <>
+              {" · "}
+              <Link
+                href={
+                  kapsam === "aktif" ? `${TEMEL_YOL}?kapsam=aktif` : TEMEL_YOL
+                }
+                className={baglantiStili}
+              >
+                aramayı temizle
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
 
-      {ogrenciler.length === LISTE_SINIRI ? (
+      {kaydiTasti ? (
         <p className="text-sm text-vurgu-700">
-          İlk {LISTE_SINIRI} öğrenci gösteriliyor. Aramayı daraltarak listeyi
-          küçültebilirsiniz.
+          İstenen sayfa artık yok; son sayfa gösteriliyor.
         </p>
       ) : null}
 
@@ -188,6 +220,13 @@ export default async function OgrencilerSayfasi(
           })}
         </div>
       )}
+
+      <Sayfalama
+        temelYol={TEMEL_YOL}
+        sayfa={sayfa}
+        sayfaSayisi={sayfaSayisi}
+        digerler={suzgecler}
+      />
     </div>
   );
 }
