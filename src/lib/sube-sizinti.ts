@@ -42,6 +42,11 @@ const SUBEYE_AIT = new Set([
   "counselingSession",
   "parentMeeting",
   "intelligenceTest",
+  // Aday (CRM) tabloları: Lead şube sınırının dördüncü doğrudan tablosu,
+  // etkinlikleri adayından şubelidir. API girişleri (oturumsuz rotalar) da
+  // şubeyi payload'dan çözüp SORGUNUN İÇİNE literal yazar — muafiyet yok.
+  "lead",
+  "leadActivity",
 ]);
 
 /**
@@ -76,9 +81,19 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  *
  * `groups: true` biçimi de sayılıyor — `_count: { select: { groups: true } }`
  * tam olarak buydu: sayı şişiyordu, çünkü süzülemeyen bir sayım.
+ *
+ * `leads` listede, `activities` (LeadActivity) ise BİLEREK DEĞİL. Ölçüt şu:
+ * ilişki, şubesiz bir kapıdan şubeli veriye geçiriyor mu? `Branch.leads`
+ * geçiriyor (Branch şubeden bağımsız sayılır, altındaki adaylar değil).
+ * `activities`in tek üst modeli `Lead` ve `Lead` zaten `SUBEYE_AIT` — o
+ * sorgu 1–5. kurallardan geçmeden yazılamıyor, dolayısıyla iç içe etkinlik
+ * yazımı ayrıca denetlenmiş oluyor. Listeye eklenseydi etkinlik yazan her
+ * eylem (sekiz kadar) gereksiz bir `// şube-muaf` yorumu taşırdı ve tarayıcı
+ * gürültüye dönerdi. Yeni bir şubesiz modele `activities` ilişkisi eklenirse
+ * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests)\s*:/;
+  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik
@@ -104,7 +119,7 @@ const TEKIL_ANAHTAR = /\bid:\s|\b\w+_\w+:\s*\{/;
  * siliyordu).
  */
 const CAPA =
-  /\b(user|group|student|enrollment|session|score|report)Id:\s*(?!\{)[\w.]+/i;
+  /\b(user|group|student|enrollment|session|score|report|lead)Id:\s*(?!\{)[\w.]+/i;
 
 /** Bilinçli muafiyet: çağrının hemen üstüne gerekçesiyle yazılır. */
 const MUAFIYET = /\/\/\s*şube-muaf:\s*\S/;

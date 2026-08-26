@@ -1,5 +1,11 @@
 import { db } from "@/lib/db";
 import {
+  acikAdayKosulu,
+  bugunAranacakKosulu,
+  dokunulmamisAdayKosulu,
+  gecikmisAdayKosulu,
+} from "@/lib/aday-durumlari";
+import {
   AKTIF_DONEM_KOSULU,
   AKTIF_KULUP_KOSULU,
   aktifGrupKosulu,
@@ -32,10 +38,12 @@ export async function dashboardVerisi({
   subeId,
   puanlamaGorebilir,
   raporGorebilir,
+  adayGorebilir,
 }: {
   subeId: string;
   puanlamaGorebilir: boolean;
   raporGorebilir: boolean;
+  adayGorebilir: boolean;
 }) {
   const bugunkuTarih = bugun();
 
@@ -49,6 +57,10 @@ export async function dashboardVerisi({
     raporlar,
     toplamRaporSayisi,
     yaklasanOturumlar,
+    aranacakAdaySayisi,
+    gecikmisAdaySayisi,
+    dokunulmamisAdaySayisi,
+    acikAdaySayisi,
   ] = await Promise.all([
     db.term.count({ where: AKTIF_DONEM_KOSULU }),
     db.club.count({ where: AKTIF_KULUP_KOSULU }),
@@ -91,6 +103,18 @@ export async function dashboardVerisi({
       _count: { _all: true },
       take: 60,
     }),
+    // §16.6 — Aday kuyruğu. Koşullar `aday-durumlari.ts`'ten: kartta yazan
+    // sayı, tıklanınca açılan listenin uzunluğuyla birebir aynı.
+    adayGorebilir
+      ? db.lead.count({ where: bugunAranacakKosulu(subeId, bugunkuTarih) })
+      : 0,
+    adayGorebilir
+      ? db.lead.count({ where: gecikmisAdayKosulu(subeId, bugunkuTarih) })
+      : 0,
+    adayGorebilir
+      ? db.lead.count({ where: dokunulmamisAdayKosulu(subeId) })
+      : 0,
+    adayGorebilir ? db.lead.count({ where: acikAdayKosulu(subeId) }) : 0,
   ]);
 
   const dolanGruplar = aktifGruplar.filter(
@@ -124,6 +148,7 @@ export async function dashboardVerisi({
     atanmamisKayitSayisi,
     dolanGruplar.length,
     ...(raporGorebilir ? [guncelOlmayanRaporlar.length] : []),
+    ...(adayGorebilir ? [aranacakAdaySayisi, dokunulmamisAdaySayisi] : []),
   ].filter((sayi) => sayi > 0).length;
 
   return {
@@ -141,6 +166,10 @@ export async function dashboardVerisi({
     sonRaporlar,
     haftaSonu,
     bekleyenBasliklar,
+    aranacakAdaySayisi,
+    gecikmisAdaySayisi,
+    dokunulmamisAdaySayisi,
+    acikAdaySayisi,
   };
 }
 

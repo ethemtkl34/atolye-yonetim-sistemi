@@ -82,6 +82,16 @@ const SIMGE_YOLLARI: Record<string, React.ReactNode> = {
       <path d="M18 7v6M15 10h6" />
     </>
   ),
+  // Adaylar: kişi + artı — henüz öğrenci olmamış, eklenme yolundaki kişi.
+  // `atama` ile aynı çizim ama ayrı ad: atamanın anlamı kayda stajyer
+  // bağlamak, buradaki artı ise huniye yeni kişi girişi.
+  aday: (
+    <>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.8 20c.7-3.1 3.2-5 6.2-5s5.5 1.9 6.2 5" />
+      <path d="M18 7v6M15 10h6" />
+    </>
+  ),
   // Kullanıcı yönetimi: kişi + anahtar. "Kişiler" bölümündeki diğer
   // maddelerden ayrışsın diye anahtar eklendi — burası hesap ve rol ekranı.
   anahtar: (

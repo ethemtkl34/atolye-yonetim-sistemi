@@ -24,6 +24,7 @@ export const MODULLER = [
   "atolyeler",
   "mufredat",
   "ogrenciler",
+  "adaylar",
   "kayitlar",
   "stajyerler",
   "danismanlik",
@@ -73,6 +74,7 @@ const KOORDINATOR_SATIRI: Record<Modul, Seviye> = {
   atolyeler: "TAM",
   mufredat: "TAM",
   ogrenciler: "TAM",
+  adaylar: "TAM",
   kayitlar: "TAM",
   stajyerler: "TAM",
   danismanlik: "TAM",
@@ -114,14 +116,20 @@ export const YETKI_MATRISI: Record<Role, Record<Modul, Seviye>> = {
   TEST_UYGULAYICISI: { ...tumModuller("YOK"), zekaTestleri: "TAM" },
 
   /**
-   * Danışma Görevlisi — kayıt masası: öğrenci ve kayıt işlemleri tam,
+   * Danışma Görevlisi — kayıt masası: öğrenci, aday ve kayıt işlemleri tam,
    * programlar salt görüntüleme, zeka testlerinde yalnız liste. Görüşmeler
    * (danışmanlık) sağlık mahremiyeti gereği stajyerdeki gibi TAMAMEN gizli;
    * puanlama/rapor/arşiv ve müfredat yönetimi bu masanın işi değil.
+   *
+   * Adaylar bu masanın ASIL işi: telefonun başındaki kişi aday açar, arar,
+   * aşama yürütür, dönüştürür. Aday verisi sağlık/görüşme mahremiyeti
+   * sınıfında değil, kayıt masası verisidir — ogrenciler/kayitlar TAM ile
+   * tutarlı.
    */
   DANISMA_GOREVLISI: {
     ...tumModuller("YOK"),
     ogrenciler: "TAM",
+    adaylar: "TAM",
     kayitlar: "TAM",
     donemler: "GORUNTULE",
     kulupler: "GORUNTULE",

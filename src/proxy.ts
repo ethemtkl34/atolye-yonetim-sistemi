@@ -66,6 +66,10 @@ export const proxy = auth((istek) => {
 });
 
 export const config = {
-  // Statik dosyalar ve Auth.js'in kendi uçları dışındaki her istek.
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Statik dosyalar, Auth.js'in kendi uçları ve CRM'in oturumsuz dış giriş
+  // uçları (api/crm — entegratör ve web sitesi formu POST'ları) dışındaki her
+  // istek. api/crm rotaları kendi kimliğini Bearer token ile doğrular; buraya
+  // eklenecek İLERİDEKİ bir oturumlu uç da iyimser katmanı atlar — sorun
+  // değil, asıl yetki zaten rota içindedir ve API 403 döner, yönlendirmez.
+  matcher: ["/((?!api/auth|api/crm|_next/static|_next/image|favicon.ico).*)"],
 };

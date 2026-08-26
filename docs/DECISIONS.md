@@ -139,3 +139,53 @@ Karar gerekçeleri:
   denetlenebilir bir JSON + denetim raporu üretir (DB'ye dokunmaz),
   `aktar.ts` onu yazar. Yazılan her satırın kimliği `manifest.json`'a düşer;
   `geri-al.ts` yalnızca o listeye dokunur.
+
+## Aday (CRM) modülü — Ağustos 2026
+
+- Modül slug'ı **`adaylar`**, "crm" değil. Adlandırma standardı gereği panel
+  dili Türkçe; "aday öğrenci / aday veli" kurumun kendi kullandığı sözcük ve
+  `ogrenciler`/`danismanlik` gibi tek kelimelik slug'larla aynı kalıpta.
+- **Meta ile doğrudan webhook kurulmadı; entegratör (Pabbly/Make) tercih
+  edildi.** Doğrudan bağlanmak Meta App Review (Advanced Access + Business
+  Verification, haftalar sürer), `X-Hub-Signature-256` doğrulaması ve sayfa
+  jetonu yenileme yükünü kuruma yıkıyordu. Entegratör Meta'dan alıp panelin
+  tek ucuna POST ediyor. Uç sözleşmesi ileride doğrudan webhook'a geçmeye
+  hazır; değişecek olan yalnız çağıran.
+- **Yeni rol açılmadı.** Modülün asıl kullanıcısı mevcut `DANISMA_GOREVLISI`
+  (kayıt masası) ve yetkisi TAM. Aday verisi sağlık/görüşme mahremiyeti
+  sınıfında değil; `ogrenciler`/`kayitlar` TAM ile tutarlı. CRM'e özel bir
+  "Danışman" rolü ileride istenirse `Role` enum'una değer eklemek kendi
+  migration'ını gerektirir (Postgres kuralı) — ayrı iş.
+- **"Ulaşılamadı" aşama değil, sayaç.** Aşama yapılsaydı boru hattı gerçekte
+  olmayan bir ilerleme gösterirdi; oysa ulaşılamamak denemenin sonucu.
+  `ULASILAMADI` etkinliği + `unreachableCount`, aşamaya dokunmadan.
+- **`KAZANILDI` terminaldir** ve yalnız dönüşüm akışıyla yazılır: karşılığında
+  bir öğrenci kaydı var, geri almak bilinçli bir yönetici işi olmalı.
+  `KAYBEDILDI` ise tek adımla geri açılabilir (yanlışlıkla kapatma telafisi).
+- **Aşama açılır listeyle değil açık düğmelerle değişiyor** (`DurumSecici`
+  kullanılmadı). Aşama ilerletmek bu modülün asıl fiili, iki arama arasında
+  tek elle yapılıyor; ayrıca geçişlerin üçü zorunlu veri taşıyor (randevu
+  tarihi, kayıp sebebi, öğrenci bağlantısı) ve seçici zaten arkasından bir
+  pencere açtıracaktı.
+- **Şube kodu çözülemeyen başvuru düşürülmez**, varsayılan şubeye
+  `ESLEME_YOK` işaretiyle yazılır ve listede uyarı üretir. Gerçek bir ailenin
+  başvurusunu eski bir form değeri yüzünden kaybetmek, yanlış şubede duran ve
+  görünür şekilde işaretli bir kayıttan çok daha kötü.
+- **Mükerrer kaydı elle girişte engellenmez, uyarılır**: kardeşler aynı veli
+  telefonunu paylaşıyor. API girişinde ise aynı telefonla açık aday varken
+  yeni satır açılmaz, mevcut aday kuyruğa geri çekilir.
+- **Sorumlu (`assignedToUserId`) görünürlüğü kısıtlamaz.** Ekip küçük; herkes
+  her adayı görür, alan yalnız iş bölümü ve süzgeç için.
+- **Oran sınırlama bilinçli olarak asgari**: kaynak başına saatlik 100 yazım
+  tavanı (jeton sızıntısının patlama yarıçapı). Vercel'de kalıcı sayaç yok;
+  daha sıkı bir sınır isteniyorsa Cloudflare tarafında kural yazılmalı.
+- **`LeadActivity` şube-sızıntı tarayıcısının `SUBELI_ILISKI` listesine
+  EKLENMEDİ** (`leads` eklendi). Ölçüt "şubesiz bir kapıdan şubeli veriye
+  geçiriyor mu": `activities`in tek üst modeli `Lead` ve o zaten `SUBEYE_AIT`,
+  yani sorgusu kurallardan geçmeden yazılamıyor. Listeye eklenseydi etkinlik
+  yazan her eylem gereksiz bir `// şube-muaf` yorumu taşır, tarayıcı gürültüye
+  dönerdi. Şubesiz bir modele `activities` ilişkisi eklenirse karar yeniden
+  gözden geçirilmeli.
+- V1 kapsamı dışında: Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi,
+  e-posta/SMS gönderimi, dönüşmeyen adayların otomatik temizliği (KVKK
+  saklama süresi kurum kararı bekliyor).

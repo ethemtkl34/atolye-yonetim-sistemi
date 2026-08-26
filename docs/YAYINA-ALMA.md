@@ -57,6 +57,13 @@ alanlarını içeriyor, bunların yapısı bile dışarı açık durmamalı.
 | `AUTH_SECRET` | `openssl rand -base64 32` çıktısı (aşağıya bakın) |
 | `AUTH_URL` | `https://panel.tuzder.org` |
 | `NEXT_PUBLIC_KURUM_ADI` | `TÜZDER` |
+| `LEAD_API_TOKEN` | `openssl rand -base64 32` çıktısı — **Sensitive** işaretleyin |
+
+`LEAD_API_TOKEN` aday (CRM) dış giriş ucunun jetonudur: Meta reklam
+formlarını taşıyan entegratör ve tuzder.org başvuru formu bu jetonla yazar.
+Kurulum adımları `docs/CRM-ENTEGRASYON.md` içinde. Değişkeni değiştirdikten
+sonra **yeniden dağıtım gerekir**; jeton tanımsızken uç 503 döner (aday
+yazılmaz, panel çalışmaya devam eder).
 
 Yeni bir `AUTH_SECRET` üretmek için:
 

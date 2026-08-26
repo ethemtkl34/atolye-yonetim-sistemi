@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { kayitEngeli } from "@/lib/kayit-kurallari";
+import { adayiKazanildiYap, donusumYolu } from "@/lib/aday/donusum";
+import { donusumHedefiSemasi } from "../adaylar/sema";
 import {
   alanHatalari,
   formDegerleri,
@@ -30,6 +32,11 @@ import {
  * bırakırdı. Koordinatör de hata mesajını gördüğünde öğrencinin kaydedilip
  * kaydedilmediğini bilemezdi. Bu yüzden grup kontrolü başarısızsa hiçbir şey
  * yazılmıyor ve form girilen değerlerle geri geliyor.
+ *
+ * §16.9 — Form bir ADAYDAN geliyorsa (gizli `adayId`) dönüşüm de aynı
+ * işlemde yapılır: aday KAZANILDI'ya taşınır ve öğrenciye bağlanır. Aşama
+ * ancak öğrenci gerçekten yazıldığında değişir; kullanıcı formu yarıda
+ * bırakırsa adaya hiçbir şey olmaz.
  */
 export async function ogrenciEkle(
   _oncekiDurum: EylemDurumu,
@@ -49,6 +56,16 @@ export async function ogrenciEkle(
   const veri = cozumlenen.data;
   const groupId = String(formVerisi.get("groupId") ?? "");
 
+  // Aday bağlamı: yalnız `adaylar` yetkisi olan kullanıcı dönüştürebilir.
+  // Yetkisi olmayan biri gizli alanı elle eklese bile dönüşüm yapılmaz,
+  // öğrenci normal şekilde açılır.
+  const adayId =
+    kullanici.yetkiler.adaylar === "TAM"
+      ? String(formVerisi.get("adayId") ?? "")
+      : "";
+  const hedef = donusumHedefiSemasi.parse(formVerisi.get("hedef"));
+  const ogrenciAdi = `${veri.firstName} ${veri.lastName}`;
+
   const ogrenciVerisi = {
     ...ogrenciAlanlari(veri),
     branchId: subeId,
@@ -57,12 +74,38 @@ export async function ogrenciEkle(
   };
 
   if (!groupId) {
-    // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı; öğrenci
-    // oturumdaki şubeye açılıyor.
-    const ogrenci = await db.student.create({ data: ogrenciVerisi });
+    const ogrenciId = await db.$transaction(async (tx) => {
+      // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı; öğrenci
+      // oturumdaki şubeye açılıyor.
+      const ogrenci = await tx.student.create({ data: ogrenciVerisi });
+
+      if (adayId) {
+        await adayiKazanildiYap(tx, {
+          adayId,
+          subeId,
+          ogrenciId: ogrenci.id,
+          ogrenciAdi,
+          kullaniciId: kullanici.id,
+          hedef,
+        });
+      }
+
+      return ogrenci.id;
+    });
 
     revalidatePath("/koordinator/ogrenciler");
-    redirect(`/koordinator/ogrenciler/${ogrenci.id}`);
+    if (adayId) {
+      revalidatePath("/koordinator/adaylar");
+      revalidatePath(`/koordinator/adaylar/${adayId}`);
+      revalidatePath("/koordinator");
+    }
+    redirect(
+      donusumYolu(
+        adayId ? hedef : "yok",
+        ogrenciId,
+        kullanici.yetkiler.danismanlik === "TAM",
+      ),
+    );
   }
 
   // Kontenjan okuma ile yazma arasında kaymasın diye kayıt akışıyla aynı kilit.
@@ -93,6 +136,18 @@ export async function ogrenciEkle(
       data: { studentId: ogrenci.id, groupId },
     });
 
+    if (adayId) {
+      await adayiKazanildiYap(tx, {
+        adayId,
+        subeId,
+        ogrenciId: ogrenci.id,
+        ogrenciAdi,
+        kullaniciId: kullanici.id,
+        // Kayıt zaten bu formda açıldı; hedefe ayrıca yönlendirmeye gerek yok.
+        hedef: "kayit",
+      });
+    }
+
     return { ogrenciId: ogrenci.id, termId: grup.termId, clubId: grup.clubId };
   });
 
@@ -109,6 +164,10 @@ export async function ogrenciEkle(
   revalidatePath("/koordinator");
   if (sonuc.termId) revalidatePath(`/koordinator/donemler/${sonuc.termId}`);
   if (sonuc.clubId) revalidatePath(`/koordinator/kulupler/${sonuc.clubId}`);
+  if (adayId) {
+    revalidatePath("/koordinator/adaylar");
+    revalidatePath(`/koordinator/adaylar/${adayId}`);
+  }
   redirect(`/koordinator/ogrenciler/${sonuc.ogrenciId}`);
 }
 

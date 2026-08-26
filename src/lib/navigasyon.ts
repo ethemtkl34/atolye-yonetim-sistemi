@@ -76,6 +76,18 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     bolum: "Atölyeler",
     simge: "izgara",
   },
+  // Adaylar Öğrenciler'in ÜSTÜNDE: huni sırası — kişi önce aday olur, sonra
+  // öğrenci. Danışma görevlisinin günlük iş kuyruğu (bugün aranacaklar) bu
+  // ekranda yaşar.
+  {
+    etiket: "Adaylar",
+    yol: "/koordinator/adaylar",
+    modul: "adaylar",
+    hazir: true,
+    paket: "P18",
+    bolum: "Kişiler",
+    simge: "aday",
+  },
   {
     etiket: "Öğrenciler",
     yol: "/koordinator/ogrenciler",

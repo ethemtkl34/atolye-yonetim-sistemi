@@ -755,3 +755,145 @@ Bu özellikler daha sonra ayrı kapsam olarak değerlendirilebilir.
 14. Sistem genel öğrenci raporu oluşturabilir.
 15. Koordinatör raporu PDF olarak dışarı aktarabilir.
 16. Puanlar değiştiğinde raporun güncel olmadığı görülebilir.
+
+---
+
+## 16. Aday yönetimi (CRM)
+
+Kurum, kayda dönüşmemiş ilgiyi (lead) bu modülden önce dış bir araçta
+(Workiom/Bitrix) yürütüyordu. Süreç panele taşındı: aday ile öğrenci aynı
+sistemde durunca "bu çocuk nereden geldi" ve "reklam bütçesi ne getirdi"
+soruları tek yerden cevaplanabiliyor.
+
+### 16.1 Kaynaklar
+
+| Kaynak | Nasıl girer |
+|---|---|
+| `META` | Meta (Facebook/Instagram) reklam formu → entegratör (Pabbly/Make) → `POST /api/crm/aday` |
+| `WEB_SITESI` | tuzder.org form işleyicisi → aynı uç (sunucudan sunucuya) |
+| `TELEFON` | Danışman elle açar |
+| `YOLDAN_GECEN` | Şubeye gelen veli; danışman elle açar |
+| `DIGER` | Elle |
+
+`META` ve `WEB_SITESI` yalnızca API'den yazılır; elle açma formunda
+sunulmaz — sunulsaydı kaynak raporundaki reklam getirisi elle şişirilebilirdi.
+
+Meta ile doğrudan webhook yerine entegratör tercih edildi: App Review, imza
+doğrulama ve sayfa jetonu yenileme yükü kuruma gelmiyor. Uç, ileride doğrudan
+webhook'a geçilmek istenirse aynı sözleşmeyi karşılar.
+
+### 16.2 Boru hattı
+
+`YENI → ULASILDI → RANDEVU_VERILDI → GORUSME_YAPILDI → KAZANILDI / KAYBEDILDI`
+
+- İzinli geçişlerin tek kaynağı `src/lib/aday-durumlari.ts` içindeki
+  `ADAY_ASAMA_GECISLERI` (dönem/kulüp durumlarındaki desen).
+- `KAZANILDI` her açık aşamadan erişilir (yoldan gelen aile aynı gün kayıt
+  olabilir) ama YALNIZCA dönüşüm akışıyla yazılır ve terminaldir.
+- `KAYBEDILDI` her açık aşamadan; tek adımla (`YENI`) geri açılabilir.
+- **"Ulaşılamadı" bir aşama DEĞİLDİR:** `ULASILAMADI` etkinliği + ardışık
+  deneme sayacı (`unreachableCount`). Sayaç `ULASILDI`'ya geçişte sıfırlanır.
+  Kapanış, danışmanın kararıyla `KAYBEDILDI + ULASILAMADI` sebebiyle olur.
+
+### 16.3 Etkinlik günlüğü
+
+Her aday için `LeadActivity` satırları: `ARAMA`, `ULASILAMADI`, `WHATSAPP`,
+`NOT` (insan yazar) ve `ASAMA_DEGISIMI`, `SISTEM` (yalnız kod yazar).
+Görüşme kayıtları ilkesi geçerli: satır silinmez ve düzenlenmez; yanlış not
+yeni notla düzeltilir. Aşama değişimi ile etkinlik satırı aynı transaction'da
+yazılır.
+
+### 16.4 Kayıp sebepleri
+
+`ULASILAMADI, FIYAT, UZAKLIK, PROGRAM_UYGUN_DEGIL, VAZGECTI, YANLIS_KAYIT,
+DIGER`. Serbest metin yerine etiket (`CancelReason` ilkesi): "bu ay kaç aday
+fiyattan kaybedildi" ancak sayılabilir bir alandan cevaplanır. `DIGER`
+seçilirse açıklama zorunlu (uygulamada ve CHECK ile).
+
+### 16.5 Dış giriş ucu
+
+`POST /api/crm/aday`, `Authorization: Bearer <LEAD_API_TOKEN>`.
+
+- CORS başlığı ve OPTIONS işleyicisi bilerek YOK: jeton tarayıcıya inmemeli.
+- Gövde sınırı 10 KB; bal küpü (`website`) alanı doluysa sessizce 200 döner.
+- Şube `subeKodu` alanından ÇÖZÜLÜR ama aktif `Branch.code` allowlist'ine
+  karşı doğrulanır. Çözülemezse başvuru DÜŞÜRÜLMEZ: varsayılan şubeye
+  (aktif + en düşük `sortOrder`) `ingestStatus: ESLEME_YOK` işaretiyle yazılır
+  ve listede yönetici uyarısı üretir.
+- Telefon ve e-posta ikisi de yoksa `EKSIK_VERI` işareti — aday yine açılır.
+- `disKimlik` (Meta leadgen kimliği) idempotency anahtarıdır: teslim tekrarı
+  hiçbir şey yazmaz.
+- Kaynak başına saatlik 100 yazım tavanı; aşılırsa 429.
+- Veritabanı erişilemezse 500 döner ve entegratörün yeniden denemesine
+  güvenilir.
+
+### 16.6 Ekranlar
+
+- **Liste** (`/koordinator/adaylar`): kapsam çipleri (Açık · Bugün aranacak ·
+  Gecikmiş · Tümü) danışmanın günlük iş kuyruğudur. Sıralama en geciken takip
+  en üstte. Kart satırında ad, aşama rozeti, kaynak, deneme sayısı, takip
+  tarihi ve `tel:`/`wa.me` düğmeleri.
+- **Ayrıntı** (`/koordinator/adaylar/[id]`): tam sayfa (pencere değil —
+  `tel:` gidiş dönüşünü adres atlatır). Aşama açılır listeyle değil AÇIK
+  EYLEM DÜĞMELERİYLE değişir; "Arandı — ulaşılamadı" tek dokunuşta sayacı
+  artırır ve takip tarihini yarına alır (davranış ekranda yazılı, tarih
+  hemen altta düzeltilebilir).
+- **Takip**: `nextActionDate` + sorumlu danışman (`assignedToUserId`).
+  Sahiplik görünürlüğü KISITLAMAZ — küçük ekip, herkes her adayı görür.
+- **Dashboard**: "Aranacak aday" ve "Dokunulmamış yeni aday" kartları;
+  gecikmişler ayrı kart değil alt bilgi (aynı iş iki kez sayılmasın).
+
+### 16.7 Kaynak raporu
+
+`/koordinator/adaylar/rapor` — dönem çipleri (bu ay / geçen ay / son 3 ay /
+tümü), kaynak başına toplam-kazanılan-kaybedilen-oran ve kayıp sebebi
+dağılımı. Eksen `createdAt` (kohort): "bu ay GELEN adayların kaçı kazanıldı".
+Dönüşüm anına göre saymak ayrı bir sorudur ve V1'de yok.
+
+### 16.8 Mükerrer kaydı
+
+Anahtar normalize telefon, hep aynı şube içinde:
+
+1. Telefon yoksa aday açılır (karşılaştıracak anahtar yok).
+2. API'den gelen aday, aynı telefonla AÇIK bir aday varken yeni satır
+   AÇMAZ: mevcut adaya sistem notu düşer ve takip tarihi bugüne çekilir.
+   10 dakika içindeki tekrar not bile düşürmez.
+3. Elle girişte aynı durum ENGEL değil UYARIDIR — kardeşler aynı veli
+   telefonunu paylaşır; danışman "Yine de kaydet" ile geçer ve karar
+   etkinliğe yazılır.
+4. Kapanmış bir adayla veya kayıtlı bir veliyle eşleşme yeni aday açar
+   (geri dönen aile, kardeş) ve nota bağlanır.
+
+### 16.9 Dönüşüm ve sonraki adım
+
+"Öğrenciye dönüştür" iki karar sorar:
+
+1. **Öğrenci modu** — "Yeni öğrenci kaydı aç" (mevcut öğrenci formuna
+   `?aday=<id>` ile geçilir, alanlar adaydan ön-dolar) veya "Zaten kayıtlı"
+   (öğrenci seçilip eşleştirilir). Aşama ancak öğrenci GERÇEKTEN
+   kaydedildiğinde `KAZANILDI` olur; kullanıcı formu yarıda bırakırsa adaya
+   hiçbir şey olmaz.
+2. **Sonraki adım hedefi** — görüşmede verilen karar:
+
+| Hedef | Öğrenci kaydedilince gidilen yer |
+|---|---|
+| Dönem/kulüp kaydı | `/koordinator/kayitlar/yeni?studentId=…` |
+| Zekâ testi | Öğrenci profili (zekâ testi bölümü) |
+| Danışmanlık | Öğrenci profili + etkinliğe not (danışmanlık yetkisi Danışma Görevlisi'nde YOK) |
+| Şimdilik yok | Öğrenci profili |
+
+Hedef aday etkinliğine yazılır: "kazanılanların kaçı kayda gitti" buradan
+okunur.
+
+### 16.10 Yetkiler
+
+`adaylar` modülü: ADMIN, SUBE_YONETICISI, KOORDINATOR, ATOLYE_PSIKOLOGU ve
+**DANISMA_GOREVLISI** TAM; TEST_UYGULAYICISI ve STAJYER YOK. Modülün asıl
+kullanıcısı Danışma Görevlisi'dir — aday verisi sağlık/görüşme mahremiyeti
+sınıfında değil, kayıt masası verisidir.
+
+### 16.11 Kapsam dışı (V1)
+
+Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi, e-posta/SMS gönderimi,
+doğrudan Meta webhook'u, dönüşmeyen adaylar için otomatik saklama süresi
+temizliği.

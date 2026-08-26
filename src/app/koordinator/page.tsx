@@ -38,6 +38,7 @@ export default async function KoordinatorDashboard() {
   // Tıklanınca guard'a çarpıp geri atılan bir kart, görev değil tuzaktır.
   const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
   const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
+  const adayGorebilir = kullanici.yetkiler.adaylar !== "YOK";
 
   const {
     aktifDonemSayisi,
@@ -54,10 +55,15 @@ export default async function KoordinatorDashboard() {
     sonRaporlar,
     haftaSonu,
     bekleyenBasliklar,
+    aranacakAdaySayisi,
+    gecikmisAdaySayisi,
+    dokunulmamisAdaySayisi,
+    acikAdaySayisi,
   } = await dashboardVerisi({
     subeId: kullanici.aktifSubeId,
     puanlamaGorebilir,
     raporGorebilir,
+    adayGorebilir,
   });
 
   return (
@@ -78,6 +84,37 @@ export default async function KoordinatorDashboard() {
           aciklama="Sıfır olmayan her kart bir görev."
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* §16.6 — Danışmanın günlük kuyruğu; masanın ilk işi bu.
+              Gecikmişler ayrı KART değil alt bilgi: ikisi de aynı kuyruğun
+              parçası, ayrı kart aynı işi iki kez saydırırdı. */}
+          {adayGorebilir ? (
+            <>
+              <IsKarti
+                baslik="Aranacak aday"
+                deger={aranacakAdaySayisi}
+                birim="aday"
+                altBilgi={
+                  aranacakAdaySayisi > 0
+                    ? gecikmisAdaySayisi > 0
+                      ? `${gecikmisAdaySayisi} tanesi gecikmiş.`
+                      : "Bugüne ayarlı takipler."
+                    : "Bugünün aramaları tamam."
+                }
+                yol="/koordinator/adaylar?kapsam=bugun"
+              />
+              <IsKarti
+                baslik="Dokunulmamış yeni aday"
+                deger={dokunulmamisAdaySayisi}
+                birim="aday"
+                altBilgi={
+                  dokunulmamisAdaySayisi > 0
+                    ? "Reklamdan gelen aday ilk gün aranmalı."
+                    : "Bütün yeni adaylara dokunuldu."
+                }
+                yol="/koordinator/adaylar?asama=YENI"
+              />
+            </>
+          ) : null}
           {puanlamaGorebilir ? (
             <IsKarti
               baslik="Eksik puanlama"
@@ -211,6 +248,14 @@ export default async function KoordinatorDashboard() {
             deger={aktifOgrenciSayisi}
             yol="/koordinator/ogrenciler?kapsam=aktif"
           />
+          {/* Görev değil bağlam: huninin üst ucu ne kadar dolu. */}
+          {adayGorebilir ? (
+            <DurumOgesi
+              baslik="Açık aday"
+              deger={acikAdaySayisi}
+              yol="/koordinator/adaylar"
+            />
+          ) : null}
           {/* Raporların tek listesi yok; sayı bağlam bilgisi olarak duruyor. */}
           {raporGorebilir ? (
             <DurumOgesi baslik="Toplam rapor" deger={toplamRaporSayisi} />

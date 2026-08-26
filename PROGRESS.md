@@ -1022,6 +1022,53 @@ yeniden koşulur.
 
 ---
 
+## P18 — Aday (CRM) modülü
+
+Kayda dönüşmemiş ilgi (lead) süreci dış CRM'den (Workiom/Bitrix) panele
+taşındı. Kaynaklar: Meta reklam formları (entegratör üzerinden), tuzder.org
+formu, telefonla arayan ve şubeye gelen veliler. Tanımın tamamı
+`docs/PROJECT_SPEC.md` §16, kararlar `docs/DECISIONS.md`, dış kurulum
+`docs/CRM-ENTEGRASYON.md`.
+
+### Ne yapıldı
+
+| Parça | Yer |
+|---|---|
+| Şema: `Lead`, `LeadActivity` + 5 enum + 7 CHECK | `prisma/schema.prisma`, iki migration (enum'lar ayrı dosyada) |
+| Boru hattı ve paylaşılan sorgu koşulları | `src/lib/aday-durumlari.ts` (+ test) |
+| Mükerrer kararı (saf, testli) | `src/lib/aday/mukerrer.ts` (+ test) |
+| Ortak yazım kapısı | `src/lib/aday/aday-kaydi.ts` |
+| Dış giriş ucu | `src/app/api/crm/aday/route.ts`, şema `dis-basvuru-semasi.ts` (+ test) |
+| Liste / ayrıntı / rapor ekranları | `src/app/koordinator/adaylar/` |
+| Aşama düğmeleri, zaman çizelgesi, iletişim düğmeleri | `src/components/aday-*.tsx`, `iletisim-eylemleri.tsx` |
+| Dönüşüm (aday → öğrenci) | `src/lib/aday/donusum.ts` + `ogrenciEkle` genişletmesi |
+| Dashboard kartları | `dashboard-verisi.ts`, `koordinator/page.tsx` |
+| Yetki / menü / tarayıcı kaydı | `yetkiler.ts`, `navigasyon.ts`, `sube-sizinti.ts`, `yan-menu.tsx` |
+
+### Kararlar (ayrıntı DECISIONS.md'de)
+
+- Meta'ya doğrudan webhook yerine **entegratör** (Pabbly/Make): App Review,
+  imza doğrulama ve jeton yenileme yükü kuruma gelmiyor.
+- **Yeni rol açılmadı**; modülün asıl kullanıcısı mevcut `DANISMA_GOREVLISI`.
+- **"Ulaşılamadı" aşama değil sayaç**; `KAZANILDI` terminal, `KAYBEDILDI`
+  geri açılabilir.
+- Aşama **açık düğmelerle** değişiyor (`DurumSecici` değil).
+- Şube kodu çözülemeyen başvuru **düşürülmez**, işaretli olarak varsayılan
+  şubeye yazılır.
+
+### Dağıtımdan sonra yapılacaklar (kod dışı)
+
+1. Vercel'e `LEAD_API_TOKEN` eklenip **Sensitive** işaretlenmeli, redeploy.
+2. Entegratör senaryosu kurulmalı (Meta Lead Ads → HTTP POST), alan eşlemesi
+   `docs/CRM-ENTEGRASYON.md` §3'teki tabloya göre.
+3. tuzder.org form işleyicisine sunucudan sunucuya POST eklenmeli; KVKK onay
+   kutusu ve bal küpü alanı zorunlu.
+4. KVKK: dönüşmeyen adaylar için saklama süresi kurum kararı bekliyor;
+   entegratör de kişisel veri işleyen bir hizmet olarak aydınlatma metnine
+   eklenmeli.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

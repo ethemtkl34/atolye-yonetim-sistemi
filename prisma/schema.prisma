@@ -196,6 +196,7 @@ model Branch {
   users    User[]
   students Student[]
   groups   Group[]
+  leads    Lead[]
 
   @@index([active, sortOrder])
 }
@@ -249,6 +250,9 @@ model User {
   generatedWorkshopContents    AtolyeIcerigi[]         @relation("AtolyeIcerigiUreten")
   termAssignments              TermIntern[]            @relation("DonemStajyeri")
   updatedReportSettings        RaporAyari[]            @relation("RaporAyariniGuncelleyen")
+  assignedLeads                Lead[]                  @relation("AdayiUstlenen")
+  createdLeads                 Lead[]                  @relation("AdayiEkleyen")
+  addedLeadActivities          LeadActivity[]          @relation("AdayEtkinliginiEkleyen")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
   @@index([role, active])
@@ -623,6 +627,9 @@ model Student {
   parentReferrals    ParentMeetingReferral[]
   intelligenceTests  IntelligenceTest[]
   legacyReports      LegacyReport[]
+  /// Bu öğrenci bir adaydan dönüştüyse kaynağı — profildeki "aday geçmişi"
+  /// kutusu ve kaynak raporu buradan okur.
+  sourceLead         Lead?
 
   // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
   @@index([branchId, searchName])
@@ -1426,4 +1433,213 @@ model RaporAyari {
   updatedAt       DateTime @updatedAt
   updatedByUserId String?
   updatedBy       User?    @relation("RaporAyariniGuncelleyen", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+// ---------------------------------------------------------------------------
+// Adaylar (CRM) — §16
+// ---------------------------------------------------------------------------
+
+/// §16.2 — Aday boru hattının aşamaları. Sıra ekran sırasıdır.
+///
+/// İzinli geçişlerin tek kaynağı `src/lib/aday-durumlari.ts` içindeki
+/// `ADAY_ASAMA_GECISLERI` haritasıdır (dönem/kulüp durumlarındaki desen).
+/// KAZANILDI yalnızca dönüşüm akışıyla yazılır ve terminaldir; KAYBEDILDI
+/// yeniden açılabilir (yanlışlıkla kapatma telafisi).
+enum LeadStage {
+  YENI
+  ULASILDI
+  RANDEVU_VERILDI
+  GORUSME_YAPILDI
+  KAZANILDI
+  KAYBEDILDI
+}
+
+/// §16.1 — Adayın nereden geldiği. META ve WEB_SITESI yalnızca API girişinden
+/// yazılır; elle açılan adayda TELEFON / YOLDAN_GECEN / DIGER seçilir (Zod
+/// şeması elle girişte ilk ikisini kabul etmez). "Bu ay Meta'dan kaç aday
+/// geldi ve kaçı kazanıldı" sorusu ancak sayılabilir bir alandan cevaplanır.
+enum LeadSource {
+  META
+  WEB_SITESI
+  TELEFON
+  YOLDAN_GECEN
+  DIGER
+}
+
+/// §16.4 — Kaybediliş sebebi (`CancelReason` ilkesi: serbest metin yerine
+/// etiket, liste bilerek kısa, DIGER'de açıklama zorunlu — CHECK ile).
+/// "RAKIP" bilerek yok: veli söylemezse bilinemez; `VAZGECTI` + not yeter.
+enum LeadLossReason {
+  ULASILAMADI
+  FIYAT
+  UZAKLIK
+  PROGRAM_UYGUN_DEGIL
+  VAZGECTI
+  YANLIS_KAYIT
+  DIGER
+}
+
+/// §16.3 — Etkinlik türü. ULASILAMADI ayrı tür çünkü "kaç deneme boşa gitti"
+/// sayılabilir olmalı; ARAMA ulaşılan görüşmedir. ASAMA_DEGISIMI ve SISTEM
+/// satırlarını yalnızca kod yazar, form yazamaz (CHECK + eylem şemaları).
+enum LeadActivityType {
+  ARAMA
+  ULASILAMADI
+  WHATSAPP
+  NOT
+  ASAMA_DEGISIMI
+  SISTEM
+}
+
+/// §16.5 — API girişinde oluşan durum. TAMAM dışındaki her değer "ilgilenilmeli"
+/// demektir ve listede yönetici uyarısı üretir: ESLEME_YOK = şube kodu
+/// çözülemedi, varsayılan şubeye yazıldı; EKSIK_VERI = ulaşılabilir hiçbir
+/// kanal (telefon/e-posta) gelmedi. Aday hiçbir koşulda düşürülmez — eksik
+/// kayıt, kaybolan başvurudan iyidir.
+enum LeadIngestStatus {
+  TAMAM
+  ESLEME_YOK
+  EKSIK_VERI
+}
+
+/// §16 — Aday (lead): henüz kayda dönüşmemiş ilgi. Şube sınırının dördüncü
+/// doğrudan durduğu tablo (`User`/`Group`/`Student`'a ek): aday daha öğrenci
+/// olmadan bir şubenin telefon listesine düşer, şubesi türetilebileceği bir
+/// üst kayıt yok.
+///
+/// Kaynaklar üç kapıdan yazar (§16.1): entegratör (Meta reklam formları),
+/// web sitesi formu ve panelde elle giriş. Üçü de `src/lib/aday/aday-kaydi.ts`
+/// içindeki ortak `adayYaz()` fonksiyonundan geçer — mükerrer kararı ve
+/// telefon normalizasyonu tek yerde yaşar.
+model Lead {
+  id String @id @default(cuid())
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  /// Görüşülen kişi (veli). Nullable: Meta formu ad sorusu taşımayabilir;
+  /// arayüz boş adı "İsimsiz aday" olarak gösterir. Elle giriş ve web
+  /// formunda Zod zorunlu kılar.
+  parentName String?
+  childName  String?
+  /// Formda soruluyorsa çocuğun yaşı — doğum tarihi aday aşamasında sorulmaz,
+  /// dönüşümde öğrenci formunda alınır.
+  childAge Int?
+
+  /// Meta'dan telefonsuz form gelebilir; elle giriş ve web formunda zorunlu.
+  phone String?
+  /// §6.2 ile aynı ilke — `normalizeTelefon()` çıktısı, `Guardian.searchPhone`
+  /// ile aynı biçim: mükerrer kontrolü iki tabloyu aynı anahtarla tarar.
+  searchPhone String?
+  email       String?
+
+  /// Arama kutusu için: `normalizeArama(veliAdi + " " + cocukAdi)`. İki ad da
+  /// boşsa boş dize — arama bulamaz ama satır telefonla bulunur.
+  searchName String
+
+  /// İlgilenilen program — serbest metin. Katalog FK'sı değil: aday "yaz
+  /// kampı var mı" diye arar, kurum yelpazesi dönemden döneme değişir.
+  interestedProgram String?
+  /// Formdaki mesaj/ek sorular — eşlenemeyen alanlar satır satır buraya iner.
+  message String?
+
+  source LeadSource
+  /// Kampanya/form adının ANLIK KOPYASI (`questionTextSnapshot` ilkesi):
+  /// kampanya Meta'da silinse de "hangi reklamdan geldi" bilgisi kalır.
+  sourceDetail String?
+
+  /// Meta leadgen kimliği — entegratör iletir. Teslim tekrarlarında ve
+  /// entegratörün yeniden denemelerinde idempotency anahtarı: aynı kimlikle
+  /// ikinci yazım sessizce yutulur (upsert).
+  externalId String? @unique
+
+  /// API'den gelen ham gövdenin tam kopyası — alan eşlemesi tartışılırsa
+  /// kanıt burada. Elle girişte boş.
+  rawJson Json?
+
+  ingestStatus LeadIngestStatus @default(TAMAM)
+  ingestNote   String?
+
+  /// KVKK açık rızası. Web formunda onay kutusu zorunlu; Meta formunda
+  /// aydınlatma metni Meta'nın gizlilik alanından sunulur ve entegratör
+  /// onayı iletir. Elle girişte sözlü bilgilendirme varsayılır (false kalır).
+  kvkkConsent Boolean   @default(false)
+  consentAt   DateTime?
+
+  stage LeadStage @default(YENI)
+
+  /// Kayıp alanları yalnız KAYBEDILDI'de dolu; orada sebep + damga zorunlu
+  /// (`Lead_kayip_alanlari` CHECK). DIGER sebebinde not zorunlu.
+  lossReason LeadLossReason?
+  lossNote   String?
+  lostAt     DateTime?
+
+  /// Ulaşılamayan ARDIŞIK arama denemesi sayısı. ULASILAMADI etkinliğiyle
+  /// aynı işlemde artar, ULASILDI'ya geçişte sıfırlanır. Etkinlik geçmişi
+  /// zaten tam kayıt; bu alan liste ekranındaki "3. deneme" rozetinin
+  /// indekslenebilir kopyasıdır (denormalizasyon bilinçli).
+  unreachableCount Int       @default(0)
+  lastContactAt    DateTime?
+
+  /// Verilen randevunun zamanı — RANDEVU_VERILDI'ye geçerken alınır.
+  appointmentAt DateTime?
+
+  /// §16.6 — Takip görevi: "bugün aranacaklar" kuyruğu bu alandan okunur
+  /// (bugün ve öncesi). Boşsa aday kuyruğa hiç düşmez.
+  nextActionDate DateTime? @db.Date
+  nextActionNote String?
+
+  /// Sorumlu danışman. Görünürlüğü KISITLAMAZ (küçük ekip, herkes her adayı
+  /// görür) — iş bölümü ve süzgeç içindir. Elle açılan aday açana atanır,
+  /// API'den gelen atanmamış düşer.
+  assignedToUserId String?
+  assignedTo       User?   @relation("AdayiUstlenen", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  /// KAZANILDI damgası `convertedAt`tir (CHECK oradan okur); öğrenci FK'sı
+  /// SetNull ile kopabilir ama damga kalır — dönüştürülen öğrenci silinse de
+  /// "bu aday kazanılmıştı" bilgisi ve kaynak raporu bozulmaz.
+  convertedStudentId String?   @unique
+  convertedStudent   Student?  @relation(fields: [convertedStudentId], references: [id], onDelete: SetNull)
+  convertedAt        DateTime?
+
+  /// Elle açan kullanıcı; API girişinde null (görüşme kayıtlarındaki desen).
+  createdByUserId String?
+  createdBy       User?   @relation("AdayiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities LeadActivity[]
+
+  @@index([branchId, stage, nextActionDate])
+  @@index([branchId, searchPhone])
+  @@index([branchId, searchName])
+  @@index([branchId, source, createdAt])
+}
+
+/// §16.3 — Aday etkinlik günlüğü: arama/whatsapp/not + otomatik aşama izi.
+/// Görüşme kayıtları ilkesi: satır silinmez ve düzenlenmez — yanlış not yeni
+/// notla düzeltilir. Aday silme eylemi V1'de yok (spam `KAYBEDILDI +
+/// YANLIS_KAYIT` ile kapanır), Cascade yalnızca ileride bilinçli bir yönetici
+/// temizliği için duruyor.
+model LeadActivity {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type LeadActivityType
+  note String?
+
+  /// Yalnızca ASAMA_DEGISIMI satırlarında dolu (CHECK). Enum değerleri
+  /// yeniden adlandırılmadığı için (Role şerhindeki karar) enum çifti anlık
+  /// kopya görevi görür; görünen etiket `ADAY_ASAMALARI`'ndan okunur.
+  fromStage LeadStage?
+  toStage   LeadStage?
+
+  /// null = sistem yazdı (API girişi, otomatik mükerrer notu).
+  createdByUserId String?
+  createdBy       User?    @relation("AdayEtkinliginiEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([leadId, createdAt])
 }

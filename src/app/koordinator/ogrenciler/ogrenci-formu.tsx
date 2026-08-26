@@ -45,6 +45,7 @@ export function OgrenciFormu({
   kaydetEtiketi,
   iptalYolu,
   programlar,
+  gizliAlanlar,
 }: {
   eylem: (
     oncekiDurum: EylemDurumu,
@@ -53,6 +54,12 @@ export function OgrenciFormu({
   varsayilanlar?: OgrenciVarsayilanlari;
   kaydetEtiketi: string;
   iptalYolu: string;
+  /**
+   * Formla birlikte gönderilecek görünmez bağlam — aday dönüşümünde
+   * `adayId` ve `hedef` böyle taşınır (§16.9). Kişisel veri TAŞIMAZ:
+   * yalnızca kimlik ve hedef anahtarı.
+   */
+  gizliAlanlar?: Record<string, string>;
   /**
    * Verilirse form sonuna isteğe bağlı "Program kaydı" bölümü eklenir ve
    * öğrenci kaydedilirken seçilen gruba da yazılır. Yalnızca YENİ öğrenci
@@ -101,6 +108,12 @@ export function OgrenciFormu({
 
   return (
     <form action={formEylemi} className="space-y-6">
+      {gizliAlanlar
+        ? Object.entries(gizliAlanlar).map(([ad, deger]) => (
+            <input key={ad} type="hidden" name={ad} value={deger} />
+          ))
+        : null}
+
       {durum.basari ? <Bildirim tur="basari">{durum.basari}</Bildirim> : null}
 
       {/* --- Öğrenci --- */}
