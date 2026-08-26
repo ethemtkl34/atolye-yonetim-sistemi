@@ -1,9 +1,11 @@
 import { MODELLER, metinUret } from "./openai-istemci";
 import {
+  bloklariCozumle,
   gozlemYeterliMi,
   ogrenciMetniCozumle,
   ogrenciMetniGirdisiYaz,
-  OGRENCI_METNI_TALIMATI,
+  BLOK_TALIMATI,
+  PARAGRAF_TALIMATI,
   type OgrenciMetni,
   type OgrenciMetniGirdisi,
 } from "./ogrenci-metni-istem";
@@ -26,18 +28,33 @@ export async function ogrenciMetniUret(
 ): Promise<OgrenciMetniSonucu> {
   if (!gozlemYeterliMi(girdi)) return { durum: "gozlem-yok" };
 
-  const sonuc = await metinUret({
-    model: MODELLER.ogrenciMetni,
-    talimat: OGRENCI_METNI_TALIMATI,
-    girdi: ogrenciMetniGirdisiYaz(girdi),
-    // Beş bölüm + dört beceri bloğu; JSON yükü de var.
-    enFazlaJeton: 4000,
-  });
+  // Aynı veri bloğu iki isteme de gidiyor; yalnızca istenen çıktı farklı.
+  const veri = ogrenciMetniGirdisiYaz(girdi);
 
-  if (sonuc.durum !== "tamam") return sonuc;
+  // PARALEL: iki çağrı arka arkaya yapılsaydı toplam süre yine tavanı
+  // zorlardı. Birlikte gönderilince toplam, uzun olanın süresi kadar.
+  const [paragrafSonucu, blokSonucu] = await Promise.all([
+    metinUret({
+      model: MODELLER.ogrenciMetni,
+      talimat: PARAGRAF_TALIMATI,
+      girdi: veri,
+      // Dört düzyazı bölüm.
+      enFazlaJeton: 2000,
+    }),
+    metinUret({
+      model: MODELLER.ogrenciMetni,
+      talimat: BLOK_TALIMATI,
+      girdi: veri,
+      // En fazla dört blok, her biri iki alanlı.
+      enFazlaJeton: 2500,
+    }),
+  ]);
 
-  const cozulen = ogrenciMetniCozumle(sonuc.metin);
-  if (!cozulen) {
+  // Paragraflar zorunlu: onlarsız gözlem bölümü kurulamaz.
+  if (paragrafSonucu.durum !== "tamam") return paragrafSonucu;
+
+  const paragraflar = ogrenciMetniCozumle(paragrafSonucu.metin);
+  if (!paragraflar) {
     return {
       durum: "hata",
       mesaj:
@@ -45,5 +62,11 @@ export async function ogrenciMetniUret(
     };
   }
 
-  return { durum: "tamam", metin: cozulen };
+  // Bloklar İSTEĞE BAĞLI: blok çağrısı başarısız olsa da giriş, profil,
+  // sonuç ve öneriler elde. Yarım bir bölüm, hiç bölüm olmamasından iyi ve
+  // koordinatör düğmeye yeniden basarak blokları tamamlayabilir.
+  const bloklar =
+    blokSonucu.durum === "tamam" ? bloklariCozumle(blokSonucu.metin) : [];
+
+  return { durum: "tamam", metin: { ...paragraflar, bloklar } };
 }

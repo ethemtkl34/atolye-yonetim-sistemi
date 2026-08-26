@@ -34,8 +34,13 @@ export const MODELLER = {
  * BARINDIRMA TAVANININ ALTINDA OLMAK ZORUNDA. Değer 90 saniyeydi, oysa
  * fonksiyonların istek tavanı 60: platform isteği bizim zaman aşımımız
  * çalışmadan öldürüyordu ve kullanıcı buradaki nazik "tekrar deneyin"
- * mesajını hiç göremiyor, ham bir sunucu hatası görüyordu. 50 saniye,
- * tavanın altında kalırken modele de yeterli süreyi bırakıyor.
+ * mesajını hiç göremiyor, ham bir sunucu hatası görüyordu.
+ *
+ * 50'ye çekilmesi tek başına yetmedi, çünkü öğrenci metni tek çağrıda
+ * ~55 saniye sürüyordu: değer çağrının ihtiyacının ALTINA düştü ve gözlem
+ * bölümü hiç üretilemez oldu. Asıl çözüm çağrıyı küçültmekti — metin artık
+ * iki paralel istekte üretiliyor (bkz. `ogrenci-metni-istem.ts`) ve her biri
+ * bu sürenin epey altında kalıyor.
  *
  * Tavan değişirse (plan yükseltmesi) burası da güncellenmeli; ikisi
  * birbirine bağlı ve ters sıralandığında hata mesajı sessizce kayboluyor.
@@ -146,11 +151,29 @@ export async function metinUret({
   }
 
   const veri = (await cevap.json()) as {
+    status?: string;
+    incomplete_details?: { reason?: string };
     output_text?: string;
     output?: { content?: { type?: string; text?: string }[] }[];
   };
 
   const metin = metniCikar(veri);
+
+  // YARIM YANIT AYRI BİR ŞEY: model jeton tavanına takıldığında istek
+  // BAŞARILI (200) döner ama çıktı kesiktir ya da hiç yoktur. Bu durum
+  // "boş yanıt" diye raporlanınca sebep gizleniyordu — tekrar denemek
+  // işe yaramaz, tavanı yükseltmek ya da çıktıyı küçültmek gerekir.
+  if (veri.status === "incomplete") {
+    const sebep = veri.incomplete_details?.reason ?? "bilinmiyor";
+    return {
+      durum: "hata",
+      mesaj:
+        sebep === "max_output_tokens"
+          ? "Model jeton tavanına takıldı ve metni tamamlayamadı; bölüm boyutu küçültülmeli."
+          : `Model yanıtı yarım kaldı (${sebep}).`,
+    };
+  }
+
   if (!metin) {
     return {
       durum: "hata",

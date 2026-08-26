@@ -74,7 +74,23 @@ function gerekceAciklamasi(gerekce: string): string {
   }
 }
 
-export const OGRENCI_METNI_TALIMATI = `Sen bir eğitim kurumunun dönem sonu veli raporunu yazan editörsün. Yazdığın metin doğrudan çocuğun velisine gidiyor.
+/**
+ * İKİ ÇAĞRIYA BÖLÜNDÜ — sebebi ölçüm, tercih değil.
+ *
+ * Bölümlerin hepsini tek istekte yazdırmak ~55 saniye sürüyordu ve
+ * fonksiyonların istek tavanı 60. Aradaki pay, isteğin kendi zaman aşımını
+ * çalıştırıp kullanıcıya okunur bir mesaj döndürmeye bile yetmiyordu; 23
+ * Ağustos'ta zaman aşımı 50 saniyeye çekilince çağrı HER SEFERİNDE tavana
+ * takılır oldu ve gözlem bölümü hiç üretilemedi.
+ *
+ * Çözüm süreyi kısaltmak: çıktı ikiye ayrılıp iki istek PARALEL gönderiliyor.
+ * Toplam süre en uzun çağrı kadar (~yarısı), her çağrının çıktısı da yarı
+ * boyutta — jeton tavanına takılıp yarım JSON dönme riski de düşüyor.
+ *
+ * ORTAK KURALLAR İKİSİNDE DE OLMAK ZORUNDA: uydurma yasağı ve dil kuralları
+ * yalnızca birine yazılsaydı diğer çağrı onlarsız üretim yapardı.
+ */
+const ORTAK_KURALLAR = `Sen bir eğitim kurumunun dönem sonu veli raporunu yazan editörsün. Yazdığın metin doğrudan çocuğun velisine gidiyor.
 
 GÖREVİN: Sana verilen gözlem notlarını ve kademe bilgilerini, veliye sunulabilir bir rapor bölümüne çevirmek.
 
@@ -84,7 +100,6 @@ MUTLAK KURAL — UYDURMA YASAĞI:
 - Kademe bilgileri (Yüksek/Ortalama/Düşük) genel bir çerçeve verir; onlardan somut olay üretme.
 - Gözlem notu az ise metni kısa tut. Az veriyle uzun yazmak uydurmaktır.
 - KATILIM verisi tek gerçektir: genel not katılımla çelişiyorsa (örn. not "tek oturum" derken katılım verisi dönem boyu katılım gösteriyorsa) KATILIM verisini esas al, nottaki çelişen ifadeyi metne taşıma.
-- Giriş paragrafında programı PROGRAMIN ATÖLYELERİ listesine göre tanıt; öğrencinin değerlendirildiği atölyeler daha azsa bunu programın kapsamı sanma.
 
 DİL:
 - Üçüncü tekil şahıs, geçmiş zaman: "... gözlemlenmiştir", "... görülmüştür".
@@ -92,32 +107,49 @@ DİL:
 - Profesyonel, sıcak ve gelişim odaklı. Tanı koyma, etiketleme ve kesin kişilik yargısı yok.
 - Olumsuz ifade kullanma: "yapamıyor" yerine "desteklenmesinin faydalı olacağı değerlendirilmektedir".
 - Abartılı övgü yok.
-- Akranlarla sıralama/yarış dili YOK: "en son bitirdi", "sınıfta ilk tamamlayan", "arkadaşlarından geride" gibi ifadeler yerine gereksinim dili kullan ("tamamlamak için ek süreye ihtiyaç duymuş ve verildiğinde tamamlamıştır").
+- Akranlarla sıralama/yarış dili YOK: "en son bitirdi", "sınıfta ilk tamamlayan", "arkadaşlarından geride" gibi ifadeler yerine gereksinim dili kullan ("tamamlamak için ek süreye ihtiyaç duymuş ve verildiğinde tamamlamıştır").`;
+
+/** Birinci çağrı: raporun dört düzyazı bölümü. */
+export const PARAGRAF_TALIMATI = `${ORTAK_KURALLAR}
+
+Bu istekte YALNIZCA aşağıdaki dört bölümü yazacaksın. Beceri bloklarını YAZMA; onlar ayrı bir istekte üretiliyor.
 
 ÇIKTI BİÇİMİ — yalnızca şu JSON'u döndür, başka hiçbir şey yazma:
 {
   "giris": "Dönemi ve programı tanıtan 3-4 cümlelik paragraf. Öğrenciden söz etme.",
   "profil": "Öğrencinin genel tutumunu anlatan 4-6 cümlelik paragraf.",
-  "bloklar": [
-    {
-      "beceriAdi": "Sana verilen beceri listesinden birinin adı, aynen",
-      "etkinlik": "İlgili etkinliğin ne amaçladığını anlatan 2-3 cümle. Yalnızca gözlem notundaki konuyu kullan.",
-      "gozlem": "Öğrencinin o etkinlikteki davranışı, 4-6 cümle. Yalnızca gözlem notundakiler."
-    }
-  ],
   "sonuc": "Süreci özetleyen 3-4 cümlelik kapanış paragrafı.",
   "oneriler": "Ev ortamında yapılabilecekler, 3-5 cümle."
 }
 
-BLOKLAR HAKKINDA:
-- En fazla 4 blok yaz. Her blok için yeterli gözlem notu olmalı; yoksa o bloğu hiç açma.
-- "beceriAdi" değeri sana verilen beceri listesinden BİREBİR alınmalı.
+GİRİŞ PARAGRAFI:
+- Programı PROGRAMIN ATÖLYELERİ listesine göre tanıt; öğrencinin değerlendirildiği atölyeler daha azsa bunu programın kapsamı sanma.
 
 ÜRÜN ÖNERİSİ:
 - "oneriler" içinde ürün adı geçirebilirsin, ama YALNIZCA sana verilen ürün listesinden. Listede olmayan bir ürün, kitap veya oyun adı yazma.
 - Ürünün tam katalog adını ("... 100+ Deney 5+ Yaş" gibi) paragrafa YAZMA; ürünü kısa işleviyle an ("elektronik deney seti gibi bir materyal"). Tam adlar raporda ayrıca listelenir; paragrafta tekrarı velide katalog izlenimi bırakır.
 - Önce evdeki malzemeyle yapılabilecek etkinlikleri öner; ürünler isteğe bağlı destek olarak en sonda yer alsın.
 - Liste boşsa ürün adı hiç verme; bunun yerine tema düzeyinde öneri yaz ("paylaşma ve birlikte başarma temalı hikâyelerin birlikte okunması" gibi).`;
+
+/** İkinci çağrı: beceri blokları. */
+export const BLOK_TALIMATI = `${ORTAK_KURALLAR}
+
+Bu istekte YALNIZCA beceri bloklarını yazacaksın. Giriş, profil, sonuç ve öneri paragraflarını YAZMA; onlar ayrı bir istekte üretiliyor.
+
+ÇIKTI BİÇİMİ — yalnızca şu JSON'u döndür, başka hiçbir şey yazma:
+{
+  "bloklar": [
+    {
+      "beceriAdi": "Sana verilen beceri listesinden birinin adı, aynen",
+      "etkinlik": "İlgili etkinliğin ne amaçladığını anlatan 2-3 cümle. Yalnızca gözlem notundaki konuyu kullan.",
+      "gozlem": "Öğrencinin o etkinlikteki davranışı, 4-6 cümle. Yalnızca gözlem notundakiler."
+    }
+  ]
+}
+
+BLOKLAR HAKKINDA:
+- En fazla 4 blok yaz. Her blok için yeterli gözlem notu olmalı; yoksa o bloğu hiç açma.
+- "beceriAdi" değeri sana verilen beceri listesinden BİREBİR alınmalı.`;
 
 /** Kademe bilgisini modele verilen satıra çevirir. */
 function kademeSatiri(ad: string, kademe: string | null): string {
@@ -207,7 +239,8 @@ export type OgrenciMetni = {
  * çağıran şablon metnine düşer — yarım bir rapor basmaktansa şablon daha
  * dürüst.
  */
-export function ogrenciMetniCozumle(ham: string): OgrenciMetni | null {
+/** Model JSON'u ``` çitleri arasına koyabiliyor; ilk `{` ile son `}` arası alınır. */
+function jsonCoz(ham: string): Record<string, unknown> | null {
   const bas = ham.indexOf("{");
   const son = ham.lastIndexOf("}");
   if (bas < 0 || son <= bas) return null;
@@ -220,30 +253,23 @@ export function ogrenciMetniCozumle(ham: string): OgrenciMetni | null {
   }
 
   if (typeof cozulen !== "object" || cozulen === null) return null;
-  const nesne = cozulen as Record<string, unknown>;
+  return cozulen as Record<string, unknown>;
+}
 
-  // Model, isteme yazılan iç etiketleri (eski üretimlerde "(ATOLYE_BAGI)"
-  // gibi) metne kopyalayabiliyor; veliye giden hiçbir alanda kod sızıntısı
-  // kalmasın diye çözümleme sırasında temizlenir.
-  const etiketTemizle = (deger: string): string =>
-    deger
-      .replace(/\s*\((ATOLYE_BAGI|DESTEKLENECEK_ALAN|GUCLU_ALAN)\)/g, "")
-      .trim();
+/**
+ * Model, isteme yazılan iç etiketleri (eski üretimlerde "(ATOLYE_BAGI)"
+ * gibi) metne kopyalayabiliyor; veliye giden hiçbir alanda kod sızıntısı
+ * kalmasın diye çözümleme sırasında temizlenir.
+ */
+function etiketTemizle(deger: string): string {
+  return deger
+    .replace(/\s*\((ATOLYE_BAGI|DESTEKLENECEK_ALAN|GUCLU_ALAN)\)/g, "")
+    .trim();
+}
 
-  const metin = (anahtar: string): string | null =>
-    typeof nesne[anahtar] === "string" && (nesne[anahtar] as string).trim()
-      ? etiketTemizle(nesne[anahtar] as string)
-      : null;
-
-  const giris = metin("giris");
-  const profil = metin("profil");
-  const sonuc = metin("sonuc");
-  const oneriler = metin("oneriler");
-
-  if (!giris || !profil || !sonuc || !oneriler) return null;
-
-  const hamBloklar = Array.isArray(nesne.bloklar) ? nesne.bloklar : [];
-  const bloklar = hamBloklar
+function bloklariAyikla(ham: unknown): OgrenciMetni["bloklar"] {
+  const hamBloklar = Array.isArray(ham) ? ham : [];
+  return hamBloklar
     .filter(
       (blok): blok is { beceriAdi: string; etkinlik: string; gozlem: string } =>
         typeof blok === "object" &&
@@ -257,8 +283,39 @@ export function ogrenciMetniCozumle(ham: string): OgrenciMetni | null {
       gozlem: blok.gozlem.trim(),
     }))
     .filter((blok) => blok.gozlem.length > 0);
+}
 
-  return { giris, profil, bloklar, sonuc, oneriler };
+export function ogrenciMetniCozumle(ham: string): OgrenciMetni | null {
+  const nesne = jsonCoz(ham);
+  if (!nesne) return null;
+
+  const metin = (anahtar: string): string | null =>
+    typeof nesne[anahtar] === "string" && (nesne[anahtar] as string).trim()
+      ? etiketTemizle(nesne[anahtar] as string)
+      : null;
+
+  const giris = metin("giris");
+  const profil = metin("profil");
+  const sonuc = metin("sonuc");
+  const oneriler = metin("oneriler");
+
+  if (!giris || !profil || !sonuc || !oneriler) return null;
+
+  return { giris, profil, bloklar: bloklariAyikla(nesne.bloklar), sonuc, oneriler };
+}
+
+/**
+ * İkinci çağrının çıktısını çözümler.
+ *
+ * `ogrenciMetniCozumle` ile aynı temizliği yapar ama zorunlu düzyazı
+ * alanlarını aramaz; bu çağrıdan yalnızca bloklar bekleniyor. Blok
+ * çıkmaması HATA DEĞİL — gözlem notu yalnızca birkaç başlığa yetiyorsa
+ * model haklı olarak az blok yazar (istem "yoksa o bloğu hiç açma" diyor).
+ */
+export function bloklariCozumle(ham: string): OgrenciMetni["bloklar"] {
+  const nesne = jsonCoz(ham);
+  if (!nesne) return [];
+  return bloklariAyikla(nesne.bloklar);
 }
 
 /**
