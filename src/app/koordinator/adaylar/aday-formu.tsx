@@ -40,14 +40,20 @@ export type AdayVarsayilanlari = {
 function AdayAlanlari({
   durum,
   varsayilanlar,
-  notGoster,
-  kaynakGoster,
+  yeniKayit,
 }: {
   durum: AdayEylemDurumu;
   varsayilanlar: AdayVarsayilanlari;
-  notGoster: boolean;
-  /** Düzenlemede kaynak sorulmaz — bkz. `adayDuzenlemeSemasi`. */
-  kaynakGoster: boolean;
+  /**
+   * Yalnız YENİ aday açarken sorulan alanlar: kaynak, ilk not ve sonraki
+   * arama tarihi. Düzenlemede üçü de gizli — kaynak bilerek değiştirilemez
+   * (`adayDuzenlemeSemasi`), not zaten geçmişe ayrı satır olarak yazılır ve
+   * takip tarihinin tek sahibi detaydaki Takip kartıdır. Düzenlemede
+   * gösterilseydi hep boş gelir, doldurulunca da `adayGuncelle` onu hiç
+   * yazmadığı için sessizce yok sayılırdı — kullanıcı tarihi değiştirdiğini
+   * sanırdı.
+   */
+  yeniKayit: boolean;
 }) {
   const h = durum.alanHatalari;
   const deger = (alan: keyof AdayVarsayilanlari) =>
@@ -98,7 +104,7 @@ function AdayAlanlari({
           />
         </Alan>
 
-        {kaynakGoster ? (
+        {yeniKayit ? (
           <Alan etiket="Kaynak" hata={h?.source}>
             <select
               name="source"
@@ -131,20 +137,22 @@ function AdayAlanlari({
           />
         </Alan>
 
-        <Alan
-          etiket="Sonraki arama tarihi"
-          ipucu="Boş bırakılırsa aday “bugün aranacaklar” kuyruğuna düşmez."
-          hata={h?.nextActionDate}
-        >
-          <Girdi
-            name="nextActionDate"
-            type="date"
-            defaultValue={deger("nextActionDate")}
-          />
-        </Alan>
+        {yeniKayit ? (
+          <Alan
+            etiket="Sonraki arama tarihi"
+            ipucu="Boş bırakılırsa aday “bugün aranacaklar” kuyruğuna düşmez."
+            hata={h?.nextActionDate}
+          >
+            <Girdi
+              name="nextActionDate"
+              type="date"
+              defaultValue={deger("nextActionDate")}
+            />
+          </Alan>
+        ) : null}
       </div>
 
-      {notGoster ? (
+      {yeniKayit ? (
         <Alan etiket="Not" hata={h?.not}>
           <CokSatirli
             name="not"
@@ -201,7 +209,7 @@ export function YeniAdayDugmesi() {
           {/* Benzer kayıt uyarısı gösterildiyse ikinci gönderim onaylıdır. */}
           {durum.benzer ? <input type="hidden" name="zorla" value="1" /> : null}
 
-          <AdayAlanlari durum={durum} varsayilanlar={{}} notGoster kaynakGoster />
+          <AdayAlanlari durum={durum} varsayilanlar={{}} yeniKayit />
           <BenzerUyarisi durum={durum} />
           {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
@@ -250,8 +258,7 @@ export function AdayDuzenleDugmesi({
           <AdayAlanlari
             durum={durum}
             varsayilanlar={varsayilanlar}
-            notGoster={false}
-            kaynakGoster={false}
+            yeniKayit={false}
           />
           {durum.basari ? (
             <Bildirim tur="basari">{durum.basari}</Bildirim>
