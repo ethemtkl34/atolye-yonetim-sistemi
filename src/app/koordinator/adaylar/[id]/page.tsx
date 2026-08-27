@@ -13,6 +13,7 @@ import {
   geriBaglantiStili,
 } from "@/components/ui";
 import {
+  ACIK_ASAMALAR,
   ADAY_ASAMALARI,
   ADAY_ASAMA_GECISLERI,
   ADAY_KAYIP_SEBEPLERI,
@@ -91,6 +92,15 @@ export default async function AdayAyrintiSayfasi(
 
   const ad = aday.parentName ?? "İsimsiz aday";
   const asamaBilgisi = ADAY_ASAMALARI[aday.stage];
+
+  /**
+   * Kapanmış adayda (kazanıldı/kaybedildi) takip kartı GÖSTERİLMEZ.
+   * "Bugün aranacaklar" kuyruğu yalnız açık aşamaları okuyor
+   * (`bugunAranacakKosulu`), yani kapalı bir adaya tarih yazmak hiçbir yerde
+   * görünmezdi — kullanıcı arama planladığını sanırdı. Aday yeniden açılınca
+   * kart geri gelir.
+   */
+  const acikAday = ACIK_ASAMALAR.includes(aday.stage);
 
   const ustBilgi = [
     aday.childName ? `${aday.childName} için` : null,
@@ -182,7 +192,7 @@ export default async function AdayAyrintiSayfasi(
         />
       ) : null}
 
-      {yazabilir ? (
+      {yazabilir && acikAday ? (
         <AdayTakipKarti
           adayId={aday.id}
           nextActionDate={

@@ -19,7 +19,7 @@ import {
   secimStili,
 } from "@/components/ui";
 import { GonderButonu, Pencere } from "@/components/ui-istemci";
-import { ADAY_KAYIP_SEBEPLERI } from "@/lib/aday-durumlari";
+import { ADAY_ASAMALARI, ADAY_KAYIP_SEBEPLERI } from "@/lib/aday-durumlari";
 import { DONUSUM_HEDEFLERI, type DonusumHedefi } from "@/lib/aday/donusum";
 import type { EylemDurumu } from "@/lib/formlar";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,20 @@ function useBasaridaKapat(basari: string | undefined, onKapat: () => void) {
   }, [basari]);
 }
 
+/**
+ * Bir önceki aşama — yanlış basılan düğmenin telafisi.
+ *
+ * Geçiş haritasında (`ADAY_ASAMA_GECISLERI`) bu geri kenarların üçü de
+ * zaten izinliydi ama arayüz hiçbirini sunmuyordu: "Ulaşıldı"ya yanlışlıkla
+ * basan danışman aşamayı geri alamıyordu. Düğme yalnız geçiş gerçekten
+ * izinliyse çiziliyor; karar tek kaynakta kalıyor.
+ */
+const ONCEKI_ASAMA: Partial<Record<LeadStage, LeadStage>> = {
+  ULASILDI: "YENI",
+  RANDEVU_VERILDI: "ULASILDI",
+  GORUSME_YAPILDI: "RANDEVU_VERILDI",
+};
+
 const HEDEF_ETIKETLERI: Record<DonusumHedefi, string> = {
   kayit: "Dönem / kulüp kaydı aç",
   zekaTesti: "Zekâ testi yükle",
@@ -92,6 +106,9 @@ export function AdayAsamaEylemleri({
   const [donusumAcik, setDonusumAcik] = useState(false);
 
   const kapali = asama === "KAZANILDI" || asama === "KAYBEDILDI";
+
+  const onceki = ONCEKI_ASAMA[asama];
+  const geriHedef = onceki && izinliGecisler.includes(onceki) ? onceki : null;
 
   return (
     <div className="space-y-3">
@@ -156,6 +173,17 @@ export function AdayAsamaEylemleri({
           <Buton type="button" tur="sade" onClick={() => setKayipAcik(true)}>
             Kaybedildi…
           </Buton>
+
+          {geriHedef ? (
+            <Buton
+              type="button"
+              tur="sade"
+              disabled={calisiyor}
+              onClick={() => calistir(() => asamaDegistir(adayId, geriHedef))}
+            >
+              ← {ADAY_ASAMALARI[geriHedef].etiket}
+            </Buton>
+          ) : null}
         </div>
       ) : null}
 
