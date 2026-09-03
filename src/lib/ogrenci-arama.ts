@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
 import { aktifOgrenciKosulu } from "./durumlar";
 import { normalizeArama, normalizeTelefon } from "./turkce";
@@ -33,15 +34,18 @@ export type AramaSecenekleri = {
 };
 
 /**
- * Bir sayfalık sonuç ve süzgece uyan TOPLAM sayı.
+ * Aramanın `where` koşulu — sorgudan ve şubeden türetilen SAF parça.
  *
- * Toplam ayrıca sayılıyor çünkü sayfa sayısı ondan çıkıyor; dönen dizinin
- * uzunluğu yalnızca o sayfayı anlatır. Liste eskiden 200'lük tek bir dilimdi
- * ve 200'e dayandığında "aramayı daraltın" diyordu — kurumun öğrenci sayısı
- * geçmiş veri aktarımıyla o sınırı aştı.
+ * `ogrenciAra`nın içinden ayrı bir fonksiyona alındı çünkü şube süzgecinin
+ * burada durduğunu doğrulayabilen başka bir kontrol yok: `sube-sizinti`
+ * tarayıcısı `where`in içine bakamadığı için bu çağrı ona "şube-muaf" olarak
+ * yazılı. Ayrı fonksiyon olunca koşul testten okunabiliyor
+ * (`ogrenci-arama.test.ts`).
  */
-export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
-  const { subeId, enFazla = 50, atla = 0, kapsam = "tumu" } = secenekler;
+export function ogrenciAramaKosulu(
+  sorgu: string,
+  { subeId, kapsam = "tumu" }: Pick<AramaSecenekleri, "subeId" | "kapsam">,
+): Prisma.StudentWhereInput {
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
   const telefonAnahtari = normalizeTelefon(temizSorgu);
@@ -50,7 +54,7 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
   // yüzünden bütün velileri taramanın anlamı yok.
   const telefonAranabilir = telefonAnahtari.length >= 3;
 
-  const aramaKosulu = temizSorgu
+  const aramaKosulu: Prisma.StudentWhereInput = temizSorgu
     ? {
         OR: [
           { searchName: { contains: isimAnahtari } },
@@ -67,18 +71,31 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
       }
     : {};
 
-  // Koşul TEK YERDE kuruluyor: liste ile sayım ayrı ayrı yazılsaydı biri
-  // güncellenip diğeri unutulduğunda sayfa sayısı sessizce yanlış olurdu.
-  const kosul = {
+  return {
     ...aramaKosulu,
     ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
   };
+}
 
-  // şube-muaf: süzgeç üç satır yukarıdaki `kosul` içinde — `kapsam`a göre ya
-  // `branchId: subeId` ya da `aktifOgrenciKosulu(subeId)`. Tarayıcı `where`in
-  // içine bakamadığı için burada muafiyet yazılı. Koşulun liste ve sayım
-  // arasında ayrışmaması bilinçli: ikisi ayrı ayrı yazılsaydı biri
+/**
+ * Bir sayfalık sonuç ve süzgece uyan TOPLAM sayı.
+ *
+ * Toplam ayrıca sayılıyor çünkü sayfa sayısı ondan çıkıyor; dönen dizinin
+ * uzunluğu yalnızca o sayfayı anlatır. Liste eskiden 200'lük tek bir dilimdi
+ * ve 200'e dayandığında "aramayı daraltın" diyordu — kurumun öğrenci sayısı
+ * geçmiş veri aktarımıyla o sınırı aştı.
+ */
+export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
+  const { enFazla = 50, atla = 0 } = secenekler;
+
+  // Koşul TEK YERDE kuruluyor: liste ile sayım ayrı ayrı yazılsaydı biri
   // güncellenip diğeri unutulduğunda sayfa sayısı sessizce yanlış olurdu.
+  const kosul = ogrenciAramaKosulu(sorgu, secenekler);
+
+  // şube-muaf: süzgeç `ogrenciAramaKosulu` içinde — `kapsam`a göre ya
+  // `branchId: subeId` ya da `aktifOgrenciKosulu(subeId)`. Tarayıcı `where`in
+  // içine bakamadığı için burada muafiyet yazılı; koşulun kendisi
+  // `ogrenci-arama.test.ts` tarafından doğrulanıyor.
   const [ogrenciler, toplam] = await Promise.all([
     db.student.findMany({
       where: kosul,

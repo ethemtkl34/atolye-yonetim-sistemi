@@ -684,8 +684,8 @@ Giriş: `koordinator@tuzder.local` · `ayse@tuzder.local` · `mehmet@tuzder.loca
 ## P12 — Yayına alma (canlıda)
 
 Uygulama **Vercel**'de, veritabanı **Neon**'da (Frankfurt, havuzlu bağlantı).
-Geçici adres `atolye-yonetim-sistemi-etoli.vercel.app`; kalıcı adres
-`panel.tuzder.org` Vercel'e tanıtıldı ama DNS kaydı henüz yazılmadı.
+Adres: `atolye-yonetim-sistemi.vercel.app` — kurum kendi alan adına
+taşınmasını istemediği için bu adres kalıcı.
 Kod deposu: github.com/ethemtkl34/atolye-yonetim-sistemi (public).
 
 ### Üretimde doğrulanan kabul ölçütleri
@@ -720,10 +720,6 @@ Kod deposu: github.com/ethemtkl34/atolye-yonetim-sistemi (public).
 
 ### Kalan işler
 
-- `panel.tuzder.org` için Cloudflare'de CNAME kaydı (**gri bulut / DNS only**)
-- DNS yayılınca `AUTH_URL` bu adrese güncellenip yeniden yayına alınmalı
-  (şu an bilerek vercel.app adresinde; yoksa giriş sonrası çalışmayan adrese
-  yönlendirirdi)
 - Üretimdeki veri şu an **deneme verisi**. Kurum gerçekten kullanmaya
   başlamadan önce temizlenmeli.
 - Koordinatör parolasının arayüzden değiştirilememesi (bkz. YAYINA-ALMA.md
@@ -1066,6 +1062,69 @@ formu, telefonla arayan ve şubeye gelen veliler. Tanımın tamamı
 4. KVKK: dönüşmeyen adaylar için saklama süresi kurum kararı bekliyor;
    entegratör de kişisel veri işleyen bir hizmet olarak aydınlatma metnine
    eklenmeli.
+
+---
+
+## P19 — Bakım turu (4 Eylül 2026)
+
+Yeni özellik yok; sistem taraması sonrası kapatılan borçlar.
+
+### Next.js 16.2.12 → 16.3.4
+
+`npm audit --omit=dev` 9 yüksek uyarı veriyordu; bunların çoğu Next'in
+içindeki `sharp`/`libvips` zincirinden geliyordu ve YAYINA-ALMA.md'deki
+"düzeltme Next'i 9.3.3'e düşürür" notu eskimişti. Yükseltme + kırıcı olmayan
+`npm audit fix` (yalnızca `fast-uri` ve `nanoid`) uyarıyı **9 → 4**'e indirdi.
+Kalan 4'ü `prisma` CLI'nın `mysql2`/`deepmerge-ts` bağımlılıkları; düzeltmesi
+Prisma'yı 6'ya düşürdüğü için uygulanmadı ve bu uygulamada MySQL yolu hiç
+çalışmıyor. Yükseltme sonrası tsc, 447 test ve `next build` temiz.
+
+### Veri katmanına ilk testler (376 → 446 test)
+
+Saf iş mantığı iyi test edilmişti, sorgu ve arayüz katmanı hiç test edilmemişti.
+Testi yazılabilir olan altı dosya kapatıldı:
+
+| Dosya | Neyi koruyor |
+|---|---|
+| `navigasyon.test.ts` | Menü maddesi yalnızca yetkisi olan role görünüyor; matrise modül eklenip menü unutulursa kırılır |
+| `durumlar.test.ts` | Şube süzgecinin iç içe grup koşuluna da indiği; durum geçişlerinin kapalı programı tek hamlede açmadığı |
+| `ogrenci-arama.test.ts` | Öğrencinin TEK giriş kapısında şube süzgeci — `sube-sizinti` tarayıcısının "şube-muaf" yazıp göremediği yer |
+| `formlar.test.ts` | Doğrulama hatasında kullanıcının yazdıklarının kaybolmaması |
+| `kayit-iptal.test.ts` | Ayrılma cümlesinin üç hâli; telafi fazlasında "-2 atölye" yazılmaması |
+| `beceri-etiketleri.test.ts` | Anahtar kelime sırası (dar kelime geniş kelimeyi yener) ve Türkçe büyük İ |
+| `kayit-secenekleri.test.ts` | Kontenjan/zaman metni; kontenjan üstü kaydın da dolu sayılması |
+
+İki küçük değişiklik gerekti:
+
+- `ogrenci-arama.ts`: `where` koşulu `ogrenciAramaKosulu()` adında saf bir
+  fonksiyona ayrıldı. Davranış aynı; amacı koşulun testten okunabilmesi.
+- `vitest.config.ts`: sahte `DATABASE_URL`/`AUTH_SECRET`. `lib/env.ts` modül
+  yüklenirken doğruluyor ve `lib/db.ts` içeren dosyalar bu yüzden testten hiç
+  import edilemiyordu. Değerler bilerek bağlanamaz.
+
+**Testi yazılamayan dosyalar** (hepsi doğrudan Prisma sorgusu; birim testi
+için veritabanı gerekir): `dashboard-verisi`, `rapor-verisi`,
+`rapor-govdesi-verisi`, `puanlama-verisi`, `gelisim-verisi`,
+`veli-gorusmesi-verisi`, `yetki-kapisi`, `parola`, `takvim-kilidi`. Şube
+sızıntısı tarafından bunları `sube-sizinti` tarayıcısı zaten koruyor.
+
+### Alan adı kararı
+
+`panel.tuzder.org` planından **vazgeçildi**; sistem
+`atolye-yonetim-sistemi.vercel.app` adresinde kalıyor. Cloudflare DNS kaydı
+hiç yazılmadı, `AUTH_URL` zaten vercel.app adresini gösteriyor. Adres geçen
+bütün belgeler güncellendi.
+
+### Bilerek dokunulmayanlar
+
+Sistem taramasında çıkan ama kullanıcı kararıyla **açık bırakılan** maddeler:
+
+- `LEAD_API_TOKEN` Vercel'de yok → `POST /api/crm/aday` canlıda 503 döner
+  (aday dış giriş ucu kapalı).
+- 7 adet `@tuzder.local` tohum/demo hesabı canlıda aktif.
+- Sonbahar döneminde programda olmayan 6 atölyeye ait 60 müfredat girdisi.
+- 4 ayrı ADMIN hesabı; 12 kullanıcı henüz parola değiştirmemiş.
+- Hata izleme aracı (Sentry vb.) yok.
 
 ---
 

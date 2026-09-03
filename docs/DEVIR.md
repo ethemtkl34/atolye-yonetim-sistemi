@@ -11,8 +11,8 @@ mesajlarında ve kod yorumlarında duruyor; burada yalnızca **durum** ve
 kapalı; kullanıcı böyle istedi ("localde bir şey çalışmasın, test süreci de
 dahil"). Doğrulama üretim üzerinde yapılıyor.
 
-- Canlı: `atolye-yonetim-sistemi.vercel.app` (ayrıca `panel.tuzder.org` —
-  henüz devrede değil)
+- Canlı: `atolye-yonetim-sistemi.vercel.app` (kalıcı adres; kendi alan
+  adına taşıma planından vazgeçildi)
 - Push edilince Vercel dağıtıyor: `prisma migrate deploy && vitest run &&
   next build`. Test kırılırsa dağıtım durur — yerelde test döngüsü olmadığı
   için tek gerçek kontrol noktası burası.
@@ -322,7 +322,6 @@ Kullanıcı **revize istekleriyle devam edecek** — sıradaki iş onun söyleye
 şey. Aşağıdakiler yalnızca o gelmezse geçerli olan öneriler:
 
 - Gerçek kullanıma geçiş: `docs/YAYINA-ALMA.md` sırası — Neon yedeği →
-  `db:temizlik` → `db:seed` → programların arayüzden kurulması →
-  `panel.tuzder.org` alan adının devreye alınması.
+  `db:temizlik` → `db:seed` → programların arayüzden kurulması.
 - Stajyer puanlama akışının telefonda uçtan uca denenmesi (dokunma hedefleri
   ölçüldü, akışın kendisi mobilde baştan sona yürütülmedi).

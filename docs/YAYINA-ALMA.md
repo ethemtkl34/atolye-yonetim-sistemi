@@ -9,7 +9,7 @@ yoksa ilk derleme migration adımında durur.
 |---|---|---|
 | Uygulama | **Vercel** | Next.js'i yapan şirket; bu sürüm için ayar gerektirmiyor |
 | Veritabanı | **Neon** (Postgres) | Vercel'in önerdiği ve Vercel Postgres'in altında çalıştırdığı servis |
-| Adres | **panel.tuzder.org** | Kurumun alan adı zaten var; alt alan ek ücret istemez |
+| Adres | **atolye-yonetim-sistemi.vercel.app** | Vercel'in verdiği kalıcı adres; kurum kendi alt alan adını istemedi (bkz. §6) |
 
 **Bilinmesi gereken:** Vercel'in ücretsiz **Hobby** planı sözleşmesinde ticari
 kullanıma kapalıdır — plan "kişisel, ticari olmayan" kullanım için tanımlanmış.
@@ -55,7 +55,7 @@ alanlarını içeriyor, bunların yapısı bile dışarı açık durmamalı.
 |---|---|
 | `DATABASE_URL` | Neon'dan aldığınız **pooled** adres |
 | `AUTH_SECRET` | `openssl rand -base64 32` çıktısı (aşağıya bakın) |
-| `AUTH_URL` | `https://panel.tuzder.org` |
+| `AUTH_URL` | `https://atolye-yonetim-sistemi.vercel.app` |
 | `NEXT_PUBLIC_KURUM_ADI` | `TÜZDER` |
 | `LEAD_API_TOKEN` | `openssl rand -base64 32` çıktısı — **Sensitive** işaretleyin |
 
@@ -118,34 +118,26 @@ uydurma puan yazdığı için uzak veritabanı gördüğünde kendini durdurur.
 
 ## 5. İlk giriş
 
-`https://panel.tuzder.org` adresine gidip `koordinator@tuzder.local` ve bir
-önceki adımda gösterilen parolayla girin. (Alan adı DNS'te yayılana kadar
-Vercel'in geçici `*.vercel.app` adresi de çalışır.)
+`https://atolye-yonetim-sistemi.vercel.app` adresine gidip
+`koordinator@tuzder.local` ve bir önceki adımda gösterilen parolayla girin.
 
 Gerçek kullanıma geçmeden önce kurumun kendi hesapları açılmalı ve bu üç
 başlangıç hesabı pasife alınmalı. Koordinatör panelindeki **Stajyerler**
 ekranı stajyer hesaplarını yönetiyor; koordinatör hesabı için parola değişimi
 henüz arayüzde yok (bkz. Bilinen eksikler).
 
-## 6. Alan adı: panel.tuzder.org
+## 6. Alan adı
 
-`atolye.tuzder.org` zaten kullanımda (kurumun tanıtım sayfası), bu yüzden
-iç sistem `panel.tuzder.org` adresine kuruluyor. Adresin boş olduğu DNS
-sorgusuyla doğrulandı.
+Sistem **Vercel'in verdiği adreste kalıyor**: `atolye-yonetim-sistemi.vercel.app`.
 
-1. Vercel → proje → **Settings → Domains** → `panel.tuzder.org` ekleyin.
-2. Vercel bir CNAME kaydı verir (`cname.vercel-dns.com` benzeri).
-3. **tuzder.org Cloudflare'de barınıyor** (ad sunucuları `joan.ns.cloudflare.com`
-   ve `lloyd.ns.cloudflare.com`). Cloudflare DNS panelinde kaydı eklerken:
-   - Tür: `CNAME`, Ad: `panel`, Hedef: Vercel'in verdiği adres
-   - **Proxy durumu: DNS only (gri bulut).** Turuncu bulut açık kalırsa
-     Vercel alan adını doğrulayamaz ve sertifika üretemez. İsterseniz
-     çalıştıktan sonra proxy'yi açabilirsiniz; o durumda Cloudflare'de
-     SSL modu **Full (strict)** olmalı, aksi hâlde yönlendirme döngüsü olur.
-4. Sertifika Vercel tarafından kendiliğinden üretilir (birkaç dakika).
-5. `AUTH_URL` zaten `https://panel.tuzder.org` olarak girildiği için ek bir
-   şey gerekmez. Adres sonradan değişirse bu değişken de güncellenmeli;
-   yoksa giriş sonrası yönlendirme eski adrese gider.
+Bir dönem `panel.tuzder.org` alt alan adı düşünüldü ve Vercel tarafında
+tanıtıldı; kurum kendi alan adına taşınmasını istemediği için Cloudflare'de
+DNS kaydı hiç yazılmadı ve bu plandan vazgeçildi. `AUTH_URL` zaten vercel.app
+adresini gösteriyor, yapılacak bir şey yok.
+
+Adres ileride yine değiştirilmek istenirse üç yer birlikte güncellenmeli:
+Vercel → Settings → Domains, `AUTH_URL` ortam değişkeni ve
+`docs/CRM-ENTEGRASYON.md` içindeki uç adresi.
 
 ---
 
@@ -156,13 +148,18 @@ kurum gerçekten kullanmaya başlamadan kapatılmalı:
 
 - **Koordinatör parolası arayüzden değiştirilemiyor.** Şu an yalnızca
   veritabanından veya seed üzerinden değişiyor.
-- **Yedekleme yok.** Neon'un ücretsiz planı belli bir süre geriye dönük
-  kurtarma veriyor; kurumun kendi yedek politikası ayrıca düşünülmeli.
-- **`npm audit` üretim bağımlılıklarında 4 uyarı veriyor** (3 yüksek,
-  1 orta). Üçü de Next.js'in içindeki `sharp` ve `postcss` paketlerinden
-  geliyor ve Next.js'in en güncel sürümünde (16.2.12) henüz düzeltilmiş
-  değil — `npm audit fix --force` Next'i 9.3.3'e düşürmeyi öneriyor, ki bu
-  yapılamaz. `sharp` yalnızca `next/image` ile çalışır, bu uygulama görsel
-  optimizasyonu kullanmıyor; `postcss` derleme anında çalışıyor, çalışma
-  anında değil. Next.js yama yayınladığında sürüm yükseltilmeli.
+- **Yedekleme yok.** Neon'un ücretsiz planında geriye dönük kurtarma
+  penceresi **6 saat** (`history_retention_seconds = 21600`); daha eski bir
+  hata geri alınamaz. Kurumun kendi yedek politikası ayrıca düşünülmeli.
+- **Veritabanı ücretsiz planın sınırına doğru büyüyor.** 4 Eylül 2026
+  ölçümü: 162 MB / 512 MB, ve bunun 133 MB'ı `LegacyReport.fileData`
+  (351 arşiv PDF'i, ortalama 389 KB). İkinci bir arşiv aktarımı sınırı
+  zorlar; o noktada ya Neon planı yükseltilmeli ya PDF'ler nesne deposuna
+  taşınmalı (bkz. `rapor-pdf` rotasının `fileUrl` notu).
+- **`npm audit` üretim bağımlılıklarında 4 yüksek uyarı veriyor.** Dördü de
+  `prisma` CLI'nın içindeki `mysql2` ve `deepmerge-ts` paketlerinden geliyor;
+  `--force` düzeltmesi Prisma'yı 6'ya düşürüyor, o yüzden uygulanmadı. Bu
+  uygulama MySQL sürücüsünü hiç çalıştırmıyor (bağlantı `@prisma/adapter-pg`
+  üzerinden), `prisma` da yalnızca derleme/migration adımında koşuyor.
+  Next.js kaynaklı `sharp` uyarıları 16.3.4 yükseltmesiyle kapandı.
 - **Hobby planının ticari kullanım kısıtı** yukarıda anlatıldı.

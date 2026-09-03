@@ -5,7 +5,7 @@ Bu belge, panelin dışından aday yazan iki kanalın kurulumunu anlatır:
 1. **Meta reklam formları** → entegratör (Pabbly Connect / Make) → panel
 2. **tuzder.org başvuru formu** → panel
 
-İkisi de tek uca yazar: `POST https://panel.tuzder.org/api/crm/aday`
+İkisi de tek uca yazar: `POST https://atolye-yonetim-sistemi.vercel.app/api/crm/aday`
 
 ---
 
@@ -59,7 +59,7 @@ Uç **hiçbir veri döndürmez**; yanıt yalnız durum bildirir.
 ### Örnek
 
 ```bash
-curl -X POST https://panel.tuzder.org/api/crm/aday \
+curl -X POST https://atolye-yonetim-sistemi.vercel.app/api/crm/aday \
   -H "Authorization: Bearer $LEAD_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -104,7 +104,7 @@ openssl rand -base64 32
    yönetiyorsa sayfa erişimini önceden netleştirin.)
 2. **Eylem**: "HTTP / Webhook" modülü
    - Method: `POST`
-   - URL: `https://panel.tuzder.org/api/crm/aday`
+   - URL: `https://atolye-yonetim-sistemi.vercel.app/api/crm/aday`
    - Header: `Authorization: Bearer <LEAD_API_TOKEN>`
    - Content-Type: `application/json`
 3. **Alan eşlemesi** — Meta form soruları entegratörde şu alanlara bağlanır:
@@ -140,7 +140,7 @@ akışın ucundan panele düştüğünü `/koordinator/adaylar` listesinde doğr
 Form işleyicisi **sunucudan sunucuya** çağırır. WordPress örneği:
 
 ```php
-$cevap = wp_remote_post( 'https://panel.tuzder.org/api/crm/aday', array(
+$cevap = wp_remote_post( 'https://atolye-yonetim-sistemi.vercel.app/api/crm/aday', array(
   'timeout' => 15,
   'headers' => array(
     'Authorization' => 'Bearer ' . LEAD_API_TOKEN, // wp-config.php'de tanımlı
