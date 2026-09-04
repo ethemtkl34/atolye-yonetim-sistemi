@@ -25,7 +25,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:ornek-veri": "tsx prisma/ornek-veri.ts",
     "db:temizlik": "tsx prisma/temizlik.ts",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "db:hizmetler": "tsx prisma/hizmet-katalogu-tohum.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
