@@ -17,7 +17,12 @@ import {
 } from "@/components/ui";
 import { UZMAN_RENKLERI, uzmanRengi } from "@/lib/uzman-renkleri";
 import type { EylemDurumu } from "@/lib/formlar";
-import { uzmanDurumDegistir, uzmanEkle, uzmanGuncelle } from "./actions";
+import {
+  uzmanDurumDegistir,
+  uzmanEkle,
+  uzmanGuncelle,
+  uzmanSil,
+} from "./actions";
 
 export type HizmetSecenegi = { id: string; ad: string; grup: string };
 export type SubeSecenegi = { id: string; ad: string };
@@ -194,7 +199,7 @@ export function UzmanYonetimi({
                       </Buton>
                       <Buton
                         type="button"
-                        tur={uzman.aktif ? "tehlike" : "ikincil"}
+                        tur="ikincil"
                         disabled={bekliyor}
                         onClick={() =>
                           basla(async () =>
@@ -205,6 +210,25 @@ export function UzmanYonetimi({
                         }
                       >
                         {uzman.aktif ? "Pasife al" : "Geri aç"}
+                      </Buton>
+                      {/* Randevusu olan uzmanı sunucu silmiyor, pasife
+                          almayı öneriyor (bkz. actions.ts `uzmanSil`). */}
+                      <Buton
+                        type="button"
+                        tur="tehlike"
+                        disabled={bekliyor}
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              `${uzman.ad} kadrodan tamamen silinecek; mesai ve izin kayıtları da gider. Randevusu varsa silinmez, pasife almanız istenir.\n\nDevam edilsin mi?`,
+                            )
+                          ) {
+                            return;
+                          }
+                          basla(async () => setMesaj(await uzmanSil(uzman.id)));
+                        }}
+                      >
+                        Sil
                       </Buton>
                     </>
                   ) : null}

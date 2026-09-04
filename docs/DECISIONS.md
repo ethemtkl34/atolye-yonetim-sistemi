@@ -230,5 +230,10 @@ Karar gerekçeleri:
 - **Mesajlar WhatsApp bağlantısıyla**, otomatik gönderim yok: SMS servisi
   abonelik, API kurulumu ve KVKK aydınlatması demek; mevcut `waBaglantisi`
   deseni bugün çalışıyor.
+- **Katalog ve kadro panelden yönetilir; silme de var.** Pasife alma
+  kullanılmış kaydın yolu, silme ise yanlışlıkla eklenmiş kaydın. "Kullanılmış
+  mı" kontrolü elle sayılan bir listeyle değil YABANCI ANAHTAR KISITIYLA
+  yapılıyor: randevu tablosu geldiğinde veritabanı silmeyi kendiliğinden
+  reddedecek ve kimsenin yeni bir kontrol yazmayı hatırlaması gerekmeyecek.
 - **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
   `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.

@@ -1145,6 +1145,7 @@ Bu faz takvimi DEĞİL, takvimin ön koşullarını getiriyor.
 | Şema, para/saat çevrimleri (+ test) | `src/app/koordinator/uzmanlar/sema.ts` |
 | Eylemler | `src/app/koordinator/uzmanlar/actions.ts` |
 | Ekranlar: kadro, mesai/izin, hizmet kataloğu | `src/app/koordinator/uzmanlar/**` |
+| Katalog ve kadroda ekle / düzenle / pasife al / **sil** | `actions.ts` (`hizmetSil`, `uzmanSil`) |
 | Yetki / menü / sızıntı tarayıcısı | `yetkiler.ts`, `navigasyon.ts`, `sube-sizinti.ts` |
 | Katalog tohumu (11 hizmet + atölye görüşmesi) | `prisma/seed.ts` |
 

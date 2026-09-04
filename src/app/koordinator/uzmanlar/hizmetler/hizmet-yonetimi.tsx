@@ -17,6 +17,7 @@ import {
   hizmetDurumDegistir,
   hizmetEkle,
   hizmetGuncelle,
+  hizmetSil,
 } from "../actions";
 import { kurustanLiraya, paraMetni, sureMetni } from "../sema";
 
@@ -131,7 +132,7 @@ export function HizmetYonetimi({
                     </Buton>
                     <Buton
                       type="button"
-                      tur={hizmet.aktif ? "tehlike" : "ikincil"}
+                      tur="ikincil"
                       disabled={bekliyor}
                       onClick={() =>
                         basla(async () =>
@@ -142,6 +143,33 @@ export function HizmetYonetimi({
                       }
                     >
                       {hizmet.aktif ? "Pasife al" : "Geri aç"}
+                    </Buton>
+                    {/* Silme, pasife almadan AYRI: pasif hizmet geçmiş
+                        randevularında görünmeye devam eder, silinen hiç
+                        var olmamış gibi olur. Kullanılmış hizmeti sunucu
+                        zaten reddediyor ve pasife almayı öneriyor. */}
+                    <Buton
+                      type="button"
+                      tur="tehlike"
+                      disabled={bekliyor}
+                      onClick={() => {
+                        const yetkinlikNotu =
+                          hizmet.uzmanSayisi > 0
+                            ? ` ${hizmet.uzmanSayisi} uzmanın yetkinlik listesinden de düşer.`
+                            : "";
+                        if (
+                          !window.confirm(
+                            `${hizmet.ad} katalogdan tamamen silinecek.${yetkinlikNotu} Randevularda kullanılmışsa silinmez, pasife almanız istenir.\n\nDevam edilsin mi?`,
+                          )
+                        ) {
+                          return;
+                        }
+                        basla(async () =>
+                          setMesaj(await hizmetSil(hizmet.id)),
+                        );
+                      }}
+                    >
+                      Sil
                     </Buton>
                   </div>
                 ) : null}

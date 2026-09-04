@@ -40,6 +40,21 @@ const HIZMET_FORM_ALANLARI = [
   "danisanTuru",
 ] as const;
 
+/**
+ * Silme, kayda bağlı bir geçmiş yüzünden mi reddedildi?
+ *
+ * Prisma yabancı anahtar ihlalini `P2003` ile bildiriyor. Kod bilerek metinle
+ * değil koduyla eşleştiriliyor: hata metni sürümle değişebilir.
+ */
+function yabanciAnahtarHatasiMi(hata: unknown): boolean {
+  return (
+    typeof hata === "object" &&
+    hata !== null &&
+    "code" in hata &&
+    (hata as { code?: unknown }).code === "P2003"
+  );
+}
+
 function tazele(uzmanId?: string) {
   revalidatePath("/koordinator/uzmanlar");
   revalidatePath("/koordinator/uzmanlar/hizmetler");
@@ -508,8 +523,9 @@ export async function hizmetGuncelle(
 /**
  * Hizmeti pasife alır veya geri açar.
  *
- * SİLME YOK: geçmiş randevular bu hizmete bağlı ve ciro raporu hizmet
- * kırılımını ondan okuyor. Pasif hizmet yeni randevuda seçilemez.
+ * Kullanılmış hizmetin ASIL yolu budur, silme değil: geçmiş randevular ona
+ * bağlı ve ciro raporu hizmet kırılımını ondan okuyor. Pasif hizmet yeni
+ * randevuda seçilemez, eskilerinde görünmeye devam eder.
  */
 export async function hizmetDurumDegistir(
   hizmetId: string,
@@ -529,4 +545,77 @@ export async function hizmetDurumDegistir(
       ? `${hizmet.ad} yeniden açıldı.`
       : `${hizmet.ad} pasife alındı; yeni randevuda seçilemez.`,
   };
+}
+
+/**
+ * Hizmeti kataloğdan tamamen siler.
+ *
+ * Yalnız HİÇ KULLANILMAMIŞ hizmet silinebilir — yanlışlıkla eklenen satırın
+ * katalogda kalıcı olarak durmasının bir anlamı yok. Kullanılmış hizmet
+ * pasife alınır (`hizmetDurumDegistir`), çünkü geçmiş randevular ve ciro
+ * raporunun hizmet kırılımı ona bağlı.
+ *
+ * "Kullanılmış mı" sorusunun cevabı VERİTABANINDAN geliyor, elle sayılan bir
+ * listeden değil: randevu tablosu eklendiğinde yabancı anahtar kısıtı silmeyi
+ * kendiliğinden reddedecek ve burada yeni bir kontrol yazmak gerekmeyecek.
+ * Elle yazılan bir liste, o gün güncellenmeyi unutulacak tek şeydi.
+ *
+ * Uzman yetkinlik satırları (`UzmanHizmet`) bu kuralın dışında: onlar hizmete
+ * ait bir GEÇMİŞ değil, hizmetle birlikte anlamını yitiren bir bağ — şemada
+ * Cascade ile düşüyorlar.
+ */
+export async function hizmetSil(hizmetId: string): Promise<EylemDurumu> {
+  await yonetimZorunlu("uzmanlar", "TAM");
+
+  const hizmet = await db.hizmet.findUnique({
+    where: { id: hizmetId },
+    select: { ad: true },
+  });
+  if (!hizmet) return { hata: "Hizmet bulunamadı." };
+
+  try {
+    await db.hizmet.delete({ where: { id: hizmetId } });
+  } catch (hata) {
+    if (yabanciAnahtarHatasiMi(hata)) {
+      return {
+        hata: `${hizmet.ad} silinemez: kayıtlı randevularda kullanılıyor ve bu geçmiş korunmalı. Yeni randevularda çıkması için "Pasife al" deyin.`,
+      };
+    }
+    throw hata;
+  }
+
+  tazele();
+  return { basari: `${hizmet.ad} katalogdan silindi.` };
+}
+
+/**
+ * Uzmanı kadrodan tamamen siler.
+ *
+ * Hizmetle aynı kural: yalnız hiç randevusu olmayan uzman silinebilir,
+ * geçmişi olan pasife alınır (`uzmanDurumDegistir`). Şube, yetkinlik, mesai
+ * ve izin satırları uzmanla birlikte düşer — hepsi uzmana ait tanım, geçmiş
+ * değil.
+ */
+export async function uzmanSil(uzmanId: string): Promise<EylemDurumu> {
+  await yonetimZorunlu("uzmanlar", "TAM");
+
+  const uzman = await db.uzman.findUnique({
+    where: { id: uzmanId },
+    select: { ad: true },
+  });
+  if (!uzman) return { hata: "Uzman bulunamadı." };
+
+  try {
+    await db.uzman.delete({ where: { id: uzmanId } });
+  } catch (hata) {
+    if (yabanciAnahtarHatasiMi(hata)) {
+      return {
+        hata: `${uzman.ad} silinemez: kayıtlı randevuları var ve bu geçmiş korunmalı. Yeni randevu alamaması için "Pasife al" deyin.`,
+      };
+    }
+    throw hata;
+  }
+
+  tazele();
+  return { basari: `${uzman.ad} kadrodan silindi.` };
 }

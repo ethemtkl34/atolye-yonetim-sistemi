@@ -937,8 +937,16 @@ Randevuda seçilebilecek hizmetler. Sabit liste değil, panelden yönetilir.
 | Danışan türü | Çocuk / veli — aile danışmanlığında danışan velinin kendisi |
 | Haftalık tekrar | Danışmanlıklar açık, zekâ testleri kapalı |
 
-Başlangıç kataloğu kurumun 2026 fiyat listesidir. **Fiyat değişikliği geçmişe
-işlemez** (§17.4). Hizmet SİLİNMEZ, pasife alınır: geçmiş randevular ona bağlı.
+Başlangıç kataloğu kurumun 2026 fiyat listesidir. Katalog panelden yönetilir:
+hizmet **eklenir, düzenlenir, pasife alınır ve silinir**.
+
+- **Fiyat değişikliği geçmişe işlemez** (§17.4).
+- **Pasife alma** kullanılmış hizmetin yoludur: yeni randevuda seçilemez, eski
+  randevularında ve ciro raporunun hizmet kırılımında görünmeye devam eder.
+- **Silme** yalnızca hiç randevuda kullanılmamış hizmet içindir — yanlışlıkla
+  eklenen satırın katalogda kalıcı durmasının anlamı yok. Kullanılmış hizmeti
+  veritabanı kısıtı reddeder ve sistem pasife almayı önerir. Silinen hizmet
+  uzmanların yetkinlik listesinden de düşer.
 
 ### 17.3 Uzman (Faz 1)
 
@@ -954,7 +962,9 @@ bağlanır.
 - **Mesai**: haftalık çalışma saatleri, ŞUBE BAŞINA ayrı.
 - **İzin**: başlangıç–bitiş aralığı (yarım gün olabilir). İzin bir seans
   değildir; seans sayısı ve ciro raporlarına karışmaz.
-- Uzman SİLİNMEZ, pasife alınır: geçmiş randevuları ve cirosu ona bağlı.
+- **Pasife alma / silme**: hizmetle aynı kural. Geçmiş randevusu olan uzman
+  pasife alınır (cirosu ona bağlı); hiç randevusu olmayan uzman kadrodan
+  tamamen silinebilir, şube/yetkinlik/mesai/izin satırları da onunla gider.
 
 ### 17.4 Randevu (Faz 2)
 
