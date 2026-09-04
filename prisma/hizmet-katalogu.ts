@@ -12,10 +12,13 @@
  *  - Kurumun güncel fiyat listesi (dört zekâ testi + altı danışmanlık).
  *  - Mevcut `TherapyType` enum'ının değerleri. "Ergoterapi" fiyat listesinde
  *    yok ama canlıda ona bağlı görüşme kayıtları var; katalogda karşılığı
- *    olmasaydı o kayıtların hizmeti adsız kalırdı. Fiyat listesindeki
- *    karşılığı olan "Duyu Bütünleme Programı" ile AYNI ŞEY OLUP OLMADIĞI
- *    kuruma soruldu ve ayrı hizmet oldukları teyit edilmedi — ikisi de
- *    katalogda duruyor, kurum gerekmeyeni panelden pasife alabilir.
+ *    olmasaydı o kayıtların hizmeti adsız kalırdı.
+ *
+ * ERGOTERAPİ İLE DUYU BÜTÜNLEME PROGRAMI AYRI HİZMETLER — kuruma soruldu ve
+ * 4 Eylül 2026'da böyle teyit edildi. İkisi de katalogda aktif duruyor.
+ * Ergoterapi'nin süresi ve ücreti fiyat listesinde yazmadığı için buraya
+ * Duyu Bütünleme ile aynı değerlerle konuldu; doğrusu farklıysa kurum
+ * panelden düzeltir (tohum fiyata bir daha dokunmuyor).
  *
  * Katalog buradan sonra PANELDEN yönetilir; seed yalnızca adı, grubu ve
  * sırayı tazeler. Fiyat ve süre `update` kapsamında DEĞİL: kurum panelden

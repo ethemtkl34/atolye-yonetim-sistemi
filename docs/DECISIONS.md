@@ -245,5 +245,9 @@ Karar gerekçeleri:
 - **Takvim ızgara değil liste.** Belge de "listelenir" diyor; seanslar
   30–120 dakika arasında ve günde en fazla bir düzine — ızgara aynı bilgiyi
   telefonda kullanılamaz hâlde gösterirdi.
+- **Ergoterapi ile Duyu Bütünleme Programı AYRI hizmetler** (4 Eylül 2026'da
+  kurum teyit etti). İkisi de katalogda aktif. Ergoterapi'nin süresi ve
+  ücreti fiyat listesinde yazmadığı için tohumda Duyu Bütünleme ile aynı
+  değerlerle duruyor; farklıysa panelden düzeltilir.
 - **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
   `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.

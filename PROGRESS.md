@@ -1199,10 +1199,11 @@ veli adı düzeltme, telefonla arama, koordinatör (salt görüntüleme) görün
 
 ### Açık maddeler
 
-1. Tekrar kaç hafta ileri üretilecek — tek sonraki randevu mu, n haftalık seri
-   mi? Seri olursa iptalde "yalnız bunu / bundan sonrakileri" ayrımı gerekir.
-2. "Ergoterapi" ile "Duyu Bütünleme Programı" aynı hizmet mi? İkisi de
-   katalogda duruyor; kurum gerekmeyeni panelden pasife alabilir.
+1. ~~Tekrar kaç hafta ileri üretilecek?~~ **Hafta sayısı seçilen seri**
+   (varsayılan 8, en fazla 26); iptalde "yalnız bunu / bundan sonrakileri"
+   ayrımı geldi. P21'de yapıldı.
+2. ~~"Ergoterapi" ile "Duyu Bütünleme Programı" aynı hizmet mi?~~ **AYRI
+   hizmetler** (4 Eylül 2026, kurum teyidi). İkisi de katalogda aktif.
 3. Geçmiş `CounselingSession` kayıtları randevuya geriye dönük bağlanmayacak.
 
 ---
@@ -1304,9 +1305,10 @@ dosyayı Excel Windows-1254 sanıyor ve "Büşra" bozuk açılıyor.
 ### Randevu modülü tamamlandı
 
 Faz 1 (tanımlar) · Faz 2 (takvim) · Faz 3 (rapor ve mesajlar) — üçü de canlıda.
-Kalan iki açık madde kurumun kararını bekliyor: "Ergoterapi" ile "Duyu
-Bütünleme Programı" aynı hizmet mi, ve dönüşmeyen aday/randevu verisi için
-KVKK saklama süresi.
+Ergoterapi ile Duyu Bütünleme Programı'nın AYRI hizmetler olduğu kurum
+tarafından teyit edildi; ikisi de katalogda aktif duruyor. Kalan tek açık
+madde dönüşmeyen aday/randevu verisi için KVKK saklama süresi — kod işi
+değil, kurum kararı.
 
 ---
 
