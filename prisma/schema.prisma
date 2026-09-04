@@ -197,6 +197,9 @@ model Branch {
   students Student[]
   groups   Group[]
   leads    Lead[]
+  veliler  Veli[]
+  uzmanlar UzmanSube[]
+  uzmanMesailer UzmanMesai[]
 
   @@index([active, sortOrder])
 }
@@ -253,6 +256,9 @@ model User {
   assignedLeads                Lead[]                  @relation("AdayiUstlenen")
   createdLeads                 Lead[]                  @relation("AdayiEkleyen")
   addedLeadActivities          LeadActivity[]          @relation("AdayEtkinliginiEkleyen")
+  /// Panele giren uzmanın hesabı — çoğu uzmanda boş (bkz. Uzman şerhi).
+  uzmanProfili                 Uzman?                  @relation("UzmanHesabi")
+  addedIzinler                 Izin[]                  @relation("IzniEkleyen")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
   @@index([role, active])
@@ -636,22 +642,71 @@ model Student {
   @@index([branchId, lastName, firstName])
 }
 
-/// §6.1 — Anne ve baba bilgileri. En az bir ebeveyn telefonu zorunludur;
-/// bu kural uygulama katmanında doğrulanır (iki satırı birden kapsadığı için
-/// tek satırlık bir veritabanı kısıtına sığmaz).
+/// §17.1 — Veli: adı, telefonu ve geçmişi olan BİRİNCİ SINIF kayıt.
+///
+/// Eskiden veli kimliği `Guardian` satırının içindeydi (ad + telefon,
+/// öğrencinin altında). O modelde aynı anne-baba her çocuğu için ayrı bir
+/// satırdı: canlıda 857 veli satırının 750 benzersiz telefonu vardı ve 58
+/// telefon birden fazla çocuğa bağlıydı. Randevu velinin kendisine açıldığı
+/// için (§17.4) bu bölünme velinin randevu geçmişini çocukları arasında
+/// paylaştırırdı — kimlik bu yüzden buraya taşındı, `Guardian` bağ tablosuna
+/// indirgendi.
+///
+/// Veli ŞUBEYE aittir: `Student` ile aynı gerekçe (§6.1) — iki şubede de
+/// çocuğu olan veli iki kayıt olur, şubeler arası ortak veli havuzu yok.
+model Veli {
+  id String @id @default(cuid())
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  fullName String
+  phone    String?
+
+  /// §6.2 — Telefonla arama için yalnızca rakamlara indirgenmiş biçim.
+  /// Mükerrer kilidi de bunun üzerinde: aynı şubede aynı telefon tek veli.
+  searchPhone String?
+
+  /// Türkçe karakterden arındırılmış ad — veli araması bu sütundan yapılır
+  /// (`Student.searchName` ile aynı sözleşme).
+  searchName String
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guardians Guardian[]
+
+  /// Kimlik anahtarı: şube + telefon + normalize ad.
+  ///
+  /// Yalnız telefon YETMİYOR. Canlı verinin kopyası üzerinde denendiğinde beş
+  /// telefonun iki farklı ada bağlı olduğu, ikisinde de aynı numarayı anne ile
+  /// babanın paylaştığı görüldü — telefona göre birleştirmek babanın adını
+  /// siliyordu. Telefon bir cihaz, kimlik değil.
+  ///
+  /// Telefonsuz veliler kısıtın dışında kalır: Postgres'te NULL'lar birbirine
+  /// eşit sayılmaz, dolayısıyla her telefonsuz veli kendi kaydıdır.
+  @@unique([branchId, searchPhone, searchName])
+  @@index([branchId, searchName])
+}
+
+/// §6.1 — Öğrenci ile velisi arasındaki bağ: hangi veli, hangi çocuğun
+/// annesi/babası.
+///
+/// Ad ve telefon artık burada DEĞİL, `Veli` kaydında. Bu tablo yalnızca
+/// ilişkiyi ve rolü taşıyor. En az bir ebeveyn telefonu zorunluluğu
+/// (iki satırı birden kapsadığı için) hâlâ uygulama katmanında doğrulanır.
 model Guardian {
   id        String       @id @default(cuid())
   studentId String
   student   Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  veliId    String
+  veli      Veli         @relation(fields: [veliId], references: [id], onDelete: Cascade)
   type      GuardianType
-  fullName  String
-  phone     String?
-
-  /// §6.2 — Telefonla arama için yalnızca rakamlara indirgenmiş biçim.
-  searchPhone String?
 
   @@unique([studentId, type])
-  @@index([searchPhone])
+  @@index([veliId])
 }
 
 /// §6.1 — Sağlık ve özel durum bilgileri.
@@ -1642,4 +1697,205 @@ model LeadActivity {
   createdAt       DateTime @default(now())
 
   @@index([leadId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// §17 — Randevu yönetimi: hizmet kataloğu, uzmanlar ve izinler.
+//
+// Kurumun ikinci iş kolu (zekâ testleri ve bireysel danışmanlık seansları)
+// bu bölümde tanımlanır. Randevunun kendisi (§17.4) ikinci fazda eklenecek;
+// buradaki tablolar onun ön koşuludur.
+// ---------------------------------------------------------------------------
+
+/// Hizmetin hangi işe ait olduğu. Rapor kırılımı ve randevu formunun
+/// gruplaması bu alandan gelir.
+enum HizmetGrubu {
+  /// Tek seferlik uygulanır, otomatik tekrar kapsamı dışındadır.
+  TEST
+  /// Düzenli seans hâlinde sürer; haftalık tekrara açıktır.
+  DANISMANLIK
+  /// Atölye görüşmeleri — ücretsiz sunulur.
+  ATOLYE
+}
+
+/// Hizmetin danışanı kim: çocuk mu, veli mi.
+///
+/// Randevu her hâlükârda VELİYE açılır (§17.4) — ödeyen, arayan ve hatırlatma
+/// mesajını alan taraf o. Bu alan çocuk seçiminin zorunlu olup olmadığını ve
+/// hatırlatma metninin kimden bahsettiğini belirler: oyun temelli
+/// danışmanlıkta seansa çocuk girer, aile danışmanlığında velinin kendisi.
+enum DanisanTuru {
+  COCUK
+  VELI
+}
+
+/// §17.2 — Hizmet kataloğu: süre, ücret ve yaş aralığı.
+///
+/// Sabit bir enum DEĞİL, veritabanından yönetilen katalog
+/// (`IntelligenceTestType` deseni). Gerekçe: kurumun hizmet adları ve
+/// fiyatları kod sürümünden bağımsız değişiyor — "Ergoterapi" bir dönem
+/// "Duyu Bütünleme Programı" olarak anılmaya başladı ve bu tek başına bir
+/// migration'a değmez. Mevcut `TherapyType` enum'ı KALDIRILMADI: eski
+/// `CounselingSession` kayıtları ona bağlı; eşleme `lib/terapi-turleri.ts`
+/// içindedir.
+///
+/// Hizmet ŞUBEDEN BAĞIMSIZ: fiyat listesi kurumun tamamı için tek.
+model Hizmet {
+  id String @id @default(cuid())
+
+  ad   String      @unique
+  grup HizmetGrubu
+
+  /// Seans süresi DAKİKA cinsinden. Randevunun bitiş saati bundan türetilir
+  /// ve kayda donar; hizmetin süresi sonradan değişse eski randevu kaymaz.
+  sureDk Int
+
+  /// Ücret KURUŞ cinsinden tamsayı. Para hiçbir yerde `Float` tutulmaz:
+  /// 3200.00 TL gibi değerler ikilik kayan noktada tam temsil edilmiyor ve
+  /// ciro toplamı kuruş kaydırıyor. ₺3.200,00 = 320000.
+  ucretKurus Int @default(0)
+
+  /// Hizmetin uygulanabildiği yaş aralığı (yıl); boş = sınır yok. Randevu
+  /// formunda uyarı üretir, engellemez — kurum istisna yapabiliyor.
+  yasAlt Int?
+  yasUst Int?
+
+  danisanTuru DanisanTuru @default(COCUK)
+
+  /// Haftalık otomatik tekrar kapsamında mı. Danışmanlıklarda her danışanın
+  /// sabit bir seans saati var ve seans bir sonraki haftaya kendiliğinden
+  /// eklenir; zekâ testleri tek seferliktir ve her seferinde elle girilir.
+  tekrarli Boolean @default(false)
+
+  aktif     Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  uzmanlar UzmanHizmet[]
+
+  @@index([aktif, sortOrder])
+}
+
+/// Uzmanın çalışma düzeni. Mesai tanımı zaten haftalık saatleri veriyor;
+/// bu alan raporlamada ve listede ayrım için tutulur (belge §1.1).
+enum CalismaTipi {
+  TAM_ZAMANLI
+  YARI_ZAMANLI
+}
+
+/// §17.3 — Uzman: seansı veren kişi.
+///
+/// `User` DEĞİL, ayrı bir kayıt. İki gerekçe: (1) uzmanların bir kısmı panele
+/// hiç girmiyor, onlara hesap ve parola açmak gereksiz bir güvenlik yüzeyi;
+/// (2) `User` tek şubeye bağlı (veritabanı CHECK'i) ama uzman iki şubede
+/// birden çalışabiliyor. Panele giren uzman için `userId` doldurulur.
+///
+/// Uzman ŞUBEDEN BAĞIMSIZ tabloda durur; şube bağı `UzmanSube` üzerinden
+/// kurulur (bkz. lib/sube-sizinti.ts gerekçesi).
+model Uzman {
+  id String @id @default(cuid())
+
+  ad String
+
+  /// Takvimde uzmanları ayırt eden renk. Serbest hex DEĞİL, sabit paletten
+  /// bir anahtar (`lib/uzman-renkleri.ts`): tasarım dilinde anlam renkleri
+  /// (emerald = olumlu, red = hata) ayrılmış durumda ve rastgele bir hex o
+  /// anlamların üstüne binerdi.
+  renk String
+
+  calismaTipi CalismaTipi @default(TAM_ZAMANLI)
+
+  /// Panele giren uzmanın hesabı. Boş olabilir — çoğu uzman girmiyor.
+  userId String? @unique
+  user   User?   @relation("UzmanHesabi", fields: [userId], references: [id], onDelete: SetNull)
+
+  aktif     Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subeler  UzmanSube[]
+  hizmetler UzmanHizmet[]
+  mesailer UzmanMesai[]
+  izinler  Izin[]
+
+  @@index([aktif, sortOrder])
+}
+
+/// Uzmanın çalıştığı şubeler. Çoktan çoğa: bir uzman iki şubede birden
+/// çalışabiliyor (belge §1.4).
+model UzmanSube {
+  uzmanId String
+  uzman   Uzman  @relation(fields: [uzmanId], references: [id], onDelete: Cascade)
+  subeId  String
+  sube    Branch @relation(fields: [subeId], references: [id], onDelete: Cascade)
+
+  @@id([uzmanId, subeId])
+  @@index([subeId])
+}
+
+/// §17.3 — Uzmanın yetkinliği: hangi test ve hizmetleri uygulayabiliyor.
+///
+/// Randevu formu yalnız bu listeyi gösterir ve sunucu da aynı listeye karşı
+/// doğrular — belgedeki "hatalı atamaların önüne geçer" kuralı.
+model UzmanHizmet {
+  uzmanId  String
+  uzman    Uzman  @relation(fields: [uzmanId], references: [id], onDelete: Cascade)
+  hizmetId String
+  hizmet   Hizmet @relation(fields: [hizmetId], references: [id], onDelete: Cascade)
+
+  @@id([uzmanId, hizmetId])
+  @@index([hizmetId])
+}
+
+/// Uzmanın haftalık çalışma saatleri — ŞUBE BAŞINA ayrı.
+///
+/// Çift şubeli uzman salı Ümraniye'de, perşembe Güneşli'de olabiliyor;
+/// tek bir haftalık takvim bunu anlatamazdı.
+///
+/// Saatler GECE YARISINDAN İTİBAREN DAKİKA cinsinden tamsayı (540 = 09:00).
+/// `DateTime` yerine sayı: "bu randevu mesai içinde mi" sorusu saat
+/// aritmetiği gerektiriyor ve tarihsiz bir saati `DateTime` ile taşımak
+/// sahte bir güne yaslanmak demekti.
+model UzmanMesai {
+  id      String @id @default(cuid())
+  uzmanId String
+  uzman   Uzman  @relation(fields: [uzmanId], references: [id], onDelete: Cascade)
+  subeId  String
+  sube    Branch @relation(fields: [subeId], references: [id], onDelete: Cascade)
+
+  gun         Day
+  baslangicDk Int
+  bitisDk     Int
+
+  @@index([uzmanId, gun])
+}
+
+/// §17.3 — Uzman izni.
+///
+/// Eski CRM izni ₺0 / 0 dakikalık sahte bir HİZMET olarak tutuyordu; burada
+/// kendi tablosunda. Gerekçe: izin bir seans değil, seans sayısı ve ciro
+/// raporlarına karışmamalı — sahte hizmet her raporda ayrıca dışlanmayı
+/// gerektirirdi ve bir gün biri dışlamayı unuturdu.
+///
+/// Aralık kapalı-açık: `baslangic` dahil, `bitis` hariç. Tam gün izin
+/// 00:00'dan ertesi gün 00:00'a yazılır.
+model Izin {
+  id      String @id @default(cuid())
+  uzmanId String
+  uzman   Uzman  @relation(fields: [uzmanId], references: [id], onDelete: Cascade)
+
+  baslangic DateTime
+  bitis     DateTime
+
+  sebep String?
+
+  createdByUserId String?
+  createdBy       User?    @relation("IzniEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([uzmanId, baslangic])
 }

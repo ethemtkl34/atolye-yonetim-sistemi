@@ -153,6 +153,27 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
   // (kaydın sorumlusunu seç) yapılıyor. Bütün kayıtları tek listede gösteren
   // eski ekran hangi stajyerin hangi dönemde ne kadar yükü olduğunu
   // söylemiyordu.
+  // §17 — Randevu yönetimi. "Randevular" takvimin kendisi, "Uzmanlar" ise
+  // kadro + yetkinlik + mesai + izin ve hizmet kataloğu; ikincisi kurulum
+  // ekranı olduğu için Programlar bölümünde değil, kadro yanında duruyor.
+  {
+    etiket: "Randevular",
+    yol: "/koordinator/randevular",
+    modul: "randevular",
+    hazir: false,
+    paket: "P19",
+    bolum: "Randevu",
+    simge: "takvim",
+  },
+  {
+    etiket: "Uzmanlar",
+    yol: "/koordinator/uzmanlar",
+    modul: "uzmanlar",
+    hazir: true,
+    paket: "P19",
+    bolum: "Randevu",
+    simge: "rozet",
+  },
   {
     etiket: "Puanlamalar",
     yol: "/koordinator/puanlamalar",

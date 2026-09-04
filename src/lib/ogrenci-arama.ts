@@ -61,8 +61,12 @@ export function ogrenciAramaKosulu(
           ...(telefonAranabilir
             ? [
                 {
+                  // Telefon artık `Veli` kaydında (§17.1); bağ tablosu
+                  // üzerinden aranıyor.
                   guardians: {
-                    some: { searchPhone: { contains: telefonAnahtari } },
+                    some: {
+                      veli: { searchPhone: { contains: telefonAnahtari } },
+                    },
                   },
                 },
               ]
@@ -109,7 +113,10 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
         school: true,
         grade: true,
         guardians: {
-          select: { type: true, fullName: true, phone: true },
+          select: {
+            type: true,
+            veli: { select: { id: true, fullName: true, phone: true } },
+          },
         },
         _count: { select: { enrollments: true } },
       },

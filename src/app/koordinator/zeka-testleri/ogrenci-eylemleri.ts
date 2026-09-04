@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { veliBaglariniYaz } from "@/lib/veli";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { alanHatalari, formDegerleri, type EylemDurumu } from "@/lib/formlar";
 import {
@@ -13,7 +14,7 @@ import {
 import {
   ogrenciAlanlari,
   saglikAlanlari,
-  veliSatirlari,
+  veliGirdileri,
 } from "@/app/koordinator/ogrenciler/ogrenci-yazma";
 
 /**
@@ -61,15 +62,27 @@ export async function zekaTestiOgrencisiEkle(
 
   const veri = cozumlenen.data;
 
-  // şube-muaf: öğrenci oturumdaki şubeye açılıyor (`branchId: subeId`).
-  const ogrenci = await db.student.create({
-    data: {
-      ...ogrenciAlanlari(veri),
-      branchId: subeId,
-      guardians: { create: veliSatirlari(veri) },
-      healthInfo: { create: saglikAlanlari(veri) },
-    },
-    select: { id: true },
+  // Öğrenci ve veli bağları TEK işlemde: veli artık paylaşılan bir kayıt
+  // (§17.1) ve eşleştirmesi sorgu gerektiriyor — iç içe `create` ile
+  // yazılamıyor. Yarıda kalması öğrenciyi telefonsuz bırakırdı.
+  const ogrenci = await db.$transaction(async (tx) => {
+    // şube-muaf: öğrenci oturumdaki şubeye açılıyor (`branchId: subeId`).
+    const kayit = await tx.student.create({
+      data: {
+        ...ogrenciAlanlari(veri),
+        branchId: subeId,
+        healthInfo: { create: saglikAlanlari(veri) },
+      },
+      select: { id: true },
+    });
+
+    await veliBaglariniYaz(tx, {
+      subeId,
+      ogrenciId: kayit.id,
+      girdiler: veliGirdileri(veri),
+    });
+
+    return kayit;
   });
 
   revalidatePath("/koordinator/ogrenciler");

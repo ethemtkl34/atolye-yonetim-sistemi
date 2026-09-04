@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { kayitEngeli } from "@/lib/kayit-kurallari";
+import { veliBaglariniYaz } from "@/lib/veli";
 import { adayiKazanildiYap, donusumYolu } from "@/lib/aday/donusum";
 import { donusumHedefiSemasi } from "../adaylar/sema";
 import {
@@ -20,7 +21,7 @@ import {
 import {
   ogrenciAlanlari,
   saglikAlanlari,
-  veliSatirlari,
+  veliGirdileri,
 } from "./ogrenci-yazma";
 
 /**
@@ -66,18 +67,26 @@ export async function ogrenciEkle(
   const hedef = donusumHedefiSemasi.parse(formVerisi.get("hedef"));
   const ogrenciAdi = `${veri.firstName} ${veri.lastName}`;
 
+  // Veliler öğrenciyle BİRLİKTE değil, hemen ardından yazılıyor: veli artık
+  // paylaşılan bir kayıt (§17.1) ve eşleştirme sorgu gerektiriyor, iç içe
+  // `create` ile ifade edilemiyor. İkisi de aynı işlemin içinde.
   const ogrenciVerisi = {
     ...ogrenciAlanlari(veri),
     branchId: subeId,
-    guardians: { create: veliSatirlari(veri) },
     healthInfo: { create: saglikAlanlari(veri) },
   };
+  const veliler = veliGirdileri(veri);
 
   if (!groupId) {
     const ogrenciId = await db.$transaction(async (tx) => {
       // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı; öğrenci
       // oturumdaki şubeye açılıyor.
       const ogrenci = await tx.student.create({ data: ogrenciVerisi });
+      await veliBaglariniYaz(tx, {
+        subeId,
+        ogrenciId: ogrenci.id,
+        girdiler: veliler,
+      });
 
       if (adayId) {
         await adayiKazanildiYap(tx, {
@@ -131,6 +140,11 @@ export async function ogrenciEkle(
 
     // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı.
     const ogrenci = await tx.student.create({ data: ogrenciVerisi });
+    await veliBaglariniYaz(tx, {
+      subeId,
+      ogrenciId: ogrenci.id,
+      girdiler: veliler,
+    });
 
     await tx.enrollment.create({
       data: { studentId: ogrenci.id, groupId },
@@ -299,7 +313,7 @@ export async function ogrenciGuncelle(
   }
 
   const veri = cozumlenen.data;
-  const veliler = veliSatirlari(veri);
+  const veliler = veliGirdileri(veri);
 
   // Şube kontrolü güncellemenin KENDİ where'inde ve transaction'ın İÇİNDE:
   // `updateMany` + sayı kontrolü deseni, ayrı bir "önce oku sonra yaz"
@@ -314,14 +328,14 @@ export async function ogrenciGuncelle(
 
     if (sonuc.count === 0) return false;
 
-    // Veliler silinip yeniden yazılıyor: iki satırlık bir liste için tek tek
-    // fark hesaplamaktan hem daha kısa hem daha az hata açık.
-    await tx.guardian.deleteMany({ where: { studentId: ogrenciId } });
-    if (veliler.length > 0) {
-      await tx.guardian.createMany({
-        data: veliler.map((veli) => ({ ...veli, studentId: ogrenciId })),
-      });
-    }
+    // Veli bağları silinip yeniden yazılmıyor, ÜZERİNE yazılıyor: telefonsuz
+    // bir veli eşleştirilemediği için her düzenleme yeni bir `Veli` satırı
+    // açar ve sahipsiz kayıtlar birikirdi (bkz. lib/veli.ts).
+    await veliBaglariniYaz(tx, {
+      subeId: kullanici.aktifSubeId,
+      ogrenciId,
+      girdiler: veliler,
+    });
 
     await tx.healthInfo.upsert({
       where: { studentId: ogrenciId },

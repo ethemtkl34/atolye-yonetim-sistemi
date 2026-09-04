@@ -897,3 +897,106 @@ sınıfında değil, kayıt masası verisidir.
 Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi, e-posta/SMS gönderimi,
 doğrudan Meta webhook'u, dönüşmeyen adaylar için otomatik saklama süresi
 temizliği.
+
+---
+
+## 17. Randevu yönetimi
+
+Kurumun ikinci iş kolu: zekâ testleri ve bireysel danışmanlık seansları.
+Bugüne kadar dış bir CRM'de yürüyordu, haftalık ciro Excel'de elle tutuluyordu.
+§14 bu modülü "ilk sürüm kapsamı dışında" saymıştı; bu bölüm o kararı
+kaldırıyor.
+
+Modül üç fazda teslim edilir: (1) tanımlar — veli, uzman, hizmet, izin;
+(2) randevu takvimi; (3) ciro raporu ve mesaj düğmeleri. Aşağıdaki tanım
+tamamını kapsar, hangi fazda geldiği belirtilmiştir.
+
+### 17.1 Veli (Faz 1)
+
+Veli artık öğrencinin altındaki bir satır değil, ADI, TELEFONU VE GEÇMİŞİ
+OLAN bir kayıttır. Randevu doğrudan veliye açılır: ödeyen, arayan ve
+hatırlatma mesajını alan taraf odur.
+
+- Veli bir şubeye aittir (öğrenciyle aynı gerekçe, §6.1).
+- Kimlik anahtarı **şube + telefon + ad**. Yalnız telefon YETMEZ: aynı
+  numarayı paylaşan anne ve baba iki ayrı kişidir.
+- Aynı veli birden çok çocuğa bağlanabilir; kardeş kaydında ikinci bir veli
+  açılmaz. Velinin adını bir çocuğun formundan düzeltmek diğerinde de düzeltir.
+- Telefonu olmayan veli eşleştirilemez; her biri kendi kaydıdır.
+
+### 17.2 Hizmet kataloğu (Faz 1)
+
+Randevuda seçilebilecek hizmetler. Sabit liste değil, panelden yönetilir.
+
+| Alan | Not |
+|---|---|
+| Ad, grup | Grup: zekâ testi / danışmanlık / atölye görüşmesi |
+| Süre (dk) | Randevunun bitiş saati bundan hesaplanır |
+| Ücret | Kuruş cinsinden tamsayı; ücretsiz hizmet 0 |
+| Yaş aralığı | İsteğe bağlı; uyarı üretir, engellemez |
+| Danışan türü | Çocuk / veli — aile danışmanlığında danışan velinin kendisi |
+| Haftalık tekrar | Danışmanlıklar açık, zekâ testleri kapalı |
+
+Başlangıç kataloğu kurumun 2026 fiyat listesidir. **Fiyat değişikliği geçmişe
+işlemez** (§17.4). Hizmet SİLİNMEZ, pasife alınır: geçmiş randevular ona bağlı.
+
+### 17.3 Uzman (Faz 1)
+
+Seansı veren kişi. Panel kullanıcısı (`User`) DEĞİL, ayrı bir kayıt: uzmanların
+çoğu panele girmiyor ve bir uzman iki şubede birden çalışabiliyor (kullanıcı
+hesabı tek şubeye bağlıdır). Panele giren uzmanın hesabı isteğe bağlı olarak
+bağlanır.
+
+- **Renk**: takvimde ayrım için, sabit paletten. Renk tek başına yeterli
+  değildir; uzmanın adı her zaman renkle birlikte yazılır.
+- **Yetkinlik**: uygulayabildiği hizmetler. Randevu formu yalnız bu listeyi
+  gösterir ve sunucu da aynı listeye karşı doğrular.
+- **Mesai**: haftalık çalışma saatleri, ŞUBE BAŞINA ayrı.
+- **İzin**: başlangıç–bitiş aralığı (yarım gün olabilir). İzin bir seans
+  değildir; seans sayısı ve ciro raporlarına karışmaz.
+- Uzman SİLİNMEZ, pasife alınır: geçmiş randevuları ve cirosu ona bağlı.
+
+### 17.4 Randevu (Faz 2)
+
+Belirli bir uzmana, belirli bir hizmet için, belirli bir saatte açılan kayıt.
+Danışanı velidir; çocuk seçimi isteğe bağlıdır.
+
+- **Ücret randevuya KOPYALANIR.** Katalogdaki zam geçmiş randevuyu ve geçmiş
+  haftaların cirosunu değiştirmez. Randevu bazında elle indirim girilebilir.
+  Tahsilat takibi kapsam dışı.
+- **Çakışma, mesai dışı ve izin ENGELLENİR** (uyarı değil).
+- **Haftalık tekrar**: tekrarlı hizmetlerde seans bir sonraki haftaya aynı gün
+  ve saate eklenir. Zekâ testleri bu otomasyonun dışındadır.
+- **İptal edilen randevu silinmez**: takvimden düşer, ayrı bir listede
+  geçmişiyle görünür.
+- Randevu, ilgili görüşme veya zekâ testi kaydına isteğe bağlı olarak bağlanır;
+  o kayıtlar (§11, danışmanlık ve zekâ testleri) yerinde kalır.
+
+### 17.5 Raporlama (Faz 3)
+
+Seçilen hafta veya ay için uzman bazında seans adedi ve toplam ciro. Yalnız
+gerçekleşen randevular ciroya girer; iptal ve gelmedi ayrı gösterilir. Hizmet
+türü kırılımı ve dışa aktarım bulunur. Mevcut Excel raporlamasının yerini alır.
+
+### 17.6 Mesajlar (Faz 3)
+
+Hatırlatma ve anket mesajları, veli numarasına WhatsApp bağlantısı olarak
+hazırlanır; gönder tuşuna kullanıcı basar. Otomatik SMS/e-posta gönderimi
+kapsam dışıdır.
+
+### 17.7 Şube görünürlüğü
+
+Randevu takvimi ve uzman müsaitliği ŞUBELER ARASI görünür — uzmanlar iki
+şubede birden çalışabildiği için çakışma ancak böyle önlenir. Öğrenci ve veli
+kişisel verisi, sağlık bilgisi ve görüşme notları eskisi gibi şubeye kilitli
+kalır.
+
+### 17.8 Yetkiler
+
+`randevular` modülü: ADMIN, SUBE_YONETICISI, KOORDINATOR, ATOLYE_PSIKOLOGU ve
+DANISMA_GOREVLISI TAM; TEST_UYGULAYICISI ve STAJYER YOK. Ciro için ayrı bir
+yetki yoktur — modülü gören ücreti de görür.
+
+`uzmanlar` modülü (kadro + hizmet kataloğu): ADMIN ve SUBE_YONETICISI TAM;
+koordinatör, psikolog ve danışma masası GÖRÜNTÜLE. Kadro ve fiyat listesi
+`kullanicilar` ile aynı sınıfta bir yönetici işidir.

@@ -189,3 +189,46 @@ Karar gerekçeleri:
 - V1 kapsamı dışında: Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi,
   e-posta/SMS gönderimi, dönüşmeyen adayların otomatik temizliği (KVKK
   saklama süresi kurum kararı bekliyor).
+
+## Randevu yönetimi (§17)
+
+- **Veli birinci sınıf kayıt oldu.** Randevu veliye açılıyor; veli öğrencinin
+  altında bir satır kaldığı sürece aynı anne-baba her çocuğu için ayrı bir
+  satırdı (canlıda 857 satır, 750 telefon) ve randevu geçmişi çocuklar
+  arasında bölünürdü. Kimlik `Veli`ye taşındı, `Guardian` bağ tablosuna indi.
+- **Veli kimlik anahtarı telefon + AD.** Yalnız telefon denendi ve canlı
+  verinin kopyasında yanlış çıktı: beş numaranın ikisinde anne ile baba aynı
+  telefonu paylaşıyordu, birleştirme babanın adını siliyordu. Bedeli, aynı
+  kişinin iki farklı yazımının (Burhan/Burhanettin) ayrı kalması — kozmetik
+  bir mükerrer, silinen bir ad geri gelmez.
+- **Uzman `User` DEĞİL, ayrı tablo.** Uzmanların çoğu panele girmiyor
+  (hesap açmak gereksiz güvenlik yüzeyi) ve bir uzman iki şubede birden
+  çalışabiliyor — kullanıcı hesabı tek şubeye bağlı (veritabanı CHECK'i).
+  Panele giren uzman için `userId` doldurulur.
+- **Hizmet kataloğu enum değil tablo** (`IntelligenceTestType` deseni).
+  Kurumun hizmet adları kod sürümünden bağımsız değişiyor: "Ergoterapi" bir
+  dönem "Duyu Bütünleme Programı" olarak anılmaya başladı ve bu tek başına
+  bir migration'a değmez. Mevcut `TherapyType` enum'ı KALDIRILMADI — eski
+  görüşme kayıtları ona bağlı, ikisi `lib/terapi-turleri.ts` ile eşleşiyor.
+- **Para kuruş cinsinden `Int`.** `Float` ondalık tutarları tam temsil
+  etmiyor ve ciro toplamı kuruş kaydırıyor.
+- **Ücret randevuya kopyalanır.** Katalogdaki zam geçmiş haftaların cirosunu
+  değiştirmemeli; §13.17'nin "alınmış belge değişmez" ilkesinin para karşılığı.
+  Tahsilat takibi bilinçli olarak kapsam dışı — muhasebe sınırı.
+- **İzin sahte hizmet değil, kendi tablosu.** Eski CRM izni ₺0 / 0 dakikalık
+  bir hizmet satırı olarak tutuyordu; o modelde izin her seans ve ciro
+  raporunda ayrıca dışlanmayı gerektirir ve bir gün biri dışlamayı unuturdu.
+- **Çakışma ENGELLENİR, uyarılmaz.** Kayıt çakışmasından farkı: orada
+  koordinatör bilinçli olarak devam edebiliyor, burada aynı uzman aynı anda
+  iki yerde olamaz.
+- **Takvim şubeler arası görünür, kişisel veri değil.** Uzman iki şubede
+  çalışabildiği için çakışma ancak böyle önlenir; öğrenci/veri mahremiyeti
+  eskisi gibi şubeye kilitli.
+- **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
+  `uzmanlar` (kadro + fiyat listesi) ise `kullanicilar` ile aynı sınıfta bir
+  yönetici işi: Kurum ve Şube Yöneticisi TAM, diğerleri GÖRÜNTÜLE.
+- **Mesajlar WhatsApp bağlantısıyla**, otomatik gönderim yok: SMS servisi
+  abonelik, API kurulumu ve KVKK aydınlatması demek; mevcut `waBaglantisi`
+  deseni bugün çalışıyor.
+- **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
+  `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.

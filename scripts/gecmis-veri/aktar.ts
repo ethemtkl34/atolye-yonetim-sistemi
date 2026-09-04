@@ -24,6 +24,7 @@ import { join } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client";
 import type { TimeSlot } from "../../src/generated/prisma/enums";
+import { veliBagiIcIce } from "../../src/lib/veli";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -343,12 +344,15 @@ async function main() {
             "kapağından oluşturuldu. Veli bilgisi eksik."
           : `${AKTARIM_DAMGASI} (2025-2026 ve öncesi kütük).`,
         guardians: {
-          create: ogrenci.guardians.map((veli) => ({
-            type: veli.type,
-            fullName: veli.fullName,
-            phone: veli.phone,
-            searchPhone: veli.searchPhone,
-          })),
+          // Telefonu aynı olan veliler tek `Veli` kaydında birleşir (§17.1);
+          // kütükte kardeşler aynı anne telefonuyla geliyor.
+          create: ogrenci.guardians.map((veli) =>
+            veliBagiIcIce(sube, {
+              type: veli.type,
+              fullName: veli.fullName,
+              phone: veli.phone,
+            }),
+          ),
         },
       },
       select: { id: true },

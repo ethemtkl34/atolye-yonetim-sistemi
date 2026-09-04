@@ -1128,6 +1128,84 @@ Sistem taramasında çıkan ama kullanıcı kararıyla **açık bırakılan** ma
 
 ---
 
+## P20 — Randevu yönetimi, Faz 1 (tanımlar)
+
+Kurumun ikinci iş kolu (zekâ testleri + bireysel danışmanlık) panele giriyor.
+Tanımın tamamı `docs/PROJECT_SPEC.md` §17, kararlar `docs/DECISIONS.md`.
+Bu faz takvimi DEĞİL, takvimin ön koşullarını getiriyor.
+
+### Ne yapıldı
+
+| Parça | Yer |
+|---|---|
+| Veli birinci sınıf kayıt; `Guardian` bağ tablosuna indi | `prisma/schema.prisma`, `migrations/20260904120000_veli_birinci_sinif` |
+| Veli yazma/eşleştirme katmanı | `src/lib/veli.ts` |
+| Hizmet kataloğu, uzman, yetkinlik, mesai, izin | `migrations/20260904120100_randevu_tanimlari` |
+| Uzman renk paleti (+ test) | `src/lib/uzman-renkleri.ts` |
+| Şema, para/saat çevrimleri (+ test) | `src/app/koordinator/uzmanlar/sema.ts` |
+| Eylemler | `src/app/koordinator/uzmanlar/actions.ts` |
+| Ekranlar: kadro, mesai/izin, hizmet kataloğu | `src/app/koordinator/uzmanlar/**` |
+| Yetki / menü / sızıntı tarayıcısı | `yetkiler.ts`, `navigasyon.ts`, `sube-sizinti.ts` |
+| Katalog tohumu (11 hizmet + atölye görüşmesi) | `prisma/seed.ts` |
+
+### Veli göçü — canlı kopyada doğrulandı
+
+Migration, üretimin bir Neon dalı üzerinde koşturuldu (`neonctl branches
+create`), sonuçlar sayıldı, dal silindi:
+
+| Ölçüt | Sonuç |
+|---|---|
+| Guardian satırı | 857 → 857 (değişmedi) |
+| Veli kaydı | 798 = 755 telefonlu + 43 telefonsuz |
+| `veliId` boş guardian | 0 |
+| Sahipsiz veli | 0 |
+| Şubesi tutmayan bağ | 0 |
+| Anne+baba tek veliye çökmüş | 0 |
+| `searchName` ↔ `normalizeArama` uyuşmazlığı | 798 adın hepsinde 0 |
+
+**Anahtar seçimi bu doğrulamada değişti.** İlk sürüm yalnız telefona göre
+birleştiriyordu; kopya üzerinde koşturunca beş numaranın iki farklı ada bağlı
+olduğu, ikisinde de anne ile babanın aynı telefonu paylaştığı görüldü
+(Derya/Eyüp, Zeynep/İhsan) — birleştirme babanın adını siliyordu. Anahtar
+telefon + ada çevrildi.
+
+### Arayüzden uçtan uca denendi (yerel postgres + `next dev`)
+
+Tarayıcıdan gerçek kullanıcı gibi yürütüldü: uzman ekleme, mesai ekleme ve
+çakışma reddi, izin ekleme, hizmet düzenleme, öğrenci açma, kardeş kaydı,
+veli adı düzeltme, telefonla arama, koordinatör (salt görüntüleme) görünümü.
+Çıkan ve düzeltilen dört gerçek hata:
+
+1. **Hizmet formu hiç kaydedilmiyordu.** Süre alanı `min={1} step={5}`
+   taşıyordu; tarayıcı geçerli değerleri min'den sayıyor (1, 6, 11 … 116,
+   121), yani katalogdaki bütün süreler (30/60/90/120) geçersizdi. Doğrulama
+   balonu da görünmediği için düğme "ölü" görünüyordu. `min={5}` ile hizalandı.
+2. **Pencere düğmeleri katlamanın altında kalıyordu** (800×450 dizüstü).
+   Yapışkan eylem şeridi eklendi; düğmeler formun İÇİNDE tutuldu, çünkü
+   `useFormStatus` form dışında çalışmıyor ve çift gönderim kilidi kaybolurdu.
+3. **Düzenleme penceresi kaydedince kapanmıyordu** ve `defaultValue` yüzünden
+   ESKİ değeri göstermeye devam ediyordu — kullanıcı kaydettiğini anlamıyor,
+   ikinci kez kaydediyordu. İki pencere de kaydedince kapanıyor.
+4. **Zod dışındaki doğrulama hatalarında girilenler kayboluyordu**
+   (yaş aralığı, ad tekrarı, şube seçimi). `degerler` bu dallara da eklendi.
+
+### Sonraki fazlar
+
+- **Faz 2** — `Randevu` modeli, gün/hafta/ay takvimi, çakışma/mesai/izin
+  kontrolü (saf ve testli), haftalık tekrar, iptal arşivi.
+- **Faz 3** — uzman bazında ciro raporu, dashboard günlük kartı, CSV çıktısı,
+  WhatsApp hatırlatma/anket bağlantıları.
+
+### Açık maddeler
+
+1. Tekrar kaç hafta ileri üretilecek — tek sonraki randevu mu, n haftalık seri
+   mi? Seri olursa iptalde "yalnız bunu / bundan sonrakileri" ayrımı gerekir.
+2. "Ergoterapi" ile "Duyu Bütünleme Programı" aynı hizmet mi? İkisi de
+   katalogda duruyor; kurum gerekmeyeni panelden pasife alabilir.
+3. Geçmiş `CounselingSession` kayıtları randevuya geriye dönük bağlanmayacak.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

@@ -1,5 +1,6 @@
-import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
+import { normalizeArama } from "@/lib/turkce";
 import { tarihCozumle } from "@/lib/tarih";
+import type { VeliGirdisi } from "@/lib/veli";
 import type { OgrenciGirdisi } from "./sema";
 
 /**
@@ -41,23 +42,22 @@ export function saglikAlanlari(veri: OgrenciGirdisi) {
   };
 }
 
-/** Girilen ebeveynleri satır listesine çevirir; boş bırakılan ebeveyn yazılmaz. */
-export function veliSatirlari(veri: OgrenciGirdisi) {
-  const veliler: {
-    type: "ANNE" | "BABA";
-    fullName: string;
-    phone: string | null;
-    searchPhone: string | null;
-  }[] = [];
+/**
+ * Girilen ebeveynleri veli girdisi listesine çevirir; boş bırakılan ebeveyn
+ * yazılmaz.
+ *
+ * Eskiden doğrudan `Guardian` satırı üretiyordu (ad + telefon o satırdaydı).
+ * Veli birinci sınıf kayda dönünce (§17.1) burası yalnız FORMDAN OKUNANI
+ * taşıyor; normalize etme ve eşleştirme `lib/veli.ts` içinde.
+ */
+export function veliGirdileri(veri: OgrenciGirdisi): VeliGirdisi[] {
+  const veliler: VeliGirdisi[] = [];
 
   if (veri.anneAdi) {
     veliler.push({
       type: "ANNE",
       fullName: veri.anneAdi,
       phone: veri.anneTelefon,
-      searchPhone: veri.anneTelefon
-        ? normalizeTelefon(veri.anneTelefon)
-        : null,
     });
   }
 
@@ -66,9 +66,6 @@ export function veliSatirlari(veri: OgrenciGirdisi) {
       type: "BABA",
       fullName: veri.babaAdi,
       phone: veri.babaTelefon,
-      searchPhone: veri.babaTelefon
-        ? normalizeTelefon(veri.babaTelefon)
-        : null,
     });
   }
 

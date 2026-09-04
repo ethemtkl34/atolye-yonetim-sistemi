@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { veliBaglariniYaz } from "@/lib/veli";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { tarihCozumle } from "@/lib/tarih";
@@ -53,7 +54,7 @@ function basvuruAlanlari(veri: DanisanGirdisi) {
 }
 
 /** Girilen ebeveynleri satır listesine çevirir (öğrenci formundaki desen). */
-function veliSatirlari(veri: DanisanGirdisi) {
+function veliGirdileri(veri: DanisanGirdisi) {
   const veliler: {
     type: "ANNE" | "BABA";
     fullName: string;
@@ -151,25 +152,35 @@ export async function danisanBasvurusuKaydet(
     };
   }
 
-  const ogrenci = await db.student.create({
-    data: {
-      firstName: veri.firstName ?? "",
-      lastName: veri.lastName ?? "",
-      birthDate: veri.birthDate ? tarihCozumle(veri.birthDate) : null,
-      school: veri.school,
-      grade: veri.grade,
-      searchName: normalizeArama(`${veri.firstName} ${veri.lastName}`),
-      // şube-muaf: öğrenci oturumdaki şubeye açılıyor.
-      branchId: subeId,
-      guardians: { create: veliSatirlari(veri) },
-      ...(ilacGirildi
-        ? { healthInfo: { create: { medications: veri.ilac } } }
-        : {}),
-      therapyIntake: {
-        create: { ...basvuruAlanlari(veri), createdByUserId: kullanici.id },
+  // Öğrenci, başvuru ve veli bağları tek işlemde (bkz. lib/veli.ts).
+  const ogrenci = await db.$transaction(async (tx) => {
+    const kayit = await tx.student.create({
+      data: {
+        firstName: veri.firstName ?? "",
+        lastName: veri.lastName ?? "",
+        birthDate: veri.birthDate ? tarihCozumle(veri.birthDate) : null,
+        school: veri.school,
+        grade: veri.grade,
+        searchName: normalizeArama(`${veri.firstName} ${veri.lastName}`),
+        // şube-muaf: öğrenci oturumdaki şubeye açılıyor.
+        branchId: subeId,
+        ...(ilacGirildi
+          ? { healthInfo: { create: { medications: veri.ilac } } }
+          : {}),
+        therapyIntake: {
+          create: { ...basvuruAlanlari(veri), createdByUserId: kullanici.id },
+        },
       },
-    },
-    select: { id: true },
+      select: { id: true },
+    });
+
+    await veliBaglariniYaz(tx, {
+      subeId,
+      ogrenciId: kayit.id,
+      girdiler: veliGirdileri(veri),
+    });
+
+    return kayit;
   });
 
   tazele(ogrenci.id);

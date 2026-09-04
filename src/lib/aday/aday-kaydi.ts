@@ -112,16 +112,29 @@ export async function adayYaz(args: AdayYazArgs): Promise<AdayYazSonucu> {
           })
         : null;
 
+      // Telefon artık `Veli` kaydında (§17.1). Aramanın çıktısı yine bir
+      // ÖĞRENCİ: mükerrer kararı "bu telefonun zaten kayıtlı bir çocuğu var
+      // mı" sorusunu soruyor. Veli birden fazla çocuk taşıyabildiği için ilki
+      // alınıyor — uyarı metni tek isim gösteriyor, hangisi olduğu kararı
+      // değiştirmiyor.
       const veli = searchPhone
-        ? await tx.guardian.findFirst({
-            where: { searchPhone, student: { branchId: args.subeId } },
+        ? await tx.veli.findFirst({
+            where: { searchPhone, branchId: args.subeId },
             select: {
-              student: {
-                select: { id: true, firstName: true, lastName: true },
+              guardians: {
+                take: 1,
+                orderBy: { studentId: "asc" },
+                select: {
+                  student: {
+                    select: { id: true, firstName: true, lastName: true },
+                  },
+                },
               },
             },
           })
         : null;
+
+      const veliOgrencisi = veli?.guardians[0]?.student ?? null;
 
       const karar = mukerrerKarari({
         kanal: args.kanal,
@@ -135,10 +148,10 @@ export async function adayYaz(args: AdayYazArgs): Promise<AdayYazSonucu> {
                 (simdi.getTime() - acikAday.createdAt.getTime()) / 60_000,
             }
           : null,
-        veliEslesmesi: veli
+        veliEslesmesi: veliOgrencisi
           ? {
-              ogrenciId: veli.student.id,
-              ogrenciAdi: `${veli.student.firstName} ${veli.student.lastName}`,
+              ogrenciId: veliOgrencisi.id,
+              ogrenciAdi: `${veliOgrencisi.firstName} ${veliOgrencisi.lastName}`,
             }
           : null,
       });

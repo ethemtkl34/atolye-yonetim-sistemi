@@ -26,6 +26,7 @@ import { hash } from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { normalizeArama, normalizeTelefon } from "../src/lib/turkce";
+import { veliBagiIcIce } from "../src/lib/veli";
 import {
   donemOturumlariniUret,
   kulupOturumlariniUret,
@@ -806,22 +807,20 @@ async function subeVerisiUret(
             create: [
               ...(tanim.anne
                 ? [
-                    {
-                      type: "ANNE" as const,
+                    veliBagiIcIce(set.subeId, {
+                      type: "ANNE",
                       fullName: tanim.anne.ad,
                       phone: tanim.anne.tel,
-                      searchPhone: normalizeTelefon(tanim.anne.tel),
-                    },
+                    }),
                   ]
                 : []),
               ...(tanim.baba
                 ? [
-                    {
-                      type: "BABA" as const,
+                    veliBagiIcIce(set.subeId, {
+                      type: "BABA",
                       fullName: tanim.baba.ad,
                       phone: tanim.baba.tel,
-                      searchPhone: normalizeTelefon(tanim.baba.tel),
-                    },
+                    }),
                   ]
                 : []),
             ],

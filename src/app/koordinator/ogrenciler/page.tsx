@@ -205,9 +205,9 @@ export default async function OgrencilerSayfasi(
                 ) : null}
 
                 <p className="mt-1 text-xs text-zinc-500">
-                  {anne ? `Anne: ${anne.fullName}${anne.phone ? ` (${anne.phone})` : ""}` : null}
+                  {anne ? `Anne: ${anne.veli.fullName}${anne.veli.phone ? ` (${anne.veli.phone})` : ""}` : null}
                   {anne && baba ? " · " : null}
-                  {baba ? `Baba: ${baba.fullName}${baba.phone ? ` (${baba.phone})` : ""}` : null}
+                  {baba ? `Baba: ${baba.veli.fullName}${baba.veli.phone ? ` (${baba.veli.phone})` : ""}` : null}
                 </p>
 
                 <p className="mt-1 text-xs text-zinc-500">

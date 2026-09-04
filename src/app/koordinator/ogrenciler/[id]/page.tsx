@@ -113,7 +113,8 @@ export default async function OgrenciProfilSayfasi(
   const ogrenci = await db.student.findFirst({
     where: { id, branchId: subeId },
     include: {
-      guardians: true,
+      // Ad ve telefon `Veli` kaydında (§17.1); `Guardian` yalnızca bağ.
+      guardians: { include: { veli: true } },
       healthInfo: true,
       enrollments: {
         orderBy: { createdAt: "desc" },
@@ -494,8 +495,8 @@ export default async function OgrenciProfilSayfasi(
             </span>
           ) : null}
           {[
-            { etiket: "Anne", veli: anne },
-            { etiket: "Baba", veli: baba },
+            { etiket: "Anne", veli: anne?.veli },
+            { etiket: "Baba", veli: baba?.veli },
           ].map(({ etiket, veli }) =>
             veli ? (
               <span
@@ -726,8 +727,8 @@ export default async function OgrenciProfilSayfasi(
               <Bilgi etiket="Sınıf" deger={ogrenci.grade} />
             </dl>
             <dl className="grid gap-3 sm:grid-cols-2">
-              <VeliHucresi etiket="Anne" veli={anne} />
-              <VeliHucresi etiket="Baba" veli={baba} />
+              <VeliHucresi etiket="Anne" veli={anne?.veli} />
+              <VeliHucresi etiket="Baba" veli={baba?.veli} />
             </dl>
             {ogrenci.notes ? (
               <div>

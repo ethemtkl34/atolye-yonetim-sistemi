@@ -47,6 +47,9 @@ const SUBEYE_AIT = new Set([
   // şubeyi payload'dan çözüp SORGUNUN İÇİNE literal yazar — muafiyet yok.
   "lead",
   "leadActivity",
+  // §17.1 — Veli şube sınırının beşinci doğrudan tablosu: kendi `branchId`
+  // sütununu taşıyor (öğrenciyle aynı gerekçe, §6.1).
+  "veli",
 ]);
 
 /**
@@ -69,6 +72,22 @@ export const SUBEDEN_BAGIMSIZ = new Set([
   "clubWorkshop",
   "curriculumEntry",
   "intelligenceTestType",
+  // §17 — Randevu tanımları.
+  //
+  // `hizmet` fiyat listesidir ve kurumun tamamı için tektir.
+  //
+  // `uzman` ve altındakiler şubesiz DEĞİL, ÇOK ŞUBELİ: bir uzman iki şubede
+  // birden çalışabiliyor, dolayısıyla tek bir `branchId` sütunu taşıyamıyor.
+  // Şube bağı `UzmanSube` üzerinden kurulur ve ekranlar uzmanı o tablodan
+  // süzer. Tarayıcının aradığı "her sorguda görünür şube süzgeci" kuralı
+  // burada anlamlı bir şey söylemezdi; kural yerine ekranların kendisi
+  // `subeler: { some: { subeId } }` koşulunu taşır.
+  "hizmet",
+  "uzman",
+  "uzmanSube",
+  "uzmanHizmet",
+  "uzmanMesai",
+  "izin",
 ]);
 
 /**
@@ -93,7 +112,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads)\s*:/;
+  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads|veliler)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

@@ -22,7 +22,8 @@ export default async function OgrenciDuzenleSayfasi(
   const ogrenci = await db.student.findFirst({
     where: { id, branchId: kullanici.aktifSubeId },
     include: {
-      guardians: true,
+      // Ad ve telefon `Veli` kaydında (§17.1); form onları oradan doldurur.
+      guardians: { include: { veli: true } },
       healthInfo: true,
       // Silme engelinin sebebi arayüzde de görünsün diye: puanlaması, raporu
       // veya görüşme kaydı olan öğrenci silinemez (bkz. `ogrenciSil`).
@@ -87,10 +88,10 @@ export default async function OgrenciDuzenleSayfasi(
           school: ogrenci.school ?? undefined,
           grade: ogrenci.grade ?? undefined,
           notes: ogrenci.notes ?? undefined,
-          anneAdi: anne?.fullName,
-          anneTelefon: anne?.phone ?? undefined,
-          babaAdi: baba?.fullName,
-          babaTelefon: baba?.phone ?? undefined,
+          anneAdi: anne?.veli.fullName,
+          anneTelefon: anne?.veli.phone ?? undefined,
+          babaAdi: baba?.veli.fullName,
+          babaTelefon: baba?.veli.phone ?? undefined,
           alerji: saglik?.allergies ?? undefined,
           ilac: saglik?.medications ?? undefined,
           ozelEgitim: saglik?.specialEducation ?? undefined,

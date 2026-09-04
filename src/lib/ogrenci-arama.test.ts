@@ -57,7 +57,8 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
     const kosul = ogrenciAramaKosulu("0532 111 22 33", { subeId: SUBE });
     expect(kosul.OR).toHaveLength(2);
     expect(kosul.OR?.[1]).toEqual({
-      guardians: { some: { searchPhone: { contains: "5321112233" } } },
+      // Telefon `Veli` kaydında (§17.1); arama bağ tablosu üzerinden iniyor.
+      guardians: { some: { veli: { searchPhone: { contains: "5321112233" } } } },
     });
   });
 
@@ -65,7 +66,7 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
     // Koordinatör çoğu zaman son dört haneyi yazıyor.
     const kosul = ogrenciAramaKosulu("1122", { subeId: SUBE });
     expect(kosul.OR?.[1]).toEqual({
-      guardians: { some: { searchPhone: { contains: "1122" } } },
+      guardians: { some: { veli: { searchPhone: { contains: "1122" } } } },
     });
   });
 

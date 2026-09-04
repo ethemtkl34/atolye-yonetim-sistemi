@@ -25,6 +25,8 @@ export const MODULLER = [
   "mufredat",
   "ogrenciler",
   "adaylar",
+  "randevular",
+  "uzmanlar",
   "kayitlar",
   "stajyerler",
   "danismanlik",
@@ -75,6 +77,10 @@ const KOORDINATOR_SATIRI: Record<Modul, Seviye> = {
   mufredat: "TAM",
   ogrenciler: "TAM",
   adaylar: "TAM",
+  randevular: "TAM",
+  /// Uzman kadrosu ve fiyat listesi yönetici işi; koordinatör görür,
+  /// düzenlemez (kullanicilar satırıyla aynı ayrım).
+  uzmanlar: "GORUNTULE",
   kayitlar: "TAM",
   stajyerler: "TAM",
   danismanlik: "TAM",
@@ -100,7 +106,11 @@ export const YETKI_MATRISI: Record<Role, Record<Modul, Seviye>> = {
    * "ne yapabilir" sorusunun cevabı burada, "kimin üzerinde" sorusununki
    * kapsam fonksiyonunda.
    */
-  SUBE_YONETICISI: { ...KOORDINATOR_SATIRI, kullanicilar: "TAM" },
+  SUBE_YONETICISI: {
+    ...KOORDINATOR_SATIRI,
+    kullanicilar: "TAM",
+    uzmanlar: "TAM",
+  },
 
   /** Atölye Koordinatörü. */
   KOORDINATOR: KOORDINATOR_SATIRI,
@@ -131,6 +141,11 @@ export const YETKI_MATRISI: Record<Role, Record<Modul, Seviye>> = {
     ogrenciler: "TAM",
     adaylar: "TAM",
     kayitlar: "TAM",
+    /// Randevu bu masanın asıl işi: telefonun başındaki kişi randevu açar,
+    /// erteler, iptal eder. Ciro rakamları için ayrı bir yetki YOK — modülü
+    /// gören ücreti de görür (§17 kararı).
+    randevular: "TAM",
+    uzmanlar: "GORUNTULE",
     donemler: "GORUNTULE",
     kulupler: "GORUNTULE",
     gruplar: "GORUNTULE",

@@ -56,13 +56,18 @@ describe("YETKI_MATRISI değişmezleri", () => {
     expect(YETKI_MATRISI.DANISMA_GOREVLISI.kullanicilar).toBe("YOK");
   });
 
-  it("şube yöneticisi koordinatörden yalnızca kullanıcı yönetimiyle ayrılır", () => {
-    // Rolün gerekçesi bu tek satır. Başka bir modülde ayrışıyorsa bu bilinçli
-    // bir ürün kararı olmalı, sessiz bir düzenleme kazası değil.
+  it("şube yöneticisi koordinatörden yalnızca KADRO yönetimiyle ayrılır", () => {
+    // Rolün gerekçesi bu iki satır: şubenin başındaki kişi kendi kadrosunu
+    // yönetici beklemeden açıp kapatabilsin diye. `kullanicilar` panel
+    // hesapları, `uzmanlar` seansı veren kadro ve fiyat listesi — ikisi de
+    // aynı sınıf iş. Başka bir modülde ayrışıyorsa bu bilinçli bir ürün
+    // kararı olmalı, sessiz bir düzenleme kazası değil.
+    const KADRO_MODULLERI = new Set(["kullanicilar", "uzmanlar"]);
     for (const modul of MODULLER) {
-      expect(YETKI_MATRISI.SUBE_YONETICISI[modul]).toBe(
-        modul === "kullanicilar" ? "TAM" : YETKI_MATRISI.KOORDINATOR[modul],
-      );
+      expect([modul, YETKI_MATRISI.SUBE_YONETICISI[modul]]).toEqual([
+        modul,
+        KADRO_MODULLERI.has(modul) ? "TAM" : YETKI_MATRISI.KOORDINATOR[modul],
+      ]);
     }
   });
 
