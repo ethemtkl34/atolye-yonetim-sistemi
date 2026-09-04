@@ -250,6 +250,46 @@ export function yasYil(dogum: Date, referans: Date): number {
 }
 
 /** Bugünün UTC gece yarısına sabitlenmiş hali — karşılaştırmalar için. */
+/**
+ * Saat bilgisi taşıyan alanların okunması — randevu ve aday randevusu.
+ *
+ * SAAT SÖZLEŞMESİ: bu alanlar DUVAR SAATİ olarak, UTC sütununda saklanıyor
+ * (14:00'lık randevu 14:00 UTC yazılır ve 14:00 okunur). Gerçek saat dilimi
+ * dönüşümü yapılsaydı yaz saati değişiminde geçmiş kayıtlar bir saat kayardı
+ * ve sunucunun bulunduğu yere göre farklı okunurdu.
+ *
+ * Bu fonksiyon `adaylar/[id]/page.tsx` içinde yerel bir yardımcıydı; randevu
+ * modülü aynı sözleşmeye ihtiyaç duyunca buraya alındı. İki yerde iki farklı
+ * saat yorumu, bu kod tabanında yapılabilecek en pahalı hatalardan biri.
+ */
+export function saatMetni(tarih: Date): string {
+  const saat = String(tarih.getUTCHours()).padStart(2, "0");
+  const dakika = String(tarih.getUTCMinutes()).padStart(2, "0");
+  return `${saat}:${dakika}`;
+}
+
+/** "18 Ekim 2026 14:30" */
+export function zamanMetni(tarih: Date): string {
+  return `${tarihBicimle(tarih)} ${saatMetni(tarih)}`;
+}
+
+/** "14:30–15:30" — takvimdeki randevu satırı. */
+export function saatAraligiMetni(baslangic: Date, bitis: Date): string {
+  return `${saatMetni(baslangic)}–${saatMetni(bitis)}`;
+}
+
+/** Ayın ilk gününe sabitler (UTC). */
+export function ayBasi(tarih: Date): Date {
+  return new Date(
+    Date.UTC(tarih.getUTCFullYear(), tarih.getUTCMonth(), 1),
+  );
+}
+
+/** "Eylül 2026" */
+export function ayMetni(tarih: Date): string {
+  return `${AYLAR[tarih.getUTCMonth()]} ${tarih.getUTCFullYear()}`;
+}
+
 export function bugun(): Date {
   const simdi = new Date();
   return new Date(

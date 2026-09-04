@@ -200,6 +200,7 @@ model Branch {
   veliler  Veli[]
   uzmanlar UzmanSube[]
   uzmanMesailer UzmanMesai[]
+  randevular Randevu[]
 
   @@index([active, sortOrder])
 }
@@ -259,6 +260,8 @@ model User {
   /// Panele giren uzmanın hesabı — çoğu uzmanda boş (bkz. Uzman şerhi).
   uzmanProfili                 Uzman?                  @relation("UzmanHesabi")
   addedIzinler                 Izin[]                  @relation("IzniEkleyen")
+  addedRandevular              Randevu[]               @relation("RandevuyuEkleyen")
+  cancelledRandevular          Randevu[]               @relation("RandevuyuIptalEden")
 
   // Eski `role` indeksleri sütunla birlikte temizlik migration'ında düşecek.
   @@index([role, active])
@@ -633,6 +636,7 @@ model Student {
   parentReferrals    ParentMeetingReferral[]
   intelligenceTests  IntelligenceTest[]
   legacyReports      LegacyReport[]
+  randevular         Randevu[]
   /// Bu öğrenci bir adaydan dönüştüyse kaynağı — profildeki "aday geçmişi"
   /// kutusu ve kaynak raporu buradan okur.
   sourceLead         Lead?
@@ -676,7 +680,8 @@ model Veli {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guardians Guardian[]
+  guardians  Guardian[]
+  randevular Randevu[]
 
   /// Kimlik anahtarı: şube + telefon + normalize ad.
   ///
@@ -1773,7 +1778,8 @@ model Hizmet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  uzmanlar UzmanHizmet[]
+  uzmanlar   UzmanHizmet[]
+  randevular Randevu[]
 
   @@index([aktif, sortOrder])
 }
@@ -1817,10 +1823,11 @@ model Uzman {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  subeler  UzmanSube[]
-  hizmetler UzmanHizmet[]
-  mesailer UzmanMesai[]
-  izinler  Izin[]
+  subeler    UzmanSube[]
+  hizmetler  UzmanHizmet[]
+  mesailer   UzmanMesai[]
+  izinler    Izin[]
+  randevular Randevu[]
 
   @@index([aktif, sortOrder])
 }
@@ -1898,4 +1905,93 @@ model Izin {
   createdAt       DateTime @default(now())
 
   @@index([uzmanId, baslangic])
+}
+
+/// §17.4 — Randevunun durumu.
+///
+/// `PLANLANDI` başlangıç. `GERCEKLESTI` ciroya giren tek durum.
+/// `GELMEDI` seans olmadı ama takvimde yer tuttu — ayrı sayılır ki
+/// "kaç randevu boşa gitti" sorusu cevaplanabilsin. `IPTAL` takvimden düşer
+/// ama SİLİNMEZ.
+enum RandevuDurumu {
+  PLANLANDI
+  GERCEKLESTI
+  GELMEDI
+  IPTAL
+}
+
+/// §17.4 — Randevu: belirli bir uzmana, belirli bir hizmet için, belirli bir
+/// saatte açılan kayıt.
+///
+/// Danışan VELİDİR; çocuk seçimi isteğe bağlı (§17.1). Aile danışmanlığında
+/// zaten veli seansa giriyor, oyun terapisinde çocuk giriyor ama arayan,
+/// ödeyen ve hatırlatma mesajını alan yine veli.
+///
+/// SAAT SÖZLEŞMESİ: `baslangic` ve `bitis` DUVAR SAATİDİR ve UTC olarak
+/// saklanır — 14:00'lık bir randevu 14:00 UTC yazılır ve 14:00 okunur.
+/// Panelin `Lead.appointmentAt` ile kurduğu sözleşmenin aynısı; `lib/tarih.ts`
+/// baştan sona UTC üzerinden çalışıyor. Gerçek saat dilimi dönüşümü yapılsaydı
+/// yaz saati değişiminde geçmiş randevular bir saat kayardı.
+model Randevu {
+  id String @id @default(cuid())
+
+  /// Randevu ŞUBEYE aittir: seansın hangi binada verildiği ciro raporunun
+  /// kırılımı. Uzman iki şubede çalışabildiği için uzmandan türetilemez.
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  /// Restrict: randevusu olan uzman ve hizmet SİLİNEMEZ (bkz. actions.ts
+  /// `uzmanSil` / `hizmetSil`). Kısıt veritabanında olduğu için kimsenin
+  /// uygulama tarafında yeni bir kontrol yazmayı hatırlaması gerekmiyor.
+  uzmanId String
+  uzman   Uzman  @relation(fields: [uzmanId], references: [id], onDelete: Restrict)
+
+  hizmetId String
+  hizmet   Hizmet @relation(fields: [hizmetId], references: [id], onDelete: Restrict)
+
+  veliId String
+  veli   Veli   @relation(fields: [veliId], references: [id], onDelete: Restrict)
+
+  /// Seansa giren çocuk. Aile danışmanlığında boş kalır.
+  ogrenciId String?
+  ogrenci   Student? @relation(fields: [ogrenciId], references: [id], onDelete: Restrict)
+
+  baslangic DateTime
+  /// `baslangic + hizmet.sureDk` — kayda DONAR. Hizmetin süresi sonradan
+  /// değişse geçmiş randevunun bittiği saat kaymaz.
+  bitis     DateTime
+
+  durum RandevuDurumu @default(PLANLANDI)
+
+  /// Katalogdaki ücretin AÇILIŞ ANINDAKİ kopyası, kuruş cinsinden.
+  /// Zam geçmiş haftaların cirosunu değiştirmemeli (§17.4).
+  ucretKurus Int
+  /// Randevuya özel indirim (kardeş indirimi, kurum kararı). Ciro
+  /// `ucretKurus - indirimKurus` üzerinden hesaplanır.
+  indirimKurus Int     @default(0)
+  indirimNotu  String?
+
+  /// Haftalık tekrar zinciri. Aynı seriden üretilen randevular bu kimliği
+  /// paylaşır; "bundan sonrakileri iptal et" bu alandan çalışıyor.
+  seriId String?
+
+  iptalNotu       String?
+  iptalEdenUserId String?
+  iptalEden       User?     @relation("RandevuyuIptalEden", fields: [iptalEdenUserId], references: [id], onDelete: SetNull)
+  iptalAt         DateTime?
+
+  not String?
+
+  createdByUserId String?
+  createdBy       User?    @relation("RandevuyuEkleyen", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  /// Takvimin ana yolu: şube + gün aralığı.
+  @@index([branchId, baslangic])
+  /// Çakışma kontrolü ve uzmanın günü.
+  @@index([uzmanId, baslangic])
+  /// Velinin randevu geçmişi — profil ve hatırlatma listesi.
+  @@index([veliId, baslangic])
+  @@index([seriId])
 }

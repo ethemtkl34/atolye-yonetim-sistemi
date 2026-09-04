@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
-  gunEkle,
-  gunundenGun,
+  ayBasi,
+  ayMetni,
   grupTarihi,
   grupZamani,
+  gunEkle,
+  gunundenGun,
   haftaBasi,
   haftaBicimle,
+  saatAraligiMetni,
+  saatMetni,
   tarihBicimle,
   tarihCozumle,
   tarihGunleBicimle,
   tarihMetni,
   yasBicimle,
   yasYil,
+  zamanMetni,
 } from "./tarih";
 
 describe("tarihCozumle", () => {
@@ -211,5 +216,40 @@ describe("yasYil", () => {
 
   it("bir yaşından küçükte sıfır döner", () => {
     expect(yil("2026-04-05", "2026-08-11")).toBe(0);
+  });
+});
+
+describe("saat sözleşmesi", () => {
+  // Randevu ve aday randevusu DUVAR SAATİ olarak, UTC sütununda saklanıyor:
+  // 14:00'lık randevu 14:00 UTC yazılır ve 14:00 okunur. Aşağıdaki testler bu
+  // sözleşmeyi kilitliyor — iki yerde iki farklı saat yorumu, bu kod
+  // tabanında yapılabilecek en pahalı hatalardan biri.
+  const an = (metin: string) => new Date(`${metin}:00.000Z`);
+
+  it("saatMetni iki basamaklı yazar", () => {
+    expect(saatMetni(an("2026-10-18T09:05"))).toBe("09:05");
+    expect(saatMetni(an("2026-10-18T00:00"))).toBe("00:00");
+    expect(saatMetni(an("2026-10-18T23:59"))).toBe("23:59");
+  });
+
+  it("zamanMetni tarihi ve saati birlikte verir", () => {
+    expect(zamanMetni(an("2026-10-18T14:30"))).toBe("18 Ekim 2026 14:30");
+  });
+
+  it("saat aralığı seans satırının biçimi", () => {
+    expect(
+      saatAraligiMetni(an("2026-10-18T14:30"), an("2026-10-18T16:00")),
+    ).toBe("14:30–16:00");
+  });
+
+  it("ayBasi ayın ilk gününe sabitler", () => {
+    expect(ayBasi(an("2026-09-23T18:45")).toISOString()).toBe(
+      "2026-09-01T00:00:00.000Z",
+    );
+  });
+
+  it("ayMetni Türkçe ay adını verir", () => {
+    expect(ayMetni(an("2026-09-23T00:00"))).toBe("Eylül 2026");
+    expect(ayMetni(an("2027-01-01T00:00"))).toBe("Ocak 2027");
   });
 });

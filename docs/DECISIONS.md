@@ -235,5 +235,15 @@ Karar gerekçeleri:
   mı" kontrolü elle sayılan bir listeyle değil YABANCI ANAHTAR KISITIYLA
   yapılıyor: randevu tablosu geldiğinde veritabanı silmeyi kendiliğinden
   reddedecek ve kimsenin yeni bir kontrol yazmayı hatırlaması gerekmeyecek.
+- **Haftalık tekrar hafta sayısı seçilen bir SERİ** (varsayılan 8, en fazla
+  26), tek "bir sonraki" değil: tek randevuyu her hafta yeniden tetikleyecek
+  bir zamanlayıcı yok. Hafta sayısı 1 seçilirse belgenin harfi harfine
+  istediği davranış çıkıyor. Serinin bir tarihi engelliyse tamamı reddedilir —
+  kısmi seri sessizce eksik bir program üretirdi.
+- **Randevu engel sırası: izin → mesai → çakışma.** Uzman o gün hiç
+  gelmiyorsa "o saat dolu" demek kullanıcıyı başka saat denemeye iterdi.
+- **Takvim ızgara değil liste.** Belge de "listelenir" diyor; seanslar
+  30–120 dakika arasında ve günde en fazla bir düzine — ızgara aynı bilgiyi
+  telefonda kullanılamaz hâlde gösterirdi.
 - **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
   `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.

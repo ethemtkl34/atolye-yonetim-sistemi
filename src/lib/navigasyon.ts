@@ -160,7 +160,7 @@ export const KOORDINATOR_MENUSU: readonly MenuOgesi[] = [
     etiket: "Randevular",
     yol: "/koordinator/randevular",
     modul: "randevular",
-    hazir: false,
+    hazir: true,
     paket: "P19",
     bolum: "Randevu",
     simge: "takvim",

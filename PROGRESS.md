@@ -1207,6 +1207,63 @@ veli adı düzeltme, telefonla arama, koordinatör (salt görüntüleme) görün
 
 ---
 
+## P21 — Randevu yönetimi, Faz 2 (takvim)
+
+Randevunun kendisi geldi: model, takvim, çakışma/mesai/izin kontrolü, haftalık
+tekrar ve iptal arşivi. Tanım `docs/PROJECT_SPEC.md` §17.4.
+
+### Ne yapıldı
+
+| Parça | Yer |
+|---|---|
+| `Randevu` modeli + `RandevuDurumu` + 4 CHECK | `prisma/schema.prisma`, `migrations/20260904160000_randevu` |
+| Çakışma / mesai / izin kararı (saf, testli) | `src/lib/randevu/cakisma.ts` |
+| Haftalık tekrar ve iptal kapsamı (saf, testli) | `src/lib/randevu/tekrar.ts` |
+| Takvim aralığı ve gün gruplaması (saf, testli) | `src/lib/randevu/takvim-verisi.ts` |
+| Saat sözleşmesi ortak yere alındı (+ test) | `src/lib/tarih.ts` (`saatMetni`, `zamanMetni`, `saatAraligiMetni`) |
+| Gün / hafta / ay takvimi, iptaller sekmesi | `src/app/koordinator/randevular/` |
+| Randevu formu, veli arama ve seçimi | `randevu-formu.tsx`, `veli-secici.tsx`, `veli-arama.ts` |
+
+Test sayısı 476 → **530**.
+
+### Kararlar
+
+- **Haftalık tekrar = HAFTA SAYISI SEÇİLEN SERİ**, tek "bir sonraki" değil.
+  Belge "bir sonraki hafta otomatik eklenmeli" diyor ama tek randevuyu her
+  hafta yeniden tetikleyecek bir zamanlayıcı yok; ufku belli bir seri aynı
+  faydayı veriyor, takvimde görünüyor (doluluk ancak böyle okunuyor) ve geri
+  alınabiliyor. Varsayılan 8, en fazla 26; **1 seçilirse belgenin harfi
+  harfine istediği davranış** çıkıyor.
+- **Serinin bir tarihi bile engelliyse tamamı reddediliyor.** Kısmi seri
+  sessizce eksik bir program üretirdi; hangi hafta ve neden engellendiği
+  mesajda yazılı.
+- **Görünüm ızgara değil, güne göre gruplanmış liste** — belge de
+  "listelenir" diyor. Seanslar 30–120 dakika arasında değişiyor ve günde en
+  fazla bir düzine oluyor; ızgara aynı bilgiyi telefonda kullanılamaz hâlde
+  gösterirdi. Randevusu olmayan günler de çiziliyor (ay görünümünde hariç).
+- **Engel sırası: izin → mesai → çakışma.** Uzman o gün hiç gelmiyorsa "o
+  saat dolu" demek kullanıcıyı başka saat denemeye iterdi.
+- **İptal edilen randevu saati BLOKE ETMEZ** ama silinmez; ayrı listede
+  geçmişiyle durur.
+- **Silme kontrolü yabancı anahtarda.** `Randevu`nun uzman/hizmet/veli/öğrenci
+  bağları RESTRICT: randevusu olan kaydı veritabanı sildirmez. `ogrenciSil`
+  buna anlaşılır bir mesaj ekledi; `uzmanSil` ve `hizmetSil` P2003'ü zaten
+  yakalıyordu.
+
+### Arayüzden uçtan uca denendi
+
+Randevu açma, çakışma reddi, bitişi mesai dışına taşan seansın reddi, mesaisiz
+günün reddi, izin gününün reddi (izin önce bildiriliyor), 4 haftalık seri
+üretimi, "bu ve sonrakiler" iptali (geçmişe dokunmuyor), iptal edilen saatin
+yeniden açılabilmesi, durum işaretleme. Hepsi veritabanından da doğrulandı.
+
+### Sırada
+
+**Faz 3** — uzman bazında haftalık/aylık ciro raporu, hizmet türü kırılımı,
+dashboard günlük kartı, CSV çıktısı, WhatsApp hatırlatma/anket bağlantıları.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

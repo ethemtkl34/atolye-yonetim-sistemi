@@ -222,6 +222,7 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
             counselingSessions: true,
             parentMeetings: true,
             intelligenceTests: true,
+            randevular: true,
           },
         },
         enrollments: { select: { _count: { select: { scores: true } } } },
@@ -270,6 +271,15 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       return {
         silindi: false,
         hata: `${ad} silinemez: ${ogrenci._count.intelligenceTests} zeka testi belgesi var ve bu geçmiş korunmalı.`,
+      };
+    }
+
+    // §17.4 — Randevu bağı şemada RESTRICT: bu kontrol yazılmasaydı silme,
+    // kullanıcıya hiçbir şey anlatmayan bir yabancı anahtar hatasıyla düşerdi.
+    if (ogrenci._count.randevular > 0) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${ogrenci._count.randevular} randevu kaydı var ve bu geçmiş korunmalı.`,
       };
     }
 

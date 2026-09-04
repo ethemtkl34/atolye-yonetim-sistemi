@@ -50,6 +50,12 @@ const SUBEYE_AIT = new Set([
   // §17.1 — Veli şube sınırının beşinci doğrudan tablosu: kendi `branchId`
   // sütununu taşıyor (öğrenciyle aynı gerekçe, §6.1).
   "veli",
+  // §17.4 — Randevu altıncısı: seansın hangi binada verildiği ciro
+  // raporunun kırılımı, uzmandan türetilemiyor (uzman çok şubeli).
+  //
+  // Takvim ekranı BİLEREK şubeler arası okuyor (§17.7) ve o sorgu gerekçeli
+  // bir `// şube-muaf` taşıyor; kişisel veri orada şubeye göre ayıklanıyor.
+  "randevu",
 ]);
 
 /**
@@ -112,7 +118,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads|veliler)\s*:/;
+  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads|veliler|randevular)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

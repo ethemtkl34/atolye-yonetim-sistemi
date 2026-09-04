@@ -21,7 +21,7 @@ import {
 } from "@/lib/aday-durumlari";
 import { adaySorumlulari } from "@/lib/aday/aday-listesi";
 import { db } from "@/lib/db";
-import { tarihBicimle, tarihMetni } from "@/lib/tarih";
+import { tarihBicimle, tarihMetni, zamanMetni } from "@/lib/tarih";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   adayiYenidenAc,
@@ -34,13 +34,6 @@ import { AdayTakipKarti } from "./takip-karti";
 export const metadata: Metadata = {
   title: "Aday",
 };
-
-/** Saat bilgisi taşıyan zaman damgası — etkinlik akışında kullanılır. */
-function zamanMetni(tarih: Date): string {
-  const saat = String(tarih.getUTCHours()).padStart(2, "0");
-  const dakika = String(tarih.getUTCMinutes()).padStart(2, "0");
-  return `${tarihBicimle(tarih)} ${saat}:${dakika}`;
-}
 
 /**
  * §16.6 — Aday ayrıntısı: danışmanın çalışma tezgâhı.
