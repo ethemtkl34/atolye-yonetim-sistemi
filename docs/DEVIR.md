@@ -1,4 +1,4 @@
-# Devir notu — 2 Ağustos 2026
+# Devir notu — 2 Ağustos 2026 (ek: 4 Eylül 2026)
 
 Uzun bir çalışma oturumunun sonunda yazıldı. Amacı, yeni bir sohbetin
 sıfırdan keşif yapmadan devam edebilmesi. Kararların gerekçeleri commit
@@ -325,3 +325,86 @@ Kullanıcı **revize istekleriyle devam edecek** — sıradaki iş onun söyleye
   `db:temizlik` → `db:seed` → programların arayüzden kurulması.
 - Stajyer puanlama akışının telefonda uçtan uca denenmesi (dokunma hedefleri
   ölçüldü, akışın kendisi mobilde baştan sona yürütülmedi).
+
+---
+
+# Ek — 4 Eylül 2026
+
+Bu tarihte iki iş turu yapıldı ve ikisi de canlıya alındı. Ayrıntı
+`PROGRESS.md` P19–P20'de, tanım `PROJECT_SPEC.md` §17'de, kararlar
+`DECISIONS.md`'de; burada yalnız **durum** ve **sırada ne var**.
+
+## Yapılanlar
+
+**Bakım turu** (`f9485e8`) — Next 16.2.12 → 16.3.4 (üretim uyarısı 9 → 4),
+veri katmanına ilk testler (376 → 446), öğrenci arama koşulunun saf bir
+fonksiyona ayrılması, `panel.tuzder.org` planından vazgeçilmesi.
+
+**Randevu Faz 1** (`b424a8b`, `2f30b32`, `0edf977`) — veli birinci sınıf kayıt
+oldu, `Guardian` bağ tablosuna indi; hizmet kataloğu, uzman kadrosu,
+yetkinlik, şube başına mesai ve izin geldi. Kurumun gerçek fiyatları (12
+hizmet) canlıya yazıldı.
+
+## Neyin nasıl doğrulandığı
+
+Veli göçü 857 gerçek satırı yeniden düzenlediği için önce **üretimin tam bir
+kopyasında** (Neon dalı) koşturuldu, sayıldı, dal silindi; aynı ölçütler
+dağıtımdan sonra canlıda tekrar sayıldı ve birebir tuttu:
+
+| Ölçüt | Sonuç |
+|---|---|
+| Guardian satırı | 857 → 857 |
+| Veli kaydı | 798 (755 telefonlu + 43 telefonsuz) |
+| Bağsız `veliId` / sahipsiz veli / şube uyuşmazlığı | 0 / 0 / 0 |
+| Anne + baba tek veliye çökmüş | 0 |
+| Öğrenci | 461 → 461 |
+| SQL ↔ `normalizeArama` farkı | 0 / 798 ad |
+
+**Kopyada bir veri kaybı yakalandı:** ilk sürüm velileri yalnız telefona göre
+birleştiriyordu; beş numaranın ikisinde anne ile baba aynı telefonu
+paylaşıyordu ve birleştirme babanın adını siliyordu. Anahtar telefon + ada
+çevrildi.
+
+## Tuzak — arayüzden denemeden gönderme
+
+Yeni ekranlar tarayıcıdan gerçek kullanıcı gibi yürütüldü ve **tip denetimi,
+476 test ve derlemenin yakalamadığı dört hata** çıktı:
+
+1. Süre alanının `min=1` / `step=5` uyumsuzluğu yüzünden hizmet formu HİÇ
+   kaydedilmiyordu (tarayıcı geçerli değerleri min'den sayıyor: 1, 6, 11 …
+   116, 121 — katalogdaki 30/60/90/120 geçersizdi) ve doğrulama balonu da
+   görünmediği için düğme ölü görünüyordu.
+2. Pencere düğmeleri katlamanın altında kalıyordu.
+3. Düzenleme penceresi kaydedince kapanmıyor, eski değeri göstermeye devam
+   ediyordu.
+4. Zod dışı doğrulama hatalarında girilenler kayboluyordu.
+
+Ders eskisiyle aynı ([[arayuzu-yerelde-deneme-tarifi]] ile aynı yön): yeni bir
+ekran canlıya gitmeden önce yerel postgres + `next dev` ile bir tur tıklanmalı.
+
+## Sıradaki iş
+
+**Faz 2 — randevu takvimi.** `Randevu` modeli; ücret randevuya kopyalanıyor
+(zam geçmiş ciroyu değiştirmiyor); gün/hafta/ay görünümü; uzman, hizmet ve
+danışan süzgeçleri; çakışma, mesai dışı ve izin ENGELLENİYOR (karar mantığı
+saf ve testli bir modülde, `lib/kayit-kurallari.ts` deseni); danışmanlıklarda
+haftalık tekrar; iptal edilen randevu silinmiyor, ayrı listede duruyor.
+
+**Faz 3 — ciro raporu ve mesajlar.** Uzman bazında haftalık/aylık seans adedi
+ve ciro (bugün Excel'de elle tutuluyor), hizmet türü kırılımı, dashboard
+günlük kartı, dışa aktarım, WhatsApp hatırlatma/anket bağlantıları.
+
+## Kullanıcı kararını bekleyenler
+
+1. **Haftalık tekrar ne kadar ileri üretilsin?** Faz 2'yi doğrudan etkiliyor:
+   tek sonraki randevu mu, n haftalık seri mi? Seri olursa iptalde "yalnız
+   bunu / bundan sonrakileri" ayrımı gerekir.
+2. **"Ergoterapi" ile "Duyu Bütünleme Programı" aynı hizmet mi?** İkisi de
+   katalogda; aynıysa biri panelden pasife alınabilir.
+3. **Geçmiş `CounselingSession` kayıtları randevuya bağlansın mı?**
+   Bağlanmayacak varsayılıyor.
+
+Bunların dışında kullanıcının **bilerek açık bıraktığı** maddeler var ve eksik
+sayılmamalı: `LEAD_API_TOKEN` (CRM ucu canlıda 503), yedi `@tuzder.local` demo
+hesabı, Sonbahar dönemindeki 60 sahipsiz müfredat girdisi, Neon ücretsiz
+planının 6 saatlik kurtarma penceresi, hata izleme aracının olmaması.
