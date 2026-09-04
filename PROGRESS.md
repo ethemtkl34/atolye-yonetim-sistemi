@@ -1264,6 +1264,52 @@ dashboard günlük kartı, CSV çıktısı, WhatsApp hatırlatma/anket bağlant�
 
 ---
 
+## P22 — Randevu yönetimi, Faz 3 (ciro raporu ve mesajlar)
+
+Modülün son fazı. Kurumun Excel'de elle tuttuğu haftalık tablo panele geçti.
+
+### Ne yapıldı
+
+| Parça | Yer |
+|---|---|
+| Ciro hesabı ve CSV üretimi (saf, testli) | `src/lib/randevu/ciro.ts` |
+| Hatırlatma ve anket metinleri (saf, testli) | `src/lib/randevu/mesaj.ts` |
+| Rapor aralığı ve sorgu katmanı | `src/lib/randevu/rapor-verisi.ts` |
+| Rapor ekranı (uzman tablosu + hizmet kırılımı) | `src/app/koordinator/randevular/rapor/` |
+| Excel (CSV) çıktısı | `src/app/api/randevu-raporu/route.ts` |
+| Şubeye bağlı belge kapısı | `src/lib/yetki-kapisi.ts` (`belgeSubesi`) |
+| Dashboard "bugünkü randevu" kartı | `lib/dashboard-verisi.ts`, `koordinator/page.tsx` |
+| Takvimde hatırlatma / anket düğmeleri | `randevular/takvim.tsx` |
+
+Test sayısı 530 → **563**.
+
+### Belgedeki tablo testin sabit verisi
+
+`ciro.test.ts` kurumun 17–23 Ağustos 2026 haftasını (9 uzman, 46 seans,
+₺177.930) olduğu gibi taşıyor ve hem rakamları hem SIRAYI doğruluyor. Rapor bu
+tablonun yerine geçtiği için sıra da birebir olmak zorunda — seans sayısı,
+eşitse ciro; iki tablo yan yana konduğunda karşılaştırılabilmeli.
+
+### Arayüzden çıkan hata
+
+**Yönetici rapor ekranını görüyor ama yanındaki "Excel'e aktar" düğmesi hata
+veriyordu.** Belge rotaları `belgeYetkisi` kullanıyor ve o, yöneticide
+"bütün şubeler" anlamına gelen `null` döndürüyor; rapor ise şubeye kilitli.
+Ekranın gördüğü şube (üst şeritteki seçim) ile rotanınki farklıydı. Yeni
+`belgeSubesi` kapısı ÜZERİNDE ÇALIŞILAN şubeyi veriyor ve asla null değil.
+
+CSV'nin BOM'u tarayıcıdan bayt bayt doğrulandı (`EF BB BF`): BOM'suz UTF-8
+dosyayı Excel Windows-1254 sanıyor ve "Büşra" bozuk açılıyor.
+
+### Randevu modülü tamamlandı
+
+Faz 1 (tanımlar) · Faz 2 (takvim) · Faz 3 (rapor ve mesajlar) — üçü de canlıda.
+Kalan iki açık madde kurumun kararını bekliyor: "Ergoterapi" ile "Duyu
+Bütünleme Programı" aynı hizmet mi, ve dönüşmeyen aday/randevu verisi için
+KVKK saklama süresi.
+
+---
+
 ## Geliştirme komutları
 
 ```bash

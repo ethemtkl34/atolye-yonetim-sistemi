@@ -982,17 +982,39 @@ Danışanı velidir; çocuk seçimi isteğe bağlıdır.
 - Randevu, ilgili görüşme veya zekâ testi kaydına isteğe bağlı olarak bağlanır;
   o kayıtlar (§11, danışmanlık ve zekâ testleri) yerinde kalır.
 
-### 17.5 Raporlama (Faz 3)
+### 17.5 Raporlama
 
-Seçilen hafta veya ay için uzman bazında seans adedi ve toplam ciro. Yalnız
-gerçekleşen randevular ciroya girer; iptal ve gelmedi ayrı gösterilir. Hizmet
-türü kırılımı ve dışa aktarım bulunur. Mevcut Excel raporlamasının yerini alır.
+Seçilen hafta veya ay için uzman bazında seans adedi ve toplam ciro; mevcut
+Excel raporlamasının yerine geçer. Ek veri girişi gerekmez — her seans zaten
+uzman, hizmet, tarih ve ücretle kayıtlıdır.
 
-### 17.6 Mesajlar (Faz 3)
+- **Yalnız GERÇEKLEŞEN seans ciroya girer.** `Planlandı` henüz olmamış bir
+  seanstır; `Gelmedi` takvimde yer tuttu ama olmadı; `İptal` hiç olmamış
+  sayılır. Üçü de AYRI sayılır ki "kaç randevu boşa gitti" cevaplanabilsin.
+- Ciro `ücret − indirim`: indirim gerçekten alınmayan paradır.
+- **Satır sırası: seans sayısı, eşitse ciro** — kurumun Excel tablosundaki
+  sıranın aynısı, iki tablo yan yana konduğunda karşılaştırılabilsin diye.
+- Hizmet türü kırılımı bulunur; iptaller kırılıma hiç girmez.
+- **Rapor ŞUBEYE KİLİTLİ** (takvimden farklı olarak): ciro, seansın hangi
+  binada verildiğinin karşılığıdır. Yönetici üst şeritten şube değiştirir.
+- **Excel çıktısı** CSV olarak alınır (PDF değil: kurum rakamları kendi
+  tablosuna taşıyıp üzerine hesap ekliyor).
+- Dashboard'da **bugünkü randevu** kartı: gün içindeki seans sayısı ve
+  kaçının tamamlandığı.
+
+### 17.6 Mesajlar
 
 Hatırlatma ve anket mesajları, veli numarasına WhatsApp bağlantısı olarak
-hazırlanır; gönder tuşuna kullanıcı basar. Otomatik SMS/e-posta gönderimi
+hazırlanır; gönder tuşuna KULLANICI basar. Otomatik SMS/e-posta gönderimi
 kapsam dışıdır.
+
+- **Hatırlatma** planlı randevuda çıkar; gün adı ve saat birlikte yazılır
+  ("18 Ekim 2026, Pazar günü saat 14:30").
+- **Anket** yalnız gerçekleşmiş seansta çıkar. Kurumun anket adresi sistemde
+  tanımlı olmadığı için metne uydurma bir bağlantı KONMAZ; kullanıcı kendi
+  bağlantısını WhatsApp penceresinde ekler.
+- Veli numarası eksikse düğme HİÇ çizilmez — çalışmayan düğme, olmayan
+  düğmeden kötüdür.
 
 ### 17.7 Şube görünürlüğü
 

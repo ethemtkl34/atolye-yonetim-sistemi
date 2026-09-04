@@ -265,6 +265,52 @@ export async function belgeYetkisi(
 }
 
 /**
+ * Belge veren API rotalarının ŞUBEYE BAĞLI olanları için kapı.
+ *
+ * `belgeYetkisi`den farkı, döndürdüğü şubenin anlamı:
+ *   - `belgeYetkisi` "SÜZGEÇ" veriyor ve yöneticide `null` — yani bütün
+ *     şubeler. Bir öğrencinin PDF'ini indirirken doğrusu bu: yönetici hangi
+ *     şubenin öğrencisi olduğuna bakmadan belgeye ulaşabilmeli.
+ *   - Bu fonksiyon "ÜZERİNDE ÇALIŞILAN ŞUBE"yi veriyor ve asla null değil:
+ *     üst şeritten seçilen şube (yöneticide çerez, diğerlerinde kendi şubesi).
+ *
+ * Ciro raporu ikincisine ihtiyaç duyuyor: rapor şubeye kilitli (§17.5) ve
+ * "bütün şubeler" diye bir çıktısı yok. `belgeYetkisi` kullanıldığında ekran
+ * yöneticide çalışıp yanındaki dışa aktarma düğmesi hata veriyordu — ekranın
+ * gördüğü şube ile rotanınki farklıydı.
+ */
+export async function belgeSubesi(
+  modul: Modul,
+  gereken: Seviye = "GORUNTULE",
+): Promise<{ subeId: string; subeAdi: string } | Response> {
+  const erisimYok = () =>
+    new Response("Bu belgeye erişim yetkiniz yok.", { status: 403 });
+
+  const oturum = await auth();
+  if (!oturum?.user?.id) return erisimYok();
+
+  const kullanici = await kullaniciyiOku(oturum.user.id);
+  if (!kullanici?.active || !yetkiYeter(kullanici.roles, modul, gereken)) {
+    return erisimYok();
+  }
+
+  const subeler = await subeleriOku();
+  const yonetici = kullanici.roles.includes("ADMIN");
+  const cerez = yonetici ? await secilenSubeCerezi() : undefined;
+  const aktifSubeId = aktifSubeyiCoz(
+    yonetici,
+    kullanici.branchId,
+    cerez,
+    subeler,
+  );
+
+  const sube = subeler.find((aday) => aday.id === aktifSubeId);
+  if (!sube) return erisimYok();
+
+  return { subeId: sube.id, subeAdi: sube.name };
+}
+
+/**
  * Yalnızca Kurum Yöneticisi. Şubeler üstü işler için — şube bağlamı
  * döndürmüyor çünkü bu rolün kendi şubesi yok.
  */

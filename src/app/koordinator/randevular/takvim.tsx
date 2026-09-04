@@ -10,6 +10,11 @@ import {
   butonStili,
 } from "@/components/ui";
 import { saatAraligiMetni, tarihGunleBicimle } from "@/lib/tarih";
+import {
+  anketMetni,
+  hatirlatmaMetni,
+  whatsappMesajBaglantisi,
+} from "@/lib/randevu/mesaj";
 import { uzmanRengi } from "@/lib/uzman-renkleri";
 import { cn } from "@/lib/utils";
 import type { EylemDurumu } from "@/lib/formlar";
@@ -55,6 +60,7 @@ export function Takvim({
   gruplar,
   iptalleriGoster,
   yazabilir,
+  kurumAdi,
   toplam,
   geriYolu,
   ileriYolu,
@@ -66,6 +72,8 @@ export function Takvim({
   gruplar: GunGrubu[];
   iptalleriGoster: boolean;
   yazabilir: boolean;
+  /** Mesaj metinlerinin imzası (§17.6). */
+  kurumAdi: string;
   toplam: number;
   geriYolu: string;
   ileriYolu: string;
@@ -132,6 +140,7 @@ export function Takvim({
                   key={randevu.id}
                   randevu={randevu}
                   yazabilir={yazabilir}
+                  kurumAdi={kurumAdi}
                   bekliyor={bekliyor}
                   onDurum={(durum) =>
                     basla(async () =>
@@ -165,18 +174,51 @@ export function Takvim({
 function RandevuKarti({
   randevu,
   yazabilir,
+  kurumAdi,
   bekliyor,
   onDurum,
   onIptal,
 }: {
   randevu: RandevuSatiri;
   yazabilir: boolean;
+  kurumAdi: string;
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
 }) {
   const ton = uzmanRengi(randevu.uzmanRengi);
   const iptalEdilmis = randevu.durum === "IPTAL";
+
+  /**
+   * §17.6 — Hatırlatma ve anket bağlantıları.
+   *
+   * Otomatik gönderim yok: bağlantı WhatsApp'ı hazır metinle açıyor, gönder
+   * tuşuna kullanıcı basıyor. Numara tam değilse bağlantı `null` dönüyor ve
+   * düğme HİÇ çizilmiyor — çalışmayan düğme, olmayan düğmeden kötüdür.
+   *
+   * Hatırlatma PLANLI randevuda, anket GERÇEKLEŞEN seansta anlamlı; ikisi
+   * aynı anda çıkmıyor.
+   */
+  const mesajBilgisi = randevu.veliAdi
+    ? {
+        kurumAdi,
+        veliAdi: randevu.veliAdi,
+        cocukAdi: randevu.ogrenciAdi,
+        hizmetAdi: randevu.hizmetAdi,
+        uzmanAdi: randevu.uzmanAdi,
+        baslangic: randevu.baslangic,
+      }
+    : null;
+
+  const hatirlatmaYolu =
+    mesajBilgisi && randevu.durum === "PLANLANDI"
+      ? whatsappMesajBaglantisi(randevu.veliTelefon, hatirlatmaMetni(mesajBilgisi))
+      : null;
+
+  const anketYolu =
+    mesajBilgisi && randevu.durum === "GERCEKLESTI"
+      ? whatsappMesajBaglantisi(randevu.veliTelefon, anketMetni(mesajBilgisi))
+      : null;
 
   return (
     <Kart
@@ -234,6 +276,26 @@ function RandevuKarti({
 
       {yazabilir && randevu.bizim && !iptalEdilmis ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {hatirlatmaYolu ? (
+            <a
+              href={hatirlatmaYolu}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={butonStili("sade")}
+            >
+              Hatırlat
+            </a>
+          ) : null}
+          {anketYolu ? (
+            <a
+              href={anketYolu}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={butonStili("sade")}
+            >
+              Anket
+            </a>
+          ) : null}
           {randevu.durum === "GERCEKLESTI" ? null : (
             <Buton
               type="button"

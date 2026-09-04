@@ -126,10 +126,19 @@ export function IsKarti({
 export function DurumOgesi({
   baslik,
   deger,
+  alt,
   yol,
 }: {
   baslik: string;
   deger: number;
+  /**
+   * Sayının altındaki kırılım satırı ("3 tamamlandı · 2 bekliyor").
+   *
+   * Tek başına bir sayı "bugün 5 randevu var" der ama gün ortasında asıl
+   * merak edilen kaçının bittiği; kırılım olmadan kart yöneticiyi yine
+   * takvime tıklamaya gönderiyordu.
+   */
+  alt?: string;
   /** Verilmezse hücre tıklanamaz olur — açılacak bir liste yoksa. */
   yol?: string;
 }) {
@@ -139,6 +148,11 @@ export function DurumOgesi({
       <span className="mt-0.5 block text-xl font-semibold tabular-nums text-marka-800">
         {deger}
       </span>
+      {alt ? (
+        <span className="mt-0.5 block text-[11px] leading-tight text-zinc-500">
+          {alt}
+        </span>
+      ) : null}
     </>
   );
 

@@ -39,11 +39,13 @@ export async function dashboardVerisi({
   puanlamaGorebilir,
   raporGorebilir,
   adayGorebilir,
+  randevuGorebilir,
 }: {
   subeId: string;
   puanlamaGorebilir: boolean;
   raporGorebilir: boolean;
   adayGorebilir: boolean;
+  randevuGorebilir: boolean;
 }) {
   const bugunkuTarih = bugun();
 
@@ -61,6 +63,7 @@ export async function dashboardVerisi({
     gecikmisAdaySayisi,
     dokunulmamisAdaySayisi,
     acikAdaySayisi,
+    bugunkuRandevular,
   ] = await Promise.all([
     db.term.count({ where: AKTIF_DONEM_KOSULU }),
     db.club.count({ where: AKTIF_KULUP_KOSULU }),
@@ -115,7 +118,42 @@ export async function dashboardVerisi({
       ? db.lead.count({ where: dokunulmamisAdayKosulu(subeId) })
       : 0,
     adayGorebilir ? db.lead.count({ where: acikAdayKosulu(subeId) }) : 0,
+    /**
+     * §17.5 — "Gün içinde eklenen seans ve test sayısı günlük rapor olarak
+     * yöneticinin ekranına otomatik yansır."
+     *
+     * Belge "eklenen" diyor ama sayılan şey BUGÜNE AÇILMIŞ randevular, kaydı
+     * bugün girilenler değil: yöneticinin bilmek istediği "bugün ne yapılıyor",
+     * "bugün kim veri girdi" değil. Durumlara göre bölünüyor ki gün ortasında
+     * kaçının tamamlandığı da okunabilsin.
+     */
+    randevuGorebilir
+      ? db.randevu.groupBy({
+          by: ["durum"],
+          where: {
+            branchId: subeId,
+            baslangic: { gte: bugunkuTarih, lt: gunEkle(bugunkuTarih, 1) },
+          },
+          _count: { _all: true },
+        })
+      : [],
   ]);
+
+  /** Bugünkü randevu kartının sayıları. */
+  const bugunkuSayi = (durum: string) =>
+    bugunkuRandevular.find((satir) => satir.durum === durum)?._count._all ?? 0;
+
+  const bugunkuRandevu = {
+    toplam: bugunkuRandevular.reduce(
+      (toplam, satir) =>
+        satir.durum === "IPTAL" ? toplam : toplam + satir._count._all,
+      0,
+    ),
+    planlanan: bugunkuSayi("PLANLANDI"),
+    gerceklesen: bugunkuSayi("GERCEKLESTI"),
+    gelmeyen: bugunkuSayi("GELMEDI"),
+    iptal: bugunkuSayi("IPTAL"),
+  };
 
   const dolanGruplar = aktifGruplar.filter(
     (grup) => kontenjanDurumu(grup.capacity, grup._count.enrollments).dolu,
@@ -170,6 +208,7 @@ export async function dashboardVerisi({
     gecikmisAdaySayisi,
     dokunulmamisAdaySayisi,
     acikAdaySayisi,
+    bugunkuRandevu,
   };
 }
 

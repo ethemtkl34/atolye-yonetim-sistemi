@@ -3,7 +3,7 @@ import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { BosDurum, Kart, Rozet, SayfaBasligi, baglantiStili } from "@/components/ui";
 import { dashboardVerisi } from "@/lib/dashboard-verisi";
-import { grupZamani, tarihBicimle, tarihGunleBicimle } from "@/lib/tarih";
+import { bugun, grupZamani, tarihBicimle, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import { BolumBasligi, DurumOgesi, IsKarti } from "./dashboard-kartlari";
 
 export const metadata: Metadata = {
@@ -39,6 +39,7 @@ export default async function KoordinatorDashboard() {
   const puanlamaGorebilir = kullanici.yetkiler.puanlamalar !== "YOK";
   const raporGorebilir = kullanici.yetkiler.raporlar !== "YOK";
   const adayGorebilir = kullanici.yetkiler.adaylar !== "YOK";
+  const randevuGorebilir = kullanici.yetkiler.randevular !== "YOK";
 
   const {
     aktifDonemSayisi,
@@ -59,11 +60,13 @@ export default async function KoordinatorDashboard() {
     gecikmisAdaySayisi,
     dokunulmamisAdaySayisi,
     acikAdaySayisi,
+    bugunkuRandevu,
   } = await dashboardVerisi({
     subeId: kullanici.aktifSubeId,
     puanlamaGorebilir,
     raporGorebilir,
     adayGorebilir,
+    randevuGorebilir,
   });
 
   return (
@@ -248,6 +251,25 @@ export default async function KoordinatorDashboard() {
             deger={aktifOgrenciSayisi}
             yol="/koordinator/ogrenciler?kapsam=aktif"
           />
+          {/* §17.5 — "Gün içinde eklenen seans ve test sayısı günlük rapor
+              olarak yöneticinin ekranına otomatik yansır." Sayı bugüne AÇILMIŞ
+              randevular; alt satır gün ortasında kaçının tamamlandığını söyler.
+              Tıklanınca bugünün takvimi açılıyor. */}
+          {randevuGorebilir ? (
+            <DurumOgesi
+              baslik="Bugünkü randevu"
+              deger={bugunkuRandevu.toplam}
+              alt={
+                bugunkuRandevu.toplam === 0
+                  ? "Bugün seans yok."
+                  : `${bugunkuRandevu.gerceklesen} tamamlandı · ${bugunkuRandevu.planlanan} bekliyor` +
+                    (bugunkuRandevu.gelmeyen > 0
+                      ? ` · ${bugunkuRandevu.gelmeyen} gelmedi`
+                      : "")
+              }
+              yol={`/koordinator/randevular?gorunum=gun&tarih=${tarihMetni(bugun())}`}
+            />
+          ) : null}
           {/* Görev değil bağlam: huninin üst ucu ne kadar dolu. */}
           {adayGorebilir ? (
             <DurumOgesi

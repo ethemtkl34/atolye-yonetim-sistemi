@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { BosDurum, SayfaBasligi } from "@/components/ui";
+import Link from "next/link";
+import { BosDurum, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import {
   ayMetni,
@@ -17,6 +18,7 @@ import {
   takvimAraligi,
   takvimKaydir,
 } from "@/lib/randevu/takvim-verisi";
+import { KURUM_ADI } from "@/lib/kurallar";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
 import { Takvim, type RandevuSatiri } from "./takvim";
 import { RandevuFormuAcici } from "./randevu-formu";
@@ -196,7 +198,14 @@ export default async function RandevularSayfasi(
         baslik="Randevular"
         aciklama="Zekâ testleri ve danışmanlık seansları. Takvim iki şubeyi birlikte gösterir; danışan bilgisi yalnız kendi şubenizde açılır."
         aksiyon={
-          yazabilir ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/koordinator/randevular/rapor?kapsam=hafta&tarih=${tarihMetni(capa)}`}
+              className={butonStili("ikincil")}
+            >
+              Ciro raporu
+            </Link>
+            {yazabilir ? (
             <RandevuFormuAcici
               uzmanlar={uzmanlar.map((uzman) => ({
                 id: uzman.id,
@@ -208,7 +217,8 @@ export default async function RandevularSayfasi(
               hizmetler={hizmetler}
               varsayilanTarih={tarihMetni(capa)}
             />
-          ) : undefined
+            ) : null}
+          </div>
         }
       />
 
@@ -256,6 +266,7 @@ export default async function RandevularSayfasi(
         gruplar={gruplar}
         iptalleriGoster={iptalleriGoster}
         yazabilir={yazabilir}
+        kurumAdi={KURUM_ADI}
         toplam={toplamRandevu}
         geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
         ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
