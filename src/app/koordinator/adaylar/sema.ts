@@ -75,6 +75,19 @@ export const adaySemasi = z.object({
   interestedProgram: isteğeBagliMetin(200, "İlgilenilen program"),
   nextActionDate: isteğeBagliTarih("Geçerli bir tarih girin"),
   not: isteğeBagliMetin(2000, "Not"),
+  /**
+   * §16.11 — KVKK açık rızası.
+   *
+   * Kurumun aday verisini saklama dayanağı bu onay; kaydedilemezse dayanak
+   * da kayıtsız kalır. Web formu ve entegratör onayı payload'da gönderiyor
+   * (`POST /api/crm/aday`), telefonla arayan ve şubeye gelen veli için ise
+   * ONU ALAN KİŞİ işaretliyor.
+   *
+   * ZORUNLU DEĞİL: onay vermeyen bir veliyi kayıt dışı bırakmak, telefonu
+   * açan kişiyi kaydı hiç açmamaya iter ve aday kaybolur. Onaysız kayıt
+   * listede işaretli görünür.
+   */
+  kvkkOnay: z.preprocess((deger) => deger === "on" || deger === true, z.boolean()),
 });
 
 /**
@@ -97,6 +110,7 @@ export const ADAY_FORM_ALANLARI = [
   "interestedProgram",
   "nextActionDate",
   "not",
+  "kvkkOnay",
 ] as const;
 
 export function adayFormundanOku(formVerisi: FormData): Record<string, unknown> {

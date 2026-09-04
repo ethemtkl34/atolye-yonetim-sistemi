@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { LeadStage } from "@/generated/prisma/enums";
 import { ACIK_ASAMALAR, ADAY_ASAMA_GECISLERI } from "@/lib/aday-durumlari";
 import { adayYaz } from "@/lib/aday/aday-kaydi";
@@ -84,6 +85,9 @@ export async function adayEkle(
         ? tarihCozumle(veri.nextActionDate)
         : null,
     },
+    // KVKK açık rızası — saklama dayanağı (§16.11). Elle girişte onu alan
+    // kişi işaretliyor; `adayYaz` `consentAt` damgasını kendisi basıyor.
+    kvkkConsent: veri.kvkkOnay,
     createdByUserId: kullanici.id,
     // Elle açan kişi adayın sorumlusudur: telefonu o açtı, takibi o yürütür.
     // Kurum Yöneticisi istisna — şubesiz olduğu için şubenin sorumlu
@@ -124,9 +128,24 @@ export async function adayGuncelle(
 
   const veri = cozumlenen.data;
 
+  /**
+   * §16.11 — Onay damgası yalnız ONAY YOKKEN VERİLİRSE basılıyor.
+   *
+   * Her düzenlemede tazelenseydi "veli ne zaman rıza verdi" sorusu son
+   * düzenleme tarihine dönerdi; onay geri çekilirse damga da siliniyor.
+   */
+  const mevcut = await db.lead.findFirst({
+    where: { id: adayId, branchId: kullanici.aktifSubeId },
+    select: { kvkkConsent: true, consentAt: true },
+  });
+
   const sonuc = await db.lead.updateMany({
     where: { id: adayId, branchId: kullanici.aktifSubeId },
     data: {
+      kvkkConsent: veri.kvkkOnay,
+      consentAt: veri.kvkkOnay
+        ? (mevcut?.kvkkConsent ? mevcut.consentAt : new Date())
+        : null,
       parentName: veri.parentName,
       childName: veri.childName,
       childAge: veri.childAge,
@@ -542,4 +561,62 @@ export async function sorumluAta(
 
   adayYollariniTazele(adayId);
   return { basari: "Sorumlu güncellendi." };
+}
+
+/**
+ * §16.11 — Adayı KALICI olarak siler (KVKK silme talebi).
+ *
+ * Kurumun aday verisini saklama dayanağı velinin açık rızası; rıza geri
+ * çekildiğinde kaydın gitmesi gerekiyor. Bu yüzden aday, panelin başka hiçbir
+ * yerinde olmayan bir şeye sahip: gerçek silme. Kayıp sebebiyle kapatmak
+ * (`KAYBEDILDI`) veriyi saklamaya devam eder ve silme talebini karşılamaz.
+ *
+ * ÖĞRENCİYE DÖNÜŞMÜŞ ADAY SİLİNMEZ. O verinin dayanağı artık rıza değil,
+ * kurulan hizmet ilişkisi; kaydın kendisi de öğrenci profilinde duruyor.
+ * Silme talebi gelirse öğrenci kaydı üzerinden yürütülmeli — mesaj bunu
+ * söylüyor, sessizce reddetmiyor.
+ *
+ * Etkinlik satırları şemadaki Cascade ile birlikte düşüyor: aday silinince
+ * onun görüşme geçmişinin ayakta kalmasının bir anlamı yok.
+ */
+export async function adaySil(adayId: string): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("adaylar", "TAM");
+
+  const aday = await db.lead.findFirst({
+    where: { id: adayId, branchId: kullanici.aktifSubeId },
+    select: {
+      parentName: true,
+      convertedStudentId: true,
+      _count: { select: { activities: true } },
+    },
+  });
+
+  if (!aday) return { hata: "Aday bulunamadı." };
+
+  const ad = aday.parentName ?? "Aday";
+
+  if (aday.convertedStudentId) {
+    return {
+      hata:
+        `${ad} silinemez: bu aday öğrenciye dönüştü ve verisinin dayanağı ` +
+        `artık kurulan hizmet ilişkisi. Silme talebi öğrenci kaydı üzerinden ` +
+        `yürütülmeli.`,
+    };
+  }
+
+  await db.lead.deleteMany({
+    where: { id: adayId, branchId: kullanici.aktifSubeId },
+  });
+
+  revalidatePath("/koordinator/adaylar");
+  revalidatePath("/koordinator");
+
+  /**
+   * LİSTEYE YÖNLENDİR (`ogrenciSil` deseni). Eylem burada bir mesajla
+   * dönseydi kullanıcı silinen kaydın sayfasında kalırdı ve o sayfa artık
+   * 404 — silmeyi yapan kişiye hata ekranı göstermek olurdu.
+   */
+  redirect(
+    `/koordinator/adaylar?silinen=${encodeURIComponent(ad)}&etkinlik=${aday._count.activities}`,
+  );
 }

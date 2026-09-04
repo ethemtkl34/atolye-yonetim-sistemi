@@ -8,6 +8,7 @@ import {
   Girdi,
   Kart,
   Rozet,
+  Bildirim,
   SayfaBasligi,
   baglantiStili,
   butonStili,
@@ -48,6 +49,12 @@ export default async function AdaylarSayfasi(
   const yazabilir = kullanici.yetkiler.adaylar === "TAM";
 
   const parametreler = await props.searchParams;
+
+  /** §16.11 — KVKK silme talebinden dönen onay mesajı. */
+  const silinen =
+    typeof parametreler.silinen === "string" ? parametreler.silinen : "";
+  const silinenEtkinlik =
+    typeof parametreler.etkinlik === "string" ? parametreler.etkinlik : "0";
   const sorgu = typeof parametreler.q === "string" ? parametreler.q : "";
   const kapsam = adayKapsamiCoz(parametreler.kapsam);
   const asama =
@@ -112,6 +119,13 @@ export default async function AdaylarSayfasi(
 
   return (
     <div className="space-y-6">
+      {silinen ? (
+        <Bildirim tur="basari">
+          {silinen} ve {silinenEtkinlik} etkinlik kaydı kalıcı olarak silindi
+          (KVKK silme talebi).
+        </Bildirim>
+      ) : null}
+
       <SayfaBasligi
         baslik="Adaylar"
         aciklama="Reklamdan, web sitesinden ve telefondan gelen veli başvuruları burada aranır ve takip edilir."
@@ -287,6 +301,11 @@ export default async function AdaylarSayfasi(
                       {aday.ingestStatus !== "TAMAM" ? (
                         <Rozet tur="uyari">Eksik bilgi</Rozet>
                       ) : null}
+                      {/* §16.11 — Saklama dayanağı rıza; olmayan kayıt
+                          listede de işaretli. */}
+                      {aday.kvkkConsent ? null : (
+                        <Rozet tur="uyari">KVKK yok</Rozet>
+                      )}
                     </div>
 
                     {meta.length > 0 ? (

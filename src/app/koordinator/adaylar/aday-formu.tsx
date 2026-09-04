@@ -35,6 +35,8 @@ export type AdayVarsayilanlari = {
   source?: string;
   interestedProgram?: string;
   nextActionDate?: string;
+  /** KVKK açık rızası — düzenlemede mevcut kaydın hâli. */
+  kvkkOnay?: boolean;
 };
 
 function AdayAlanlari({
@@ -56,7 +58,12 @@ function AdayAlanlari({
   yeniKayit: boolean;
 }) {
   const h = durum.alanHatalari;
-  const deger = (alan: keyof AdayVarsayilanlari) =>
+  /**
+   * Metin alanlarının varsayılanı. Onay kutusu (`kvkkOnay`) BİLEREK dışarıda:
+   * boolean bir değer `defaultValue`ya verilemez ve tipi de bunu engelliyor.
+   */
+  type MetinAlani = Exclude<keyof AdayVarsayilanlari, "kvkkOnay">;
+  const deger = (alan: MetinAlani) =>
     durum.degerler?.[alan] ?? varsayilanlar[alan];
 
   return (
@@ -162,6 +169,29 @@ function AdayAlanlari({
           />
         </Alan>
       ) : null}
+
+      {/* §16.11 — KVKK açık rızası. Kurumun aday verisini saklama dayanağı
+          bu onay; web formu ve entegratör kendi payload'unda gönderiyor,
+          telefonla arayan veli için ONU ALAN KİŞİ işaretliyor.
+
+          Zorunlu değil: onay vermeyeni kayıt dışı bırakmak, telefonu açan
+          kişiyi kaydı hiç açmamaya iter ve aday kaybolur. Onaysız kayıt
+          listede işaretli görünür. */}
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="kvkkOnay"
+          defaultChecked={varsayilanlar.kvkkOnay ?? false}
+          className="mt-0.5 size-4"
+        />
+        <span>
+          KVKK aydınlatma metni okundu, veli açık rıza verdi
+          <span className="block text-xs text-zinc-500">
+            Verinin saklanma dayanağı budur. Veli sonradan rızasını geri
+            çekerse kayıt silinmelidir.
+          </span>
+        </span>
+      </label>
     </>
   );
 }

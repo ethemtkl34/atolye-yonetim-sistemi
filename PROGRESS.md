@@ -1306,9 +1306,13 @@ dosyayı Excel Windows-1254 sanıyor ve "Büşra" bozuk açılıyor.
 
 Faz 1 (tanımlar) · Faz 2 (takvim) · Faz 3 (rapor ve mesajlar) — üçü de canlıda.
 Ergoterapi ile Duyu Bütünleme Programı'nın AYRI hizmetler olduğu kurum
-tarafından teyit edildi; ikisi de katalogda aktif duruyor. Kalan tek açık
-madde dönüşmeyen aday/randevu verisi için KVKK saklama süresi — kod işi
-değil, kurum kararı.
+tarafından teyit edildi; ikisi de katalogda aktif duruyor.
+
+**KVKK saklama süresi de karara bağlandı** (4 Eylül 2026): dayanak velinin
+açık rızası, rıza durdukça süre sınırı yok. Karar sistemde karşılık bulsun
+diye üç şey eklendi — elle girişte onay kutusu, onaysız kaydın işaretlenmesi
+ve rıza geri çekilince kalıcı silme (bkz. `PROJECT_SPEC.md` §16.11).
+Açık madde kalmadı.
 
 ---
 

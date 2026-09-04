@@ -29,6 +29,7 @@ import {
   ulasilamadiKaydet,
 } from "../actions";
 import { AdayDuzenleDugmesi } from "../aday-formu";
+import { AdaySilButonu } from "./aday-sil-butonu";
 import { AdayTakipKarti } from "./takip-karti";
 
 export const metadata: Metadata = {
@@ -126,6 +127,7 @@ export default async function AdayAyrintiSayfasi(
                 childAge: aday.childAge?.toString() ?? "",
                 email: aday.email ?? "",
                 interestedProgram: aday.interestedProgram ?? "",
+                kvkkOnay: aday.kvkkConsent,
               }}
             />
           ) : null
@@ -136,6 +138,16 @@ export default async function AdayAyrintiSayfasi(
             {aday.ingestStatus !== "TAMAM" ? (
               <Rozet tur="uyari">Eksik bilgi</Rozet>
             ) : null}
+            {/* §16.11 — Saklama dayanağı rıza; olmayan kayıt işaretli
+                görünmeli, sessizce sınırsız saklanmamalı. */}
+            {aday.kvkkConsent ? (
+              <Rozet tur="olumlu">
+                KVKK onaylı
+                {aday.consentAt ? ` · ${tarihBicimle(aday.consentAt)}` : ""}
+              </Rozet>
+            ) : (
+              <Rozet tur="uyari">KVKK onayı yok</Rozet>
+            )}
           </span>
         }
       />
@@ -260,6 +272,20 @@ export default async function AdayAyrintiSayfasi(
           zaman: zamanMetni(etkinlik.createdAt),
         }))}
       />
+
+      {/* §16.11 — Saklama dayanağı velinin açık rızası; geri çekilirse
+          kaydın gitmesi gerekiyor. Sayfanın sonunda ve ayrı bölümde. */}
+      {yazabilir ? (
+        <AdaySilButonu
+          adayId={aday.id}
+          ad={aday.parentName ?? "Aday"}
+          engelSebebi={
+            aday.convertedStudentId
+              ? "Bu aday öğrenciye dönüştü; verisinin dayanağı artık kurulan hizmet ilişkisi. Silme talebi öğrenci kaydı üzerinden yürütülmeli."
+              : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 }

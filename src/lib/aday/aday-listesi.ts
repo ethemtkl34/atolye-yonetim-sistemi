@@ -115,6 +115,7 @@ export async function adayAra(suzgecler: AdaySuzgecleri) {
         source: true,
         sourceDetail: true,
         ingestStatus: true,
+        kvkkConsent: true,
         unreachableCount: true,
         nextActionDate: true,
         appointmentAt: true,

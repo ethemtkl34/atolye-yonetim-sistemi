@@ -249,5 +249,13 @@ Karar gerekçeleri:
   kurum teyit etti). İkisi de katalogda aktif. Ergoterapi'nin süresi ve
   ücreti fiyat listesinde yazmadığı için tohumda Duyu Bütünleme ile aynı
   değerlerle duruyor; farklıysa panelden düzeltilir.
+- **Aday verisinin saklama dayanağı velinin AÇIK RIZASI** ve rıza durdukça
+  süre sınırı yok (kurum kararı, 4 Eylül 2026). Kararın sistemde karşılığı
+  olması için üç şey eklendi: elle girişte onay kutusu (web formu ve
+  entegratör onayı zaten gönderiyordu), onaysız kaydın listede ve ayrıntıda
+  işaretlenmesi, ve rıza geri çekildiğinde kalıcı silme. Silme, aşamayı
+  "kaybedildi" yapmaktan farklı: ikincisi veriyi saklamaya devam eder.
+  Öğrenciye dönüşmüş aday silinmez — dayanağı artık rıza değil, hizmet
+  ilişkisi.
 - **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
   `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.

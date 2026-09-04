@@ -892,11 +892,31 @@ okunur.
 kullanıcısı Danışma Görevlisi'dir — aday verisi sağlık/görüşme mahremiyeti
 sınıfında değil, kayıt masası verisidir.
 
-### 16.11 Kapsam dışı (V1)
+### 16.11 KVKK ve saklama
 
-Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi, e-posta/SMS gönderimi,
-doğrudan Meta webhook'u, dönüşmeyen adaylar için otomatik saklama süresi
-temizliği.
+Kurum aday verisini **velinin açık rızasına** dayanarak saklıyor ve rıza
+durdukça saklama süresi sınırlı değil (kurum kararı, 4 Eylül 2026). Bunun
+sistemde üç karşılığı var:
+
+- **Onay her adayda kaydedilir.** Web formu ve entegratör onayı payload'da
+  gönderiyor; telefonla arayan veya şubeye gelen veli için ONU ALAN KİŞİ
+  formdaki kutuyu işaretliyor. Onay tarihi damgalanır ve sonraki
+  düzenlemelerde tazelenmez — "veli ne zaman rıza verdi" sorusunun cevabı
+  son düzenleme tarihine dönmemeli.
+- **Onay ZORUNLU DEĞİL.** Onay vermeyen veliyi kayıt dışı bırakmak, telefonu
+  açan kişiyi kaydı hiç açmamaya iter ve aday kaybolur. Onaysız kayıt hem
+  listede hem ayrıntı sayfasında işaretli görünür.
+- **Rıza geri çekilirse kayıt silinir.** Aşamayı "kaybedildi" yapmak veriyi
+  saklamaya devam eder ve silme talebini karşılamaz; aday ayrıntısındaki ayrı
+  bölüm adayı ve bütün görüşme geçmişini kalıcı olarak siler. Öğrenciye
+  dönüşmüş aday silinmez — o verinin dayanağı artık rıza değil, kurulan
+  hizmet ilişkisidir ve talep öğrenci kaydı üzerinden yürütülür.
+
+### 16.12 Kapsam dışı (V1)
+
+Bitrix/Workiom veri aktarımı, ödeme, doğrudan Meta webhook'u, otomatik
+saklama süresi temizliği (saklama rızaya bağlı olduğu için süreli bir
+temizlik tanımlı değil).
 
 ---
 
