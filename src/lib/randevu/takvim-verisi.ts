@@ -16,7 +16,10 @@ export type TakvimAraligi = { ilk: Date; son: Date };
 
 /** Görünümün kapsadığı tarih aralığı. */
 export function takvimAraligi(gorunum: Gorunum, capa: Date): TakvimAraligi {
-  if (gorunum === "gun") {
+  // "izgara" (Program) her zaman TEK GÜN gösterir — "gun" ile birebir aynı
+  // aralık. Haftalık gezinme aynı ızgarada gün seçiciyle yapılıyor, beş-yedi
+  // sütun gün göstermiyor.
+  if (gorunum === "gun" || gorunum === "izgara") {
     return { ilk: capa, son: gunEkle(capa, 1) };
   }
 
@@ -38,7 +41,7 @@ export function takvimKaydir(
   capa: Date,
   yon: -1 | 1,
 ): Date {
-  if (gorunum === "gun") return gunEkle(capa, yon);
+  if (gorunum === "gun" || gorunum === "izgara") return gunEkle(capa, yon);
   if (gorunum === "hafta") return gunEkle(haftaBasi(capa), yon * 7);
 
   const basla = ayBasi(capa);

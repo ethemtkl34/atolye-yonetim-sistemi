@@ -50,24 +50,46 @@ export function RandevuFormuAcici({
   uzmanlar,
   hizmetler,
   varsayilanTarih,
+  varsayilanUzmanId,
+  varsayilanSaat,
+  acik: acikDisarida,
+  onAcikDegis,
 }: {
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   varsayilanTarih: string;
+  /** Program (ızgara) hücresinden önerilen uzman — verilmezse ilk uygun uzman. */
+  varsayilanUzmanId?: string;
+  /** Program hücresinin dakikasından önerilen saat, "SS:DD". */
+  varsayilanSaat?: string;
+  /**
+   * Açık/kapalı durumunu DIŞARIDAN kontrol etmek için (Program hücresi
+   * tıklamasıyla açma gibi). Verilmezse bileşen kendi durumunu tutar ve
+   * kendi "Randevu aç" düğmesini çizer — sayfa başlığındaki mevcut kullanım
+   * bu yüzden hiç değişmeden çalışmaya devam eder.
+   */
+  acik?: boolean;
+  onAcikDegis?: (acik: boolean) => void;
 }) {
-  const [acik, setAcik] = useState(false);
+  const [icAcik, setIcAcik] = useState(false);
+  const efektifAcik = acikDisarida ?? icAcik;
+  const kapat = () => (onAcikDegis ? onAcikDegis(false) : setIcAcik(false));
 
   return (
     <>
-      <Buton type="button" onClick={() => setAcik(true)}>
-        Randevu aç
-      </Buton>
-      {acik ? (
+      {onAcikDegis ? null : (
+        <Buton type="button" onClick={() => setIcAcik(true)}>
+          Randevu aç
+        </Buton>
+      )}
+      {efektifAcik ? (
         <RandevuFormu
           uzmanlar={uzmanlar}
           hizmetler={hizmetler}
           varsayilanTarih={varsayilanTarih}
-          onKapat={() => setAcik(false)}
+          varsayilanUzmanId={varsayilanUzmanId}
+          varsayilanSaat={varsayilanSaat}
+          onKapat={kapat}
         />
       ) : null}
     </>
@@ -78,11 +100,15 @@ function RandevuFormu({
   uzmanlar,
   hizmetler,
   varsayilanTarih,
+  varsayilanUzmanId,
+  varsayilanSaat,
   onKapat,
 }: {
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   varsayilanTarih: string;
+  varsayilanUzmanId?: string;
+  varsayilanSaat?: string;
   onKapat: () => void;
 }) {
   const [durum, gonder] = useActionState<EylemDurumu, FormData>(
@@ -95,7 +121,9 @@ function RandevuFormu({
   );
 
   const secilebilirUzmanlar = uzmanlar.filter((uzman) => uzman.buSubede);
-  const [uzmanId, setUzmanId] = useState(secilebilirUzmanlar[0]?.id ?? "");
+  const [uzmanId, setUzmanId] = useState(
+    varsayilanUzmanId ?? secilebilirUzmanlar[0]?.id ?? "",
+  );
   const [hizmetId, setHizmetId] = useState("");
   const [veli, setVeli] = useState<VeliSecimi>({ tur: "yok" });
 
@@ -190,7 +218,12 @@ function RandevuFormu({
                 : undefined
             }
           >
-            <Girdi name="saat" type="time" defaultValue="10:00" required />
+            <Girdi
+              name="saat"
+              type="time"
+              defaultValue={varsayilanSaat ?? "10:00"}
+              required
+            />
           </Alan>
         </div>
 

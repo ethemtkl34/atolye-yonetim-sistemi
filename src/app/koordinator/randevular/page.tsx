@@ -18,9 +18,14 @@ import {
   takvimAraligi,
   takvimKaydir,
 } from "@/lib/randevu/takvim-verisi";
+import {
+  izgaraEkseni,
+  izgaraSutunlariniOlustur,
+} from "@/lib/randevu/izgara-verisi";
 import { KURUM_ADI } from "@/lib/kurallar";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
 import { Takvim, type RandevuSatiri } from "./takvim";
+import { Izgara } from "./izgara";
 import { RandevuFormuAcici } from "./randevu-formu";
 
 export const metadata: Metadata = {
@@ -57,7 +62,7 @@ export default async function RandevularSayfasi(
 
   const parametreler = await props.searchParams;
 
-  const gorunum = gorunumMu(parametreler.gorunum) ? parametreler.gorunum : "hafta";
+  const gorunum = gorunumMu(parametreler.gorunum) ? parametreler.gorunum : "izgara";
   const capa =
     (typeof parametreler.tarih === "string"
       ? tarihCozumle(parametreler.tarih)
@@ -71,7 +76,7 @@ export default async function RandevularSayfasi(
 
   const aralik = takvimAraligi(gorunum, capa);
 
-  const [uzmanlar, hizmetler, randevular] = await Promise.all([
+  const [uzmanlar, hizmetler, randevular, mesailer, izinler] = await Promise.all([
     // şube-muaf: uzman kadrosu çok şubeli ve takvim şubeler arası okunuyor
     // (§17.7); şube bağı `UzmanSube` üzerinden.
     db.uzman.findMany({
@@ -127,6 +132,24 @@ export default async function RandevularSayfasi(
         branch: { select: { name: true } },
       },
     }),
+    // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
+    // `subeId` filtresi yeter — hangi uzmana ait olduğuna bakılmaksızın BU
+    // şubenin mesai satırları istenen şey (ızgara sütunları zaten bu şubede
+    // çalışan uzmanlarla sınırlı, bkz. `izgaraUzmanlar`).
+    gorunum === "izgara"
+      ? db.uzmanMesai.findMany({
+          where: { subeId },
+          select: { uzmanId: true, gun: true, baslangicDk: true, bitisDk: true },
+        })
+      : Promise.resolve([]),
+    // İzin şube kavramı taşımıyor; tarih aralığıyla süzülüyor (uzmanBaglami
+    // ile aynı sözleşme, bkz. actions.ts).
+    gorunum === "izgara"
+      ? db.izin.findMany({
+          where: { bitis: { gt: aralik.ilk }, baslangic: { lt: aralik.son } },
+          select: { uzmanId: true, baslangic: true, bitis: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const satirlar: RandevuSatiri[] = randevular.map((randevu) => {
@@ -138,6 +161,7 @@ export default async function RandevularSayfasi(
       baslangic: randevu.baslangic,
       bitis: randevu.bitis,
       durum: randevu.durum,
+      uzmanId: randevu.uzman.id,
       uzmanAdi: randevu.uzman.ad,
       uzmanRengi: randevu.uzman.renk,
       hizmetAdi: randevu.hizmet.ad,
@@ -157,6 +181,31 @@ export default async function RandevularSayfasi(
   });
 
   const gruplar = gunlereBol(aralik, satirlar);
+
+  const formUzmanlari = uzmanlar.map((uzman) => ({
+    id: uzman.id,
+    ad: uzman.ad,
+    renk: uzman.renk,
+    buSubede: uzman.subeler.some((bag) => bag.subeId === subeId),
+    hizmetIdleri: uzman.hizmetler.map((bag) => bag.hizmetId),
+  }));
+
+  // Program (ızgara) TEK ŞUBElik bir araç: başka şubenin mesai saatiyle
+  // boyanan bir sütun yanıltıcı olurdu. Randevu sorgusu yine de şubeler
+  // arası kaldığı için çift şubeli uzmanın diğer şubedeki randevusu "o saat
+  // dolu" olarak bu sütunda görünmeye devam eder (§17.7).
+  const izgaraUzmanlar = uzmanlar
+    .filter((uzman) => uzman.subeler.some((bag) => bag.subeId === subeId))
+    .map((uzman) => ({ id: uzman.id, ad: uzman.ad, renk: uzman.renk }));
+
+  const izgaraSutunlar = izgaraSutunlariniOlustur({
+    gun: capa,
+    uzmanlar: izgaraUzmanlar,
+    mesailer,
+    izinler,
+    randevular: satirlar,
+  });
+  const eksen = izgaraEkseni(izgaraSutunlar);
 
   /** Süzgeçler arasında adreste korunacak parametreler. */
   const korunanlar: Record<string, string> = {
@@ -184,7 +233,7 @@ export default async function RandevularSayfasi(
   // "31.08.2026 haftası" okuyucuya haftanın nerede bittiğini söylemiyordu ve
   // ay sınırını gizliyordu.
   const baslik =
-    gorunum === "gun"
+    gorunum === "gun" || gorunum === "izgara"
       ? tarihGunleBicimle(capa)
       : gorunum === "hafta"
         ? `${tarihBicimle(aralik.ilk)} – ${tarihBicimle(gunEkle(aralik.son, -1))}`
@@ -207,13 +256,7 @@ export default async function RandevularSayfasi(
             </Link>
             {yazabilir ? (
             <RandevuFormuAcici
-              uzmanlar={uzmanlar.map((uzman) => ({
-                id: uzman.id,
-                ad: uzman.ad,
-                renk: uzman.renk,
-                buSubede: uzman.subeler.some((bag) => bag.subeId === subeId),
-                hizmetIdleri: uzman.hizmetler.map((bag) => bag.hizmetId),
-              }))}
+              uzmanlar={formUzmanlari}
               hizmetler={hizmetler}
               varsayilanTarih={tarihMetni(capa)}
             />
@@ -260,21 +303,39 @@ export default async function RandevularSayfasi(
         />
       </SuzgecCubugu>
 
-      <Takvim
-        baslik={baslik}
-        gorunum={gorunum}
-        gruplar={gruplar}
-        iptalleriGoster={iptalleriGoster}
-        yazabilir={yazabilir}
-        kurumAdi={KURUM_ADI}
-        toplam={toplamRandevu}
-        geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
-        ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
-        bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
-        iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
-      />
+      {gorunum === "izgara" ? (
+        <Izgara
+          baslik={baslik}
+          uzmanlar={izgaraUzmanlar}
+          sutunlar={izgaraSutunlar}
+          eksen={eksen}
+          yazabilir={yazabilir}
+          kurumAdi={KURUM_ADI}
+          toplam={toplamRandevu}
+          geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
+          ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
+          bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          formUzmanlari={formUzmanlari}
+          hizmetler={hizmetler}
+          varsayilanTarih={tarihMetni(capa)}
+        />
+      ) : (
+        <Takvim
+          baslik={baslik}
+          gorunum={gorunum}
+          gruplar={gruplar}
+          iptalleriGoster={iptalleriGoster}
+          yazabilir={yazabilir}
+          kurumAdi={KURUM_ADI}
+          toplam={toplamRandevu}
+          geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
+          ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
+          bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+        />
+      )}
 
-      {toplamRandevu === 0 ? (
+      {toplamRandevu === 0 && gorunum !== "izgara" ? (
         <BosDurum
           baslik={
             iptalleriGoster

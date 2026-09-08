@@ -13,7 +13,9 @@ import { saatiDakikayaCevir } from "../uzmanlar/sema";
  * kullanıyor (bkz. ogrenciler/sema.ts şerhi).
  */
 
-export const GORUNUMLER = ["gun", "hafta", "ay"] as const;
+// "izgara" ilk sırada: varsayılan görünüm budur (bkz. page.tsx). Tarih
+// aralığı bakımından "gun" ile birebir aynı davranır (takvim-verisi.ts).
+export const GORUNUMLER = ["izgara", "gun", "hafta", "ay"] as const;
 export type Gorunum = (typeof GORUNUMLER)[number];
 
 export function gorunumMu(deger: unknown): deger is Gorunum {
@@ -24,7 +26,10 @@ export function gorunumMu(deger: unknown): deger is Gorunum {
 }
 
 export const GORUNUM_ADLARI: Record<Gorunum, string> = {
-  gun: "Gün",
+  // Kullanıcının kendi sözcüğü ("haftalık programı da görebilsin").
+  izgara: "Program",
+  // Eski "Gün" etiketi: liste görünümü ikinci sıraya düştü.
+  gun: "Liste",
   hafta: "Hafta",
   ay: "Ay",
 };

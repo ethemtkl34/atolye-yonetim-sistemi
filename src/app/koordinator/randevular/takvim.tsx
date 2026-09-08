@@ -2,19 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  Bildirim,
-  Buton,
-  Kart,
-  Rozet,
-  butonStili,
-} from "@/components/ui";
+import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
 import { saatAraligiMetni, tarihGunleBicimle } from "@/lib/tarih";
-import {
-  anketMetni,
-  hatirlatmaMetni,
-  whatsappMesajBaglantisi,
-} from "@/lib/randevu/mesaj";
 import { uzmanRengi } from "@/lib/uzman-renkleri";
 import { cn } from "@/lib/utils";
 import type { EylemDurumu } from "@/lib/formlar";
@@ -22,6 +11,7 @@ import { paraMetni } from "../uzmanlar/sema";
 import { DURUM_ADLARI, DURUM_ROZETLERI, type Gorunum } from "./sema";
 import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
+import { RandevuEylemleri } from "./randevu-eylemleri";
 
 export type RandevuSatiri = {
   id: string;
@@ -31,6 +21,8 @@ export type RandevuSatiri = {
   baslangic: Date;
   bitis: Date;
   durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI" | "IPTAL";
+  /** Program (ızgara) görünümünün sütun anahtarı. */
+  uzmanId: string;
   uzmanAdi: string;
   uzmanRengi: string;
   hizmetAdi: string;
@@ -189,37 +181,6 @@ function RandevuKarti({
   const ton = uzmanRengi(randevu.uzmanRengi);
   const iptalEdilmis = randevu.durum === "IPTAL";
 
-  /**
-   * §17.6 — Hatırlatma ve anket bağlantıları.
-   *
-   * Otomatik gönderim yok: bağlantı WhatsApp'ı hazır metinle açıyor, gönder
-   * tuşuna kullanıcı basıyor. Numara tam değilse bağlantı `null` dönüyor ve
-   * düğme HİÇ çizilmiyor — çalışmayan düğme, olmayan düğmeden kötüdür.
-   *
-   * Hatırlatma PLANLI randevuda, anket GERÇEKLEŞEN seansta anlamlı; ikisi
-   * aynı anda çıkmıyor.
-   */
-  const mesajBilgisi = randevu.veliAdi
-    ? {
-        kurumAdi,
-        veliAdi: randevu.veliAdi,
-        cocukAdi: randevu.ogrenciAdi,
-        hizmetAdi: randevu.hizmetAdi,
-        uzmanAdi: randevu.uzmanAdi,
-        baslangic: randevu.baslangic,
-      }
-    : null;
-
-  const hatirlatmaYolu =
-    mesajBilgisi && randevu.durum === "PLANLANDI"
-      ? whatsappMesajBaglantisi(randevu.veliTelefon, hatirlatmaMetni(mesajBilgisi))
-      : null;
-
-  const anketYolu =
-    mesajBilgisi && randevu.durum === "GERCEKLESTI"
-      ? whatsappMesajBaglantisi(randevu.veliTelefon, anketMetni(mesajBilgisi))
-      : null;
-
   return (
     <Kart
       className={cn("flex flex-wrap items-start gap-3 p-3", iptalEdilmis && "opacity-70")}
@@ -274,53 +235,14 @@ function RandevuKarti({
         ) : null}
       </div>
 
-      {yazabilir && randevu.bizim && !iptalEdilmis ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {hatirlatmaYolu ? (
-            <a
-              href={hatirlatmaYolu}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={butonStili("sade")}
-            >
-              Hatırlat
-            </a>
-          ) : null}
-          {anketYolu ? (
-            <a
-              href={anketYolu}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={butonStili("sade")}
-            >
-              Anket
-            </a>
-          ) : null}
-          {randevu.durum === "GERCEKLESTI" ? null : (
-            <Buton
-              type="button"
-              tur="ikincil"
-              disabled={bekliyor}
-              onClick={() => onDurum("GERCEKLESTI")}
-            >
-              Gerçekleşti
-            </Buton>
-          )}
-          {randevu.durum === "GELMEDI" ? null : (
-            <Buton
-              type="button"
-              tur="sade"
-              disabled={bekliyor}
-              onClick={() => onDurum("GELMEDI")}
-            >
-              Gelmedi
-            </Buton>
-          )}
-          <Buton type="button" tur="tehlike" disabled={bekliyor} onClick={onIptal}>
-            İptal
-          </Buton>
-        </div>
-      ) : null}
+      <RandevuEylemleri
+        randevu={randevu}
+        yazabilir={yazabilir}
+        kurumAdi={kurumAdi}
+        bekliyor={bekliyor}
+        onDurum={onDurum}
+        onIptal={onIptal}
+      />
     </Kart>
   );
 }

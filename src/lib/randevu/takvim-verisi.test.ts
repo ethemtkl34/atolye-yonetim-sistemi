@@ -22,6 +22,14 @@ describe("takvimAraligi", () => {
     ]);
   });
 
+  it("izgara (Program) görünümü de tek günü kapsar", () => {
+    const aralik = takvimAraligi("izgara", CARSAMBA);
+    expect([iso(aralik.ilk), iso(aralik.son)]).toEqual([
+      "2026-09-09",
+      "2026-09-10",
+    ]);
+  });
+
   it("hafta görünümü PAZARTESİDEN başlar", () => {
     // Çapa haftanın herhangi bir günü olabilir; aralık hep pazartesi–pazar.
     const aralik = takvimAraligi("hafta", CARSAMBA);
@@ -56,6 +64,11 @@ describe("takvimKaydir", () => {
   it("gün görünümünde bir gün ilerler", () => {
     expect(iso(takvimKaydir("gun", CARSAMBA, 1))).toBe("2026-09-10");
     expect(iso(takvimKaydir("gun", CARSAMBA, -1))).toBe("2026-09-08");
+  });
+
+  it("izgara (Program) görünümünde de bir gün ilerler", () => {
+    expect(iso(takvimKaydir("izgara", CARSAMBA, 1))).toBe("2026-09-10");
+    expect(iso(takvimKaydir("izgara", CARSAMBA, -1))).toBe("2026-09-08");
   });
 
   it("hafta görünümünde HAFTA BAŞINA hizalanarak kayar", () => {
