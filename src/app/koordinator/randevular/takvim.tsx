@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
 import { saatAraligiMetni, tarihGunleBicimle } from "@/lib/tarih";
@@ -127,19 +128,19 @@ export function Takvim({
                 Randevu yok
               </p>
             ) : (
-              <Kart className="p-3">
+              <Kart className="overflow-hidden p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[42rem] text-sm">
                     <thead>
-                      <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500">
-                        <th className="py-2 pr-3 font-semibold">Saat</th>
-                        <th className="py-2 pr-3 font-semibold">Uzman</th>
-                        <th className="py-2 pr-3 font-semibold">Hizmet</th>
-                        <th className="py-2 pr-3 font-semibold">Danışan</th>
-                        <th className="py-2 pr-3 font-semibold">Durum</th>
-                        <th className="py-2 pr-3 text-right font-semibold">Ücret</th>
-                        <th className="py-2 font-semibold">
-                          <span className="sr-only">Eylemler</span>
+                      <tr className="border-b border-zinc-200 bg-zinc-50/80 text-left text-xs tracking-wide text-zinc-500 uppercase">
+                        <th className="px-3 py-2.5 font-semibold">Saat</th>
+                        <th className="px-3 py-2.5 font-semibold">Uzman</th>
+                        <th className="px-3 py-2.5 font-semibold">Hizmet</th>
+                        <th className="px-3 py-2.5 font-semibold">Danışan</th>
+                        <th className="px-3 py-2.5 font-semibold">Durum</th>
+                        <th className="px-3 py-2.5 text-right font-semibold">Ücret</th>
+                        <th className="w-10 px-2 py-2.5 font-semibold">
+                          <span className="sr-only">İşlemler</span>
                         </th>
                       </tr>
                     </thead>
@@ -205,26 +206,34 @@ function RandevuTabloSatiri({
   const iptalEdilmis = randevu.durum === "IPTAL";
 
   return (
-    <tr className={cn(iptalEdilmis && "opacity-60")}>
-      <td className="py-2 pr-3 align-top font-semibold tabular-nums whitespace-nowrap text-zinc-900">
+    <tr
+      className={cn(
+        "transition-colors hover:bg-zinc-50",
+        iptalEdilmis && "opacity-60",
+      )}
+    >
+      <td className="px-3 py-2.5 align-top font-semibold tabular-nums whitespace-nowrap text-zinc-900">
         {saatAraligiMetni(randevu.baslangic, randevu.bitis)}
       </td>
 
-      <td className="py-2 pr-3 align-top">
+      <td className="px-3 py-2.5 align-top">
         {/* Uzman rengi yalnız hızlı tarama için; adı her zaman yanında
             yazılı (renk körlüğü tek başına renge güvenmeyi imkânsız
-            kılıyor). */}
-        <span className="flex items-center gap-2 whitespace-nowrap">
+            kılıyor). Nokta yerine renkli çip: dar bir tabloda göze ilk
+            çarpan şey bu olmalı, tek piksellik nokta taranırken kayboluyordu. */}
+        <span
+          className="inline-flex max-w-full items-center gap-1.5 rounded-full py-0.5 pr-2.5 pl-1.5 text-xs font-medium whitespace-nowrap"
+          style={{ backgroundColor: ton.zemin, color: ton.metin }}
+        >
           <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: ton.metin }}
+            className="size-1.5 shrink-0 rounded-full bg-current"
             aria-hidden
           />
-          <span className="text-zinc-800">{randevu.uzmanAdi}</span>
+          {randevu.uzmanAdi}
         </span>
       </td>
 
-      <td className="py-2 pr-3 align-top">
+      <td className="px-3 py-2.5 align-top">
         <span className="flex flex-wrap items-center gap-1.5">
           <span className="text-zinc-800">{randevu.hizmetAdi}</span>
           {randevu.seriDeMi ? <Rozet tur="notr">Seri</Rozet> : null}
@@ -242,10 +251,12 @@ function RandevuTabloSatiri({
         ) : null}
       </td>
 
-      <td className="py-2 pr-3 align-top">
+      <td className="px-3 py-2.5 align-top">
         {randevu.bizim ? (
           <>
-            <span className="block text-zinc-800">{randevu.veliAdi}</span>
+            <span className="block font-medium text-zinc-800">
+              {randevu.veliAdi}
+            </span>
             {randevu.ogrenciAdi ? (
               <span className="block text-xs text-zinc-500">
                 {randevu.ogrenciAdi}
@@ -258,20 +269,20 @@ function RandevuTabloSatiri({
         )}
       </td>
 
-      <td className="py-2 pr-3 align-top">
+      <td className="px-3 py-2.5 align-top">
         <Rozet tur={DURUM_ROZETLERI[randevu.durum]}>
           {DURUM_ADLARI[randevu.durum]}
         </Rozet>
       </td>
 
-      <td className="py-2 pr-3 text-right align-top tabular-nums text-zinc-700">
+      <td className="px-3 py-2.5 text-right align-top font-medium tabular-nums text-zinc-800">
         {randevu.ucretKurus !== null && randevu.ucretKurus > 0
           ? paraMetni(randevu.ucretKurus)
           : "—"}
       </td>
 
-      <td className="py-2 align-top">
-        <RandevuEylemleri
+      <td className="px-2 py-2.5 align-top">
+        <RandevuIslemMenusu
           randevu={randevu}
           yazabilir={yazabilir}
           kurumAdi={kurumAdi}
@@ -281,5 +292,122 @@ function RandevuTabloSatiri({
         />
       </td>
     </tr>
+  );
+}
+
+/**
+ * Satırdaki işlemleri tek bir "⋮" düğmesinin arkasına toplar.
+ *
+ * Eskiden dört düğme (Hatırlat/Gerçekleşti/Gelmedi/İptal) satırda YAN YANA
+ * duruyordu; dar bir tablo sütununda bu hem taşıyor hem "hangisi bu satırın
+ * asıl bilgisi, hangisi eylem" ayrımını bulanıklaştırıyordu. İçerik AYNI
+ * `RandevuEylemleri` — Izgara'nın (Program görünümü) blok detay penceresi
+ * geniş yer bulduğu için düğmeleri hâlâ açık gösteriyor, tek eylem kaynağı
+ * bozulmuyor.
+ */
+function RandevuIslemMenusu(props: {
+  randevu: RandevuSatiri;
+  yazabilir: boolean;
+  kurumAdi: string;
+  bekliyor: boolean;
+  onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
+  onIptal: () => void;
+}) {
+  const { randevu, yazabilir, onDurum, onIptal } = props;
+  const [acik, setAcik] = useState(false);
+  // Sabit (fixed) konumlanan panelin ekrandaki yeri — düğmenin altına ve
+  // sağına hizalı, GERÇEK piksel olarak açılış anında ölçülüyor.
+  const [konum, setKonum] = useState<{ top: number; right: number } | null>(
+    null,
+  );
+  const dugmeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!acik) return;
+    function disaTikla(olay: MouseEvent) {
+      const hedef = olay.target as Node;
+      // Düğmenin kendisi de "dışarı" sayılırsa şu sıra yaşanır: mousedown
+      // önce bu dinleyiciyi tetikleyip menüyü kapatır, ardından aynı
+      // tıklamanın click olayı düğmenin onClick'ini çalıştırıp menüyü HEMEN
+      // yeniden açar — kullanıcı kapatamaz. Düğme de kapsam dışı tutuluyor.
+      if (panelRef.current?.contains(hedef)) return;
+      if (dugmeRef.current?.contains(hedef)) return;
+      setAcik(false);
+    }
+    function kacTusu(olay: KeyboardEvent) {
+      if (olay.key === "Escape") setAcik(false);
+    }
+    document.addEventListener("mousedown", disaTikla);
+    document.addEventListener("keydown", kacTusu);
+    return () => {
+      document.removeEventListener("mousedown", disaTikla);
+      document.removeEventListener("keydown", kacTusu);
+    };
+  }, [acik]);
+
+  // Eylem hiç yoksa (yazma yetkisi yok, başka şubenin randevusu, zaten
+  // iptal) boş bir "⋮" göstermenin anlamı yok — RandevuEylemleri de aynı
+  // koşulda null dönüyor, karar burada TEKRARLANIYOR ki tıklanamaz düğme
+  // çizilmesin.
+  if (!yazabilir || !randevu.bizim || randevu.durum === "IPTAL") return null;
+
+  return (
+    <>
+      <button
+        ref={dugmeRef}
+        type="button"
+        onClick={() => {
+          if (!acik) {
+            const dikdortgen = dugmeRef.current?.getBoundingClientRect();
+            if (dikdortgen) {
+              setKonum({
+                top: dikdortgen.bottom + 4,
+                right: window.innerWidth - dikdortgen.right,
+              });
+            }
+          }
+          setAcik((deger) => !deger);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={acik}
+        aria-label="İşlemler"
+        className={cn(
+          butonStili("sade"),
+          "!min-h-9 w-9 !px-0 text-base leading-none sm:!min-h-8 sm:w-8",
+        )}
+      >
+        ⋮
+      </button>
+
+      {/* Tablonun `overflow-x-auto` kaydırma kutusu ve kartın kendi kenar
+          yuvarlaması dikey taşmayı KESER — tablodaki son satırın menüsü
+          hiç görünmezdi. `document.body`'ye taşınıp `position: fixed` ile
+          düğmenin ölçülmüş konumuna yapıştırılıyor; bu yüzden hiçbir üst
+          kapsayıcının `overflow` kuralına bağlı değil. */}
+      {acik && konum
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              style={{ top: konum.top, right: konum.right }}
+              className="kil-yuzey fixed z-50 w-52 space-y-1.5 p-2"
+            >
+              <RandevuEylemleri
+                {...props}
+                onDurum={(durum) => {
+                  setAcik(false);
+                  onDurum(durum);
+                }}
+                onIptal={() => {
+                  setAcik(false);
+                  onIptal();
+                }}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
