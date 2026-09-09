@@ -127,21 +127,44 @@ export function Takvim({
                 Randevu yok
               </p>
             ) : (
-              grup.randevular.map((randevu) => (
-                <RandevuKarti
-                  key={randevu.id}
-                  randevu={randevu}
-                  yazabilir={yazabilir}
-                  kurumAdi={kurumAdi}
-                  bekliyor={bekliyor}
-                  onDurum={(durum) =>
-                    basla(async () =>
-                      setMesaj(await randevuDurumDegistir(randevu.id, durum)),
-                    )
-                  }
-                  onIptal={() => setIptalHedefi(randevu)}
-                />
-              ))
+              <Kart className="p-3">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500">
+                        <th className="py-2 pr-3 font-semibold">Saat</th>
+                        <th className="py-2 pr-3 font-semibold">Uzman</th>
+                        <th className="py-2 pr-3 font-semibold">Hizmet</th>
+                        <th className="py-2 pr-3 font-semibold">Danışan</th>
+                        <th className="py-2 pr-3 font-semibold">Durum</th>
+                        <th className="py-2 pr-3 text-right font-semibold">Ücret</th>
+                        <th className="py-2 font-semibold">
+                          <span className="sr-only">Eylemler</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="kil-bolmeli">
+                      {grup.randevular.map((randevu) => (
+                        <RandevuTabloSatiri
+                          key={randevu.id}
+                          randevu={randevu}
+                          yazabilir={yazabilir}
+                          kurumAdi={kurumAdi}
+                          bekliyor={bekliyor}
+                          onDurum={(durum) =>
+                            basla(async () =>
+                              setMesaj(
+                                await randevuDurumDegistir(randevu.id, durum),
+                              ),
+                            )
+                          }
+                          onIptal={() => setIptalHedefi(randevu)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Kart>
             )}
           </div>
         ))}
@@ -163,7 +186,7 @@ export function Takvim({
   );
 }
 
-function RandevuKarti({
+function RandevuTabloSatiri({
   randevu,
   yazabilir,
   kurumAdi,
@@ -182,49 +205,33 @@ function RandevuKarti({
   const iptalEdilmis = randevu.durum === "IPTAL";
 
   return (
-    <Kart
-      className={cn("flex flex-wrap items-start gap-3 p-3", iptalEdilmis && "opacity-70")}
-    >
-      {/* Uzman rengi yalnız hızlı tarama için; adı her zaman yanında yazılı
-          (renk körlüğü tek başına renge güvenmeyi imkânsız kılıyor). */}
-      <span
-        className="mt-1 h-9 w-1.5 shrink-0 rounded-full"
-        style={{ backgroundColor: ton.metin }}
-        aria-hidden
-      />
+    <tr className={cn(iptalEdilmis && "opacity-60")}>
+      <td className="py-2 pr-3 align-top font-semibold tabular-nums whitespace-nowrap text-zinc-900">
+        {saatAraligiMetni(randevu.baslangic, randevu.bitis)}
+      </td>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold tabular-nums text-zinc-900">
-            {saatAraligiMetni(randevu.baslangic, randevu.bitis)}
-          </span>
+      <td className="py-2 pr-3 align-top">
+        {/* Uzman rengi yalnız hızlı tarama için; adı her zaman yanında
+            yazılı (renk körlüğü tek başına renge güvenmeyi imkânsız
+            kılıyor). */}
+        <span className="flex items-center gap-2 whitespace-nowrap">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: ton.metin }}
+            aria-hidden
+          />
+          <span className="text-zinc-800">{randevu.uzmanAdi}</span>
+        </span>
+      </td>
+
+      <td className="py-2 pr-3 align-top">
+        <span className="flex flex-wrap items-center gap-1.5">
           <span className="text-zinc-800">{randevu.hizmetAdi}</span>
-          <Rozet tur={DURUM_ROZETLERI[randevu.durum]}>
-            {DURUM_ADLARI[randevu.durum]}
-          </Rozet>
           {randevu.seriDeMi ? <Rozet tur="notr">Seri</Rozet> : null}
           {randevu.bizim ? null : (
             <Rozet tur="pasif">{randevu.subeAdi}</Rozet>
           )}
-        </div>
-
-        <p className="mt-0.5 text-sm text-zinc-600">
-          {randevu.uzmanAdi}
-          {randevu.bizim ? (
-            <>
-              {" · "}
-              {randevu.veliAdi}
-              {randevu.ogrenciAdi ? ` · ${randevu.ogrenciAdi}` : ""}
-              {randevu.ucretKurus !== null && randevu.ucretKurus > 0
-                ? ` · ${paraMetni(randevu.ucretKurus)}`
-                : ""}
-            </>
-          ) : (
-            // Başka şubenin randevusu: yalnız "o saat dolu" bilgisi (§17.7).
-            <span className="text-zinc-500"> · diğer şube</span>
-          )}
-        </p>
-
+        </span>
         {randevu.not ? (
           <p className="mt-1 text-xs text-zinc-500">{randevu.not}</p>
         ) : null}
@@ -233,16 +240,46 @@ function RandevuKarti({
             İptal notu: {randevu.iptalNotu}
           </p>
         ) : null}
-      </div>
+      </td>
 
-      <RandevuEylemleri
-        randevu={randevu}
-        yazabilir={yazabilir}
-        kurumAdi={kurumAdi}
-        bekliyor={bekliyor}
-        onDurum={onDurum}
-        onIptal={onIptal}
-      />
-    </Kart>
+      <td className="py-2 pr-3 align-top">
+        {randevu.bizim ? (
+          <>
+            <span className="block text-zinc-800">{randevu.veliAdi}</span>
+            {randevu.ogrenciAdi ? (
+              <span className="block text-xs text-zinc-500">
+                {randevu.ogrenciAdi}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          // Başka şubenin randevusu: yalnız "o saat dolu" bilgisi (§17.7).
+          <span className="text-zinc-500">diğer şube</span>
+        )}
+      </td>
+
+      <td className="py-2 pr-3 align-top">
+        <Rozet tur={DURUM_ROZETLERI[randevu.durum]}>
+          {DURUM_ADLARI[randevu.durum]}
+        </Rozet>
+      </td>
+
+      <td className="py-2 pr-3 text-right align-top tabular-nums text-zinc-700">
+        {randevu.ucretKurus !== null && randevu.ucretKurus > 0
+          ? paraMetni(randevu.ucretKurus)
+          : "—"}
+      </td>
+
+      <td className="py-2 align-top">
+        <RandevuEylemleri
+          randevu={randevu}
+          yazabilir={yazabilir}
+          kurumAdi={kurumAdi}
+          bekliyor={bekliyor}
+          onDurum={onDurum}
+          onIptal={onIptal}
+        />
+      </td>
+    </tr>
   );
 }
