@@ -31,6 +31,7 @@ import { Takvim } from "./takvim";
 import { Izgara } from "./izgara";
 import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
+import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -223,6 +224,7 @@ export default async function RandevularSayfasi(
             >
               Ciro raporu
             </Link>
+            <OgrenciGecmisiButonu />
             {yazabilir ? (
             <RandevuFormuAcici
               uzmanlar={formUzmanlari}

@@ -2001,6 +2001,8 @@ model Randevu {
   @@index([uzmanId, baslangic])
   /// Velinin randevu geçmişi — profil ve hatırlatma listesi.
   @@index([veliId, baslangic])
+  /// Öğrencinin randevu geçmişi — Randevular'daki öğrenci araması (§17.4).
+  @@index([ogrenciId, baslangic])
   @@index([seriId])
   @@index([leadId])
 }
