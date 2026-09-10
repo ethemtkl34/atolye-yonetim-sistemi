@@ -13,9 +13,10 @@ import { saatiDakikayaCevir } from "../uzmanlar/sema";
  * kullanıyor (bkz. ogrenciler/sema.ts şerhi).
  */
 
-// "izgara" ilk sırada: varsayılan görünüm budur (bkz. page.tsx). Tarih
-// aralığı bakımından "gun" ile birebir aynı davranır (takvim-verisi.ts).
-export const GORUNUMLER = ["izgara", "gun", "hafta", "ay"] as const;
+// "hafta" ilk sırada: varsayılan görünüm budur (bkz. page.tsx) — koordinatör
+// panele girince önce haftanın doluluğunu görsün. "izgara" tarih aralığı
+// bakımından "gun" ile birebir aynı davranır (takvim-verisi.ts).
+export const GORUNUMLER = ["hafta", "izgara", "gun", "ay"] as const;
 export type Gorunum = (typeof GORUNUMLER)[number];
 
 export function gorunumMu(deger: unknown): deger is Gorunum {

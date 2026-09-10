@@ -71,7 +71,7 @@ export default async function RandevularSayfasi(
 
   const parametreler = await props.searchParams;
 
-  const gorunum = gorunumMu(parametreler.gorunum) ? parametreler.gorunum : "izgara";
+  const gorunum = gorunumMu(parametreler.gorunum) ? parametreler.gorunum : "hafta";
   const capa =
     (typeof parametreler.tarih === "string"
       ? tarihCozumle(parametreler.tarih)
