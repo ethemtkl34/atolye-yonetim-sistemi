@@ -47,6 +47,17 @@ export const GUN_ADLARI: Record<Day, string> = {
   PAZAR: "Pazar",
 };
 
+/** Haftalık ızgara başlığı gibi dar yerler için iki harfli gün kısaltması. */
+export const GUN_KISA_ADLARI: Record<Day, string> = {
+  PAZARTESI: "Pt",
+  SALI: "Sa",
+  CARSAMBA: "Ça",
+  PERSEMBE: "Pe",
+  CUMA: "Cu",
+  CUMARTESI: "Ct",
+  PAZAR: "Pz",
+};
+
 /**
  * Takvim sırası. Hafta çapası PAZARTESİ olduğu için bu dizideki sıra aynı
  * zamanda çapaya eklenecek gün sayısıdır: `grupTarihi` buna güvenir.

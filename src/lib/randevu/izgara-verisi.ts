@@ -161,6 +161,103 @@ export function orandanDakika(oran: number, eksen: IzgaraEkseni): number {
 }
 
 /**
+ * "Hafta" ızgarasında sütun GÜN, satır saat, o günkü TÜM uzmanların
+ * randevuları aynı sütunda renkle ayrılır (bkz. `hafta-izgarasi.tsx`).
+ * Çakışan randevular yan yana "lane"lere (2, 3... sütuncuk) ayrılır ki
+ * üst üste binmesin.
+ */
+export type HaftaBlok<T> = IzgaraRandevu<T> & { lane: number; laneSayisi: number };
+export type HaftaSutunu<T> = { gun: Date; bloklar: HaftaBlok<T>[] };
+
+/**
+ * Zaten güne göre gruplanmış randevu listesinden (bkz. `gunlereBol`)
+ * haftalık ızgara sütunlarını kurar. Gün gruplaması burada TEKRAR
+ * hesaplanmıyor — çağıran tarafın ürettiği `gruplar` doğrudan kullanılıyor
+ * ki iki yerde ayrı gün mantığı birbirinden sapmasın.
+ */
+export function haftaSutunlariniOlustur<T extends { baslangic: Date; bitis: Date }>(
+  gruplar: readonly { gun: Date; randevular: readonly T[] }[],
+): HaftaSutunu<T>[] {
+  return gruplar.map(({ gun, randevular }) => {
+    const bloklar = randevular.map((randevu) => ({
+      baslangicDk: Math.max(0, gunIcindekiDakika(randevu.baslangic, gun)),
+      bitisDk: Math.min(24 * 60, gunIcindekiDakika(randevu.bitis, gun)),
+      randevu,
+    }));
+    return { gun, bloklar: laneAta(bloklar) };
+  });
+}
+
+/**
+ * Çakışan bloklara "lane" (0, 1, 2...) atar; birbiriyle hiç çakışmayan
+ * bloklar aynı lane'i tekrar kullanabilir. Zaman ekseninde ayrık gruplar
+ * ("küme") ayrı ayrı ele alınır ki bir günün sonundaki tek bir randevu,
+ * günün başındaki kalabalık yüzünden gereksiz yere daralmasın.
+ */
+function laneAta<T extends IzgaraBlok>(
+  bloklar: readonly T[],
+): Array<T & { lane: number; laneSayisi: number }> {
+  const sirali = [...bloklar].sort(
+    (a, b) => a.baslangicDk - b.baslangicDk || a.bitisDk - b.bitisDk,
+  );
+
+  const sonuc: Array<T & { lane: number; laneSayisi: number }> = [];
+  let kume: Array<T & { lane: number }> = [];
+  let kumeSonu = -Infinity;
+
+  function kumeyiKapat() {
+    if (kume.length === 0) return;
+    const laneSayisi = Math.max(...kume.map((blok) => blok.lane)) + 1;
+    for (const blok of kume) sonuc.push({ ...blok, laneSayisi });
+    kume = [];
+    kumeSonu = -Infinity;
+  }
+
+  for (const blok of sirali) {
+    if (kume.length > 0 && blok.baslangicDk >= kumeSonu) kumeyiKapat();
+
+    const laneSonlari: number[] = [];
+    for (const b of kume) laneSonlari[b.lane] = b.bitisDk;
+    let lane = laneSonlari.findIndex((son) => son <= blok.baslangicDk);
+    if (lane === -1) lane = laneSonlari.length;
+
+    kume.push({ ...blok, lane });
+    kumeSonu = Math.max(kumeSonu, blok.bitisDk);
+  }
+  kumeyiKapat();
+
+  return sonuc;
+}
+
+/**
+ * Haftalık ızgaranın saat ekseni — `izgaraEkseni` ile aynı fikir, ama
+ * kaynak mesai değil RANDEVULARIN kendisi: sütun artık uzman değil gün
+ * olduğu için "kimin mesaisi" sorusu anlamını yitiriyor.
+ */
+export function haftaEkseni<T>(
+  sutunlar: readonly HaftaSutunu<T>[],
+): IzgaraEkseni {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const sutun of sutunlar) {
+    for (const blok of sutun.bloklar) {
+      min = Math.min(min, blok.baslangicDk);
+      max = Math.max(max, blok.bitisDk);
+    }
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return VARSAYILAN_EKSEN;
+
+  const adimDk = IZGARA_ADIM_DK;
+  return {
+    baslangicDk: Math.floor(min / adimDk) * adimDk,
+    bitisDk: Math.ceil(max / adimDk) * adimDk,
+    adimDk,
+  };
+}
+
+/**
  * `calismaBloklari`nin eksen içindeki TÜMLEYENİ — "mesai dışı" gölgeleme
  * için boş dakika aralıkları. Sütun grafiği bu boşlukları gri (kil-oyuk)
  * çiziyor; yeşil boşluk kalmıyorsa uzman o eksende hep meşgul demektir.

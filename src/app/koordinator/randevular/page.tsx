@@ -19,6 +19,8 @@ import {
   takvimKaydir,
 } from "@/lib/randevu/takvim-verisi";
 import {
+  haftaEkseni,
+  haftaSutunlariniOlustur,
   izgaraEkseni,
   izgaraSutunlariniOlustur,
 } from "@/lib/randevu/izgara-verisi";
@@ -26,6 +28,7 @@ import { KURUM_ADI } from "@/lib/kurallar";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
 import { Takvim, type RandevuSatiri } from "./takvim";
 import { Izgara } from "./izgara";
+import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
 
 export const metadata: Metadata = {
@@ -37,12 +40,18 @@ const TEMEL_YOL = "/koordinator/randevular";
 /**
  * §17.4 — Randevu takvimi.
  *
- * Belge "günlük, haftalık ve aylık görünümlerde listelenir" diyor; görünüm
- * saat ızgarası değil GÜNE GÖRE GRUPLANMIŞ LİSTE. Gerekçe: seanslar 30–120
- * dakika arasında değişiyor ve bir günde en fazla bir düzine tane oluyor —
- * ızgara aynı bilgiyi daha az okunur ve telefonda kullanılamaz hâlde
+ * Belge "günlük, haftalık ve aylık görünümlerde listelenir" diyor; Gün ve Ay
+ * görünümü saat ızgarası değil GÜNE GÖRE GRUPLANMIŞ LİSTE. Gerekçe: seanslar
+ * 30–120 dakika arasında değişiyor ve bir günde en fazla bir düzine tane
+ * oluyor — ızgara aynı bilgiyi daha az okunur ve telefonda kullanılamaz hâlde
  * gösterirdi. Randevusu olmayan günler de listede kalır; doluluk ancak
  * boşluğun görünmesiyle okunuyor.
+ *
+ * Hafta görünümü (Eylül 2026 revizyonu) bu kuralın DIŞINDA: yedi günün ayrı
+ * ayrı mini-tablolar hâlinde alt alta dizilmesi, hangi günün ne kadar dolu
+ * olduğunu tek bakışta karşılaştırmayı zorlaştırıyordu. `HaftaIzgarasi` sütun
+ * GÜN, satır saat olan bir ızgara — kimin randevusu olduğu artık bir sütun
+ * başlığından değil bloğun renginden okunuyor (bkz. o dosyanın şerhi).
  *
  * ŞUBE: takvim ŞUBELER ARASI okunur (§17.7) — uzmanlar iki şubede birden
  * çalışabildiği için çakışma ancak böyle görünür. Kendi şubesi dışındaki
@@ -207,6 +216,13 @@ export default async function RandevularSayfasi(
   });
   const eksen = izgaraEkseni(izgaraSutunlar);
 
+  // Yalnız "hafta" görünümünde kullanılır; diğer görünümlerde `gruplar`
+  // zaten hesaplı olduğu için ekstra sorgu gerekmiyor, sadece bu adım
+  // (lane yerleşimi) atlanıyor.
+  const haftaSutunlar =
+    gorunum === "hafta" ? haftaSutunlariniOlustur(gruplar) : [];
+  const haftaAks = haftaEkseni(haftaSutunlar);
+
   /** Süzgeçler arasında adreste korunacak parametreler. */
   const korunanlar: Record<string, string> = {
     tarih: tarihMetni(capa),
@@ -319,6 +335,20 @@ export default async function RandevularSayfasi(
           hizmetler={hizmetler}
           varsayilanTarih={tarihMetni(capa)}
         />
+      ) : gorunum === "hafta" ? (
+        <HaftaIzgarasi
+          baslik={baslik}
+          sutunlar={haftaSutunlar}
+          eksen={haftaAks}
+          iptalleriGoster={iptalleriGoster}
+          yazabilir={yazabilir}
+          kurumAdi={KURUM_ADI}
+          toplam={toplamRandevu}
+          geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
+          ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
+          bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+        />
       ) : (
         <Takvim
           baslik={baslik}
@@ -335,7 +365,7 @@ export default async function RandevularSayfasi(
         />
       )}
 
-      {toplamRandevu === 0 && gorunum !== "izgara" ? (
+      {toplamRandevu === 0 && gorunum !== "izgara" && gorunum !== "hafta" ? (
         <BosDurum
           baslik={
             iptalleriGoster

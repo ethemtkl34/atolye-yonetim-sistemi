@@ -282,6 +282,10 @@ export function Izgara({
                           style={{
                             top: `${dakikadanOran(baslangicDk, eksen) * 100}%`,
                             height: `${(dakikadanOran(bitisDk, eksen) - dakikadanOran(baslangicDk, eksen)) * 100}%`,
+                            // `kil-satir`in kendi (opak) `background` kısaltması
+                            // bunun ALTINDA kalıp uzman rengini soluklaştırırdı
+                            // — bkz. `hafta-izgarasi.tsx`'teki aynı şerh.
+                            backgroundImage: "none",
                             backgroundColor: ton.zemin,
                             color: ton.metin,
                             opacity: randevu.durum === "IPTAL" ? 0.6 : 1,
