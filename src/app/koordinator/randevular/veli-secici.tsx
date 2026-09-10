@@ -51,7 +51,13 @@ export function VeliSecici({
    * alanlarını sıfırlıyor; sunucudan dönen değerler burada geri yazılır
    * (bkz. `formlar.ts` `degerler` şerhi).
    */
-  degerler?: { yeniVeliAdi?: string; yeniVeliTelefon?: string };
+  degerler?: {
+    yeniVeliAdi?: string;
+    yeniVeliTelefon?: string;
+    yeniOgrenciAdi?: string;
+    yeniOgrenciSoyadi?: string;
+    yeniOgrenciDogumTarihi?: string;
+  };
 }) {
   const [sorgu, setSorgu] = useState("");
   /**
@@ -115,24 +121,11 @@ export function VeliSecici({
           </button>
         </div>
 
-        {veli.cocuklar.length > 0 ? (
-          <Alan
-            etiket={cocukIsteniyor ? "Seansa girecek çocuk" : "Çocuk (isteğe bağlı)"}
-          >
-            <select name="ogrenciId" className={secimStili} defaultValue={
-              cocukIsteniyor && veli.cocuklar.length === 1 ? veli.cocuklar[0].id : ""
-            }>
-              <option value="">Seçilmedi</option>
-              {veli.cocuklar.map((cocuk) => (
-                <option key={cocuk.id} value={cocuk.id}>
-                  {cocuk.ad}
-                </option>
-              ))}
-            </select>
-          </Alan>
-        ) : (
-          <input type="hidden" name="ogrenciId" value="" />
-        )}
+        <CocukSecimi
+          cocuklar={veli.cocuklar}
+          cocukIsteniyor={cocukIsteniyor}
+          degerler={degerler}
+        />
       </div>
     );
   }
@@ -170,7 +163,8 @@ export function VeliSecici({
           </Alan>
         </div>
         <input type="hidden" name="veliId" value="" />
-        <input type="hidden" name="ogrenciId" value="" />
+
+        <CocukSecimi cocuklar={[]} cocukIsteniyor={cocukIsteniyor} degerler={degerler} />
       </div>
     );
   }
@@ -235,6 +229,117 @@ export function VeliSecici({
         onClick={() => onDegis({ tur: "yeni" })}
       >
         Kayıtlı değil, yeni veli aç
+      </button>
+    </div>
+  );
+}
+
+/**
+ * §17.4/§6.1 — Çocuk seçimi: kayıtlı çocuklardan biri YA DA yepyeni bir
+ * öğrenci.
+ *
+ * "Yeni öğrenci ekle" hem kayıtlı velinin (aranan çocuk henüz sistemde değil)
+ * hem yeni velinin (hiç kaydı olmayan aile) altında aynı şekilde çalışır —
+ * bu yüzden `cocuklar` boş bir liste olarak da gelebilir.
+ *
+ * Kasıtlı olarak DAR: yalnız ad/soyad/doğum tarihi. Tam öğrenci formu
+ * (okul, sağlık, veli bağı…) burada YOK — bkz. `sema.ts`'teki aynı gerekçe.
+ * Öğrenci veli bağı (Guardian) olmadan açılır; eksikse sonradan Öğrenciler
+ * ekranından tamamlanır.
+ */
+function CocukSecimi({
+  cocuklar,
+  cocukIsteniyor,
+  degerler,
+}: {
+  cocuklar: { id: string; ad: string }[];
+  cocukIsteniyor: boolean;
+  degerler?: {
+    yeniOgrenciAdi?: string;
+    yeniOgrenciSoyadi?: string;
+    yeniOgrenciDogumTarihi?: string;
+  };
+}) {
+  // Doğrulama hatasıyla dönüşte panel açık kalsın diye başlangıç değeri
+  // `degerler`den okunuyor — aksi hâlde yazılanlar görünür ama panel kapalı
+  // görünürdü (bkz. `formlar.ts` `degerler` şerhi).
+  const [yeniAcik, setYeniAcik] = useState(
+    Boolean(degerler?.yeniOgrenciAdi || degerler?.yeniOgrenciSoyadi),
+  );
+
+  if (yeniAcik) {
+    return (
+      <div className="kil-oyuk space-y-3 p-3">
+        <input type="hidden" name="ogrenciId" value="" />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-zinc-700">Yeni öğrenci</span>
+          {cocuklar.length > 0 ? (
+            <button
+              type="button"
+              className="text-sm font-semibold text-marka-700 hover:underline"
+              onClick={() => setYeniAcik(false)}
+            >
+              Kayıtlı çocuklardan seç
+            </button>
+          ) : null}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Alan etiket="Öğrenci adı">
+            <Girdi
+              name="yeniOgrenciAdi"
+              required
+              maxLength={60}
+              defaultValue={degerler?.yeniOgrenciAdi}
+            />
+          </Alan>
+          <Alan etiket="Öğrenci soyadı">
+            <Girdi
+              name="yeniOgrenciSoyadi"
+              required
+              maxLength={60}
+              defaultValue={degerler?.yeniOgrenciSoyadi}
+            />
+          </Alan>
+        </div>
+        <Alan etiket="Doğum tarihi (isteğe bağlı)">
+          <Girdi
+            name="yeniOgrenciDogumTarihi"
+            type="date"
+            defaultValue={degerler?.yeniOgrenciDogumTarihi}
+          />
+        </Alan>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {cocuklar.length > 0 ? (
+        <Alan
+          etiket={cocukIsteniyor ? "Seansa girecek çocuk" : "Çocuk (isteğe bağlı)"}
+        >
+          <select
+            name="ogrenciId"
+            className={secimStili}
+            defaultValue={cocukIsteniyor && cocuklar.length === 1 ? cocuklar[0].id : ""}
+          >
+            <option value="">Seçilmedi</option>
+            {cocuklar.map((cocuk) => (
+              <option key={cocuk.id} value={cocuk.id}>
+                {cocuk.ad}
+              </option>
+            ))}
+          </select>
+        </Alan>
+      ) : (
+        <input type="hidden" name="ogrenciId" value="" />
+      )}
+      <button
+        type="button"
+        className="text-sm font-semibold text-marka-700 hover:underline"
+        onClick={() => setYeniAcik(true)}
+      >
+        + Yeni öğrenci ekle
       </button>
     </div>
   );

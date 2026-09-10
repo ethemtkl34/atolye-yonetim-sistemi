@@ -7,6 +7,7 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { bugun, tarihCozumle, zamanMetni } from "@/lib/tarih";
+import { normalizeArama } from "@/lib/turkce";
 import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
 import { veliyiCoz } from "@/lib/randevu/veli";
 import {
@@ -187,10 +188,29 @@ export async function randevuEkle(
     });
     if (typeof veli !== "string") return veli;
 
-    if (veri.ogrenciId) {
+    // "Yeni öğrenci ekle" — veli aranan çocuk henüz kayıtlı değil (bkz.
+    // `veli-secici.tsx` `CocukSecimi` şerhi). Var olan `ogrenciId`nin ÖNÜNE
+    // geçer: arayüz ikisini aynı anda göstermiyor, ama iki değer de gelirse
+    // yeni açma niyeti (kullanıcının SON tıkladığı şey) esas alınır.
+    let ogrenciId = veri.ogrenciId;
+    if (veri.yeniOgrenciAdi && veri.yeniOgrenciSoyadi) {
+      const yeniOgrenci = await tx.student.create({
+        data: {
+          firstName: veri.yeniOgrenciAdi,
+          lastName: veri.yeniOgrenciSoyadi,
+          birthDate: veri.yeniOgrenciDogumTarihi
+            ? tarihCozumle(veri.yeniOgrenciDogumTarihi)
+            : null,
+          branchId: subeId,
+          searchName: normalizeArama(`${veri.yeniOgrenciAdi} ${veri.yeniOgrenciSoyadi}`),
+        },
+        select: { id: true },
+      });
+      ogrenciId = yeniOgrenci.id;
+    } else if (ogrenciId) {
       // şube-muaf: öğrencinin bu şubeye ait olduğu doğrulanıyor.
       const ogrenci = await tx.student.findFirst({
-        where: { id: veri.ogrenciId, branchId: subeId },
+        where: { id: ogrenciId, branchId: subeId },
         select: { id: true },
       });
       if (!ogrenci) return { hata: "Seçilen öğrenci bu şubede bulunamadı." };
@@ -202,7 +222,7 @@ export async function randevuEkle(
         uzmanId: veri.uzmanId,
         hizmetId: veri.hizmetId,
         veliId: veli,
-        ogrenciId: veri.ogrenciId,
+        ogrenciId,
         baslangic: aralik.baslangic,
         bitis: aralik.bitis,
         // Ücret açılış anında KOPYALANIYOR: katalogdaki zam bu randevuyu
@@ -221,6 +241,7 @@ export async function randevuEkle(
 
   if (sonuc) return { ...sonuc, degerler: girilenler };
 
+  if (veri.yeniOgrenciAdi) revalidatePath("/koordinator/ogrenciler");
   tazele();
   return {
     basari:

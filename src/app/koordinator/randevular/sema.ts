@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tarihCozumle } from "@/lib/tarih";
 import {
   EN_AZ_TEKRAR_HAFTASI,
   EN_FAZLA_TEKRAR_HAFTASI,
@@ -66,6 +67,43 @@ export const randevuSemasi = z
     /** Seansa giren çocuk; aile danışmanlığında boş kalır. */
     ogrenciId: z.preprocess(bosuNullYap, z.string().nullable()),
 
+    /**
+     * "Yeni öğrenci ekle" — veli aranan çocuk henüz kayıtlı değilse (bkz.
+     * `veli-secici.tsx`). Bilinçli olarak dar: yalnız ad/soyad/doğum tarihi;
+     * okul, sağlık, veli bağı (Guardian) gibi alanlar burada YOK — telefonda
+     * randevu veren biri için tam öğrenci formunu doldurtmak (§6.1'deki gibi)
+     * kabul edilemez bir sürtünme olurdu. Eksik kalan bilgi gerekirse
+     * Öğrenciler ekranından tamamlanır.
+     */
+    yeniOgrenciAdi: z.preprocess(
+      bosuNullYap,
+      z
+        .string()
+        .trim()
+        .min(2, "Öğrenci adı en az 2 karakter olmalı")
+        .max(60, "Ad en fazla 60 karakter olabilir")
+        .nullable(),
+    ),
+    yeniOgrenciSoyadi: z.preprocess(
+      bosuNullYap,
+      z
+        .string()
+        .trim()
+        .min(2, "Öğrenci soyadı en az 2 karakter olmalı")
+        .max(60, "Soyad en fazla 60 karakter olabilir")
+        .nullable(),
+    ),
+    yeniOgrenciDogumTarihi: z.preprocess(
+      bosuNullYap,
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir doğum tarihi girin")
+        .refine((deger) => tarihCozumle(deger) !== null, {
+          message: "Geçerli bir doğum tarihi girin",
+        })
+        .nullable(),
+    ),
+
     tarih: z.string().trim().min(1, "Tarih seçin"),
     saat: z
       .string()
@@ -106,6 +144,15 @@ export const randevuSemasi = z
         message: "Kayıtlı bir veli seçin ya da yeni velinin adını yazın.",
       });
     }
+    // Yeni öğrenci açılıyorsa ad VE soyad birlikte gelmeli — biri diğerini
+    // sessizce boş bırakırsa öğrenci yarım bir adla kaydolurdu.
+    if (Boolean(veri.yeniOgrenciAdi) !== Boolean(veri.yeniOgrenciSoyadi)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["yeniOgrenciSoyadi"],
+        message: "Yeni öğrencinin adını ve soyadını birlikte yazın.",
+      });
+    }
   });
 
 export type RandevuGirdisi = z.infer<typeof randevuSemasi>;
@@ -117,6 +164,9 @@ export const RANDEVU_FORM_ALANLARI = [
   "yeniVeliAdi",
   "yeniVeliTelefon",
   "ogrenciId",
+  "yeniOgrenciAdi",
+  "yeniOgrenciSoyadi",
+  "yeniOgrenciDogumTarihi",
   "tarih",
   "saat",
   "indirimLira",

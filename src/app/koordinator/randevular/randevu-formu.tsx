@@ -161,6 +161,22 @@ function RandevuFormu({
   const [hizmetId, setHizmetId] = useState("");
   const [veli, setVeli] = useState<VeliSecimi>({ tur: "yok" });
 
+  /**
+   * `ogrenci-formu.tsx`'teki aynı tuzak: React eylem bitince (başarısız
+   * denemede de) bu `<select>`lerin DOM değerini ilk seçeneğe düşürüyor —
+   * `value={uzmanId}`/`value={hizmetId}` React state'i DEĞİŞMEDİĞİ için
+   * yeniden uygulanmıyor, ekran ile state ayrışıyor. Örneğin çakışma
+   * hatasından sonra "Hizmet" görsel olarak seçili kalıyor ama gerçek DOM
+   * değeri boşalıyor; kullanıcı aynı formu tekrar gönderince native
+   * doğrulama sessizce takılıyor. İmparatif senkron bunu düzeltiyor.
+   */
+  const uzmanSecimi = useRef<HTMLSelectElement>(null);
+  const hizmetSecimi = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (uzmanSecimi.current) uzmanSecimi.current.value = uzmanId;
+    if (hizmetSecimi.current) hizmetSecimi.current.value = hizmetId;
+  }, [durum, uzmanId, hizmetId]);
+
   const secilenUzman = secilebilirUzmanlar.find((u) => u.id === uzmanId);
   // Elle `useMemo` YOK: React Compiler bunu kendisi belleğe alıyor ve elle
   // yazılan sarmalayıcı derleyicinin optimizasyonunu bozuyor (lint kuralı
@@ -194,9 +210,10 @@ function RandevuFormu({
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Uzman" hata={durum.alanHatalari?.uzmanId}>
             <select
+              ref={uzmanSecimi}
               name="uzmanId"
               className={secimStili}
-              value={uzmanId}
+              defaultValue={uzmanId}
               onChange={(olay) => {
                 setUzmanId(olay.target.value);
                 // Yetkinlik listesi değişti; eski hizmet seçimi geçersiz.
@@ -222,9 +239,10 @@ function RandevuFormu({
             }
           >
             <select
+              ref={hizmetSecimi}
               name="hizmetId"
               className={secimStili}
-              value={hizmetId}
+              defaultValue={hizmetId}
               onChange={(olay) => setHizmetId(olay.target.value)}
               required
             >
@@ -275,6 +293,9 @@ function RandevuFormu({
           degerler={{
             yeniVeliAdi: deger("yeniVeliAdi"),
             yeniVeliTelefon: deger("yeniVeliTelefon"),
+            yeniOgrenciAdi: deger("yeniOgrenciAdi"),
+            yeniOgrenciSoyadi: deger("yeniOgrenciSoyadi"),
+            yeniOgrenciDogumTarihi: deger("yeniOgrenciDogumTarihi"),
           }}
         />
 
