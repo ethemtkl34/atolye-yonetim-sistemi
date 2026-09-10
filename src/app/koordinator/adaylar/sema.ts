@@ -143,8 +143,10 @@ export const kayipSemasi = z
 
 export const KAYIP_FORM_ALANLARI = ["lossReason", "lossNote"] as const;
 
-/** Randevu kaydı — tarih zorunlu, saat isteğe bağlı (aile "öğleden sonra" der). */
-export const randevuSemasi = z.object({
+/** Adaydan gerçek randevu açma — veli aday kaydından gelir, formdan değil. */
+export const randevuVerSemasi = z.object({
+  hizmetId: z.string().min(1, "Hizmet seçin"),
+  uzmanId: z.string().min(1, "Uzman seçin"),
   tarih: z
     .string()
     .trim()
@@ -152,19 +154,11 @@ export const randevuSemasi = z.object({
     .refine((deger) => tarihCozumle(deger) !== null, {
       message: "Geçerli bir randevu tarihi girin",
     }),
-  saat: z.preprocess(
-    bosuNullYap,
-    z
-      .string()
-      // Saat ve dakika aralığı da kısıtlı: `\d{2}` "99:99"u geçirirdi ve
-      // sunucu tarayıcının `type="time"` kısıtına güvenmemeli.
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Saati SS:DD biçiminde girin")
-      .nullable(),
-  ),
+  saat: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Saati SS:DD biçiminde girin"),
   not: isteğeBagliMetin(500, "Not"),
 });
 
-export const RANDEVU_FORM_ALANLARI = ["tarih", "saat", "not"] as const;
+export const RANDEVU_VER_FORM_ALANLARI = ["hizmetId", "uzmanId", "tarih", "saat", "not"] as const;
 
 /** Etkinlik (arama/whatsapp/not) — insan eliyle yazılabilen türler. */
 export const etkinlikSemasi = z.object({

@@ -1670,6 +1670,9 @@ model Lead {
   updatedAt DateTime @updatedAt
 
   activities LeadActivity[]
+  /// Aday boru hattından açılan gerçek randevular. Aday silinse de hizmet
+  /// kaydı kalır; bu bağ yalnız köken bilgisidir.
+  randevular Randevu[]
 
   @@index([branchId, stage, nextActionDate])
   @@index([branchId, searchPhone])
@@ -1956,6 +1959,11 @@ model Randevu {
   ogrenciId String?
   ogrenci   Student? @relation(fields: [ogrenciId], references: [id], onDelete: Restrict)
 
+  /// Adaydan açılan randevunun kökeni. Gerçek randevu kaydı adaydan bağımsız
+  /// kalır; aday silinirse yalnız bu bağ kopar.
+  leadId String?
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
   baslangic DateTime
   /// `baslangic + hizmet.sureDk` — kayda DONAR. Hizmetin süresi sonradan
   /// değişse geçmiş randevunun bittiği saat kaymaz.
@@ -1994,4 +2002,5 @@ model Randevu {
   /// Velinin randevu geçmişi — profil ve hatırlatma listesi.
   @@index([veliId, baslangic])
   @@index([seriId])
+  @@index([leadId])
 }

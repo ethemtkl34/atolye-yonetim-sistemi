@@ -12,21 +12,25 @@ import {
   formDegerleri,
   type EylemDurumu,
 } from "@/lib/formlar";
-import { tarihCozumle } from "@/lib/tarih";
+import { tarihCozumle, zamanMetni } from "@/lib/tarih";
+import { randevuAraligi, randevuEngeli } from "@/lib/randevu/cakisma";
+import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
+import { veliyiCoz } from "@/lib/randevu/veli";
+import { saatiDakikayaCevir } from "../uzmanlar/sema";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   ADAY_FORM_ALANLARI,
   ETKINLIK_FORM_ALANLARI,
   KAYIP_FORM_ALANLARI,
-  RANDEVU_FORM_ALANLARI,
+  RANDEVU_VER_FORM_ALANLARI,
   TAKIP_FORM_ALANLARI,
   adayDuzenlemeSemasi,
   adayFormundanOku,
   adaySemasi,
   etkinlikSemasi,
   kayipSemasi,
-  randevuSemasi,
+  randevuVerSemasi,
   takipSemasi,
 } from "./sema";
 
@@ -225,61 +229,126 @@ export async function asamaDegistir(
   return { basari: "Aşama güncellendi." };
 }
 
-/** Randevu verildi — tarih (ve varsa saat) alır, aşamayı ilerletir. */
+/**
+ * Randevu verildi — hizmet + uzman + haftalık ızgaradan seçilen gün/saat
+ * alır, GERÇEK bir `Randevu` açar ve aşamayı ilerletir.
+ *
+ * Veli formdan gelmez: adayın kendi `parentName`/`phone` alanından
+ * `veliyiCoz` ile çözülür (mevcut veliyle eşleşir ya da açar) — `randevuEkle`
+ * (randevular modülü) ile AYNI kural, aynı `lib/randevu` yardımcıları.
+ * Çakışma kontrolü de aynı sıradan geçer: izin → mesai → çakışma.
+ */
 export async function randevuVer(
   adayId: string,
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("adaylar", "TAM");
+  const subeId = kullanici.aktifSubeId;
 
-  const cozumlenen = randevuSemasi.safeParse({
-    tarih: formVerisi.get("tarih"),
-    saat: formVerisi.get("saat"),
-    not: formVerisi.get("not"),
-  });
+  const cozumlenen = randevuVerSemasi.safeParse(
+    Object.fromEntries(
+      RANDEVU_VER_FORM_ALANLARI.map((alan) => [alan, formVerisi.get(alan) ?? ""]),
+    ),
+  );
   if (!cozumlenen.success) {
     return {
       alanHatalari: alanHatalari(cozumlenen.error),
-      degerler: formDegerleri(formVerisi, RANDEVU_FORM_ALANLARI),
+      degerler: formDegerleri(formVerisi, RANDEVU_VER_FORM_ALANLARI),
     };
   }
 
-  const { tarih, saat, not } = cozumlenen.data;
+  const { tarih, saat, not, hizmetId, uzmanId } = cozumlenen.data;
 
-  // Gün ve saat AYRI birleştiriliyor: `tarihCozumle` bilerek yalnız
-  // "YYYY-MM-DD" kabul ediyor (31 Şubat gibi taşmaları yakalamak için) ve
-  // "…T14:30" verilince null dönüyordu — ilk sürümde saat girilen her
-  // randevu bu yüzden kaydedilemiyordu.
-  const randevu = tarihCozumle(tarih);
-  if (!randevu) return { hata: "Randevu zamanı çözümlenemedi." };
-  if (saat) {
-    const [saatKismi, dakikaKismi] = saat.split(":");
-    randevu.setUTCHours(Number(saatKismi), Number(dakikaKismi), 0, 0);
-  }
+  const gun = tarihCozumle(tarih);
+  if (!gun) return { hata: "Randevu zamanı çözümlenemedi." };
+  const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(saat)! * 60_000);
 
   const aday = await db.lead.findFirst({
-    where: { id: adayId, branchId: kullanici.aktifSubeId },
-    select: { id: true, stage: true },
+    where: { id: adayId, branchId: subeId },
+    select: { id: true, stage: true, parentName: true, phone: true },
   });
   if (!aday) return { hata: "Aday bulunamadı." };
   if (!ACIK_ASAMALAR.includes(aday.stage)) {
     return { hata: "Kapanmış adaya randevu verilemez." };
   }
+  if (!aday.parentName) return { hata: "Önce veli adını kaydedin." };
 
-  await db.$transaction(async (tx) => {
-    const sonuc = await tx.lead.updateMany({
-      where: { id: adayId, branchId: kullanici.aktifSubeId, stage: aday.stage },
+  // Uzman bu hizmeti yapabiliyor mu — `randevuEkle`'deki aynı kontrol sırası.
+  const yetkinlik = await db.uzmanHizmet.findUnique({
+    where: { uzmanId_hizmetId: { uzmanId, hizmetId } },
+    select: {
+      uzman: {
+        select: {
+          ad: true,
+          aktif: true,
+          subeler: { where: { subeId }, select: { subeId: true } },
+        },
+      },
+      hizmet: { select: { ad: true, aktif: true, sureDk: true, ucretKurus: true } },
+    },
+  });
+  if (!yetkinlik) {
+    return { alanHatalari: { hizmetId: "Bu uzman seçilen hizmeti uygulamıyor." } };
+  }
+  if (!yetkinlik.uzman.aktif || !yetkinlik.hizmet.aktif) {
+    return { hata: "Pasif uzman veya hizmetle randevu açılamaz." };
+  }
+  if (yetkinlik.uzman.subeler.length === 0) {
+    return { alanHatalari: { uzmanId: "Bu uzman bu şubede çalışmıyor." } };
+  }
+
+  const aralik = randevuAraligi(baslangic, yetkinlik.hizmet.sureDk);
+  const baglam = await uzmanBaglami({
+    uzmanId,
+    subeId,
+    ilk: aralik.baslangic,
+    son: aralik.bitis,
+  });
+  const engel = randevuEngeli({ randevu: aralik, ...baglam });
+  if (engel) return { hata: engel.mesaj };
+
+  const sonuc = await db.$transaction(async (tx) => {
+    // Veli ÖNCE çözülüyor: bundan sonraki hiçbir adım henüz bir şey
+    // yazmadı, bu yüzden burada başarısız olmak "geri dönmeye" değil
+    // sadece "hiç başlamamaya" denk düşüyor (randevuEkle'deki aynı sıra).
+    const veli = await veliyiCoz(tx, {
+      subeId,
+      veliId: null,
+      ad: aday.parentName,
+      telefon: aday.phone,
+    });
+    if (typeof veli !== "string") return veli;
+
+    const guncellenen = await tx.lead.updateMany({
+      where: { id: adayId, branchId: subeId, stage: aday.stage },
       data: {
         stage: "RANDEVU_VERILDI",
-        appointmentAt: randevu,
+        appointmentAt: aralik.baslangic,
         unreachableCount: 0,
         lastContactAt: new Date(),
         // Randevu günü kuyruğa düşsün: aile o gün aranıp hatırlatılır.
-        nextActionDate: tarihCozumle(tarih),
+        nextActionDate: gun,
       },
     });
-    if (sonuc.count === 0) return;
+    if (guncellenen.count === 0) {
+      return { hata: "Aday bu sırada değişti; sayfayı yenileyip tekrar deneyin." };
+    }
+
+    await tx.randevu.create({
+      data: {
+        branchId: subeId,
+        uzmanId,
+        hizmetId,
+        veliId: veli,
+        leadId: adayId,
+        baslangic: aralik.baslangic,
+        bitis: aralik.bitis,
+        ucretKurus: yetkinlik.hizmet.ucretKurus,
+        not,
+        createdByUserId: kullanici.id,
+      },
+    });
 
     if (aday.stage !== "RANDEVU_VERILDI") {
       await tx.leadActivity.create({
@@ -297,13 +366,17 @@ export async function randevuVer(
       data: {
         leadId: adayId,
         type: "SISTEM",
-        note: `Randevu verildi: ${tarih}${saat ? ` ${saat}` : ""}${not ? ` — ${not}` : ""}`,
+        note: `Randevu verildi: ${yetkinlik.hizmet.ad} · ${yetkinlik.uzman.ad} · ${zamanMetni(baslangic)}`,
         createdByUserId: kullanici.id,
       },
     });
+    return null;
   });
 
+  if (sonuc) return sonuc;
+
   adayYollariniTazele(adayId);
+  revalidatePath("/koordinator/randevular");
   return { basari: "Randevu kaydedildi." };
 }
 

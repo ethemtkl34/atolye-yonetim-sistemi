@@ -6,8 +6,9 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
-import { tarihCozumle, zamanMetni } from "@/lib/tarih";
-import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
+import { bugun, tarihCozumle, zamanMetni } from "@/lib/tarih";
+import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
+import { veliyiCoz } from "@/lib/randevu/veli";
 import {
   randevuAraligi,
   randevuEngeli,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/randevu/tekrar";
 import { liradanKurusa, saatiDakikayaCevir } from "../uzmanlar/sema";
 import { RANDEVU_FORM_ALANLARI, randevuSemasi } from "./sema";
+import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 
 /**
  * §17.4 — Randevu yazma işlemleri.
@@ -39,108 +41,16 @@ function tazele(): void {
   revalidatePath("/koordinator");
 }
 
-/**
- * Uzmanın verilen günlerdeki engellerini tek seferde okur.
- *
- * Seri açılırken 8–26 tarih kontrol ediliyor; her biri için ayrı sorgu
- * atmak yerine aralığın tamamı bir kez okunup karar saf modüle bırakılıyor
- * (bkz. lib/randevu/cakisma.ts).
- */
-async function uzmanBaglami(args: {
-  uzmanId: string;
-  subeId: string;
-  ilk: Date;
-  son: Date;
-  haricId?: string;
-}) {
-  const { uzmanId, subeId, ilk, son, haricId } = args;
-
-  // şube-muaf: mesai sorgusu `subeId` taşıyor; randevu ve izin uzmana ait
-  // (uzman çok şubeli, bkz. lib/sube-sizinti.ts gerekçesi).
-  const [mesailer, izinler, mevcutlar] = await Promise.all([
-    db.uzmanMesai.findMany({
-      where: { uzmanId, subeId },
-      select: { gun: true, baslangicDk: true, bitisDk: true },
-    }),
-    db.izin.findMany({
-      where: { uzmanId, bitis: { gt: ilk }, baslangic: { lt: son } },
-      select: { baslangic: true, bitis: true },
-    }),
-    db.randevu.findMany({
-      where: {
-        uzmanId,
-        bitis: { gt: ilk },
-        baslangic: { lt: son },
-        ...(haricId ? { NOT: { id: haricId } } : {}),
-      },
-      select: { id: true, baslangic: true, bitis: true, durum: true },
-    }),
-  ]);
-
-  return {
-    mesailer,
-    izinler,
-    mevcutlar: mevcutlar.map((randevu) => ({
-      id: randevu.id,
-      baslangic: randevu.baslangic,
-      bitis: randevu.bitis,
-      iptal: randevu.durum === "IPTAL",
-    })),
-  };
+/** Aday penceresinin sayfadan ayrılmadan hafta değiştirmesi için salt-okunur veri. */
+export async function haftaRandevuVerisiEylemi(tarih: string) {
+  const kullanici = await yonetimZorunlu("randevular");
+  return haftaRandevuVerisi({ subeId: kullanici.aktifSubeId, capa: tarihCozumle(tarih) ?? bugun() });
 }
 
 function formuOku(formVerisi: FormData) {
   return Object.fromEntries(
     RANDEVU_FORM_ALANLARI.map((alan) => [alan, formVerisi.get(alan) ?? ""]),
   );
-}
-
-/**
- * Danışan veliyi çözer: kayıtlı veli seçildiyse onu, yeni veli girildiyse
- * (şube + telefon + ad) eşleşmesini arar, yoksa açar.
- *
- * Eşleştirme kuralı `lib/veli.ts` ile AYNI olmak zorunda — iki farklı kural,
- * aynı velinin iki kayda bölünmesi demek.
- */
-async function veliyiCoz(
-  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
-  args: { subeId: string; veliId: string | null; ad: string | null; telefon: string | null },
-): Promise<string | { hata: string }> {
-  if (args.veliId) {
-    // şube-muaf: seçilen velinin bu şubeye ait olduğu doğrulanıyor.
-    const veli = await tx.veli.findFirst({
-      where: { id: args.veliId, branchId: args.subeId },
-      select: { id: true },
-    });
-    return veli ? veli.id : { hata: "Seçilen veli bu şubede bulunamadı." };
-  }
-
-  if (!args.ad) return { hata: "Veli adı gerekli." };
-
-  const searchPhone = args.telefon ? normalizeTelefon(args.telefon) : null;
-  const searchName = normalizeArama(args.ad);
-
-  // şube-muaf: veli okuma ve yazımı `branchId: subeId` taşıyor.
-  const eslesen = searchPhone
-    ? await tx.veli.findFirst({
-        where: { branchId: args.subeId, searchPhone, searchName },
-        select: { id: true },
-      })
-    : null;
-
-  if (eslesen) return eslesen.id;
-
-  const yeni = await tx.veli.create({
-    data: {
-      branchId: args.subeId,
-      fullName: args.ad,
-      phone: args.telefon,
-      searchPhone,
-      searchName,
-    },
-    select: { id: true },
-  });
-  return yeni.id;
 }
 
 export async function randevuEkle(

@@ -192,6 +192,18 @@ Karar gerekçeleri:
 
 ## Randevu yönetimi (§17)
 
+- **Adaydan verilen randevu gerçek `Randevu` kaydıdır.** `Randevu.leadId`
+  adayın yalnız köken bağını tutar; aday silinirse randevu ve hizmet geçmişi
+  kalır (`SetNull`). Adayın `appointmentAt` alanı hızlı gösterim için bu
+  randevunun başlangıcına yazılır, kaynak kayıt değildir.
+- **Aday randevusu tek seferliktir.** Akış hizmet seçimi, hafta ızgarasından
+  gün/saat seçimi ve o hizmeti yapan uzman onayıdır. Veli formdan alınmaz;
+  adayın ad/telefonundan mevcut veli çözülür ya da oluşturulur. Seri yalnız
+  Randevular modülünün normal akışında açılır.
+- **Aday ve normal randevu aynı uygunluk kurallarını kullanır.** İzin → mesai
+  → çakışma sırası, uzman bağlamı ve veli çözümü ortak `lib/randevu`
+  modüllerindedir; iki farklı randevu açma yolu ayrı kurallar üretemez.
+
 - **Veli birinci sınıf kayıt oldu.** Randevu veliye açılıyor; veli öğrencinin
   altında bir satır kaldığı sürece aynı anne-baba her çocuğu için ayrı bir
   satırdı (canlıda 857 satır, 750 telefon) ve randevu geçmişi çocuklar

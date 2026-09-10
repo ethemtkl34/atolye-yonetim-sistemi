@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LeadStage } from "@/generated/prisma/enums";
-import {
-  adayiKaybet,
-  randevuVer,
-} from "@/app/koordinator/adaylar/actions";
+import { adayiKaybet } from "@/app/koordinator/adaylar/actions";
+import { RandevuPlanlamaPenceresi } from "@/app/koordinator/adaylar/[id]/randevu-planlama";
 import { mevcutOgrenciyeEsle } from "@/app/koordinator/adaylar/donusum-eylemleri";
 import { useEklemePaneli, useSunucuIslemi } from "@/components/bolum-iskeleti";
 import {
@@ -14,7 +12,6 @@ import {
   Bildirim,
   Buton,
   CokSatirli,
-  Girdi,
   butonStili,
   secimStili,
 } from "@/components/ui";
@@ -22,6 +19,7 @@ import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import { ADAY_ASAMALARI, ADAY_KAYIP_SEBEPLERI } from "@/lib/aday-durumlari";
 import { DONUSUM_HEDEFLERI, type DonusumHedefi } from "@/lib/aday/donusum";
 import type { EylemDurumu } from "@/lib/formlar";
+import type { HaftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 import { cn } from "@/lib/utils";
 
 /**
@@ -88,6 +86,10 @@ export function AdayAsamaEylemleri({
   asamaDegistir,
   ulasilamadiKaydet,
   adayiYenidenAc,
+  veli,
+  hizmetler,
+  uzmanlar,
+  haftaVerisiBaslangic,
 }: {
   adayId: string;
   asama: LeadStage;
@@ -99,6 +101,16 @@ export function AdayAsamaEylemleri({
   asamaDegistir: (adayId: string, hedef: LeadStage) => Promise<EylemDurumu>;
   ulasilamadiKaydet: (adayId: string) => Promise<EylemDurumu>;
   adayiYenidenAc: (adayId: string) => Promise<EylemDurumu>;
+  veli: { ad: string; telefon: string | null };
+  hizmetler: { id: string; ad: string }[];
+  uzmanlar: { id: string; ad: string; renk: string; buSubede: boolean; hizmetIdleri: string[] }[];
+  /**
+   * Kapalı adayda (KAZANILDI/KAYBEDILDI) sunucu bunu hiç sorgulamıyor —
+   * `null` geliyor. "Randevu ver…" düğmesi zaten yalnız açık adayda çiziliyor
+   * (`!kapali`), pencere de aynı koşulla render ediliyor; bu yüzden `null`
+   * durumunda pencerenin kendisine hiç ulaşılmıyor.
+   */
+  haftaVerisiBaslangic: HaftaRandevuVerisi | null;
 }) {
   const { durum, calisiyor, calistir } = useSunucuIslemi();
   const [kayipAcik, setKayipAcik] = useState(false);
@@ -205,11 +217,21 @@ export function AdayAsamaEylemleri({
       {durum.basari ? <Bildirim tur="bilgi">{durum.basari}</Bildirim> : null}
       {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
-      <RandevuPenceresi
-        acik={randevuAcik}
-        onKapat={() => setRandevuAcik(false)}
-        adayId={adayId}
-      />
+      {/* Kapalı adayda `haftaVerisiBaslangic` sunucudan hiç gelmiyor
+          (bkz. prop şerhi) — "Randevu ver…" düğmesi zaten yalnız açık
+          adayda çiziliyor, pencere de aynı koşula bağlı: null'a hiç
+          ulaşılmaz, tip yine de dürüst kalsın diye burada da kontrol var. */}
+      {!kapali && haftaVerisiBaslangic ? (
+        <RandevuPlanlamaPenceresi
+          acik={randevuAcik}
+          onKapat={() => setRandevuAcik(false)}
+          adayId={adayId}
+          veli={veli}
+          hizmetler={hizmetler}
+          uzmanlar={uzmanlar}
+          haftaVerisiBaslangic={haftaVerisiBaslangic}
+        />
+      ) : null}
       <KayipPenceresi
         acik={kayipAcik}
         onKapat={() => setKayipAcik(false)}
@@ -222,51 +244,6 @@ export function AdayAsamaEylemleri({
         ogrenciSecenekleri={ogrenciSecenekleri}
       />
     </div>
-  );
-}
-
-function RandevuPenceresi({
-  acik,
-  onKapat,
-  adayId,
-}: {
-  acik: boolean;
-  onKapat: () => void;
-  adayId: string;
-}) {
-  const { durum, eylem } = useEklemePaneli(randevuVer.bind(null, adayId));
-  const h = durum.alanHatalari;
-  useBasaridaKapat(durum.basari, onKapat);
-
-  return (
-    <Pencere
-      acik={acik}
-      onKapat={onKapat}
-      baslik="Randevu ver"
-      altBaslik="Randevu günü aday “bugün aranacaklar” listesine düşer."
-      genislik="26rem"
-    >
-      <form action={eylem} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Alan etiket="Tarih" hata={h?.tarih}>
-            <Girdi name="tarih" type="date" required />
-          </Alan>
-          <Alan etiket="Saat" ipucu="İsteğe bağlı" hata={h?.saat}>
-            <Girdi name="saat" type="time" />
-          </Alan>
-        </div>
-        <Alan etiket="Not" hata={h?.not}>
-          <Girdi name="not" placeholder="Şubede, 2. kat" />
-        </Alan>
-        {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
-        <div className="flex flex-wrap gap-2">
-          <GonderButonu>Randevuyu kaydet</GonderButonu>
-          <Buton type="button" tur="ikincil" onClick={onKapat}>
-            Vazgeç
-          </Buton>
-        </div>
-      </form>
-    </Pencere>
   );
 }
 

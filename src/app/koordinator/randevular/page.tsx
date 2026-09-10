@@ -25,8 +25,9 @@ import {
   izgaraSutunlariniOlustur,
 } from "@/lib/randevu/izgara-verisi";
 import { KURUM_ADI } from "@/lib/kurallar";
+import { randevuSatirlariGetir } from "@/lib/randevu/hafta-verisi";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
-import { Takvim, type RandevuSatiri } from "./takvim";
+import { Takvim } from "./takvim";
 import { Izgara } from "./izgara";
 import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
@@ -112,34 +113,12 @@ export default async function RandevularSayfasi(
         danisanTuru: true,
       },
     }),
-    // şube-muaf: takvim BİLEREK şubeler arası (§17.7). Kişisel veri aşağıda
-    // şubeye göre ayıklanıyor; sorgunun kendisi iki şubeyi de okuyor ki
-    // çift şubeli uzmanın dolu saati görünsün.
-    db.randevu.findMany({
-      where: {
-        baslangic: { gte: aralik.ilk, lt: aralik.son },
-        ...(iptalleriGoster ? { durum: "IPTAL" } : { durum: { not: "IPTAL" } }),
-        ...(uzmanSuzgeci !== "tumu" ? { uzmanId: uzmanSuzgeci } : {}),
-        ...(hizmetSuzgeci !== "tumu" ? { hizmetId: hizmetSuzgeci } : {}),
-      },
-      orderBy: { baslangic: "asc" },
-      select: {
-        id: true,
-        branchId: true,
-        baslangic: true,
-        bitis: true,
-        durum: true,
-        ucretKurus: true,
-        indirimKurus: true,
-        seriId: true,
-        not: true,
-        iptalNotu: true,
-        uzman: { select: { id: true, ad: true, renk: true } },
-        hizmet: { select: { ad: true, grup: true } },
-        veli: { select: { fullName: true, phone: true } },
-        ogrenci: { select: { firstName: true, lastName: true } },
-        branch: { select: { name: true } },
-      },
+    randevuSatirlariGetir({
+      subeId,
+      aralik,
+      uzmanSuzgeci,
+      hizmetSuzgeci,
+      iptalleriGoster,
     }),
     // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
     // `subeId` filtresi yeter — hangi uzmana ait olduğuna bakılmaksızın BU
@@ -161,33 +140,7 @@ export default async function RandevularSayfasi(
       : Promise.resolve([]),
   ]);
 
-  const satirlar: RandevuSatiri[] = randevular.map((randevu) => {
-    const bizim = randevu.branchId === subeId;
-    return {
-      id: randevu.id,
-      bizim,
-      subeAdi: randevu.branch.name,
-      baslangic: randevu.baslangic,
-      bitis: randevu.bitis,
-      durum: randevu.durum,
-      uzmanId: randevu.uzman.id,
-      uzmanAdi: randevu.uzman.ad,
-      uzmanRengi: randevu.uzman.renk,
-      hizmetAdi: randevu.hizmet.ad,
-      seriDeMi: Boolean(randevu.seriId),
-      // Başka şubenin randevusunda danışan bilgisi ve not GİZLİ; görünen
-      // şey yalnız "o saat dolu" bilgisi (§17.7).
-      veliAdi: bizim ? randevu.veli.fullName : null,
-      veliTelefon: bizim ? randevu.veli.phone : null,
-      ogrenciAdi:
-        bizim && randevu.ogrenci
-          ? `${randevu.ogrenci.firstName} ${randevu.ogrenci.lastName}`
-          : null,
-      not: bizim ? randevu.not : null,
-      iptalNotu: bizim ? randevu.iptalNotu : null,
-      ucretKurus: bizim ? randevu.ucretKurus - randevu.indirimKurus : null,
-    };
-  });
+  const satirlar = randevular;
 
   const gruplar = gunlereBol(aralik, satirlar);
 

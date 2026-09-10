@@ -4,49 +4,22 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
 import { Pencere } from "@/components/ui-istemci";
-import {
-  GUN_KISA_ADLARI,
-  bugun,
-  gunundenGun,
-  saatAraligiMetni,
-  saatMetni,
-  tarihGunleBicimle,
-} from "@/lib/tarih";
-import {
-  dakikadanOran,
-  type HaftaSutunu,
-  type IzgaraEkseni,
-} from "@/lib/randevu/izgara-verisi";
-import { uzmanRengi } from "@/lib/uzman-renkleri";
+import { saatAraligiMetni, tarihGunleBicimle } from "@/lib/tarih";
+import type { HaftaSutunu, IzgaraEkseni } from "@/lib/randevu/izgara-verisi";
 import type { EylemDurumu } from "@/lib/formlar";
-import { dakikayiSaateCevir } from "../uzmanlar/sema";
 import { DURUM_ADLARI, DURUM_ROZETLERI } from "./sema";
 import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
+import { HaftaIzgarasiGovdesi } from "./hafta-izgarasi-govde";
 import type { RandevuSatiri } from "./takvim";
 
-/** Bir dakikanın piksel karşılığı (Izgara/Program ile aynı yoğunluk). */
-const PX_PER_DK = 1.5;
-/** Gün sütununun sabit genişliği; yedi gün aynı anda görünmeyince yatay kaydırma devreye girer. */
-const SUTUN_GENISLIGI_REM = 9;
-const ZAMAN_SUTUNU_REM = 4;
-
 /**
- * §17.4 revizyonu — "Hafta" ızgara görünümü.
+ * §17.4 revizyonu — "Hafta" ızgara görünümü (sayfa kabuğu).
  *
- * Satır saat, sütun GÜN (eski günlere-bölünmüş tablo listesinin yerine
- * geçti). Bir günün sütununda o gün çalışan BÜTÜN uzmanların randevuları
- * yan yana durur; kimin randevusu olduğu artık bir sütun başlığından değil
- * bloğun RENGİNDEN okunuyor — bu yüzden renk burada Program görünümündekinden
- * daha DOYGUN (ton.metin arka plan, beyaz yazı), soluk pastel yetersiz
- * kalırdı. Ad yine de her zaman yazılı: renk körlüğü tek başına renge
- * güvenmeyi imkânsız kılıyor.
- *
- * Mesai/izin gölgelemesi BİLEREK yok: sütun tek bir uzmana ait değil, "bu
- * uzman bugün mesaide mi" sorusunun tek bir cevabı olmuyor. Boş hücreye
- * tıklayıp randevu açma da yok aynı sebeple — önce uzman seçilmeli, o akış
- * sayfa başındaki "Randevu aç" düğmesinde.
+ * Izgaranın kendisi `HaftaIzgarasiGovdesi`'nde — aday akışının randevu
+ * seçicisiyle ORTAK (bkz. o dosyanın şerhi). Burada yalnız gezinme şeridi,
+ * İptaller sekmesi ve tıklanan randevunun detay/eylem penceresi var.
  */
 export function HaftaIzgarasi({
   baslik,
@@ -78,14 +51,6 @@ export function HaftaIzgarasi({
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
   const [bekliyor, basla] = useTransition();
 
-  const toplamPiksel = (eksen.bitisDk - eksen.baslangicDk) * PX_PER_DK;
-  const buGun = bugun();
-
-  const saatCizgileri: number[] = [];
-  for (let dk = eksen.baslangicDk; dk <= eksen.bitisDk; dk += eksen.adimDk) {
-    saatCizgileri.push(dk);
-  }
-
   return (
     <div className="space-y-4">
       {mesaj?.basari ? <Bildirim tur="basari">{mesaj.basari}</Bildirim> : null}
@@ -115,131 +80,7 @@ export function HaftaIzgarasi({
       </Kart>
 
       <Kart className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <div
-            style={{
-              minWidth: `${ZAMAN_SUTUNU_REM + sutunlar.length * SUTUN_GENISLIGI_REM}rem`,
-            }}
-          >
-            {/* Bkz. Izgara (Program) bileşenindeki aynı şerh: başlık satırı
-                yalnız yatayda sabit, dikey sticky sayfa kaydırmasıyla
-                çakışıyordu. */}
-            <div className="flex border-b border-[var(--kil-kenar)] bg-[var(--color-yuzey-50)]">
-              <div
-                className="sticky left-0 z-20 shrink-0 bg-[var(--color-yuzey-50)]"
-                style={{ width: `${ZAMAN_SUTUNU_REM}rem` }}
-              />
-              {sutunlar.map((sutun) => {
-                const buGunMu = sutun.gun.getTime() === buGun.getTime();
-                return (
-                  <div
-                    key={sutun.gun.toISOString()}
-                    className="flex shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
-                    style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
-                  >
-                    <span
-                      className={
-                        buGunMu
-                          ? "flex size-6 items-center justify-center rounded-full bg-marka-600 text-xs font-bold text-white"
-                          : "text-sm font-bold text-zinc-800"
-                      }
-                    >
-                      {sutun.gun.getUTCDate()}
-                    </span>
-                    <span className="text-xs text-zinc-500">
-                      {GUN_KISA_ADLARI[gunundenGun(sutun.gun)]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="relative flex" style={{ height: `${toplamPiksel}px` }}>
-              {saatCizgileri.map((dk) => (
-                <div
-                  key={`cizgi-${dk}`}
-                  className="absolute inset-x-0 border-t border-zinc-200"
-                  style={{ top: `${dakikadanOran(dk, eksen) * 100}%` }}
-                  aria-hidden
-                />
-              ))}
-
-              <div
-                className="sticky left-0 z-10 shrink-0 bg-[var(--color-yuzey-50)]"
-                style={{ width: `${ZAMAN_SUTUNU_REM}rem` }}
-              >
-                <div className="relative h-full">
-                  {saatCizgileri
-                    .filter((dk) => dk % 60 === 0)
-                    .map((dk) => (
-                      <span
-                        key={dk}
-                        className="absolute right-2 text-xs text-zinc-500 tabular-nums"
-                        style={{
-                          top: `${dakikadanOran(dk, eksen) * 100}%`,
-                          transform:
-                            dk === eksen.baslangicDk
-                              ? "translateY(0)"
-                              : dk === eksen.bitisDk
-                                ? "translateY(-100%)"
-                                : "translateY(-50%)",
-                        }}
-                      >
-                        {dakikayiSaateCevir(dk)}
-                      </span>
-                    ))}
-                </div>
-              </div>
-
-              {sutunlar.map((sutun) => (
-                <div
-                  key={sutun.gun.toISOString()}
-                  className="relative"
-                  style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
-                >
-                  {sutun.bloklar.map(
-                    ({ baslangicDk, bitisDk, randevu, lane, laneSayisi }) => {
-                      const ton = uzmanRengi(randevu.uzmanRengi);
-                      return (
-                        <button
-                          key={randevu.id}
-                          type="button"
-                          onClick={() => setDetay(randevu)}
-                          className="kil-satir absolute overflow-hidden rounded-[var(--kil-r-sm)] p-1 text-left"
-                          style={{
-                            top: `${dakikadanOran(baslangicDk, eksen) * 100}%`,
-                            height: `${(dakikadanOran(bitisDk, eksen) - dakikadanOran(baslangicDk, eksen)) * 100}%`,
-                            left: `calc(${(lane / laneSayisi) * 100}% + 1px)`,
-                            width: `calc(${100 / laneSayisi}% - 2px)`,
-                            // `kil-satir` sınıfı `background` KISALTMASIYLA
-                            // kendi (opak) kil gradyanını çiziyor; yalnız
-                            // `backgroundColor` vermek bu gradyanın ALTINDA
-                            // kalıp hiç görünmezdi. Gradyan burada elle
-                            // kapatılıyor.
-                            backgroundImage: "none",
-                            backgroundColor: ton.metin,
-                            color: "#fff",
-                            opacity: randevu.durum === "IPTAL" ? 0.6 : 1,
-                          }}
-                        >
-                          <span className="block truncate text-[0.7rem] font-semibold tabular-nums">
-                            {saatMetni(randevu.baslangic)}
-                          </span>
-                          <span className="block truncate text-[0.65rem] font-medium">
-                            {randevu.hizmetAdi}
-                          </span>
-                          <span className="block truncate text-[0.6rem] text-white/80">
-                            {randevu.uzmanAdi}
-                          </span>
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <HaftaIzgarasiGovdesi sutunlar={sutunlar} eksen={eksen} onBlokTikla={setDetay} />
       </Kart>
 
       <Pencere

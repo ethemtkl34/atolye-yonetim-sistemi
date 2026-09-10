@@ -21,7 +21,8 @@ import {
 } from "@/lib/aday-durumlari";
 import { adaySorumlulari } from "@/lib/aday/aday-listesi";
 import { db } from "@/lib/db";
-import { tarihBicimle, tarihMetni, zamanMetni } from "@/lib/tarih";
+import { bugun, tarihBicimle, tarihMetni, zamanMetni } from "@/lib/tarih";
+import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import {
   adayiYenidenAc,
@@ -73,16 +74,54 @@ export default async function AdayAyrintiSayfasi(
   const donusturebilir =
     yazabilir && kullanici.yetkiler.ogrenciler !== "YOK";
 
-  const [kadro, ogrenciler] = await Promise.all([
-    yazabilir ? adaySorumlulari(subeId) : Promise.resolve([]),
-    donusturebilir
-      ? db.student.findMany({
-          where: { branchId: subeId },
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-          select: { id: true, firstName: true, lastName: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  // "Randevu ver…" düğmesi ve penceresi yalnız açık adayda anlamlı
+  // (`AdayAsamaEylemleri`'de `!kapali` ile aynı koşul); kapalı adayda bu üç
+  // sorgu boşuna çalışmasın diye baştan atlanıyor.
+  const acikAday = ACIK_ASAMALAR.includes(aday.stage);
+  const randevuPlanlamaVerisiGerekli = yazabilir && acikAday;
+
+  const [kadro, ogrenciler, hizmetler, uzmanlarHam, haftaVerisiBaslangic] =
+    await Promise.all([
+      yazabilir ? adaySorumlulari(subeId) : Promise.resolve([]),
+      donusturebilir
+        ? db.student.findMany({
+            where: { branchId: subeId },
+            orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : Promise.resolve([]),
+      randevuPlanlamaVerisiGerekli
+        ? db.hizmet.findMany({
+            where: { aktif: true },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, ad: true },
+          })
+        : Promise.resolve([]),
+      randevuPlanlamaVerisiGerekli
+        ? db.uzman.findMany({
+            where: { aktif: true },
+            orderBy: [{ sortOrder: "asc" }, { ad: "asc" }],
+            select: {
+              id: true,
+              ad: true,
+              renk: true,
+              subeler: { select: { subeId: true } },
+              hizmetler: { select: { hizmetId: true } },
+            },
+          })
+        : Promise.resolve([]),
+      randevuPlanlamaVerisiGerekli
+        ? haftaRandevuVerisi({ subeId, capa: bugun() })
+        : Promise.resolve(null),
+    ]);
+
+  const uzmanlar = uzmanlarHam.map((uzman) => ({
+    id: uzman.id,
+    ad: uzman.ad,
+    renk: uzman.renk,
+    buSubede: uzman.subeler.some((bag) => bag.subeId === subeId),
+    hizmetIdleri: uzman.hizmetler.map((bag) => bag.hizmetId),
+  }));
 
   const ad = aday.parentName ?? "İsimsiz aday";
   const asamaBilgisi = ADAY_ASAMALARI[aday.stage];
@@ -94,8 +133,6 @@ export default async function AdayAyrintiSayfasi(
    * görünmezdi — kullanıcı arama planladığını sanırdı. Aday yeniden açılınca
    * kart geri gelir.
    */
-  const acikAday = ACIK_ASAMALAR.includes(aday.stage);
-
   const ustBilgi = [
     aday.childName ? `${aday.childName} için` : null,
     ADAY_KAYNAKLARI[aday.source],
@@ -194,6 +231,10 @@ export default async function AdayAyrintiSayfasi(
           asamaDegistir={asamaDegistir}
           ulasilamadiKaydet={ulasilamadiKaydet}
           adayiYenidenAc={adayiYenidenAc}
+          veli={{ ad: aday.parentName ?? "İsimsiz aday", telefon: aday.phone }}
+          hizmetler={hizmetler}
+          uzmanlar={uzmanlar}
+          haftaVerisiBaslangic={haftaVerisiBaslangic}
         />
       ) : null}
 
