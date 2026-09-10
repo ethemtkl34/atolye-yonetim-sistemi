@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import {
   Alan,
@@ -120,6 +120,40 @@ function RandevuFormu({
     {},
   );
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const [mesaiZorla, setMesaiZorla] = useState(false);
+
+  /**
+   * `onayGerekli` (mesai dışı) sunucudan gelince bir kez sorar; EVET ise
+   * gizli `mesaiZorla` alanını 1 yapıp AYNI formu yeniden gönderir — ikinci
+   * turda `randevuEngeli` mesaiyi hiç bildirmediği için form normal
+   * akışına döner. `[durum]` bilinçli: `durum.onayGerekli` metni aynı
+   * kalsa bile (kullanıcı vazgeçip aynı saati tekrar denerse) her yeni
+   * sunucu yanıtı YENİ bir nesne, bu yüzden efekt yine tetiklenir.
+   */
+  useEffect(() => {
+    if (!durum.onayGerekli) return;
+    const devamEt = window.confirm(
+      `${durum.onayGerekli}\n\nYine de kaydetmek istiyor musunuz?`,
+    );
+    // `queueMicrotask`: `window.confirm` senkron olsa da, state güncellemesi
+    // efektin GÖVDESİNDEN değil bir sonraki mikro görevden gelsin diye
+    // (art arda render zincirini engelleyen kural, `react-hooks/set-state-in-effect`).
+    if (devamEt) queueMicrotask(() => setMesaiZorla(true));
+  }, [durum]);
+
+  useEffect(() => {
+    if (mesaiZorla) formRef.current?.requestSubmit();
+  }, [mesaiZorla]);
+
+  // React 19 form eylemi bitince kontrolsüz alanları sıfırlar (`onayGerekli`
+  // dönüşü de dahil) — `mesaiZorla` ile otomatik yeniden gönderilen formun
+  // native doğrulaması BOŞ bir zorunlu alanda (`yeniVeliAdi`) sessizce
+  // takılıyordu; eylem girilen değerleri geri döndürüyor, burada
+  // `defaultValue` olarak yazılıyor (bkz. `formlar.ts` `degerler` şerhi,
+  // `ogrenci-formu.tsx`'teki aynı desen).
+  const deger = (alan: string) => durum.degerler?.[alan];
+
   const secilebilirUzmanlar = uzmanlar.filter((uzman) => uzman.buSubede);
   const [uzmanId, setUzmanId] = useState(
     varsayilanUzmanId ?? secilebilirUzmanlar[0]?.id ?? "",
@@ -146,7 +180,8 @@ function RandevuFormu({
       genislik="42rem"
       govdeSinifi="space-y-4 overflow-y-auto px-4 pt-4"
     >
-      <form action={gonder} className="space-y-4">
+      <form ref={formRef} action={gonder} className="space-y-4">
+        <input type="hidden" name="mesaiZorla" value={mesaiZorla ? "1" : ""} />
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
         {secilebilirUzmanlar.length === 0 ? (
@@ -206,7 +241,12 @@ function RandevuFormu({
           </Alan>
 
           <Alan etiket="Tarih" hata={durum.alanHatalari?.tarih}>
-            <Girdi name="tarih" type="date" defaultValue={varsayilanTarih} required />
+            <Girdi
+              name="tarih"
+              type="date"
+              defaultValue={deger("tarih") ?? varsayilanTarih}
+              required
+            />
           </Alan>
 
           <Alan
@@ -221,7 +261,7 @@ function RandevuFormu({
             <Girdi
               name="saat"
               type="time"
-              defaultValue={varsayilanSaat ?? "10:00"}
+              defaultValue={deger("saat") ?? varsayilanSaat ?? "10:00"}
               required
             />
           </Alan>
@@ -232,6 +272,10 @@ function RandevuFormu({
           onDegis={setVeli}
           hata={durum.alanHatalari?.veliId}
           cocukIsteniyor={secilenHizmet?.danisanTuru !== "VELI"}
+          degerler={{
+            yeniVeliAdi: deger("yeniVeliAdi"),
+            yeniVeliTelefon: deger("yeniVeliTelefon"),
+          }}
         />
 
         {secilenHizmet?.tekrarli ? (
@@ -264,16 +308,27 @@ function RandevuFormu({
                 : undefined
             }
           >
-            <Girdi name="indirimLira" type="number" min={0} step="0.01" defaultValue={0} />
+            <Girdi
+              name="indirimLira"
+              type="number"
+              min={0}
+              step="0.01"
+              defaultValue={deger("indirimLira") ?? "0"}
+            />
           </Alan>
 
           <Alan etiket="İndirim notu" hata={durum.alanHatalari?.indirimNotu}>
-            <Girdi name="indirimNotu" maxLength={200} placeholder="Kardeş indirimi" />
+            <Girdi
+              name="indirimNotu"
+              maxLength={200}
+              placeholder="Kardeş indirimi"
+              defaultValue={deger("indirimNotu")}
+            />
           </Alan>
         </div>
 
         <Alan etiket="Not (isteğe bağlı)" hata={durum.alanHatalari?.not}>
-          <CokSatirli name="not" rows={2} maxLength={2000} />
+          <CokSatirli name="not" rows={2} maxLength={2000} defaultValue={deger("not")} />
         </Alan>
 
         {/* Yapışkan eylem şeridi — uzman formundaki gerekçenin aynısı. */}

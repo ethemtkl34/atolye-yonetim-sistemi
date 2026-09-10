@@ -254,6 +254,14 @@ Karar gerekçeleri:
   kısmi seri sessizce eksik bir program üretirdi.
 - **Randevu engel sırası: izin → mesai → çakışma.** Uzman o gün hiç
   gelmiyorsa "o saat dolu" demek kullanıcıyı başka saat denemeye iterdi.
+- **Mesai dışı TEK istisna: kesin ret değil, sorulan bir onay** (Eylül 2026
+  revizyonu). Kurum bazen uzmanı normal mesaisinin dışında özel bir seans
+  için çağırıyor; katı engel bunu tamamen imkânsız kılıyordu. Form bir kez
+  "yine de kaydedilsin mi?" sorar, EVET'te gizli bir bayrakla (`mesaiZorla`)
+  aynı eylemi tekrar çağırır — sunucu (`randevuEngeli`'nin `mesaiyiYokSay`
+  parametresi) bu bayrak olmadan KENDİLİĞİNDEN asla atlamaz. İzin ve çakışma
+  bu istisnadan ETKİLENMEZ ve hâlâ kesin ret: uzman izinliyse ya da zaten
+  başka bir seanstaysa hiçbir onay bunu aşamaz.
 - **Takvim ızgara değil liste.** Belge de "listelenir" diyor; seanslar
   30–120 dakika arasında ve günde en fazla bir düzine — ızgara aynı bilgiyi
   telefonda kullanılamaz hâlde gösterirdi.

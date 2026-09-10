@@ -9,13 +9,21 @@ import type { Day } from "@/generated/prisma/enums";
  * takvim ekranında, randevu formunda ve tekrar üretiminde aynı olmak zorunda
  * ve tek yerde testlenebilmeli (`kayit-kurallari.ts` deseni).
  *
- * ÜÇ ENGEL VAR ve üçü de UYARI DEĞİL, ENGEL (§17.4):
- *   1. Uzmanın aynı saatte başka randevusu (aynı kişi iki yerde olamaz).
- *   2. Mesai dışı saat (uzman o gün o şubede çalışmıyor).
- *   3. İzin aralığı.
+ * ÜÇ ENGEL VAR (§17.4):
+ *   1. İzin aralığı.
+ *   2. Mesai dışı saat (uzman o gün o şubede çalışmıyor) — TEK İSTİSNA:
+ *      `mesaiyiYokSay` verilirse bu engel hiç bildirilmez (Eylül 2026
+ *      revizyonu). Kurum bazen uzmanı normal mesaisinin dışında, özel bir
+ *      randevu için çağırıyor; katı engel bunu tamamen imkânsız kılıyordu.
+ *      Karar bilinçli olarak "yok say" (tekrar sorma) değil, çağıran tarafın
+ *      kullanıcıya bir kez sorup EVET aldıktan sonra bu bayrakla tekrar
+ *      çağırması şeklinde — sunucu hiçbir zaman kendiliğinden atlamaz.
+ *   3. Uzmanın aynı saatte başka randevusu (aynı kişi iki yerde olamaz).
  *
- * Kayıt çakışmasından farkı bu: orada koordinatör bilinçli olarak devam
- * edebiliyor, burada edemez.
+ * İzin ve çakışma HÂLÂ UYARI DEĞİL, ENGEL: uzman o gün hiç gelmiyorsa ya da
+ * zaten başka bir seanstaysa bunun istisnası yok — kayıt çakışmasından farkı
+ * bu, orada koordinatör bilinçli olarak devam edebiliyor, burada (mesai
+ * dışında bile) edemez.
  *
  * SAAT SÖZLEŞMESİ: bütün tarihler duvar saati olarak UTC'de (bkz. Randevu
  * şema şerhi). Gün ve dakika hesapları da UTC üzerinden.
@@ -105,15 +113,22 @@ export function randevuEngeli(args: {
   izinler: readonly Aralik[];
   /** Uzmanın o gündeki diğer randevuları. Düzenlemede kendisi hariç. */
   mevcutlar: readonly MevcutRandevu[];
+  /**
+   * Kullanıcı "mesai dışı, yine de kaydet" onayını ZATEN verdiyse true.
+   * Yalnız mesai engelini atlar — izin ve çakışma bundan etkilenmez.
+   * Varsayılan false: sunucu hiçbir zaman kendiliğinden atlamaz, çağıran
+   * taraf (form eylemi) bunu yalnız kullanıcı onayından SONRA gönderir.
+   */
+  mesaiyiYokSay?: boolean;
 }): RandevuEngeli | null {
-  const { randevu, mesailer, izinler, mevcutlar } = args;
+  const { randevu, mesailer, izinler, mevcutlar, mesaiyiYokSay } = args;
 
   const izin = izinler.find((aralik) => araliklarCakisiyorMu(randevu, aralik));
   if (izin) {
     return { tur: "izin", mesaj: "Uzman bu tarihte izinli." };
   }
 
-  if (!mesaiIcindeMi(randevu, mesailer)) {
+  if (!mesaiyiYokSay && !mesaiIcindeMi(randevu, mesailer)) {
     return {
       tur: "mesai",
       mesaj:

@@ -994,7 +994,10 @@ Danışanı velidir; çocuk seçimi isteğe bağlıdır.
 - **Ücret randevuya KOPYALANIR.** Katalogdaki zam geçmiş randevuyu ve geçmiş
   haftaların cirosunu değiştirmez. Randevu bazında elle indirim girilebilir.
   Tahsilat takibi kapsam dışı.
-- **Çakışma, mesai dışı ve izin ENGELLENİR** (uyarı değil).
+- **Çakışma ve izin ENGELLENİR** (uyarı değil, aşılamaz). **Mesai dışı** ise
+  kesin ret değildir: kullanıcı "yine de kaydedilsin mi?" onayıyla, mesai
+  saatinin dışında da randevu açabilir (bkz. `docs/DECISIONS.md`, Eylül
+  2026 revizyonu).
 - **Haftalık tekrar**: tekrarlı hizmetlerde seans bir sonraki haftaya aynı gün
   ve saate eklenir. Zekâ testleri bu otomasyonun dışındadır.
 - **İptal edilen randevu silinmez**: takvimden düşer, ayrı bir listede

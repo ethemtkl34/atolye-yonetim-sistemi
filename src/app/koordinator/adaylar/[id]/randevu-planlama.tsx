@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { randevuVer } from "@/app/koordinator/adaylar/actions";
 import { haftaRandevuVerisiEylemi } from "@/app/koordinator/randevular/actions";
 import { HaftaIzgarasiGovdesi } from "@/app/koordinator/randevular/hafta-izgarasi-govde";
@@ -218,11 +218,36 @@ function RandevuOnayFormu({
   onBasari: () => void;
 }) {
   const { durum, eylem } = useEklemePaneli(randevuVer.bind(null, adayId));
+  const formRef = useRef<HTMLFormElement>(null);
+  const [mesaiZorla, setMesaiZorla] = useState(false);
+  // `uzmanId` KONTROLLÜ: React 19, eylem bitince `<select>` DOM değerini ilk
+  // seçeneğe düşürüyor (bkz. ogrenci-formu.tsx'teki aynı tuzak) — mesai
+  // onayıyla otomatik yeniden gönderilen form bu yüzden BOŞ uzmanla
+  // "Uzman seçin" hatasına düşüyordu. React state'e bağlamak reset'ten
+  // hiç etkilenmiyor.
+  const [uzmanId, setUzmanId] = useState("");
 
   useEffect(() => {
     if (durum.basari) onBasari();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durum.basari]);
+
+  // Mesai dışı TEK istisna: kesin ret yerine bir kez sorulur, EVET'te
+  // gizli `mesaiZorla` alanı 1 yapılıp AYNI form yeniden gönderilir — bkz.
+  // randevu-formu.tsx'teki aynı desen ve cakisma.ts'teki gerekçe. `[durum]`
+  // bilinçli: aynı mesaj tekrar gelse bile her yanıt yeni bir nesne.
+  useEffect(() => {
+    if (!durum.onayGerekli) return;
+    const devamEt = window.confirm(
+      `${durum.onayGerekli}\n\nYine de kaydetmek istiyor musunuz?`,
+    );
+    // bkz. randevu-formu.tsx'teki aynı `queueMicrotask` şerhi.
+    if (devamEt) queueMicrotask(() => setMesaiZorla(true));
+  }, [durum]);
+
+  useEffect(() => {
+    if (mesaiZorla) formRef.current?.requestSubmit();
+  }, [mesaiZorla]);
 
   const uygunUzmanlar = uzmanlar.filter(
     (uzman) => uzman.buSubede && uzman.hizmetIdleri.includes(hizmet.id),
@@ -240,10 +265,11 @@ function RandevuOnayFormu({
 
   return (
     <Pencere acik onKapat={onGeriDon} baslik="Randevuyu onayla" genislik="26rem">
-      <form action={eylem} className="space-y-4">
+      <form ref={formRef} action={eylem} className="space-y-4">
         <input type="hidden" name="hizmetId" value={hizmet.id} />
         <input type="hidden" name="tarih" value={tarih} />
         <input type="hidden" name="saat" value={saat} />
+        <input type="hidden" name="mesaiZorla" value={mesaiZorla ? "1" : ""} />
 
         <Kart className="space-y-1 p-3 text-sm">
           <p>
@@ -262,7 +288,12 @@ function RandevuOnayFormu({
         </Kart>
 
         <Alan etiket="Uzman" hata={durum.alanHatalari?.uzmanId}>
-          <select name="uzmanId" className={secimStili} defaultValue="">
+          <select
+            name="uzmanId"
+            className={secimStili}
+            value={uzmanId}
+            onChange={(olay) => setUzmanId(olay.target.value)}
+          >
             <option value="">Seçin…</option>
             {uygunUzmanlar.map((uzman) => (
               <option key={uzman.id} value={uzman.id}>
@@ -278,7 +309,12 @@ function RandevuOnayFormu({
         ) : null}
 
         <Alan etiket="Not" hata={durum.alanHatalari?.not}>
-          <CokSatirli name="not" rows={2} maxLength={2000} />
+          <CokSatirli
+            name="not"
+            rows={2}
+            maxLength={2000}
+            defaultValue={durum.degerler?.not}
+          />
         </Alan>
 
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}

@@ -135,22 +135,40 @@ export async function randevuEkle(
     son: araliklar[araliklar.length - 1].bitis,
   });
 
+  // Kullanıcı "mesai dışı, yine de kaydet" onayını ZATEN verdiyse form bunu
+  // gizli bir alanla tekrar gönderir (bkz. randevu-formu.tsx). Sunucu bunu
+  // hiçbir zaman kendiliğinden varsaymaz.
+  const mesaiZorla = formVerisi.get("mesaiZorla") === "1";
+
   /**
    * Serinin BİR tarihi bile engelliyse tamamı reddediliyor.
    *
    * Kısmi seri sessizce eksik bir program üretirdi: koordinatör 8 hafta
    * istedi, 6 tanesi açıldı ve bunu ancak takvime bakınca fark ederdi.
    * Hangi hafta ve neden engellendiği mesajda yazılı.
+   *
+   * Mesai engeli TEK istisna: kesin ret yerine `onayGerekli` döner, form bir
+   * kez sorar ve EVET'te `mesaiZorla=1` ile buraya geri gelir — o turda
+   * `randevuEngeli` mesaiyi hiç bildirmediği için bu dal bir daha çalışmaz.
+   * İzin ve çakışma her zaman kesin ret (§17.4).
    */
   for (const [sira, aralik] of araliklar.entries()) {
-    const engel = randevuEngeli({ randevu: aralik, ...baglam });
+    const engel = randevuEngeli({
+      randevu: aralik,
+      ...baglam,
+      mesaiyiYokSay: mesaiZorla,
+    });
     if (!engel) continue;
 
     const nerede =
       araliklar.length === 1
         ? ""
         : ` (${sira + 1}. hafta — ${zamanMetni(aralik.baslangic)})`;
-    return { hata: `${engel.mesaj}${nerede}`, degerler: girilenler };
+    const mesaj = `${engel.mesaj}${nerede}`;
+    if (engel.tur === "mesai") {
+      return { onayGerekli: mesaj, degerler: girilenler };
+    }
+    return { hata: mesaj, degerler: girilenler };
   }
 
   const seriId = araliklar.length > 1 ? randomUUID() : null;

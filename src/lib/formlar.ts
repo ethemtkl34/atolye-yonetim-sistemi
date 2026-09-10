@@ -61,6 +61,14 @@ export type EylemDurumu = {
    * (bkz. `formDegerleri`).
    */
   degerler?: Record<string, string>;
+  /**
+   * Sunucu reddetmedi ama kullanıcıya bir kez sormak istiyor (ör. randevuda
+   * "mesai dışı, yine de kaydedilsin mi?" — bkz. `lib/randevu/cakisma.ts`
+   * `mesaiyiYokSay`). Form bunu görünce onay ister; EVET ise AYNI eylemi bu
+   * kez ek bir "zorla" alanıyla yeniden çağırır. `hata`dan farkı bu: `hata`
+   * kesin bir ret, `onayGerekli` kullanıcının kararına bırakılmış bir uyarı.
+   */
+  onayGerekli?: string;
 };
 
 /** Zod hatalarını `alan → mesaj` sözlüğüne çevirir; ilk hata korunur. */

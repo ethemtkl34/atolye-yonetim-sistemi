@@ -259,20 +259,27 @@ export async function randevuVer(
   }
 
   const { tarih, saat, not, hizmetId, uzmanId } = cozumlenen.data;
+  // Her erken dönüşte geri yazılıyor: aksi hâlde React 19 kontrolsüz
+  // alanları (uzman seçimi, not) sıfırlar ve `mesaiZorla` ile otomatik
+  // yeniden gönderilen form BOŞ bir zorunlu alanda sessizce takılır (bkz.
+  // randevu-formu.tsx'teki aynı gerekçe).
+  const girilenler = formDegerleri(formVerisi, RANDEVU_VER_FORM_ALANLARI);
 
   const gun = tarihCozumle(tarih);
-  if (!gun) return { hata: "Randevu zamanı çözümlenemedi." };
+  if (!gun) return { hata: "Randevu zamanı çözümlenemedi.", degerler: girilenler };
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(saat)! * 60_000);
 
   const aday = await db.lead.findFirst({
     where: { id: adayId, branchId: subeId },
     select: { id: true, stage: true, parentName: true, phone: true },
   });
-  if (!aday) return { hata: "Aday bulunamadı." };
+  if (!aday) return { hata: "Aday bulunamadı.", degerler: girilenler };
   if (!ACIK_ASAMALAR.includes(aday.stage)) {
-    return { hata: "Kapanmış adaya randevu verilemez." };
+    return { hata: "Kapanmış adaya randevu verilemez.", degerler: girilenler };
   }
-  if (!aday.parentName) return { hata: "Önce veli adını kaydedin." };
+  if (!aday.parentName) {
+    return { hata: "Önce veli adını kaydedin.", degerler: girilenler };
+  }
 
   // Uzman bu hizmeti yapabiliyor mu — `randevuEkle`'deki aynı kontrol sırası.
   const yetkinlik = await db.uzmanHizmet.findUnique({
@@ -289,13 +296,19 @@ export async function randevuVer(
     },
   });
   if (!yetkinlik) {
-    return { alanHatalari: { hizmetId: "Bu uzman seçilen hizmeti uygulamıyor." } };
+    return {
+      alanHatalari: { hizmetId: "Bu uzman seçilen hizmeti uygulamıyor." },
+      degerler: girilenler,
+    };
   }
   if (!yetkinlik.uzman.aktif || !yetkinlik.hizmet.aktif) {
-    return { hata: "Pasif uzman veya hizmetle randevu açılamaz." };
+    return { hata: "Pasif uzman veya hizmetle randevu açılamaz.", degerler: girilenler };
   }
   if (yetkinlik.uzman.subeler.length === 0) {
-    return { alanHatalari: { uzmanId: "Bu uzman bu şubede çalışmıyor." } };
+    return {
+      alanHatalari: { uzmanId: "Bu uzman bu şubede çalışmıyor." },
+      degerler: girilenler,
+    };
   }
 
   const aralik = randevuAraligi(baslangic, yetkinlik.hizmet.sureDk);
@@ -305,8 +318,17 @@ export async function randevuVer(
     ilk: aralik.baslangic,
     son: aralik.bitis,
   });
-  const engel = randevuEngeli({ randevu: aralik, ...baglam });
-  if (engel) return { hata: engel.mesaj };
+  // Mesai dışı TEK istisna: kesin ret yerine onay istenir, form EVET'te
+  // `mesaiZorla=1` ile geri gelir (bkz. `randevuEkle`/cakisma.ts). İzin ve
+  // çakışma her zaman kesin ret.
+  const mesaiZorla = formVerisi.get("mesaiZorla") === "1";
+  const engel = randevuEngeli({ randevu: aralik, ...baglam, mesaiyiYokSay: mesaiZorla });
+  if (engel) {
+    if (engel.tur === "mesai") {
+      return { onayGerekli: engel.mesaj, degerler: girilenler };
+    }
+    return { hata: engel.mesaj, degerler: girilenler };
+  }
 
   const sonuc = await db.$transaction(async (tx) => {
     // Veli ÖNCE çözülüyor: bundan sonraki hiçbir adım henüz bir şey
@@ -373,7 +395,7 @@ export async function randevuVer(
     return null;
   });
 
-  if (sonuc) return sonuc;
+  if (sonuc) return { ...sonuc, degerler: girilenler };
 
   adayYollariniTazele(adayId);
   revalidatePath("/koordinator/randevular");

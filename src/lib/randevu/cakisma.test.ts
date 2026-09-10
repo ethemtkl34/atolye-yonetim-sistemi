@@ -221,6 +221,50 @@ describe("randevuEngeli", () => {
       }),
     ).toBeNull();
   });
+
+  describe("mesaiyiYokSay", () => {
+    it("mesai dışı saati yok sayınca engel kalkar", () => {
+      expect(
+        randevuEngeli({
+          ...temel,
+          randevu: randevu("19:00", 60),
+          mesaiyiYokSay: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("izni ETKİLEMEZ — mesai dışı olsa bile uzman izinliyse hâlâ engellenir", () => {
+      const sonuc = randevuEngeli({
+        ...temel,
+        randevu: randevu("19:00", 60),
+        izinler: [
+          { baslangic: an(`${PAZARTESI}00:00`), bitis: an(`${SALI}00:00`) },
+        ],
+        mesaiyiYokSay: true,
+      });
+      expect(sonuc?.tur).toBe("izin");
+    });
+
+    it("çakışmayı ETKİLEMEZ — mesai dışı olsa bile dolu saat hâlâ engellenir", () => {
+      const sonuc = randevuEngeli({
+        ...temel,
+        randevu: randevu("19:00", 60),
+        mevcutlar: [{ id: "dolu-1", ...randevu("19:00", 60), iptal: false }],
+        mesaiyiYokSay: true,
+      });
+      expect(sonuc?.tur).toBe("cakisma");
+    });
+
+    it("mesai içindeki seansı zaten etkilemiyor", () => {
+      expect(
+        randevuEngeli({
+          ...temel,
+          randevu: randevu("10:00", 60),
+          mesaiyiYokSay: true,
+        }),
+      ).toBeNull();
+    });
+  });
 });
 
 describe("randevuAraligi", () => {

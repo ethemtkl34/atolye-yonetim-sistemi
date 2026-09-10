@@ -39,12 +39,19 @@ export function VeliSecici({
   onDegis,
   hata,
   cocukIsteniyor,
+  degerler,
 }: {
   secim: VeliSecimi;
   onDegis: (secim: VeliSecimi) => void;
   hata?: string;
   /** Hizmetin danışanı çocuksa çocuk seçimi öne çıkarılır. */
   cocukIsteniyor: boolean;
+  /**
+   * Doğrulama hatasında (ör. mesai onayı beklerken) React 19 "yeni veli"
+   * alanlarını sıfırlıyor; sunucudan dönen değerler burada geri yazılır
+   * (bkz. `formlar.ts` `degerler` şerhi).
+   */
+  degerler?: { yeniVeliAdi?: string; yeniVeliTelefon?: string };
 }) {
   const [sorgu, setSorgu] = useState("");
   /**
@@ -145,10 +152,21 @@ export function VeliSecici({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Alan etiket="Ad soyad" hata={hata}>
-            <Girdi name="yeniVeliAdi" required autoFocus maxLength={120} />
+            <Girdi
+              name="yeniVeliAdi"
+              required
+              autoFocus
+              maxLength={120}
+              defaultValue={degerler?.yeniVeliAdi}
+            />
           </Alan>
           <Alan etiket="Telefon" ipucu="Aynı numara kayıtlıysa o veliyle eşleşir.">
-            <Girdi name="yeniVeliTelefon" type="tel" maxLength={30} />
+            <Girdi
+              name="yeniVeliTelefon"
+              type="tel"
+              maxLength={30}
+              defaultValue={degerler?.yeniVeliTelefon}
+            />
           </Alan>
         </div>
         <input type="hidden" name="veliId" value="" />
