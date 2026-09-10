@@ -82,97 +82,103 @@ export function RandevuPlanlamaPenceresi({
 
   return (
     <>
+      {/*
+        TEK pencere, adım yalnız İÇERİĞİ değiştiriyor — iki ayrı `Pencere`
+        (biri hizmet, biri hafta) ve `acik`lerini `haftaAcik`e göre
+        birbirini dışlayacak şekilde kurmak gerçek bir yarış durumuydu:
+        "Devam"a basınca `haftaAcik` true olup ilk pencerenin `acik` prop'u
+        false'a düşüyor, bu da native <dialog>'un `close()` çağrısını (ve
+        onunla birlikte `onClose={onKapat}`ı, yani TÜM akışı sıfırlayan
+        `kapat()`'ı) tetikliyordu. Senkron `.click()` ile bu her zaman
+        "kazanılıyor" gibi görünüyordu ama gerçek fare tıklamasında (hem
+        otomasyonda hem üretimde bir kullanıcıda) araya giren gerçek
+        mousedown/mouseup/focus olayları sırayı bozup pencerenin tamamen
+        kapanmasına yol açıyordu. Tek `<dialog>` kullanınca adımlar arasında
+        hiç kapanma/yeniden açılma olmuyor, yarış da ortadan kalkıyor.
+      */}
       <Pencere
-        acik={acik && !haftaAcik}
+        acik={acik}
         onKapat={kapat}
-        baslik="Randevu ver"
-        altBaslik="Önce hizmeti seçin."
-        genislik="26rem"
+        baslik={
+          haftaAcik ? `Randevu ver — ${seciliHizmet?.ad ?? ""}` : "Randevu ver"
+        }
+        altBaslik={haftaAcik ? "Boş bir gün ve saate dokunun." : "Önce hizmeti seçin."}
+        genislik={haftaAcik ? "min(70rem, calc(100vw - 2rem))" : "26rem"}
       >
-        <div className="space-y-4">
-          <Alan etiket="Hizmet">
-            <select
-              className={secimStili}
-              value={hizmetId}
-              onChange={(olay) => setHizmetId(olay.target.value)}
-            >
-              <option value="">Seçin…</option>
-              {hizmetler.map((hizmet) => (
-                <option key={hizmet.id} value={hizmet.id}>
-                  {hizmet.ad}
-                </option>
-              ))}
-            </select>
-          </Alan>
-          <div className="flex flex-wrap gap-2">
-            <Buton
-              type="button"
-              disabled={!hizmetId}
-              onClick={() => setHaftaAcik(true)}
-            >
-              Devam
-            </Buton>
-            <Buton type="button" tur="ikincil" onClick={kapat}>
-              Vazgeç
-            </Buton>
+        {haftaAcik ? (
+          <div className="space-y-3">
+            <Kart className="flex flex-wrap items-center gap-2 p-2">
+              <Buton
+                type="button"
+                tur="ikincil"
+                disabled={bekliyor}
+                onClick={() => haftayiDegistir(-1)}
+                aria-label="Önceki hafta"
+              >
+                ‹
+              </Buton>
+              <Buton
+                type="button"
+                tur="sade"
+                disabled={bekliyor}
+                onClick={() => haftayiDegistir(0)}
+              >
+                Bugün
+              </Buton>
+              <Buton
+                type="button"
+                tur="ikincil"
+                disabled={bekliyor}
+                onClick={() => haftayiDegistir(1)}
+                aria-label="Sonraki hafta"
+              >
+                ›
+              </Buton>
+              <span className="font-semibold text-zinc-900">{hafta.baslik}</span>
+              <Buton type="button" tur="sade" onClick={() => setHaftaAcik(false)}>
+                ← Hizmeti değiştir
+              </Buton>
+            </Kart>
+
+            <HaftaIzgarasiGovdesi
+              sutunlar={hafta.sutunlar}
+              eksen={hafta.eksen}
+              bosAlanTiklanabilir
+              onBosAlanaTikla={(gun, saat) =>
+                setSecim({ tarih: tarihMetni(gun), saat })
+              }
+            />
           </div>
-        </div>
-      </Pencere>
-
-      <Pencere
-        acik={acik && haftaAcik}
-        onKapat={kapat}
-        baslik={`Randevu ver — ${seciliHizmet?.ad ?? ""}`}
-        altBaslik="Boş bir gün ve saate dokunun."
-        genislik="min(70rem, calc(100vw - 2rem))"
-      >
-        <div className="space-y-3">
-          <Kart className="flex flex-wrap items-center gap-2 p-2">
-            <Buton
-              type="button"
-              tur="ikincil"
-              disabled={bekliyor}
-              onClick={() => haftayiDegistir(-1)}
-              aria-label="Önceki hafta"
-            >
-              ‹
-            </Buton>
-            <Buton
-              type="button"
-              tur="sade"
-              disabled={bekliyor}
-              onClick={() => haftayiDegistir(0)}
-            >
-              Bugün
-            </Buton>
-            <Buton
-              type="button"
-              tur="ikincil"
-              disabled={bekliyor}
-              onClick={() => haftayiDegistir(1)}
-              aria-label="Sonraki hafta"
-            >
-              ›
-            </Buton>
-            <span className="font-semibold text-zinc-900">{hafta.baslik}</span>
-            <Buton
-              type="button"
-              tur="sade"
-              onClick={() => setHaftaAcik(false)}
-            >
-              ← Hizmeti değiştir
-            </Buton>
-          </Kart>
-
-          <HaftaIzgarasiGovdesi
-            sutunlar={hafta.sutunlar}
-            eksen={hafta.eksen}
-            bosAlanTiklanabilir
-            onBosAlanaTikla={(gun, saat) =>
-              setSecim({ tarih: tarihMetni(gun), saat })
-            }
-          />
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <Alan etiket="Hizmet">
+              <select
+                className={secimStili}
+                value={hizmetId}
+                onChange={(olay) => setHizmetId(olay.target.value)}
+              >
+                <option value="">Seçin…</option>
+                {hizmetler.map((hizmet) => (
+                  <option key={hizmet.id} value={hizmet.id}>
+                    {hizmet.ad}
+                  </option>
+                ))}
+              </select>
+            </Alan>
+            <div className="flex flex-wrap gap-2">
+              <Buton
+                type="button"
+                disabled={!hizmetId}
+                onClick={() => setHaftaAcik(true)}
+              >
+                Devam
+              </Buton>
+              <Buton type="button" tur="ikincil" onClick={kapat}>
+                Vazgeç
+              </Buton>
+            </div>
+          </div>
+        )}
       </Pencere>
 
       {seciliHizmet && secim ? (
