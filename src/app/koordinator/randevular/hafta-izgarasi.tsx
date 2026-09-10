@@ -225,7 +225,10 @@ export function HaftaIzgarasi({
                           <span className="block truncate text-[0.7rem] font-semibold tabular-nums">
                             {saatMetni(randevu.baslangic)}
                           </span>
-                          <span className="block truncate text-[0.65rem]">
+                          <span className="block truncate text-[0.65rem] font-medium">
+                            {randevu.hizmetAdi}
+                          </span>
+                          <span className="block truncate text-[0.6rem] text-white/80">
                             {randevu.uzmanAdi}
                           </span>
                         </button>
