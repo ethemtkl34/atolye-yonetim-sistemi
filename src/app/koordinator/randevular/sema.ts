@@ -125,6 +125,51 @@ export const RANDEVU_FORM_ALANLARI = [
   "not",
 ] as const;
 
+/**
+ * §17.4 — Var olan bir randevuyu düzenleme şeması.
+ *
+ * `randevuSemasi`'nin daraltılmış hâli: danışan (veli/çocuk) burada YOK —
+ * randevuyu kimin aldığını değiştirmek ayrı ve daha riskli bir işlem, bu
+ * ekranın kapsamı değil. `haftaSayisi` de yok: düzenleme her zaman TEK
+ * randevuyu hedefler, seriye yeni hafta eklemez.
+ */
+export const randevuDuzenleSemasi = z.object({
+  uzmanId: z.string().min(1, "Uzman seçin"),
+  hizmetId: z.string().min(1, "Hizmet seçin"),
+  tarih: z.string().trim().min(1, "Tarih seçin"),
+  saat: z
+    .string()
+    .trim()
+    .refine((deger) => saatiDakikayaCevir(deger) !== null, {
+      message: "Saat SS:DD biçiminde olmalı",
+    }),
+  indirimLira: z.coerce
+    .number()
+    .min(0, "İndirim eksi olamaz")
+    .max(1_000_000, "İndirim çok yüksek görünüyor")
+    .default(0),
+  indirimNotu: z.preprocess(
+    bosuNullYap,
+    z.string().trim().max(200, "Not en fazla 200 karakter").nullable(),
+  ),
+  not: z.preprocess(
+    bosuNullYap,
+    z.string().trim().max(2000, "Not en fazla 2000 karakter").nullable(),
+  ),
+});
+
+export type RandevuDuzenleGirdisi = z.infer<typeof randevuDuzenleSemasi>;
+
+export const RANDEVU_DUZENLE_FORM_ALANLARI = [
+  "uzmanId",
+  "hizmetId",
+  "tarih",
+  "saat",
+  "indirimLira",
+  "indirimNotu",
+  "not",
+] as const;
+
 export const DURUM_ADLARI = {
   PLANLANDI: "Planlandı",
   GERCEKLESTI: "Gerçekleşti",

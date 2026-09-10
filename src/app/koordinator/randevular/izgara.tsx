@@ -23,6 +23,7 @@ import { DURUM_ADLARI, DURUM_ROZETLERI } from "./sema";
 import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
+import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import type { RandevuSatiri } from "./takvim";
 import {
   RandevuFormuAcici,
@@ -80,6 +81,7 @@ export function Izgara({
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [detay, setDetay] = useState<RandevuSatiri | null>(null);
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
+  const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
   const [hucreSecimi, setHucreSecimi] = useState<{
     uzmanId: string;
     saat: string;
@@ -374,6 +376,10 @@ export function Izgara({
                 setIptalHedefi(detay);
                 setDetay(null);
               }}
+              onDuzenle={() => {
+                setDuzenleHedefi(detay);
+                setDetay(null);
+              }}
             />
           </div>
         ) : null}
@@ -388,6 +394,13 @@ export function Izgara({
           if (!hedef) return;
           basla(async () => setMesaj(await randevuIptalEt(hedef.id, kapsam, not)));
         }}
+      />
+
+      <RandevuDuzenleFormu
+        randevu={duzenleHedefi}
+        uzmanlar={formUzmanlari}
+        hizmetler={hizmetler}
+        onKapat={() => setDuzenleHedefi(null)}
       />
     </div>
   );

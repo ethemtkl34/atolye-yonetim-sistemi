@@ -301,6 +301,9 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+          formUzmanlari={formUzmanlari}
+          hizmetler={hizmetler}
+          varsayilanTarih={tarihMetni(capa)}
         />
       ) : (
         <Takvim
@@ -315,6 +318,8 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+          formUzmanlari={formUzmanlari}
+          hizmetler={hizmetler}
         />
       )}
 

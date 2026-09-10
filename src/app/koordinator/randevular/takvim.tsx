@@ -13,6 +13,8 @@ import { DURUM_ADLARI, DURUM_ROZETLERI, type Gorunum } from "./sema";
 import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
+import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
+import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 
 export type RandevuSatiri = {
   id: string;
@@ -26,6 +28,7 @@ export type RandevuSatiri = {
   uzmanId: string;
   uzmanAdi: string;
   uzmanRengi: string;
+  hizmetId: string;
   hizmetAdi: string;
   seriDeMi: boolean;
   veliAdi: string | null;
@@ -35,6 +38,9 @@ export type RandevuSatiri = {
   iptalNotu: string | null;
   /** İndirim düşülmüş tutar; başka şubede null. */
   ucretKurus: number | null;
+  /** Ham indirim (kuruş) — düzenleme formunun "İndirim (₺)" alanı için; başka şubede null. */
+  indirimKurus: number | null;
+  indirimNotu: string | null;
 };
 
 export type GunGrubu = { gun: Date; randevular: RandevuSatiri[] };
@@ -59,6 +65,8 @@ export function Takvim({
   ileriYolu,
   bugunYolu,
   iptalYolu,
+  formUzmanlari,
+  hizmetler,
 }: {
   baslik: string;
   gorunum: Gorunum;
@@ -72,9 +80,12 @@ export function Takvim({
   ileriYolu: string;
   bugunYolu: string;
   iptalYolu: string;
+  formUzmanlari: UzmanSecenegi[];
+  hizmetler: HizmetSecenegi[];
 }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
+  const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
   const [bekliyor, basla] = useTransition();
 
   // Ay görünümünde boş günler tek satıra iner (bkz. bileşen şerhi).
@@ -160,6 +171,7 @@ export function Takvim({
                             )
                           }
                           onIptal={() => setIptalHedefi(randevu)}
+                          onDuzenle={() => setDuzenleHedefi(randevu)}
                         />
                       ))}
                     </tbody>
@@ -183,6 +195,13 @@ export function Takvim({
           );
         }}
       />
+
+      <RandevuDuzenleFormu
+        randevu={duzenleHedefi}
+        uzmanlar={formUzmanlari}
+        hizmetler={hizmetler}
+        onKapat={() => setDuzenleHedefi(null)}
+      />
     </div>
   );
 }
@@ -194,6 +213,7 @@ function RandevuTabloSatiri({
   bekliyor,
   onDurum,
   onIptal,
+  onDuzenle,
 }: {
   randevu: RandevuSatiri;
   yazabilir: boolean;
@@ -201,6 +221,7 @@ function RandevuTabloSatiri({
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onDuzenle: () => void;
 }) {
   const ton = uzmanRengi(randevu.uzmanRengi);
   const iptalEdilmis = randevu.durum === "IPTAL";
@@ -289,6 +310,7 @@ function RandevuTabloSatiri({
           bekliyor={bekliyor}
           onDurum={onDurum}
           onIptal={onIptal}
+          onDuzenle={onDuzenle}
         />
       </td>
     </tr>
@@ -312,8 +334,9 @@ function RandevuIslemMenusu(props: {
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onDuzenle: () => void;
 }) {
-  const { randevu, yazabilir, onDurum, onIptal } = props;
+  const { randevu, yazabilir, onDurum, onIptal, onDuzenle } = props;
   const [acik, setAcik] = useState(false);
   // Sabit (fixed) konumlanan panelin ekrandaki yeri — düğmenin altına ve
   // sağına hizalı, GERÇEK piksel olarak açılış anında ölçülüyor.
@@ -402,6 +425,10 @@ function RandevuIslemMenusu(props: {
                 onIptal={() => {
                   setAcik(false);
                   onIptal();
+                }}
+                onDuzenle={() => {
+                  setAcik(false);
+                  onDuzenle();
                 }}
               />
             </div>,

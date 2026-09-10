@@ -20,7 +20,12 @@ import {
   type TekrarKapsami,
 } from "@/lib/randevu/tekrar";
 import { liradanKurusa, saatiDakikayaCevir } from "../uzmanlar/sema";
-import { RANDEVU_FORM_ALANLARI, randevuSemasi } from "./sema";
+import {
+  RANDEVU_DUZENLE_FORM_ALANLARI,
+  RANDEVU_FORM_ALANLARI,
+  randevuDuzenleSemasi,
+  randevuSemasi,
+} from "./sema";
 import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 
 /**
@@ -223,6 +228,129 @@ export async function randevuEkle(
         ? `Randevu açıldı: ${zamanMetni(baslangic)}.`
         : `${araliklar.length} haftalık seri açıldı; ilki ${zamanMetni(baslangic)}.`,
   };
+}
+
+/**
+ * §17.4 revizyonu — var olan bir randevuyu düzenler (uzman/hizmet/tarih/
+ * saat/indirim/not). Danışan (veli/çocuk) değişmez — bkz. `sema.ts` şerhi.
+ *
+ * `randevuEkle` ile AYNI çakışma/mesai kuralları uygulanır; tek fark
+ * `uzmanBaglami`ya `haricId` verilmesi — randevu kendi eski hâliyle
+ * çakışıyor sayılmasın diye (bir randevu kendisiyle asla çakışmaz).
+ */
+export async function randevuDuzenle(
+  randevuId: string,
+  _oncekiDurum: EylemDurumu,
+  formVerisi: FormData,
+): Promise<EylemDurumu> {
+  const kullanici = await yonetimZorunlu("randevular", "TAM");
+  const subeId = kullanici.aktifSubeId;
+
+  const mevcut = await db.randevu.findFirst({
+    where: { id: randevuId, branchId: subeId },
+    select: { id: true, durum: true },
+  });
+  if (!mevcut) return { hata: "Randevu bulunamadı." };
+  if (mevcut.durum === "IPTAL") {
+    return { hata: "İptal edilmiş randevu düzenlenemez." };
+  }
+
+  const cozumlenen = randevuDuzenleSemasi.safeParse(
+    Object.fromEntries(
+      RANDEVU_DUZENLE_FORM_ALANLARI.map((alan) => [alan, formVerisi.get(alan) ?? ""]),
+    ),
+  );
+  if (!cozumlenen.success) {
+    return {
+      alanHatalari: alanHatalari(cozumlenen.error),
+      degerler: formDegerleri(formVerisi, RANDEVU_DUZENLE_FORM_ALANLARI),
+    };
+  }
+
+  const veri = cozumlenen.data;
+  const girilenler = formDegerleri(formVerisi, RANDEVU_DUZENLE_FORM_ALANLARI);
+
+  const gun = tarihCozumle(veri.tarih);
+  if (!gun) {
+    return { alanHatalari: { tarih: "Tarih seçilmeli." }, degerler: girilenler };
+  }
+  const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(veri.saat)! * 60_000);
+
+  const yetkinlik = await db.uzmanHizmet.findUnique({
+    where: {
+      uzmanId_hizmetId: { uzmanId: veri.uzmanId, hizmetId: veri.hizmetId },
+    },
+    select: {
+      uzman: {
+        select: {
+          aktif: true,
+          subeler: { where: { subeId }, select: { subeId: true } },
+        },
+      },
+      hizmet: { select: { aktif: true, sureDk: true, ucretKurus: true } },
+    },
+  });
+
+  if (!yetkinlik) {
+    return {
+      alanHatalari: { hizmetId: "Bu uzman seçilen hizmeti uygulamıyor." },
+      degerler: girilenler,
+    };
+  }
+  if (!yetkinlik.uzman.aktif || !yetkinlik.hizmet.aktif) {
+    return { hata: "Pasif uzman veya hizmetle randevu düzenlenemez.", degerler: girilenler };
+  }
+  if (yetkinlik.uzman.subeler.length === 0) {
+    return {
+      alanHatalari: { uzmanId: "Bu uzman bu şubede çalışmıyor." },
+      degerler: girilenler,
+    };
+  }
+
+  const indirimKurus = liradanKurusa(veri.indirimLira);
+  if (indirimKurus > yetkinlik.hizmet.ucretKurus) {
+    return {
+      alanHatalari: { indirimLira: "İndirim, hizmetin ücretini aşamaz." },
+      degerler: girilenler,
+    };
+  }
+
+  const aralik = randevuAraligi(baslangic, yetkinlik.hizmet.sureDk);
+
+  const baglam = await uzmanBaglami({
+    uzmanId: veri.uzmanId,
+    subeId,
+    ilk: aralik.baslangic,
+    son: aralik.bitis,
+    haricId: randevuId,
+  });
+
+  const mesaiZorla = formVerisi.get("mesaiZorla") === "1";
+  const engel = randevuEngeli({ randevu: aralik, ...baglam, mesaiyiYokSay: mesaiZorla });
+  if (engel) {
+    if (engel.tur === "mesai") return { onayGerekli: engel.mesaj, degerler: girilenler };
+    return { hata: engel.mesaj, degerler: girilenler };
+  }
+
+  await db.randevu.update({
+    where: { id: randevuId },
+    data: {
+      uzmanId: veri.uzmanId,
+      hizmetId: veri.hizmetId,
+      baslangic: aralik.baslangic,
+      bitis: aralik.bitis,
+      // Ücret düzenleme anındaki katalog fiyatına GÜNCELLENİR — hizmet
+      // değişmiş olabilir, `randevuEkle`'deki "açılış anında kopyalanır"
+      // kuralının düzenlemedeki karşılığı.
+      ucretKurus: yetkinlik.hizmet.ucretKurus,
+      indirimKurus,
+      indirimNotu: veri.indirimNotu,
+      not: veri.not,
+    },
+  });
+
+  tazele();
+  return { basari: `Randevu güncellendi: ${zamanMetni(baslangic)}.` };
 }
 
 /** Randevunun sonucunu işaretler: gerçekleşti / gelmedi / planlandı. */

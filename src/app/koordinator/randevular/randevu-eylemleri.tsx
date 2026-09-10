@@ -23,6 +23,7 @@ export function RandevuEylemleri({
   bekliyor,
   onDurum,
   onIptal,
+  onDuzenle,
 }: {
   randevu: RandevuSatiri;
   yazabilir: boolean;
@@ -30,6 +31,7 @@ export function RandevuEylemleri({
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onDuzenle: () => void;
 }) {
   const iptalEdilmis = randevu.durum === "IPTAL";
 
@@ -86,6 +88,9 @@ export function RandevuEylemleri({
           Anket
         </a>
       ) : null}
+      <Buton type="button" tur="ikincil" disabled={bekliyor} onClick={onDuzenle}>
+        Düzenle
+      </Buton>
       {randevu.durum === "GERCEKLESTI" ? null : (
         <Buton
           type="button"

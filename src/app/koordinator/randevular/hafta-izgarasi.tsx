@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
 import { Pencere } from "@/components/ui-istemci";
-import { saatAraligiMetni, tarihGunleBicimle } from "@/lib/tarih";
+import { saatAraligiMetni, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import type { HaftaSutunu, IzgaraEkseni } from "@/lib/randevu/izgara-verisi";
 import type { EylemDurumu } from "@/lib/formlar";
 import { DURUM_ADLARI, DURUM_ROZETLERI } from "./sema";
@@ -12,6 +12,12 @@ import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { HaftaIzgarasiGovdesi } from "./hafta-izgarasi-govde";
+import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
+import {
+  RandevuFormuAcici,
+  type HizmetSecenegi,
+  type UzmanSecenegi,
+} from "./randevu-formu";
 import type { RandevuSatiri } from "./takvim";
 
 /**
@@ -33,6 +39,9 @@ export function HaftaIzgarasi({
   ileriYolu,
   bugunYolu,
   iptalYolu,
+  formUzmanlari,
+  hizmetler,
+  varsayilanTarih,
 }: {
   baslik: string;
   sutunlar: HaftaSutunu<RandevuSatiri>[];
@@ -45,10 +54,18 @@ export function HaftaIzgarasi({
   ileriYolu: string;
   bugunYolu: string;
   iptalYolu: string;
+  formUzmanlari: UzmanSecenegi[];
+  hizmetler: HizmetSecenegi[];
+  varsayilanTarih: string;
 }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [detay, setDetay] = useState<RandevuSatiri | null>(null);
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
+  const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
+  const [hucreSecimi, setHucreSecimi] = useState<{
+    tarih: string;
+    saat: string;
+  } | null>(null);
   const [bekliyor, basla] = useTransition();
 
   return (
@@ -80,8 +97,34 @@ export function HaftaIzgarasi({
       </Kart>
 
       <Kart className="overflow-hidden p-0">
-        <HaftaIzgarasiGovdesi sutunlar={sutunlar} eksen={eksen} onBlokTikla={setDetay} />
+        <HaftaIzgarasiGovdesi
+          sutunlar={sutunlar}
+          eksen={eksen}
+          onBlokTikla={setDetay}
+          bosAlanTiklanabilir={yazabilir}
+          onBosAlanaTikla={(gun, saat) =>
+            setHucreSecimi({ tarih: tarihMetni(gun), saat })
+          }
+        />
       </Kart>
+
+      {/*
+        Program (ızgara) görünümündeki aynı desen: dışarıdan kontrol edilen,
+        boş hücreye tıklanınca açılan İKİNCİ bir `RandevuFormuAcici` — sayfa
+        başlığındaki "Randevu aç" düğmesinin sahibi olduğu kendi örneğinden
+        bağımsız (bkz. o dosyanın şerhi).
+      */}
+      <RandevuFormuAcici
+        key={`${hucreSecimi?.tarih ?? ""}-${hucreSecimi?.saat ?? ""}`}
+        uzmanlar={formUzmanlari}
+        hizmetler={hizmetler}
+        varsayilanTarih={hucreSecimi?.tarih ?? varsayilanTarih}
+        varsayilanSaat={hucreSecimi?.saat}
+        acik={hucreSecimi !== null}
+        onAcikDegis={(acik) => {
+          if (!acik) setHucreSecimi(null);
+        }}
+      />
 
       <Pencere
         acik={detay !== null}
@@ -136,6 +179,10 @@ export function HaftaIzgarasi({
                 setIptalHedefi(detay);
                 setDetay(null);
               }}
+              onDuzenle={() => {
+                setDuzenleHedefi(detay);
+                setDetay(null);
+              }}
             />
           </div>
         ) : null}
@@ -150,6 +197,13 @@ export function HaftaIzgarasi({
           if (!hedef) return;
           basla(async () => setMesaj(await randevuIptalEt(hedef.id, kapsam, not)));
         }}
+      />
+
+      <RandevuDuzenleFormu
+        randevu={duzenleHedefi}
+        uzmanlar={formUzmanlari}
+        hizmetler={hizmetler}
+        onKapat={() => setDuzenleHedefi(null)}
       />
     </div>
   );

@@ -43,11 +43,12 @@ export async function randevuSatirlariGetir(args: {
       durum: true,
       ucretKurus: true,
       indirimKurus: true,
+      indirimNotu: true,
       seriId: true,
       not: true,
       iptalNotu: true,
       uzman: { select: { id: true, ad: true, renk: true } },
-      hizmet: { select: { ad: true } },
+      hizmet: { select: { id: true, ad: true } },
       veli: { select: { fullName: true, phone: true } },
       ogrenci: { select: { firstName: true, lastName: true } },
       branch: { select: { name: true } },
@@ -66,6 +67,7 @@ export async function randevuSatirlariGetir(args: {
       uzmanId: randevu.uzman.id,
       uzmanAdi: randevu.uzman.ad,
       uzmanRengi: randevu.uzman.renk,
+      hizmetId: randevu.hizmet.id,
       hizmetAdi: randevu.hizmet.ad,
       seriDeMi: Boolean(randevu.seriId),
       veliAdi: bizim ? randevu.veli.fullName : null,
@@ -77,6 +79,11 @@ export async function randevuSatirlariGetir(args: {
       not: bizim ? randevu.not : null,
       iptalNotu: bizim ? randevu.iptalNotu : null,
       ucretKurus: bizim ? randevu.ucretKurus - randevu.indirimKurus : null,
+      // Düzenleme formunun "İndirim (₺)" alanını doldurmak için — yukarıdaki
+      // `ucretKurus` zaten indirim düşülmüş NET tutar, forma geri
+      // yazılamaz; ham indirim burada ayrıca taşınıyor.
+      indirimKurus: bizim ? randevu.indirimKurus : null,
+      indirimNotu: bizim ? randevu.indirimNotu : null,
     };
   });
 }
