@@ -32,6 +32,7 @@ import { Izgara } from "./izgara";
 import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
+import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -70,6 +71,8 @@ export default async function RandevularSayfasi(
   const kullanici = await yonetimZorunlu("randevular");
   const subeId = kullanici.aktifSubeId;
   const yazabilir = kullanici.yetkiler.randevular === "TAM";
+  /** Uzman rengini takvimden düzeltebilme — kadro yetkisiyle aynı kapı. */
+  const kadroyuYonetir = kullanici.yetkiler.uzmanlar === "TAM";
 
   const parametreler = await props.searchParams;
 
@@ -225,6 +228,9 @@ export default async function RandevularSayfasi(
               Ciro raporu
             </Link>
             <OgrenciGecmisiButonu />
+            {/* Renk kadro verisi: düğme yalnız `uzmanlar` TAM olanlarda
+                (danışma masası ve yöneticiler) çiziliyor. */}
+            {kadroyuYonetir ? <UzmanRenkleriButonu uzmanlar={izgaraUzmanlar} /> : null}
             {yazabilir ? (
             <RandevuFormuAcici
               uzmanlar={formUzmanlari}

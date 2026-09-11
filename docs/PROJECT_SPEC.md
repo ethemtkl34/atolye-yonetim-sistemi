@@ -128,6 +128,7 @@ dosyasında tanımlıdır; seviyeler YOK < LİSTE < GÖRÜNTÜLE < TAM.
 | Öğrenci kayıtları | TAM | TAM | TAM | — | TAM |
 | Stajyerler | TAM | TAM | TAM | — | — |
 | Danışmanlık (görüşmeler) | TAM | TAM | TAM | — | — (tamamen gizli) |
+| Uzmanlar (kadro + hizmet/fiyat) | TAM | GÖRÜNTÜLE | GÖRÜNTÜLE | — | TAM |
 | Zeka testleri | TAM | GÖRÜNTÜLE | GÖRÜNTÜLE | TAM | LİSTE |
 | Puanlamalar | TAM | TAM | TAM | — | — |
 | Raporlar | TAM | TAM | TAM | — | — |
@@ -142,6 +143,11 @@ dosyasında tanımlıdır; seviyeler YOK < LİSTE < GÖRÜNTÜLE < TAM.
   açamaz ve indiremez (indirme rotası da reddeder).
 - Test Uygulayıcısı unvanı tek başına yalnızca zeka testi sonuçlarını
   yükleme/silme yetkisi verir; pratikte psikolog rolüyle birlikte kullanılır.
+- Uzman kadrosu, matriste danışma görevlisinin koordinatörden FAZLA yetki
+  taşıdığı tek satırdır (Eylül 2026 revizyonu): randevu takvimini fiilen bu
+  masa kurduğu için uzmanı açmak, rengini/mesaisini düzeltmek yönetici
+  beklemeden yapılabilmeli. Hizmet ve ücret katalogu aynı modülde olduğundan
+  birlikte açılır.
 
 ## 3.2 Stajyer
 

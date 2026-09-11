@@ -25,7 +25,10 @@ zeka testlerinde anlamlı: üstveri görünür, belge içeriği açılamaz).
 6. **Danışma Görevlisi** (`DANISMA_GOREVLISI`) — öğrenci ve kayıt işlemleri
    tam; dönem/kulüp/grup salt görüntüleme; zeka testlerinde yalnız liste;
    görüşmeler (danışmanlık) TAMAMEN gizli (stajyer kuralı); puanlama, rapor,
-   arşiv ve müfredat yönetimi kapalı.
+   arşiv ve müfredat yönetimi kapalı. Randevu ve uzman kadrosu (hizmet/ücret
+   katalogu dahil) TAM — kadroda koordinatörden FAZLA yetki taşır, Eylül
+   2026 kararı: takvimi kuran masa uzmanı açıp rengini ve mesaisini
+   yönetici beklemeden düzeltebilmeli.
 7. **Stajyer** (`STAJYER`) — yalnızca kendisine atanmış öğrencilerin puanlama
    görevleri (kendi paneli); başka rolle birleşemez.
 
@@ -203,6 +206,12 @@ Karar gerekçeleri:
 - **Aday ve normal randevu aynı uygunluk kurallarını kullanır.** İzin → mesai
   → çakışma sırası, uzman bağlamı ve veli çözümü ortak `lib/randevu`
   modüllerindedir; iki farklı randevu açma yolu ayrı kurallar üretemez.
+- **Uzman rengi takvimden düzeltilebilir (Eylül 2026).** Rengin yanlış olduğu
+  yer takvim: "bu iki uzmanın rengi birbirine karışıyor" haftayı tararken fark
+  ediliyor. Randevular ekranındaki "Uzman renkleri" penceresi doğrudan
+  `Uzman.renk` alanını yazar — takvime özel ikinci bir renk kavramı YOK.
+  Düğme `uzmanlar` TAM isteyen herkese (danışma masası ve yöneticiler)
+  açıktır; koordinatör takvimde rengi görür, değiştiremez.
 
 - **Veli birinci sınıf kayıt oldu.** Randevu veliye açılıyor; veli öğrencinin
   altında bir satır kaldığı sürece aynı anne-baba her çocuğu için ayrı bir

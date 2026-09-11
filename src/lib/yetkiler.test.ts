@@ -36,6 +36,15 @@ describe("YETKI_MATRISI değişmezleri", () => {
     expect(YETKI_MATRISI.DANISMA_GOREVLISI.zekaTestleri).toBe("LISTE");
   });
 
+  it("uzman kadrosu danışma masasında TAM, koordinatörde salt görüntüleme", () => {
+    // Eylül 2026 kararı: takvimi kuran masa uzmanı da açar, rengini ve
+    // mesaisini düzeltir. Matriste danışma görevlisinin koordinatörden
+    // FAZLA yetki taşıdığı tek modül bu — ters düşmesi bilinçli, sessiz
+    // bir düzenleme kazası değil.
+    expect(YETKI_MATRISI.DANISMA_GOREVLISI.uzmanlar).toBe("TAM");
+    expect(YETKI_MATRISI.KOORDINATOR.uzmanlar).toBe("GORUNTULE");
+  });
+
   it("stajyerin koordinatör paneli modülleri tamamen kapalı", () => {
     for (const modul of MODULLER) {
       expect(YETKI_MATRISI.STAJYER[modul]).toBe("YOK");

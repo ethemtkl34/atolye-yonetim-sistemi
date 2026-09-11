@@ -78,8 +78,9 @@ const KOORDINATOR_SATIRI: Record<Modul, Seviye> = {
   ogrenciler: "TAM",
   adaylar: "TAM",
   randevular: "TAM",
-  /// Uzman kadrosu ve fiyat listesi yönetici işi; koordinatör görür,
-  /// düzenlemez (kullanicilar satırıyla aynı ayrım).
+  /// Koordinatör uzman kadrosunu ve fiyat listesini görür, düzenlemez:
+  /// atölye tarafının işi değil (kullanicilar satırıyla aynı ayrım).
+  /// Randevu masası bunun İSTİSNASI — bkz. `DANISMA_GOREVLISI` satırı.
   uzmanlar: "GORUNTULE",
   kayitlar: "TAM",
   stajyerler: "TAM",
@@ -145,7 +146,19 @@ export const YETKI_MATRISI: Record<Role, Record<Modul, Seviye>> = {
     /// erteler, iptal eder. Ciro rakamları için ayrı bir yetki YOK — modülü
     /// gören ücreti de görür (§17 kararı).
     randevular: "TAM",
-    uzmanlar: "GORUNTULE",
+    /**
+     * Eylül 2026 kararı: uzman kadrosu ve hizmet/fiyat katalogu bu masada
+     * da TAM — matriste danışma görevlisinin koordinatörden FAZLA yetki
+     * taşıdığı tek modül, bilinçli.
+     *
+     * Gerekçe: takvimi fiilen bu masa kuruyor. Yeni uzmanı, onun rengini,
+     * mesaisini ve iznini randevu açarken oracıkta düzeltmek gerekiyor;
+     * her biri için yönetici beklemek masanın kendi işini bloke ediyordu.
+     * Fiyat katalogu aynı modülde olduğu için birlikte açılıyor — ücret
+     * zaten randevu açılışında kayda kopyalanıyor ve bu masa ciro
+     * rakamlarını da görüyor (§17: "modülü gören ücreti de görür").
+     */
+    uzmanlar: "TAM",
     donemler: "GORUNTULE",
     kulupler: "GORUNTULE",
     gruplar: "GORUNTULE",

@@ -6,6 +6,7 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { tarihCozumle } from "@/lib/tarih";
+import { uzmanRengiMi } from "@/lib/uzman-renkleri";
 import {
   hizmetSemasi,
   izinSemasi,
@@ -18,10 +19,10 @@ import {
 /**
  * §17.3 — Uzman kadrosu, mesai, izin ve hizmet kataloğu yazma işlemleri.
  *
- * YETKİ: hepsi `uzmanlar` modülünde TAM ister — yani Kurum Yöneticisi ve
- * Şube Yöneticisi. Koordinatör ve danışma masası bu ekranı GÖRÜNTÜLER ama
- * kadroyu ve fiyat listesini değiştiremez (yetkiler.ts "kadro yönetimi"
- * ayrımı).
+ * YETKİ: hepsi `uzmanlar` modülünde TAM ister — Kurum Yöneticisi, Şube
+ * Yöneticisi ve (Eylül 2026 kararı) Danışma Görevlisi. Koordinatör bu ekranı
+ * yalnızca GÖRÜNTÜLER: kadro ve fiyat listesi atölye tarafının işi değil
+ * (yetkiler.ts "kadro yönetimi" ayrımı).
  *
  * ŞUBE: uzman çok şubeli olduğu için tek bir `branchId` süzgeci yok; yazma
  * yetkisi olan iki rolden Şube Yöneticisi yalnız kendi şubesini işaretleyip
@@ -58,6 +59,9 @@ function yabanciAnahtarHatasiMi(hata: unknown): boolean {
 function tazele(uzmanId?: string) {
   revalidatePath("/koordinator/uzmanlar");
   revalidatePath("/koordinator/uzmanlar/hizmetler");
+  // Kadro değişikliği takvimi de eskitir: uzmanın adı, rengi ve mesaisi
+  // randevu ekranının her görünümünde çiziliyor.
+  revalidatePath("/koordinator/randevular");
   if (uzmanId) revalidatePath(`/koordinator/uzmanlar/${uzmanId}`);
 }
 
@@ -192,6 +196,31 @@ export async function uzmanGuncelle(
 
   tazele(uzmanId);
   return { basari: "Uzman bilgileri güncellendi." };
+}
+
+/**
+ * §17.3 — Yalnız RENGİ değiştirir.
+ *
+ * `uzmanGuncelle` bütün formu (ad, çalışma tipi, şubeler, yetkinlikler)
+ * ister; takvimde "bu iki uzmanın rengi birbirine yakın olmuş" deyip tek
+ * tıkla düzeltmek için o formu doldurmak gerekmemeli. Randevular
+ * ekranındaki renk ayarı bu eylemi çağırıyor (bkz.
+ * `randevular/uzman-renkleri-penceresi.tsx`); yetki aynı kapıdan geçiyor.
+ */
+export async function uzmanRengiDegistir(
+  uzmanId: string,
+  renk: string,
+): Promise<EylemDurumu> {
+  await yonetimZorunlu("uzmanlar", "TAM");
+
+  // Renk serbest hex değil, paletten bir anahtar (bkz. uzman-renkleri.ts).
+  if (!uzmanRengiMi(renk)) return { hata: "Geçersiz renk seçildi." };
+
+  const sonuc = await db.uzman.updateMany({ where: { id: uzmanId }, data: { renk } });
+  if (sonuc.count === 0) return { hata: "Uzman bulunamadı." };
+
+  tazele(uzmanId);
+  return { basari: "Renk güncellendi." };
 }
 
 /**
