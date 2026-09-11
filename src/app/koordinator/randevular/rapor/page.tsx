@@ -187,7 +187,7 @@ export default async function CiroRaporuSayfasi(
                           <span className="flex items-center gap-2">
                             <span
                               className="size-2.5 shrink-0 rounded-full"
-                              style={{ backgroundColor: ton.metin }}
+                              style={{ backgroundColor: ton.blok }}
                               aria-hidden
                             />
                             <span className="font-medium text-zinc-900">
@@ -203,7 +203,7 @@ export default async function CiroRaporuSayfasi(
                                 width: `${Math.round(
                                   (uzman.ciroKurus / enYuksekCiro) * 100,
                                 )}%`,
-                                backgroundColor: ton.metin,
+                                backgroundColor: ton.blok,
                               }}
                             />
                           </span>

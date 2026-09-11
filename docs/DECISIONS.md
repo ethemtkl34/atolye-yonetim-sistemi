@@ -206,6 +206,16 @@ Karar gerekçeleri:
 - **Aday ve normal randevu aynı uygunluk kurallarını kullanır.** İzin → mesai
   → çakışma sırası, uzman bağlamı ve veli çözümü ortak `lib/randevu`
   modüllerindedir; iki farklı randevu açma yolu ayrı kurallar üretemez.
+- **Uzman paletinin başında kurumsal renkler var (Eylül 2026).** Marka
+  kılavuzundaki sekiz renk (#e94d1a, #d70b52, #f29100, #94b422, #6bc4ca,
+  #a3185b, #000000, #009bb4) listenin başına alındı; `siradakiUzmanRengi`
+  baştan taradığı için yeni uzman önce kurum rengini alıyor. Palet girdisi
+  artık üç ton taşıyor: `blok` (takvimdeki dolu renk = marka hex'i), `metin`
+  (açık zemin üstünde okunan koyu ton) ve `zemin`. Gerekçe: marka renklerinin
+  bir kısmı yazı olarak okunmuyor (#6bc4ca beyaz üstünde ~1.9:1), dolgu
+  olarak ise tam marka rengi görünmeli. Blok üstündeki yazı rengi sabit
+  değil, `blokYazisi()` parlaklıktan seçiyor — kurumsal sarı/yeşil/turkuaz
+  üstünde beyaz yazı okunmuyordu; test her blokta en az 4.5:1 kontrast arıyor.
 - **Uzman rengi takvimden düzeltilebilir (Eylül 2026).** Rengin yanlış olduğu
   yer takvim: "bu iki uzmanın rengi birbirine karışıyor" haftayı tararken fark
   ediliyor. Randevular ekranındaki "Uzman renkleri" penceresi doğrudan

@@ -54,7 +54,7 @@ function RenkNoktasi({ renk }: { renk: string }) {
   return (
     <span
       className="inline-block size-3 shrink-0 rounded-full ring-1 ring-black/10"
-      style={{ backgroundColor: ton.metin }}
+      style={{ backgroundColor: ton.blok }}
       aria-hidden
     />
   );
@@ -345,7 +345,7 @@ function UzmanFormu({
                 />
                 <span
                   className="block size-8 rounded-full ring-2 ring-transparent ring-offset-2 peer-checked:ring-zinc-900 peer-focus-visible:ring-marka-600"
-                  style={{ backgroundColor: renk.metin }}
+                  style={{ backgroundColor: renk.blok }}
                 />
                 <span className="sr-only">{renk.etiket}</span>
               </label>

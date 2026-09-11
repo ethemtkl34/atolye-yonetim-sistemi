@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Bildirim, Buton, Kart } from "@/components/ui";
 import { Pencere } from "@/components/ui-istemci";
-import { UZMAN_RENKLERI, uzmanRengi } from "@/lib/uzman-renkleri";
+import { UZMAN_RENKLERI, blokYazisi, uzmanRengi } from "@/lib/uzman-renkleri";
 import type { EylemDurumu } from "@/lib/formlar";
 import { uzmanRengiDegistir } from "../uzmanlar/actions";
 
@@ -83,7 +83,7 @@ function UzmanRenkleriPenceresi({
                 <div className="flex items-center gap-2">
                   <span
                     className="size-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: ton.metin }}
+                    style={{ backgroundColor: ton.blok }}
                     aria-hidden
                   />
                   <span className="text-sm font-semibold text-zinc-900">
@@ -103,18 +103,27 @@ function UzmanRenkleriPenceresi({
                         aria-label={`${uzman.ad}: ${renk.etiket}`}
                         aria-pressed={seciliMi}
                         title={renk.etiket}
-                        className="size-7 rounded-full border-2 transition-transform hover:scale-110 disabled:opacity-50"
+                        className="size-7 rounded-full ring-1 ring-black/10 transition-transform hover:scale-110 disabled:opacity-50"
                         style={{
-                          backgroundColor: renk.zemin,
-                          borderColor: seciliMi ? renk.metin : "transparent",
+                          // Çip TAKVİMDEKİ rengi gösterir (`blok`), açık
+                          // zemini değil: kullanıcı seçtiği şeyin ekranda
+                          // nasıl görüneceğini görmeli.
+                          backgroundColor: renk.blok,
+                          // Seçili halka: önce beyaz boşluk, sonra koyu çember
+                          // — açık renklerde de kenar kayboluyor olmasın.
+                          boxShadow: seciliMi
+                            ? "0 0 0 2px #ffffff, 0 0 0 4px #18181b"
+                            : undefined,
                         }}
                       >
                         {/* Renk körlüğünde tek başına renk yetmez: seçili olan
                             içindeki noktayla da işaretleniyor. */}
                         <span
-                          className="mx-auto block size-2 rounded-full"
+                          className="mx-auto block size-2.5 rounded-full"
                           style={{
-                            backgroundColor: seciliMi ? renk.metin : "transparent",
+                            backgroundColor: seciliMi
+                              ? blokYazisi(renk.blok)
+                              : "transparent",
                           }}
                           aria-hidden
                         />

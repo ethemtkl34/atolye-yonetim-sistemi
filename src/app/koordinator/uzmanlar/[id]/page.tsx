@@ -135,7 +135,7 @@ export default async function UzmanSayfasi(
           <div className="flex items-center gap-2">
             <span
               className="inline-block size-3 rounded-full ring-1 ring-black/10"
-              style={{ backgroundColor: ton.metin }}
+              style={{ backgroundColor: ton.blok }}
               aria-hidden
             />
             <Rozet tur="notr">

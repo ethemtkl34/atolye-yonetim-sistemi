@@ -7,7 +7,7 @@ import {
   type HaftaSutunu,
   type IzgaraEkseni,
 } from "@/lib/randevu/izgara-verisi";
-import { uzmanRengi } from "@/lib/uzman-renkleri";
+import { blokYazisi, uzmanRengi } from "@/lib/uzman-renkleri";
 import { dakikayiSaateCevir } from "../uzmanlar/sema";
 import type { RandevuSatiri } from "./takvim";
 
@@ -154,7 +154,7 @@ export function HaftaIzgarasiGovdesi({
                         olay.stopPropagation();
                         onBlokTikla?.(randevu);
                       }}
-                      className="kil-satir absolute overflow-hidden rounded-[var(--kil-r-sm)] p-1 text-left text-white"
+                      className="kil-satir absolute overflow-hidden rounded-[var(--kil-r-sm)] p-1 text-left"
                       style={{
                         top: `${dakikadanOran(baslangicDk, eksen) * 100}%`,
                         height: `${(dakikadanOran(bitisDk, eksen) - dakikadanOran(baslangicDk, eksen)) * 100}%`,
@@ -165,7 +165,11 @@ export function HaftaIzgarasiGovdesi({
                         // `backgroundColor` vermek bu gradyanın ALTINDA
                         // kalıp hiç görünmezdi.
                         backgroundImage: "none",
-                        backgroundColor: ton.metin,
+                        backgroundColor: ton.blok,
+                        // Yazı rengi SABİT DEĞİL: kurumsal paletteki açık
+                        // tonlarda (sarı, yeşil, turkuaz) beyaz okunmuyor
+                        // (bkz. `blokYazisi` şerhi).
+                        color: blokYazisi(ton.blok),
                         opacity: randevu.durum === "IPTAL" ? 0.6 : 1,
                       }}
                     >
@@ -175,7 +179,7 @@ export function HaftaIzgarasiGovdesi({
                       <span className="block truncate text-[0.65rem] font-medium">
                         {randevu.hizmetAdi}
                       </span>
-                      <span className="block truncate text-[0.6rem] text-white/80">
+                      <span className="block truncate text-[0.6rem] opacity-80">
                         {randevu.uzmanAdi}
                       </span>
                     </button>

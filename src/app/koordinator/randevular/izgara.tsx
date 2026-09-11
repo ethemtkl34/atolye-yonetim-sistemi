@@ -178,7 +178,7 @@ export function Izgara({
                     >
                       <span
                         className="size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: ton.metin }}
+                        style={{ backgroundColor: ton.blok }}
                         aria-hidden
                       />
                       <span className="truncate text-sm font-semibold text-zinc-800">
