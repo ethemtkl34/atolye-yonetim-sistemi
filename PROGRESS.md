@@ -3,7 +3,9 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P12 — Yayına alma *(canlıda; alan adı DNS kaydı bekliyor)*
+**Şu an:** P23 bitti (randevu revizyonu, 8–11 Eylül 2026). Sırada randevu
+ekranının yeni revize turu. *(Sistem `atolye-yonetim-sistemi.vercel.app`
+adresinde canlı; alan adı planından vazgeçildi.)*
 
 ---
 
@@ -25,6 +27,12 @@ işaretlenir ve "Şu an" satırı güncellenir.
 | P11 | Dashboard ve arşiv | ✅ Tamam | Dashboard sayıları listelerle birebir uyuşur |
 | P12 | Yayına alma | ⬜ Bekliyor | 16 kabul ölçütü gerçek ortamda doğrulanır |
 | P13 | AI rapor metni *(sonraya bırakıldı)* | ⬜ Bekliyor | Metin katmanı Claude API ile üretilir, şablon yedek kalır |
+| P18 | Aday (CRM) modülü | ✅ Tamam | Dış başvuru adaya düşer, aday öğrenciye dönüşür |
+| P19 | Bakım turu (4 Eylül) | ✅ Tamam | Next 16.3.4, veri katmanı testleri |
+| P20 | Randevu Faz 1 — tanımlar | ✅ Tamam | Veli, uzman, hizmet kataloğu, mesai ve izin panelden yönetilir |
+| P21 | Randevu Faz 2 — takvim | ✅ Tamam | Çakışma/izin reddi, haftalık seri, iptal arşivi |
+| P22 | Randevu Faz 3 — ciro ve mesajlar | ✅ Tamam | Kurumun Excel haftası rapordan birebir çıkar |
+| P23 | Randevu revizyonu (8–11 Eylül) | ✅ Tamam | Hafta ızgarası, düzenleme, adaydan gerçek randevu |
 
 ---
 
@@ -1313,6 +1321,56 @@ açık rızası, rıza durdukça süre sınırı yok. Karar sistemde karşılık
 diye üç şey eklendi — elle girişte onay kutusu, onaysız kaydın işaretlenmesi
 ve rıza geri çekilince kalıcı silme (bkz. `PROJECT_SPEC.md` §16.11).
 Açık madde kalmadı.
+
+---
+
+## P23 — Randevu revizyonu (8–11 Eylül 2026)
+
+Randevu modülü canlıda kullanılmaya başlanınca gelen revize istekleri. Kurumun
+eski AppSheet CRM'i referans alındı. Tanım `PROJECT_SPEC.md` §17.4
+("Görünümler") ve §17.8, kararlar `DECISIONS.md` "Randevu yönetimi".
+
+### Ne yapıldı
+
+| Parça | Commit | Yer |
+|---|---|---|
+| "Program" görünümü: tek gün, sütun uzman, boş hücreye tıkla-aç | `ba9e065` | `randevular/izgara.tsx`, `lib/randevu/izgara-verisi.ts` |
+| Liste karttan tabloya; eylemler "⋮" menüsünde | `754d7b7`, `8a1cd7c` | `randevular/takvim.tsx` |
+| "Hafta" görünümü: sütun gün, uzman rengiyle bloklar; VARSAYILAN sekme | `0284f73`, `c3668c1`, `07047b5` | `hafta-izgarasi.tsx`, `hafta-izgarasi-govde.tsx` |
+| Adaydan GERÇEK randevu (`Randevu.leadId`), ortak kurallar | `1accf34`, `1593fff` | `adaylar/[id]/randevu-planlama.tsx`, `lib/randevu/{veli,uzman-baglami,hafta-verisi}.ts` |
+| Mesai dışı: kesin ret yerine onay sorusu | `6cce133` | `lib/randevu/cakisma.ts` (`mesaiyiYokSay`) |
+| Randevu düzenleme; Hafta'da boş hücreden randevu | `6c51f42` | `randevu-duzenle-formu.tsx` |
+| Randevu formunda kısa "yeni öğrenci" | `ec50257` | `veli-secici.tsx` |
+| Öğrenci geçmişi araması (+ `ogrenciId, baslangic` indeksi) | `d3aec4e` | `ogrenci-gecmisi-penceresi.tsx`, `ogrenci-arama.ts` |
+| Danışma masasına `uzmanlar` TAM; takvimden "Uzman renkleri" | `f052e25` | `lib/yetkiler.ts`, `uzman-renkleri-penceresi.tsx` |
+| Kurumsal sekiz renk paletin başında; blok yazısı kontrastla seçiliyor | `51ff6dd` | `lib/uzman-renkleri.ts` |
+
+İki migration: `20260910120000_randevu_lead_baglantisi`,
+`20260910130000_randevu_ogrenci_gecmisi_index`. Test sayısı 563 → **590**.
+
+### Değişen kararlar
+
+- **"Takvim ızgara değil liste" kararı tersine döndü.** Hafta ızgarası
+  varsayılan; liste "Liste" adıyla duruyor (telefon için).
+- **Mesai dışı artık engel değil, onay.** İzin ve çakışma hâlâ kesin ret.
+- **Aday randevusu artık `Lead.appointmentAt` değil, gerçek `Randevu`.** Eski
+  üç alanlı pencere kaldırıldı; tek yol var.
+
+### Yol boyunca yakalanan hatalar
+
+- **React 19 form eylemi bitince `<select>` DOM değerini ilk seçeneğe
+  düşürüyor** — başarısız denemeden sonra bile. `value=` ile kontrollü olmak
+  yetmiyor (state değişmediği için DOM'a dokunulmuyor); `ogrenci-formu.tsx`
+  desenindeki ref + effect senkronu gerekiyor. Belirtisi: hata sonrası
+  yeniden gönderim sessizce takılıyor.
+- **Adım adım ilerleyen pencerede iki ayrı `Pencere`** bir sonrakini açarken
+  ilkinin `onClose`'unu tetikleyip bütün akışı sıfırlıyordu; yalnız gerçek
+  fare tıklamasıyla üretilebiliyordu. Tek pencere, değişen içerik.
+- **`.kil-satir`in `background` kısaltması** inline `backgroundColor`'ı
+  örtüyordu; renkli bloklarda `backgroundImage: "none"` gerekiyor.
+- Kapalı adayda sayfa null zorlamasından çöküyordu; "Bugün" düğmesi UTC
+  yerine yerel saatle bir gün kayabiliyordu; `"use server"` dosyasından tip
+  türetme kaldırıldı (bkz. canlıda 500 tuzağı).
 
 ---
 

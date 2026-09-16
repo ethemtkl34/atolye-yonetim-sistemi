@@ -43,7 +43,8 @@ Karar gerekçeleri:
   Yöneticisi bu yüzden matriste Kurum Yöneticisi'ne yakın durur ama kullanıcı
   ekranında kendi şubesine kilitlidir (`roller.ts kullaniciYonetimiKapsami`).
 - Dashboard modülsüzdür: panele girebilen herkes özeti görür.
-- Randevu yönetimi bilinçli olarak kapsam dışı bırakıldı (ileride ayrı iş).
+- Randevu yönetimi ilk rol turunda kapsam dışıydı; Eylül 2026'da §17 olarak
+  geldi (aşağıda "Randevu yönetimi").
 - Yeni açılan ve parolası sıfırlanan hesaplar ilk girişte parola değiştirmeye
   zorlanır (`mustChangePassword` + `/parola-degistir`).
 
@@ -168,7 +169,8 @@ Karar gerekçeleri:
 - **Aşama açılır listeyle değil açık düğmelerle değişiyor** (`DurumSecici`
   kullanılmadı). Aşama ilerletmek bu modülün asıl fiili, iki arama arasında
   tek elle yapılıyor; ayrıca geçişlerin üçü zorunlu veri taşıyor (randevu
-  tarihi, kayıp sebebi, öğrenci bağlantısı) ve seçici zaten arkasından bir
+  — Eylül 2026'dan beri gerçek `Randevu` kaydı —, kayıp sebebi, öğrenci
+  bağlantısı) ve seçici zaten arkasından bir
   pencere açtıracaktı.
 - **Şube kodu çözülemeyen başvuru düşürülmez**, varsayılan şubeye
   `ESLEME_YOK` işaretiyle yazılır ve listede uyarı üretir. Gerçek bir ailenin
@@ -189,9 +191,9 @@ Karar gerekçeleri:
   yazan her eylem gereksiz bir `// şube-muaf` yorumu taşır, tarayıcı gürültüye
   dönerdi. Şubesiz bir modele `activities` ilişkisi eklenirse karar yeniden
   gözden geçirilmeli.
-- V1 kapsamı dışında: Bitrix/Workiom veri aktarımı, ödeme, randevu takvimi,
-  e-posta/SMS gönderimi, dönüşmeyen adayların otomatik temizliği (KVKK
-  saklama süresi kurum kararı bekliyor).
+- V1 kapsamı dışında: Bitrix/Workiom veri aktarımı, ödeme, e-posta/SMS
+  gönderimi. (Randevu takvimi Eylül 2026'da §17 ile geldi; KVKK saklama
+  süresi 4 Eylül 2026'da karara bağlandı — aşağıda.)
 
 ## Randevu yönetimi (§17)
 
@@ -256,8 +258,10 @@ Karar gerekçeleri:
   çalışabildiği için çakışma ancak böyle önlenir; öğrenci/veri mahremiyeti
   eskisi gibi şubeye kilitli.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
-  `uzmanlar` (kadro + fiyat listesi) ise `kullanicilar` ile aynı sınıfta bir
-  yönetici işi: Kurum ve Şube Yöneticisi TAM, diğerleri GÖRÜNTÜLE.
+  `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
+  Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda
+  yalnız yöneticiler TAM'dı; Eylül 2026'da danışma masası eklendi (bkz.
+  rol matrisi notu — takvimi kuran masa yönetici beklememeli).
 - **Mesajlar WhatsApp bağlantısıyla**, otomatik gönderim yok: SMS servisi
   abonelik, API kurulumu ve KVKK aydınlatması demek; mevcut `waBaglantisi`
   deseni bugün çalışıyor.
@@ -281,9 +285,24 @@ Karar gerekçeleri:
   parametresi) bu bayrak olmadan KENDİLİĞİNDEN asla atlamaz. İzin ve çakışma
   bu istisnadan ETKİLENMEZ ve hâlâ kesin ret: uzman izinliyse ya da zaten
   başka bir seanstaysa hiçbir onay bunu aşamaz.
-- **Takvim ızgara değil liste.** Belge de "listelenir" diyor; seanslar
-  30–120 dakika arasında ve günde en fazla bir düzine — ızgara aynı bilgiyi
-  telefonda kullanılamaz hâlde gösterirdi.
+- **Takvimin ana görünümü ızgara; liste ikinci sırada** (Eylül 2026
+  revizyonu, ilk karar "ızgara değil liste" idi). Kurumun eski AppSheet
+  CRM'inde alıştığı ekran haftalık ızgaraydı ve "hangi gün ne kadar dolu"
+  sorusu listede ancak yedi ayrı tabloyu alt alta okuyarak cevaplanıyordu.
+  Sekme sırası: **Hafta** (sütun GÜN, uzmanlar blok rengiyle ayrılır —
+  varsayılan) · **Program** (tek gün, sütun UZMAN, mesai/izin gölgeli) ·
+  **Liste** (güne göre gruplanmış tablo, eylemler "⋮" menüsünde) · **Ay**.
+  Telefondaki okunabilirlik kaygısı Liste görünümüyle karşılanıyor. Boş
+  hücreye tıklamak o gün/saat dolu randevu formunu açar.
+- **Randevu düzenlenebilir, danışanı değiştirilemez.** Uzman, hizmet, tarih,
+  saat ve ücret düzenlenir; aynı izin → mesai → çakışma kuralları randevunun
+  kendisi hariç tutularak uygulanır. Danışanı değiştirmek başka bir kişinin
+  geçmişine seans taşımak demek — iptal edip yenisini açmak daha güvenli.
+- **Randevu formundan açılan öğrenci kasıtlı olarak dar.** Yalnız ad, soyad
+  ve isteğe bağlı doğum tarihi; veli bağı (`Guardian`), okul, sağlık yok.
+  Telefonda randevu veren kişiye tam öğrenci formu doldurtmak kabul edilemez
+  bir sürtünme; eksikler Öğrenciler ekranından tamamlanır. Öğrenci, çakışma
+  kontrolünden SONRA ve veliyle aynı transaction'da yazılır.
 - **Ergoterapi ile Duyu Bütünleme Programı AYRI hizmetler** (4 Eylül 2026'da
   kurum teyit etti). İkisi de katalogda aktif. Ergoterapi'nin süresi ve
   ücreti fiyat listesinde yazmadığı için tohumda Duyu Bütünleme ile aynı

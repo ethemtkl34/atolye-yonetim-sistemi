@@ -1011,6 +1011,32 @@ Danışanı velidir; çocuk seçimi isteğe bağlıdır.
 - Randevu, ilgili görüşme veya zekâ testi kaydına isteğe bağlı olarak bağlanır;
   o kayıtlar (§11, danışmanlık ve zekâ testleri) yerinde kalır.
 
+**Görünümler** (Eylül 2026 revizyonu):
+
+| Sekme | Ne gösterir |
+|---|---|
+| **Hafta** *(varsayılan)* | Sütun gün, satır saat; bütün uzmanların randevuları aynı sütunda uzman rengiyle ayrılır, çakışanlar yan yana daralır. Kartta saat, hizmet ve uzman. |
+| **Program** | Tek gün; sütun uzman. Mesai dışı ve izin gölgeli. Yalnız seçili şubenin mesaisiyle çalışır. |
+| **Liste** | Güne göre gruplanmış tablo (saat, uzman, hizmet, danışan, durum, ücret); eylemler "⋮" menüsünde. |
+| **Ay** | Ayın randevuları güne göre. |
+
+- **Boş hücreye tıklamak** (Hafta ve Program) o gün/saat — Program'da uzman
+  da — dolu "Randevu aç" formunu açar; randevu bloğuna tıklamak ayrıntı ve
+  eylem penceresini açar.
+- **Düzenleme**: uzman, hizmet, tarih, saat ve ücret değiştirilebilir;
+  danışan sabittir. Açılıştaki kuralların aynısı uygulanır.
+- **Randevu formunda yeni öğrenci**: veli altında kayıtlı olmayan çocuk için
+  ad, soyad ve isteğe bağlı doğum tarihiyle kısa kayıt açılır.
+- **Öğrenci geçmişi**: kayıtlı bir öğrenci aranır ve bütün randevuları
+  (geçmiş + gelecek) salt okunur listelenir. Şubeye kilitlidir.
+- **Uzman renkleri** penceresi takvimden `Uzman.renk` alanını düzeltir.
+  Paletin başında kurumun sekiz marka rengi var; blok üstündeki yazı rengi
+  zeminin parlaklığına göre seçilir.
+- **Adaydan randevu** (§16.9): aday sayfasındaki "Randevu ver…" hizmet seçimi
+  → hafta ızgarasında boş saat → uygun uzman onayı akışıyla GERÇEK bir
+  randevu açar (`Randevu.leadId`). Tek seferliktir; seri yalnız bu modülden
+  açılır.
+
 ### 17.5 Raporlama
 
 Seçilen hafta veya ay için uzman bazında seans adedi ve toplam ciro; mevcut
@@ -1058,6 +1084,8 @@ kalır.
 DANISMA_GOREVLISI TAM; TEST_UYGULAYICISI ve STAJYER YOK. Ciro için ayrı bir
 yetki yoktur — modülü gören ücreti de görür.
 
-`uzmanlar` modülü (kadro + hizmet kataloğu): ADMIN ve SUBE_YONETICISI TAM;
-koordinatör, psikolog ve danışma masası GÖRÜNTÜLE. Kadro ve fiyat listesi
-`kullanicilar` ile aynı sınıfta bir yönetici işidir.
+`uzmanlar` modülü (kadro + hizmet kataloğu): ADMIN, SUBE_YONETICISI ve
+DANISMA_GOREVLISI TAM; koordinatör ve psikolog GÖRÜNTÜLE. Danışma masası
+Eylül 2026'da eklendi: randevu takvimini bu masa kurduğu için uzmanı açmak,
+rengini ve mesaisini düzeltmek yönetici beklememeli. Takvimdeki "Uzman
+renkleri" penceresi de aynı TAM yetkiyi ister.

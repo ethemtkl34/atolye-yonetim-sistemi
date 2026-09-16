@@ -1,4 +1,4 @@
-# Devir notu — 2 Ağustos 2026 (ek: 4 Eylül 2026)
+# Devir notu — 2 Ağustos 2026 (ekler: 4 Eylül, 16 Eylül 2026)
 
 Uzun bir çalışma oturumunun sonunda yazıldı. Amacı, yeni bir sohbetin
 sıfırdan keşif yapmadan devam edebilmesi. Kararların gerekçeleri commit
@@ -408,3 +408,48 @@ Bunların dışında kullanıcının **bilerek açık bıraktığı** maddeler v
 sayılmamalı: `LEAD_API_TOKEN` (CRM ucu canlıda 503), yedi `@tuzder.local` demo
 hesabı, Sonbahar dönemindeki 60 sahipsiz müfredat girdisi, Neon ücretsiz
 planının 6 saatlik kurtarma penceresi, hata izleme aracının olmaması.
+
+---
+
+# Ek — 16 Eylül 2026
+
+4 Eylül ekindeki "Sıradaki iş: Faz 2 / Faz 3" **eskidi** — ikisi de aynı gün
+bitti (P21, P22) ve "kullanıcı kararını bekleyenler" listesindeki üç soru da
+cevaplandı: tekrar hafta sayısı seçilen seri (varsayılan 8), Ergoterapi ile
+Duyu Bütünleme AYRI hizmet, eski görüşmeler randevuya bağlanmadı.
+
+## 8–11 Eylül: randevu revizyonu (P23)
+
+Randevu modülü canlıda kullanılınca gelen istekler; ayrıntı `PROGRESS.md`
+P23, tanım `PROJECT_SPEC.md` §17.4 "Görünümler", kararlar `DECISIONS.md`.
+Kısaca:
+
+- Sekmeler **Hafta** (varsayılan, sütun gün, uzman rengi) · **Program**
+  (tek gün, sütun uzman) · **Liste** (tablo) · **Ay**. İlk kararın "ızgara
+  değil liste" hâli tersine döndü.
+- Boş hücreye tıklayınca randevu formu; randevu **düzenlenebilir** (danışan
+  hariç); formda kısa **yeni öğrenci**; **öğrenci geçmişi** araması.
+- **Mesai dışı** artık onay sorusu; izin ve çakışma hâlâ kesin ret.
+- **Adaydan randevu gerçek `Randevu`** (`leadId`); iki yol aynı
+  `lib/randevu` kurallarını kullanıyor.
+- **Danışma masası uzman kadrosunda TAM** (koordinatörden fazla, bilinçli);
+  takvimden "Uzman renkleri"; paletin başında kurumsal sekiz renk.
+
+## Randevu ekranında çalışırken tuzaklar
+
+- **React 19 + form eylemi `<select>`'i ilk seçeneğe düşürüyor**, başarısız
+  denemede bile. `value=` yetmiyor; `ogrenci-formu.tsx`'teki ref + effect
+  desenini kullanın.
+- **Çok adımlı pencerede tek `Pencere`** kullanın; ikisini `acik` ile
+  birbirine bağlamak adım geçişinde `onClose`'u tetikleyip akışı sıfırlıyor.
+  Bu yalnız gerçek fare tıklamasıyla görünüyor, JS `click()` ile değil.
+- Renkli blokta `.kil-satir` zemin gradyanı inline rengi örtüyor:
+  `backgroundImage: "none"`.
+- Hafta ızgarası gövdesi (`hafta-izgarasi-govde.tsx`) randevular sayfası ile
+  aday randevu seçicisi arasında ORTAK — birinde yapılan değişiklik diğerini
+  de etkiler.
+
+## Sıradaki iş
+
+Kullanıcı **randevu ekranında yeni bir revize turu** başlatıyor; istekler
+ondan gelecek.
