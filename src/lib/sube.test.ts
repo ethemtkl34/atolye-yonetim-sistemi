@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aktifSubeyiCoz } from "./sube";
+import { aktifSubeyiCoz, randevuSubesiniCoz } from "./sube";
 
 const SUBELER = [{ id: "sube_umraniye" }, { id: "sube_gunesli" }];
 
@@ -47,5 +47,27 @@ describe("aktifSubeyiCoz", () => {
     // Veritabanı CHECK'i bunu engelliyor; veri elle bozulmuşsa çağıran
     // taraf kullanıcıyı panele sokmamalı.
     expect(aktifSubeyiCoz(false, null, undefined, SUBELER)).toBeNull();
+  });
+});
+
+describe("randevuSubesiniCoz", () => {
+  it("çerezdeki aktif şubede çalışır", () => {
+    expect(randevuSubesiniCoz("sube_gunesli", "sube_umraniye", SUBELER)).toBe(
+      "sube_umraniye",
+    );
+  });
+
+  it("çerez yoksa kendi şubesinde kalır — ilk şubeye DÜŞMEZ", () => {
+    // Yöneticiden farkı: seçim yapmamış danışma görevlisi fark etmeden
+    // başka şubenin takvimine geçmemeli.
+    expect(randevuSubesiniCoz("sube_gunesli", undefined, SUBELER)).toBe(
+      "sube_gunesli",
+    );
+  });
+
+  it("bozuk ya da pasif şubeyi gösteren çerez kendi şubesine düşer", () => {
+    expect(randevuSubesiniCoz("sube_gunesli", "uydurma", SUBELER)).toBe(
+      "sube_gunesli",
+    );
   });
 });

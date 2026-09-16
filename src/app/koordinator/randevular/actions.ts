@@ -2,8 +2,10 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuZorunlu, yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { RANDEVU_SUBE_CEREZI, SUBE_CEREZ_OMRU } from "@/lib/sube";
 import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { bugun, tarihCozumle, zamanMetni } from "@/lib/tarih";
@@ -36,7 +38,8 @@ import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
  * gören herkesi randevu açabiliyor — modülün asıl kullanıcısı telefonun
  * başındaki kişi.
  *
- * ŞUBE: randevu oturumdaki AKTİF ŞUBEYE açılır. Takvim okuması şubeler arası
+ * ŞUBE: randevu oturumdaki AKTİF ŞUBEYE açılır — danışma görevlisinde bu,
+ * randevular ekranında seçtiği şubedir (`randevuZorunlu`). Takvim okuması şubeler arası
  * (§17.7) ama yazma değil: seansın hangi binada verildiği ciro raporunun
  * kırılımı ve başka şubenin takvimine kayıt düşmek kimsenin istediği şey
  * olmazdı.
@@ -47,7 +50,42 @@ function tazele(): void {
   revalidatePath("/koordinator");
 }
 
-/** Aday penceresinin sayfadan ayrılmadan hafta değiştirmesi için salt-okunur veri. */
+/**
+ * Danışma görevlisinin randevular ekranında çalıştığı şubeyi değiştirir
+ * (Eylül 2026 kararı, bkz. `randevuZorunlu`).
+ *
+ * Yalnız randevular ekranını etkiler: ayrı bir çerez yazılıyor ve onu
+ * yalnız `randevuZorunlu` okuyor. Yöneticinin genel şube seçimine
+ * (`app/sube/actions.ts`) dokunmaz. Değer yazılmadan önce aktif şube olduğu
+ * doğrulanıyor; okuma tarafı da tanımadığı değeri kendi şubesine düşürüyor.
+ */
+export async function randevuSubesiDegistir(subeId: string): Promise<void> {
+  const kullanici = await randevuZorunlu();
+  if (!kullanici.randevuSubesiSecebilir) return;
+
+  const sube = await db.branch.findFirst({
+    where: { id: subeId, active: true },
+    select: { id: true },
+  });
+  if (!sube) return;
+
+  (await cookies()).set(RANDEVU_SUBE_CEREZI, sube.id, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: SUBE_CEREZ_OMRU,
+  });
+
+  // "layout": ciro raporu (`/randevular/rapor`) de aynı seçimle çalışıyor.
+  revalidatePath("/koordinator/randevular", "layout");
+}
+
+/**
+ * Aday penceresinin sayfadan ayrılmadan hafta değiştirmesi için salt-okunur veri.
+ *
+ * `randevuZorunlu` DEĞİL: aday akışı adayın şubesinde çalışır, danışma
+ * görevlisinin randevular ekranındaki şube seçimi buraya taşınmamalı.
+ */
 export async function haftaRandevuVerisiEylemi(tarih: string) {
   const kullanici = await yonetimZorunlu("randevular");
   return haftaRandevuVerisi({ subeId: kullanici.aktifSubeId, capa: tarihCozumle(tarih) ?? bugun() });
@@ -63,7 +101,7 @@ export async function randevuEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("randevular", "TAM");
+  const kullanici = await randevuZorunlu("TAM");
   const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = randevuSemasi.safeParse(formuOku(formVerisi));
@@ -264,7 +302,7 @@ export async function randevuDuzenle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("randevular", "TAM");
+  const kullanici = await randevuZorunlu("TAM");
   const subeId = kullanici.aktifSubeId;
 
   const mevcut = await db.randevu.findFirst({
@@ -379,7 +417,7 @@ export async function randevuDurumDegistir(
   randevuId: string,
   durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI",
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("randevular", "TAM");
+  const kullanici = await randevuZorunlu("TAM");
 
   // İptal edilmiş randevu geri açılmıyor: iptal kaydın geçmişi, durum değil.
   const sonuc = await db.randevu.updateMany({
@@ -418,7 +456,7 @@ export async function randevuIptalEt(
   kapsam: TekrarKapsami,
   not: string | null,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("randevular", "TAM");
+  const kullanici = await randevuZorunlu("TAM");
 
   const randevu = await db.randevu.findFirst({
     where: { id: randevuId, branchId: kullanici.aktifSubeId },

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuZorunlu } from "@/lib/yetki-kapisi";
 import { normalizeArama } from "@/lib/turkce";
 
 /**
@@ -14,7 +14,7 @@ import { normalizeArama } from "@/lib/turkce";
  */
 
 export async function ogrenciAra(sorgu: string) {
-  const kullanici = await yonetimZorunlu("randevular");
+  const kullanici = await randevuZorunlu();
 
   const temiz = sorgu.trim();
   if (temiz.length < 2) return [];
@@ -46,7 +46,7 @@ export async function ogrenciAra(sorgu: string) {
 
 /** Öğrencinin TÜM randevuları — en yeniden eskiye, iptaller dahil. */
 export async function ogrenciRandevuGecmisi(ogrenciId: string) {
-  const kullanici = await yonetimZorunlu("randevular");
+  const kullanici = await randevuZorunlu();
 
   // şube-muaf değil: öğrenci başka şubeden geldiyse hiçbir satır dönmez —
   // takvimin aksine geçmiş aramasında "başka şubenin randevusu" gösterecek

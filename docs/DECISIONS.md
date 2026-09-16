@@ -257,6 +257,18 @@ Karar gerekçeleri:
 - **Takvim şubeler arası görünür, kişisel veri değil.** Uzman iki şubede
   çalışabildiği için çakışma ancak böyle önlenir; öğrenci/veri mahremiyeti
   eskisi gibi şubeye kilitli.
+- **Danışma görevlisi randevularda şube seçebilir (Eylül 2026).** Randevuların
+  neredeyse tamamı Ümraniye'de, Güneşli'ye bağlı danışma görevlileri ise
+  onları görüp düzenleyemiyordu — takvim şubeler arası okunuyor ama yalnız
+  "üzerinde çalışılan" şubenin randevusu düzenleniyor. Seçenekler arasında
+  hesabı Ümraniye'ye taşımak (Güneşli'nin öğrencilerini kaybettirirdi) ve
+  takvimde bütün şubeleri düzenlenebilir yapmak (seçim olmadan öbür şubenin
+  veli telefonlarını açardı) vardı; kurum şube seçiciyi seçti. Seçim AYRI bir
+  çerezde (`randevu-subesi`) ve yalnız `randevuZorunlu` kapısı onu okuyor:
+  genel şube çerezini paylaşsaydı randevularda yapılan seçim öğrenci ve aday
+  ekranlarını sessizce başka şubeye çevirirdi. Seçim yokken ya da bozukken
+  kendi şubesine düşer (yöneticideki "ilk şube" davranışı değil). Adaydan
+  randevu akışı adayın şubesinde kalır, seçimi okumaz.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
   `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
   Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda

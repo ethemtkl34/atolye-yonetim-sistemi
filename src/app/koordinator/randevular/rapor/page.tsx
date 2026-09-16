@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuZorunlu } from "@/lib/yetki-kapisi";
 import {
   BosDurum,
   Kart,
@@ -21,6 +21,7 @@ import {
   subeCiroRaporu,
 } from "@/lib/randevu/rapor-verisi";
 import { paraMetni } from "../../uzmanlar/sema";
+import { RandevuSubesiSecici } from "../randevu-subesi-secici";
 
 export const metadata: Metadata = {
   title: "Ciro raporu",
@@ -44,7 +45,7 @@ const TEMEL_YOL = "/koordinator/randevular/rapor";
 export default async function CiroRaporuSayfasi(
   props: PageProps<"/koordinator/randevular/rapor">,
 ) {
-  const kullanici = await yonetimZorunlu("randevular");
+  const kullanici = await randevuZorunlu();
 
   const parametreler = await props.searchParams;
   const kapsam = raporKapsamiMi(parametreler.kapsam) ? parametreler.kapsam : "hafta";
@@ -102,6 +103,13 @@ export default async function CiroRaporuSayfasi(
       />
 
       <SuzgecCubugu>
+        {kullanici.randevuSubesiSecebilir ? (
+          <RandevuSubesiSecici
+            aktifSubeId={kullanici.aktifSubeId}
+            kendiSubeAdi={kullanici.kendiSubeAdi}
+            subeler={kullanici.randevuSubeleri}
+          />
+        ) : null}
         <SuzgecGrubu
           etiket="Kapsam"
           temelYol={TEMEL_YOL}

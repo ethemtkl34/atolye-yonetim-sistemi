@@ -103,6 +103,19 @@ export function anaSayfaYolu(roller: readonly Role[]): string {
   return roller.includes("STAJYER") ? "/stajyer" : "/koordinator";
 }
 
+/**
+ * Randevular ekranında şube seçebilir mi (Eylül 2026 kararı).
+ *
+ * Danışma görevlisi randevu takvimini fiilen kuran masa; uzmanlar iki şubede
+ * çalıştığı için öbür şubenin randevusunu da açıp düzenleyebilmeli. Seçim
+ * YALNIZ randevular ekranını etkiler — panelin geri kalanı kendi şubesinde.
+ * Yönetici bu listede değil: onun üst şeritteki seçicisi zaten bütün paneli
+ * (randevular dahil) çeviriyor, ikinci bir seçici çelişki yaratırdı.
+ */
+export function randevuSubesiSecebilirMi(roller: readonly Role[]): boolean {
+  return roller.includes("DANISMA_GOREVLISI") && !roller.includes("ADMIN");
+}
+
 /** Koordinatör paneline girebilir mi (STAJYER dışındaki herhangi bir rol). */
 export function yonetimRoluMu(roller: readonly Role[]): boolean {
   return roller.some((rol) => YONETIM_ROLLERI.includes(rol));

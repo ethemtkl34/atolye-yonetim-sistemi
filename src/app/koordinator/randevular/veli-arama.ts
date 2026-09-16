@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuZorunlu } from "@/lib/yetki-kapisi";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 
 /**
@@ -18,7 +18,7 @@ import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
  */
 
 export async function veliAra(sorgu: string) {
-  const kullanici = await yonetimZorunlu("randevular");
+  const kullanici = await randevuZorunlu();
 
   const temiz = sorgu.trim();
   if (temiz.length < 2) return [];

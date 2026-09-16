@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import {
   anaSayfaYolu,
   kullaniciYonetimiKapsami,
+  randevuSubesiSecebilirMi,
   yonetimRoluMu,
 } from "@/lib/roller";
 import {
@@ -13,7 +14,12 @@ import {
   type Modul,
   type Seviye,
 } from "@/lib/yetkiler";
-import { aktifSubeyiCoz, secilenSubeCerezi } from "@/lib/sube";
+import {
+  aktifSubeyiCoz,
+  randevuSubesiCerezi,
+  randevuSubesiniCoz,
+  secilenSubeCerezi,
+} from "@/lib/sube";
 import type { Role } from "@/generated/prisma/enums";
 
 /**
@@ -223,6 +229,67 @@ export async function yonetimZorunlu(
   return subeBaglamiEkle(kullanici);
 }
 
+/** Randevular ekranının kullanıcısı — şube seçimi o ekrana göre çözülmüş. */
+export type RandevuKullanicisi = SubeliKullanici & {
+  /**
+   * Randevular ekranında şube seçicisi çizilsin mi. Yöneticide false: onun
+   * seçicisi üst şeritte ve `aktifSubeId` zaten ondan geliyor.
+   */
+  randevuSubesiSecebilir: boolean;
+  /** Seçicinin listesi (aktif şubeler). Seçemeyen rolde boş. */
+  randevuSubeleri: readonly { id: string; ad: string }[];
+  /** Hesabın kendi şubesinin adı — başka şubede çalışırken uyarı için. */
+  kendiSubeAdi: string;
+};
+
+/**
+ * Randevular modülünün kapısı: `yonetimZorunlu("randevular", …)` ARTI
+ * randevu şubesi (Eylül 2026 kararı).
+ *
+ * Danışma görevlisinde `aktifSubeId` hesabın şubesi değil, randevular
+ * ekranında SEÇTİĞİ şube olur (`RANDEVU_SUBE_CEREZI`). Böylece öbür şubenin
+ * randevusu takvimde "bizim" sayılır; danışan adı açılır, düzenlenir, iptal
+ * edilir, yeni randevu o şubeye açılır. Diğer bütün sayfalar
+ * `yonetimZorunlu` kullandığı için seçim randevular dışına SIZMAZ.
+ *
+ * Çerez burada da güvenle okunabilir: değer yalnız aktif şubeler arasındaysa
+ * kabul ediliyor ve bu roller için iki şubenin randevusu zaten yetki
+ * kapsamında — istemcinin değeri görüş alanını yetkinin ötesine taşıyamaz.
+ */
+export async function randevuZorunlu(
+  gereken: Seviye = "GORUNTULE",
+): Promise<RandevuKullanicisi> {
+  const kullanici = await yonetimZorunlu("randevular", gereken);
+  const kendiSubeAdi = kullanici.aktifSubeAdi;
+
+  if (!randevuSubesiSecebilirMi(kullanici.roller) || !kullanici.subeId) {
+    return {
+      ...kullanici,
+      randevuSubesiSecebilir: false,
+      randevuSubeleri: [],
+      kendiSubeAdi,
+    };
+  }
+
+  const subeler = await subeleriOku();
+  const secilen = randevuSubesiniCoz(
+    kullanici.subeId,
+    await randevuSubesiCerezi(),
+    subeler,
+  );
+  // Kendi şubesi pasife alınmışsa bile `subeBaglamiEkle` onu çözmüş olurdu;
+  // bulunamayan seçimde mevcut bağlamı olduğu gibi bırak.
+  const sube = subeler.find((aday) => aday.id === secilen);
+
+  return {
+    ...kullanici,
+    ...(sube ? { aktifSubeId: sube.id, aktifSubeAdi: sube.name } : {}),
+    randevuSubesiSecebilir: true,
+    randevuSubeleri: subeler.map((aday) => ({ id: aday.id, ad: aday.name })),
+    kendiSubeAdi,
+  };
+}
+
 /** Stajyer paneli için. Diğer roller kendi alanlarına yönlendirilir. */
 export async function stajyerZorunlu(): Promise<SubeliKullanici> {
   const kullanici = await girisZorunlu();
@@ -297,12 +364,26 @@ export async function belgeSubesi(
   const subeler = await subeleriOku();
   const yonetici = kullanici.roles.includes("ADMIN");
   const cerez = yonetici ? await secilenSubeCerezi() : undefined;
-  const aktifSubeId = aktifSubeyiCoz(
+  let aktifSubeId = aktifSubeyiCoz(
     yonetici,
     kullanici.branchId,
     cerez,
     subeler,
   );
+
+  // Randevu belgeleri (ciro CSV'si) ekranın gördüğü şubeyi vermeli: danışma
+  // görevlisi randevular ekranında şube seçtiyse o (bkz. `randevuZorunlu`).
+  if (
+    modul === "randevular" &&
+    kullanici.branchId &&
+    randevuSubesiSecebilirMi(kullanici.roles)
+  ) {
+    aktifSubeId = randevuSubesiniCoz(
+      kullanici.branchId,
+      await randevuSubesiCerezi(),
+      subeler,
+    );
+  }
 
   const sube = subeler.find((aday) => aday.id === aktifSubeId);
   if (!sube) return erisimYok();

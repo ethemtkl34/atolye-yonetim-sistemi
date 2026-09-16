@@ -134,7 +134,7 @@ dosyasında tanımlıdır; seviyeler YOK < LİSTE < GÖRÜNTÜLE < TAM.
 | Raporlar | TAM | TAM | TAM | — | — |
 | Arşiv | TAM | TAM | TAM | — | — |
 | Kullanıcılar | TAM | — | — | — | — |
-| Şube değiştirme | ✓ | — | — | — | — |
+| Şube değiştirme | ✓ | — | — | — | Yalnız randevularda (§17.7) |
 
 - Kurum Yöneticisi şubesizdir; üst şeritten şube seçerek çalışır ve başka
   rolle birleşemez. Diğer bütün roller bir şubeye bağlıdır.
@@ -1077,6 +1077,15 @@ Randevu takvimi ve uzman müsaitliği ŞUBELER ARASI görünür — uzmanlar iki
 şubede birden çalışabildiği için çakışma ancak böyle önlenir. Öğrenci ve veli
 kişisel verisi, sağlık bilgisi ve görüşme notları eskisi gibi şubeye kilitli
 kalır.
+
+**Danışma görevlisinin randevu şubesi** (Eylül 2026): danışma görevlisi
+Randevular ekranında (ve ciro raporunda) şube seçebilir. Seçtiği şubenin
+randevuları kendi şubesininki gibi açılır: danışan görünür, randevu
+düzenlenir, iptal edilir, yeni randevu o şubeye açılır. Seçim YALNIZ
+randevular ekranını etkiler; öğrenci, aday, kayıt ekranları ve üst şeritteki
+şube kendi şubesinde kalır. Başka şubedeyken seçicinin yanında bunu söyleyen
+bir rozet durur. Yönetici bu seçiciyi almaz — üst şeritteki seçicisi zaten
+bütün paneli çevirir.
 
 ### 17.8 Yetkiler
 

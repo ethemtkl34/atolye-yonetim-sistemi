@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuZorunlu } from "@/lib/yetki-kapisi";
 import Link from "next/link";
 import { BosDurum, SayfaBasligi, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
@@ -33,6 +33,7 @@ import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
+import { RandevuSubesiSecici } from "./randevu-subesi-secici";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -56,6 +57,10 @@ const TEMEL_YOL = "/koordinator/randevular";
  * GÜN, satır saat olan bir ızgara — kimin randevusu olduğu artık bir sütun
  * başlığından değil bloğun renginden okunuyor (bkz. o dosyanın şerhi).
  *
+ * ŞUBE SEÇİMİ (Eylül 2026): danışma görevlisi bu ekranda şube seçebilir ve
+ * seçtiği şubenin randevularını kendi şubesininki gibi yönetir; seçim panelin
+ * geri kalanına taşınmaz (bkz. `randevuZorunlu`, `RandevuSubesiSecici`).
+ *
  * ŞUBE: takvim ŞUBELER ARASI okunur (§17.7) — uzmanlar iki şubede birden
  * çalışabildiği için çakışma ancak böyle görünür. Kendi şubesi dışındaki
  * randevuda danışan adı, öğrenci ve not GİZLENİR; uzman, hizmet ve saat
@@ -68,7 +73,7 @@ const TEMEL_YOL = "/koordinator/randevular";
 export default async function RandevularSayfasi(
   props: PageProps<"/koordinator/randevular">,
 ) {
-  const kullanici = await yonetimZorunlu("randevular");
+  const kullanici = await randevuZorunlu();
   const subeId = kullanici.aktifSubeId;
   const yazabilir = kullanici.yetkiler.randevular === "TAM";
   /** Uzman rengini takvimden düzeltebilme — kadro yetkisiyle aynı kapı. */
@@ -243,6 +248,15 @@ export default async function RandevularSayfasi(
       />
 
       <SuzgecCubugu>
+        {/* Danışma görevlisi öbür şubenin randevularını da yönetir: seçim
+            yalnız bu ekranı etkiler (bkz. `randevuZorunlu`). */}
+        {kullanici.randevuSubesiSecebilir ? (
+          <RandevuSubesiSecici
+            aktifSubeId={subeId}
+            kendiSubeAdi={kullanici.kendiSubeAdi}
+            subeler={kullanici.randevuSubeleri}
+          />
+        ) : null}
         {/* Görünüm üç seçenek: çip. Uzman ve hizmet onlarca olabilir: açılır
             liste (öğrenci süzgecindeki ayrımın aynısı). */}
         <SuzgecGrubu

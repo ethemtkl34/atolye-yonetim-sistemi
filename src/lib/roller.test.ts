@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { kullaniciYonetimiKapsami } from "./roller";
+import {
+  kullaniciYonetimiKapsami,
+  randevuSubesiSecebilirMi,
+} from "./roller";
 
 /**
  * Kapsam fonksiyonu kullanıcı yönetiminin TEK sınırı: hem ekranın sorgusu
@@ -44,5 +47,28 @@ describe("kullaniciYonetimiKapsami", () => {
         "sube_gunesli",
       ),
     ).toEqual({ kapsamSubeId: "sube_gunesli" });
+  });
+});
+
+describe("randevuSubesiSecebilirMi", () => {
+  it("danışma görevlisi randevu şubesi seçebilir", () => {
+    expect(randevuSubesiSecebilirMi(["DANISMA_GOREVLISI"])).toBe(true);
+  });
+
+  it("çoklu rolde danışma görevlisi rolü yeter", () => {
+    // Canlıda "Koordinatör + Test Uygulayıcısı + Danışma Görevlisi" hesabı var.
+    expect(
+      randevuSubesiSecebilirMi(["KOORDINATOR", "TEST_UYGULAYICISI", "DANISMA_GOREVLISI"]),
+    ).toBe(true);
+  });
+
+  it("koordinatör, psikolog ve şube yöneticisi seçemez", () => {
+    expect(randevuSubesiSecebilirMi(["KOORDINATOR"])).toBe(false);
+    expect(randevuSubesiSecebilirMi(["ATOLYE_PSIKOLOGU"])).toBe(false);
+    expect(randevuSubesiSecebilirMi(["SUBE_YONETICISI"])).toBe(false);
+  });
+
+  it("yönetici ayrı seçici almaz — üst şeritteki seçici zaten her şeyi çeviriyor", () => {
+    expect(randevuSubesiSecebilirMi(["ADMIN"])).toBe(false);
   });
 });

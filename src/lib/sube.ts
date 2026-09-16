@@ -40,6 +40,39 @@ export async function secilenSubeCerezi(): Promise<string | undefined> {
 }
 
 /**
+ * Danışma görevlisinin YALNIZ RANDEVULAR ekranında seçtiği şube (Eylül 2026).
+ *
+ * Genel şube çerezinden (`SUBE_CEREZI`) bilinçli olarak AYRI: o çerez
+ * yöneticinin bütün paneli başka şubeye çevirmesi içindir. Danışma masası
+ * ise öğrenci, aday ve kayıt ekranlarında kendi şubesinde kalmalı; yalnız
+ * randevu takvimi — uzmanlar iki şubede çalıştığı için — öbür şubede de
+ * yönetilebilmeli. Aynı çerezi paylaşsalardı bir ekranda yapılan seçim
+ * öbürlerini sessizce etkilerdi.
+ */
+export const RANDEVU_SUBE_CEREZI = "randevu-subesi";
+
+export async function randevuSubesiCerezi(): Promise<string | undefined> {
+  return (await cookies()).get(RANDEVU_SUBE_CEREZI)?.value;
+}
+
+/**
+ * Randevular ekranında hangi şubede çalışılacağı — yalnız randevu şubesi
+ * seçebilen roller için çağrılır (bkz. roller.ts `randevuSubesiSecebilirMi`).
+ *
+ * Çerez aktif bir şubeyi gösteriyorsa o; yoksa, bozuksa ya da şube pasife
+ * alınmışsa KULLANICININ KENDİ ŞUBESİ. Yöneticideki "ilk şubeye düş"
+ * davranışından farkı bu: seçim yapmamış bir danışma görevlisi hiç fark
+ * etmeden başka şubenin takviminde çalışmaya başlamamalı.
+ */
+export function randevuSubesiniCoz(
+  kullaniciSubeId: string,
+  cerezDegeri: string | undefined,
+  subeler: readonly { id: string }[],
+): string {
+  return subeler.find((sube) => sube.id === cerezDegeri)?.id ?? kullaniciSubeId;
+}
+
+/**
  * Hangi şubede çalışılacağını belirler. Saf fonksiyon — testten çağrılabilsin
  * diye veritabanı ve çerez okuma dışarıda bırakıldı.
  *
