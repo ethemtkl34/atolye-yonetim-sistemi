@@ -261,11 +261,6 @@ export async function randevuSubeSecimi(
 export type RandevuKullanicisi = SubeliKullanici & {
   /** Sağ üstten randevu şubesi seçebilir mi (yöneticide false). */
   randevuSubesiSecebilir: boolean;
-  /**
-   * Randevu ekranlarındaki şube seçicisinin listesi: yöneticide ve randevu
-   * şubesi seçebilende bütün aktif şubeler, diğerlerinde yalnız kendi şubesi.
-   */
-  randevuSubeleri: readonly { id: string; ad: string }[];
 };
 
 /**
@@ -285,13 +280,7 @@ export async function randevuZorunlu(
 ): Promise<RandevuKullanicisi> {
   const kullanici = await yonetimZorunlu("randevular", gereken);
   const secim = await randevuSubeSecimi(kullanici);
-  if (!secim) {
-    return {
-      ...kullanici,
-      randevuSubesiSecebilir: false,
-      randevuSubeleri: kullanici.secilebilirSubeler,
-    };
-  }
+  if (!secim) return { ...kullanici, randevuSubesiSecebilir: false };
 
   const sube = secim.subeler.find((aday) => aday.id === secim.aktifSubeId);
   return {
@@ -299,7 +288,6 @@ export async function randevuZorunlu(
     // Kendi şubesi pasife alınmışsa listede bulunmaz; mevcut bağlam kalır.
     ...(sube ? { aktifSubeId: sube.id, aktifSubeAdi: sube.ad } : {}),
     randevuSubesiSecebilir: true,
-    randevuSubeleri: secim.subeler,
   };
 }
 

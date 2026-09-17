@@ -38,7 +38,6 @@ import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
 import { IsaretsizRandevular } from "./isaretsiz-randevular";
-import { SubeSuzgeci } from "./sube-suzgeci";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -62,8 +61,11 @@ const TEMEL_YOL = "/koordinator/randevular";
  * GÜN, satır saat olan bir ızgara — kimin randevusu olduğu artık bir sütun
  * başlığından değil bloğun renginden okunuyor (bkz. o dosyanın şerhi).
  *
- * ŞUBE (Eylül 2026 kararı): takvim yalnız SAĞ ÜSTTE SEÇİLİ şubenin
- * randevularını gösterir. Randevu ekranına erişen şubeli roller şubeyi
+ * ŞUBE (Eylül 2026 kararı): takvim varsayılan olarak SAĞ ÜSTTE SEÇİLİ
+ * şubenin randevularını gösterir; süzgeç çubuğundaki "Şube" süzgeci yalnız
+ * GÖSTERİLENİ değiştirir (öbür şube ya da "Tümü" — öbür şubenin danışanı
+ * gizli, düzenlenemez). Yeni randevu ve düzenleme her zaman sağ üstteki
+ * şubede. Randevu ekranına erişen şubeli roller şubeyi
  * oradan seçer (`randevuSubeSecimi`), yönetici genel şube seçicisinden.
  * Uzman iki şubede çalışabildiği için ÇAKIŞMA kontrolü şubeler arası
  * kalıyor (`uzmanBaglami`); öbür şubedeki dolu saat takvimde görünmez ama
@@ -95,6 +97,22 @@ export default async function RandevularSayfasi(
     typeof parametreler.hizmet === "string" ? parametreler.hizmet : "tumu";
   const iptalleriGoster = parametreler.iptal === "1";
 
+  // Şube süzgeci (Eylül 2026): YALNIZ takvimde gösterilenleri seçer; sağ
+  // üstteki şube (yeni randevunun açıldığı, danışanın göründüğü şube)
+  // değişmez. Parametre yoksa çalışılan şube; "tumu" iki şube birden.
+  const subeler = await db.branch.findMany({
+    where: { active: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true },
+  });
+  const subeParametresi =
+    parametreler.sube === "tumu" ||
+    subeler.some((sube) => sube.id === parametreler.sube)
+      ? (parametreler.sube as string)
+      : null;
+  const subeSuzgeci =
+    subeParametresi === "tumu" ? undefined : (subeParametresi ?? subeId);
+
   const aralik = takvimAraligi(gorunum, capa);
 
   // Geçmiş kilidi (lib/randevu/gecmis-kilidi.ts): yönetici olmayan günü
@@ -105,6 +123,10 @@ export default async function RandevularSayfasi(
 
   /** "İşaretlenmemiş geçmiş randevular" listesinde en fazla bu kadar satır. */
   const ISARETSIZ_SINIRI = 30;
+
+  // Program (ızgara) tek şubelik: süzgeçte bir şube seçiliyse onun sütunları
+  // ve mesaisi, "Tümü"de çalışılan şubeninki.
+  const izgaraSubeId = subeSuzgeci ?? subeId;
 
   const [
     uzmanlar,
@@ -148,7 +170,7 @@ export default async function RandevularSayfasi(
       hizmetSuzgeci,
       iptalleriGoster,
       gecmisiDuzenleyebilir,
-      yalnizBuSube: true,
+      gosterilenSube: subeSuzgeci,
     }),
     // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
     // `subeId` filtresi yeter — hangi uzmana ait olduğuna bakılmaksızın BU
@@ -156,7 +178,7 @@ export default async function RandevularSayfasi(
     // çalışan uzmanlarla sınırlı, bkz. `izgaraUzmanlar`).
     gorunum === "izgara"
       ? db.uzmanMesai.findMany({
-          where: { subeId },
+          where: { subeId: izgaraSubeId },
           select: { uzmanId: true, gun: true, baslangicDk: true, bitisDk: true },
         })
       : Promise.resolve([]),
@@ -204,11 +226,11 @@ export default async function RandevularSayfasi(
   }));
 
   // Program (ızgara) TEK ŞUBElik bir araç: başka şubenin mesai saatiyle
-  // boyanan bir sütun yanıltıcı olurdu. Randevu sorgusu yine de şubeler
-  // arası kaldığı için çift şubeli uzmanın diğer şubedeki randevusu "o saat
-  // dolu" olarak bu sütunda görünmeye devam eder (§17.7).
+  // boyanan bir sütun yanıltıcı olurdu. Sütunlar süzgeçteki şubenin
+  // uzmanları; "Tümü"de çift şubeli uzmanın öbür şubedeki randevusu "o saat
+  // dolu" olarak (danışanı gizli) bu sütunda görünür.
   const izgaraUzmanlar = uzmanlar
-    .filter((uzman) => uzman.subeler.some((bag) => bag.subeId === subeId))
+    .filter((uzman) => uzman.subeler.some((bag) => bag.subeId === izgaraSubeId))
     .map((uzman) => ({ id: uzman.id, ad: uzman.ad, renk: uzman.renk }));
 
   const izgaraSutunlar = izgaraSutunlariniOlustur({
@@ -233,6 +255,7 @@ export default async function RandevularSayfasi(
     ...(uzmanSuzgeci !== "tumu" ? { uzman: uzmanSuzgeci } : {}),
     ...(hizmetSuzgeci !== "tumu" ? { hizmet: hizmetSuzgeci } : {}),
     ...(iptalleriGoster ? { iptal: "1" } : {}),
+    ...(subeParametresi ? { sube: subeParametresi } : {}),
   };
 
   const adres = (ek: Record<string, string>) => {
@@ -242,6 +265,7 @@ export default async function RandevularSayfasi(
     if (uzmanSuzgeci !== "tumu") p.set("uzman", uzmanSuzgeci);
     if (hizmetSuzgeci !== "tumu") p.set("hizmet", hizmetSuzgeci);
     if (iptalleriGoster) p.set("iptal", "1");
+    if (subeParametresi) p.set("sube", subeParametresi);
     for (const [anahtar, deger] of Object.entries(ek)) {
       if (deger === "") p.delete(anahtar);
       else p.set(anahtar, deger);
@@ -328,9 +352,12 @@ export default async function RandevularSayfasi(
           anahtar="uzman"
           secili={uzmanSuzgeci === "tumu" ? "" : uzmanSuzgeci}
           digerler={{ ...korunanlar, gorunum }}
-          // Yalnız bu şubede çalışan uzmanlar: takvim şubeye göre süzülü.
+          // Şube süzgecindeki şubede çalışan uzmanlar ("Tümü"de hepsi).
           secenekler={uzmanlar
-            .filter((uzman) => uzman.subeler.some((bag) => bag.subeId === subeId))
+            .filter(
+              (uzman) =>
+                !subeSuzgeci || uzman.subeler.some((bag) => bag.subeId === subeSuzgeci),
+            )
             .map((uzman) => ({
               deger: uzman.id,
               etiket: uzman.ad,
@@ -347,15 +374,24 @@ export default async function RandevularSayfasi(
             etiket: hizmet.ad,
           }))}
         />
-        {/* Sağ üstteki şube kutusuyla aynı seçim (bkz. `SubeSuzgeci`). */}
-        {kullanici.randevuSubeleri.length > 1 ? (
-          <SubeSuzgeci
-            aktifSubeId={subeId}
-            subeler={kullanici.randevuSubeleri}
-            yonetici={kullanici.subeDegistirebilir}
-            suzgecsizYol={uzmanSuzgeci !== "tumu" ? adres({ uzman: "" }) : undefined}
-          />
-        ) : null}
+        {/* Yalnız takvimde gösterileni süzer; şube değişince uzman süzgeci
+            düşer (öbür şubede çalışmayan uzmanla takvim boş kalırdı). */}
+        <SuzgecGrubu
+          etiket="Şube"
+          temelYol={TEMEL_YOL}
+          anahtar="sube"
+          secili={subeSuzgeci ?? "tumu"}
+          digerler={{
+            gorunum,
+            tarih: tarihMetni(capa),
+            ...(hizmetSuzgeci !== "tumu" ? { hizmet: hizmetSuzgeci } : {}),
+            ...(iptalleriGoster ? { iptal: "1" } : {}),
+          }}
+          secenekler={[
+            ...subeler.map((sube) => ({ deger: sube.id, etiket: sube.name })),
+            { deger: "tumu", etiket: "Tümü" },
+          ]}
+        />
       </SuzgecCubugu>
 
       {gorunum === "izgara" ? (

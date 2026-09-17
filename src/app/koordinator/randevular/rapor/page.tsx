@@ -12,7 +12,6 @@ import {
   kartBasligiStili,
 } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
-import { SubeSuzgeci } from "../sube-suzgeci";
 import { bugun, tarihCozumle, tarihMetni } from "@/lib/tarih";
 import { uzmanRengi } from "@/lib/uzman-renkleri";
 import {
@@ -114,13 +113,6 @@ export default async function CiroRaporuSayfasi(
             { deger: "ay", etiket: "Ay" },
           ]}
         />
-        {kullanici.randevuSubeleri.length > 1 ? (
-          <SubeSuzgeci
-            aktifSubeId={kullanici.aktifSubeId}
-            subeler={kullanici.randevuSubeleri}
-            yonetici={kullanici.subeDegistirebilir}
-          />
-        ) : null}
       </SuzgecCubugu>
 
       <Kart className="flex flex-wrap items-center justify-between gap-3 p-3">

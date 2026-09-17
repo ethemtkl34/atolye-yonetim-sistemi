@@ -26,17 +26,17 @@ export async function randevuSatirlariGetir(args: {
   /** Oturumdaki kullanıcı geçmiş randevuyu değiştirebilir mi (yöneticiler). */
   gecmisiDuzenleyebilir?: boolean;
   /**
-   * Yalnız `subeId` şubesinin randevuları (Eylül 2026): Randevular takvimi
-   * sağ üstte seçili şubeyi gösterir. Verilmezse şubeler arası okunur ve
-   * başka şubenin satırında kişisel veri gizlenir — aday seçicisi "o saat
-   * dolu" bilgisini bu yolla görmeye devam ediyor.
+   * Takvimin "Şube" süzgeci (Eylül 2026): yalnız bu şubenin randevuları.
+   * Verilmezse şubeler arası okunur. Hangi satırın "bizim" sayılacağı
+   * (danışan görünür, düzenlenir) süzgeçten bağımsız olarak `subeId`den
+   * gelir — süzgeç yalnız neyin GÖSTERİLECEĞİNİ seçer.
    */
-  yalnizBuSube?: boolean;
+  gosterilenSube?: string;
 }): Promise<RandevuSatiri[]> {
   const simdi = new Date();
   const randevular = await db.randevu.findMany({
     where: {
-      ...(args.yalnizBuSube ? { branchId: args.subeId } : {}),
+      ...(args.gosterilenSube ? { branchId: args.gosterilenSube } : {}),
       baslangic: { gte: args.aralik.ilk, lt: args.aralik.son },
       ...(args.iptalleriGoster ? { durum: "IPTAL" } : { durum: { not: "IPTAL" } }),
       ...(args.uzmanSuzgeci && args.uzmanSuzgeci !== "tumu"
