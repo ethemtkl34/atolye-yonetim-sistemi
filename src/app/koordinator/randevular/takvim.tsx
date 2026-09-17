@@ -32,9 +32,17 @@ export type RandevuSatiri = {
   hizmetId: string;
   hizmetAdi: string;
   seriDeMi: boolean;
+  veliId: string | null;
   veliAdi: string | null;
   veliTelefon: string | null;
+  ogrenciId: string | null;
+  /** Ad ve soyad birleşik — takvim satırı için. */
   ogrenciAdi: string | null;
+  /** Düzenleme formunun "danışan bilgilerini güncelle" alanları için ayrı ayrı. */
+  ogrenciAd: string | null;
+  ogrenciSoyad: string | null;
+  /** YYYY-AA-GG; yoksa null. */
+  ogrenciDogumTarihi: string | null;
   not: string | null;
   iptalNotu: string | null;
   /** İndirim düşülmüş tutar; başka şubede null. */

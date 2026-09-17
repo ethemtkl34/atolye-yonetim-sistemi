@@ -9,7 +9,7 @@ import { RANDEVU_SUBE_CEREZI, SUBE_CEREZ_OMRU } from "@/lib/sube";
 import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { bugun, tarihCozumle, zamanMetni } from "@/lib/tarih";
-import { normalizeArama } from "@/lib/turkce";
+import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
 import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
 import { veliyiCoz } from "@/lib/randevu/veli";
 import {
@@ -329,9 +329,11 @@ export async function randevuEkle(
 
 /**
  * §17.4 revizyonu — var olan bir randevuyu düzenler (uzman/hizmet/tarih/
- * saat/indirim/not). Danışan (veli/çocuk) yalnız form "Danışanı değiştir"
- * dediyse (`danisanDegistir=1`) değişir — bkz. `sema.ts` şerhi. Seriyi
- * etkilemez: tek randevu, tek satır.
+ * saat/indirim/not). Danışan tarafı `danisanIslemi`ne göre: "degistir"
+ * randevuyu başka veliye/çocuğa bağlar, "guncelle" mevcut veli ve öğrenci
+ * KAYDINI düzeltir, "koru" dokunmaz — bkz. `sema.ts` şerhi. Randevu tarafı
+ * seriyi etkilemez (tek satır); kayıt düzeltmesi ise o kişinin bütün
+ * randevularında görünür, çünkü kayıt tektir.
  *
  * `randevuEkle` ile AYNI çakışma/mesai kuralları uygulanır; tek fark
  * `uzmanBaglami`ya `haricId` verilmesi — randevu kendi eski hâliyle
@@ -454,14 +456,59 @@ export async function randevuDuzenle(
     not: veri.not,
   };
 
-  if (!veri.danisanDegistir) {
+  if (veri.danisanIslemi === "koru") {
     await db.randevu.update({ where: { id: randevuId }, data: seansVerisi });
     tazele();
     return { basari: `Randevu güncellendi: ${zamanMetni(baslangic)}.` };
   }
 
-  // Danışan da değişiyor: veli/öğrenci çözümü ve güncelleme TEK işlemde —
-  // yeni veli açılıp randevu güncellenemezse sahipsiz veli kalmasın.
+  if (veri.danisanIslemi === "guncelle") {
+    // Danışan aynı, kaydı düzeltiliyor: veli + (varsa) öğrenci + randevu tek
+    // işlemde. Öğrencisi olan randevuda ad/soyad boş bırakılamaz — öğrenci
+    // kaydı yarım adla kalmasın; öğrencisiz randevuda bu alanlar yok sayılır.
+    const sonuc = await db.$transaction(async (tx) => {
+      const sahip = await tx.randevu.findUniqueOrThrow({
+        where: { id: randevuId },
+        select: { veliId: true, ogrenciId: true },
+      });
+
+      await tx.veli.update({
+        where: { id: sahip.veliId },
+        data: {
+          fullName: veri.veliAdi!,
+          phone: veri.veliTelefon,
+          searchPhone: veri.veliTelefon ? normalizeTelefon(veri.veliTelefon) || null : null,
+          searchName: normalizeArama(veri.veliAdi!),
+        },
+      });
+
+      if (sahip.ogrenciId) {
+        if (!veri.ogrenciAd || !veri.ogrenciSoyad) {
+          return { alanHatalari: { ogrenciAd: "Öğrencinin adı ve soyadı gerekli." } };
+        }
+        await tx.student.update({
+          where: { id: sahip.ogrenciId },
+          data: {
+            firstName: veri.ogrenciAd,
+            lastName: veri.ogrenciSoyad,
+            birthDate: veri.ogrenciDogumTarihi ? tarihCozumle(veri.ogrenciDogumTarihi) : null,
+            searchName: normalizeArama(`${veri.ogrenciAd} ${veri.ogrenciSoyad}`),
+          },
+        });
+      }
+
+      await tx.randevu.update({ where: { id: randevuId }, data: seansVerisi });
+      return null;
+    });
+
+    if (sonuc) return { ...sonuc, degerler: girilenler };
+    revalidatePath("/koordinator/ogrenciler");
+    tazele();
+    return { basari: `Randevu ve danışan bilgileri güncellendi: ${zamanMetni(baslangic)}.` };
+  }
+
+  // "degistir": veli/öğrenci çözümü ve güncelleme TEK işlemde — yeni veli
+  // açılıp randevu güncellenemezse sahipsiz veli kalmasın.
   const sonuc = await db.$transaction(async (tx) => {
     const veli = await veliyiCoz(tx, {
       subeId,

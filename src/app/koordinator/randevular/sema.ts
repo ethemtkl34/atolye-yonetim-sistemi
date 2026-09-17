@@ -206,23 +206,75 @@ export const RANDEVU_FORM_ALANLARI = [
  * `randevuSemasi`'nin tek randevuya indirgenmiş hâli: `haftaSayisi` yok —
  * düzenleme her zaman TEK randevuyu hedefler, seriye yeni hafta eklemez.
  *
- * Danışan (veli/çocuk) İSTEĞE BAĞLI değişir (Eylül 2026 kararı): form
- * varsayılan olarak mevcut danışanı gösterir ve alanları hiç göndermez;
- * kullanıcı "Danışanı değiştir" dediğinde `danisanDegistir=1` ile birlikte
- * yeni randevudaki aynı alanlar gelir ve aynı kurallardan geçer. Bayrak
- * yokken danışan alanları tamamen YOK SAYILIR — yanlışlıkla boş gelen bir
- * `veliId` mevcut danışanı silmesin.
+ * Danışan tarafında üç mod var (`danisanIslemi`, Eylül 2026 kararı):
+ *
+ *  - **koru** (varsayılan): form mevcut danışanı yalnız gösterir; danışan
+ *    alanları tamamen YOK SAYILIR — yanlışlıkla boş gelen bir `veliId`
+ *    mevcut danışanı silmesin.
+ *  - **degistir**: randevu BAŞKA bir veliye/çocuğa bağlanır; yeni randevudaki
+ *    aynı alanlar gelir ve aynı kurallardan geçer.
+ *  - **guncelle**: danışan aynı kalır, veli ve öğrenci KAYDININ kendisi
+ *    düzeltilir (ad, telefon; çocuğun adı, soyadı, doğum tarihi). Telefonda
+ *    "soyadımız yanlış yazılmış" diyen veli için Öğrenciler ekranına gitmek
+ *    gerekmesin. Kayıt tek olduğu için düzeltme o kişinin bütün
+ *    randevularında ve öğrenci ekranında görünür — bilinçli (bkz.
+ *    `lib/veli.ts` şerhi).
  */
+export const DANISAN_ISLEMLERI = ["koru", "degistir", "guncelle"] as const;
+export type DanisanIslemi = (typeof DANISAN_ISLEMLERI)[number];
+
+const adAlani = (bos: string, enCok: number) =>
+  z.preprocess(
+    bosuNullYap,
+    z.string().trim().min(2, bos).max(enCok, `En fazla ${enCok} karakter olabilir`).nullable(),
+  );
+
 export const randevuDuzenleSemasi = z
   .object({
     ...seansAlanlari,
     ...danisanAlanlari,
-    danisanDegistir: z
-      .preprocess((deger) => deger === "1", z.boolean())
-      .default(false),
+    danisanIslemi: z
+      .preprocess(
+        (deger) => (deger === "degistir" || deger === "guncelle" ? deger : "koru"),
+        z.enum(DANISAN_ISLEMLERI),
+      )
+      .default("koru"),
+
+    /** "guncelle" modunun alanları — mevcut kaydın düzeltilmiş hâli. */
+    veliAdi: adAlani("Veli adı en az 2 karakter olmalı", 120),
+    veliTelefon: z.preprocess(
+      bosuNullYap,
+      z.string().trim().max(30, "Telefon en fazla 30 karakter").nullable(),
+    ),
+    ogrenciAd: adAlani("Öğrenci adı en az 2 karakter olmalı", 60),
+    ogrenciSoyad: adAlani("Öğrenci soyadı en az 2 karakter olmalı", 60),
+    ogrenciDogumTarihi: z.preprocess(
+      bosuNullYap,
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir doğum tarihi girin")
+        .refine((deger) => tarihCozumle(deger) !== null, {
+          message: "Geçerli bir doğum tarihi girin",
+        })
+        .nullable(),
+    ),
   })
   .superRefine((veri, ctx) => {
-    if (veri.danisanDegistir) danisanKurallari(veri, ctx);
+    if (veri.danisanIslemi === "degistir") danisanKurallari(veri, ctx);
+    if (veri.danisanIslemi === "guncelle") {
+      if (!veri.veliAdi) {
+        ctx.addIssue({ code: "custom", path: ["veliAdi"], message: "Veli adı gerekli." });
+      }
+      // Öğrenci varsa adı ve soyadı birlikte gelmeli; öğrencinin olup
+      // olmadığını sunucu bilir, burada yalnız "yarım ad" engelleniyor.
+      if (Boolean(veri.ogrenciAd) !== Boolean(veri.ogrenciSoyad)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ogrenciSoyad"],
+          message: "Öğrencinin adını ve soyadını birlikte yazın.",
+        });
+      }
+    }
   });
 
 export type RandevuDuzenleGirdisi = z.infer<typeof randevuDuzenleSemasi>;
@@ -235,8 +287,13 @@ export const RANDEVU_DUZENLE_FORM_ALANLARI = [
   "indirimLira",
   "indirimNotu",
   "not",
-  "danisanDegistir",
+  "danisanIslemi",
   ...DANISAN_FORM_ALANLARI,
+  "veliAdi",
+  "veliTelefon",
+  "ogrenciAd",
+  "ogrenciSoyad",
+  "ogrenciDogumTarihi",
 ] as const;
 
 export const DURUM_ADLARI = {

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { gunEkle, tarihBicimle } from "@/lib/tarih";
+import { gunEkle, tarihBicimle, tarihMetni } from "@/lib/tarih";
 import {
   gunlereBol,
   takvimAraligi,
@@ -53,8 +53,8 @@ export async function randevuSatirlariGetir(args: {
       iptalNotu: true,
       uzman: { select: { id: true, ad: true, renk: true } },
       hizmet: { select: { id: true, ad: true } },
-      veli: { select: { fullName: true, phone: true } },
-      ogrenci: { select: { firstName: true, lastName: true } },
+      veli: { select: { id: true, fullName: true, phone: true } },
+      ogrenci: { select: { id: true, firstName: true, lastName: true, birthDate: true } },
       branch: { select: { name: true } },
     },
   });
@@ -74,12 +74,18 @@ export async function randevuSatirlariGetir(args: {
       hizmetId: randevu.hizmet.id,
       hizmetAdi: randevu.hizmet.ad,
       seriDeMi: Boolean(randevu.seriId),
+      veliId: bizim ? randevu.veli.id : null,
       veliAdi: bizim ? randevu.veli.fullName : null,
       veliTelefon: bizim ? randevu.veli.phone : null,
+      ogrenciId: bizim && randevu.ogrenci ? randevu.ogrenci.id : null,
       ogrenciAdi:
         bizim && randevu.ogrenci
           ? `${randevu.ogrenci.firstName} ${randevu.ogrenci.lastName}`
           : null,
+      ogrenciAd: bizim && randevu.ogrenci ? randevu.ogrenci.firstName : null,
+      ogrenciSoyad: bizim && randevu.ogrenci ? randevu.ogrenci.lastName : null,
+      ogrenciDogumTarihi:
+        bizim && randevu.ogrenci?.birthDate ? tarihMetni(randevu.ogrenci.birthDate) : null,
       not: bizim ? randevu.not : null,
       iptalNotu: bizim ? randevu.iptalNotu : null,
       ucretKurus: bizim ? randevu.ucretKurus - randevu.indirimKurus : null,

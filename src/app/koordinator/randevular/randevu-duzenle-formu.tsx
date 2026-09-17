@@ -8,6 +8,7 @@ import { saatMetni, tarihMetni } from "@/lib/tarih";
 import { kurustanLiraya, paraMetni, sureMetni } from "../uzmanlar/sema";
 import { randevuDuzenle } from "./actions";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
+import type { DanisanIslemi } from "./sema";
 import type { RandevuSatiri } from "./takvim";
 import { VeliSecici, type VeliSecimi } from "./veli-secici";
 
@@ -18,11 +19,12 @@ import { VeliSecici, type VeliSecimi } from "./veli-secici";
  * form — bkz. `randevu-planlama.tsx`'teki `RandevuOnayFormu` şerhindeki aynı
  * gerekçe: seri yok, tek randevu.
  *
- * Danışan (veli/çocuk) varsayılan olarak yalnız GÖSTERİLİR; "Danışanı
- * değiştir" denirse yeni randevudaki aynı seçici açılır ve form
- * `danisanDegistir=1` ile gönderilir (Eylül 2026 kararı: masa yanlış veliye
- * açılan randevuyu silip yeniden açmak zorunda kalıyordu). Bayrak yoksa
- * sunucu danışan alanlarına hiç bakmaz (bkz. `sema.ts`).
+ * Danışan (veli/çocuk) varsayılan olarak yalnız GÖSTERİLİR. İki bağlantı
+ * var (Eylül 2026 kararı): "Bilgileri düzenle" mevcut veli ve öğrenci
+ * kaydını yerinde düzeltir (`danisanIslemi=guncelle`), "Danışanı değiştir"
+ * yeni randevudaki seçiciyi açıp randevuyu başka kişiye bağlar
+ * (`danisanIslemi=degistir`). İkisi de seçilmemişse sunucu danışan
+ * alanlarına hiç bakmaz (bkz. `sema.ts`).
  */
 export function RandevuDuzenleFormu({
   randevu,
@@ -113,13 +115,15 @@ function IcerikFormu({
     : [];
   const secilenHizmet = uygunHizmetler.find((h) => h.id === hizmetId);
 
-  // Danışan değişikliği: doğrulama hatasıyla dönüşte (ör. mesai onayı
-  // beklerken) seçici açık kalsın diye başlangıç değeri sunucudan dönen
-  // bayraktan okunuyor (bkz. `formlar.ts` `degerler` şerhi).
-  const [danisanDegistir, setDanisanDegistir] = useState(
-    deger("danisanDegistir") === "1",
-  );
+  // Danışan modu: doğrulama hatasıyla dönüşte (ör. mesai onayı beklerken)
+  // açık panel açık kalsın diye başlangıç değeri sunucudan dönen değerden
+  // okunuyor (bkz. `formlar.ts` `degerler` şerhi).
+  const [danisanIslemi, setDanisanIslemi] = useState<DanisanIslemi>(() => {
+    const gelen = deger("danisanIslemi");
+    return gelen === "degistir" || gelen === "guncelle" ? gelen : "koru";
+  });
   const [veli, setVeli] = useState<VeliSecimi>({ tur: "yok" });
+  const baglantiSinifi = "text-sm font-semibold text-marka-700 hover:underline";
 
   return (
     <Pencere
@@ -132,10 +136,10 @@ function IcerikFormu({
     >
       <form ref={formRef} action={gonder} className="space-y-4">
         <input type="hidden" name="mesaiZorla" value={mesaiZorla ? "1" : ""} />
-        <input type="hidden" name="danisanDegistir" value={danisanDegistir ? "1" : ""} />
+        <input type="hidden" name="danisanIslemi" value={danisanIslemi} />
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
-        {danisanDegistir ? (
+        {danisanIslemi === "degistir" ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-zinc-700">
@@ -143,9 +147,9 @@ function IcerikFormu({
               </span>
               <button
                 type="button"
-                className="text-sm font-semibold text-marka-700 hover:underline"
+                className={baglantiSinifi}
                 onClick={() => {
-                  setDanisanDegistir(false);
+                  setDanisanIslemi("koru");
                   setVeli({ tur: "yok" });
                 }}
               >
@@ -166,6 +170,77 @@ function IcerikFormu({
               }}
             />
           </div>
+        ) : danisanIslemi === "guncelle" ? (
+          <div className="kil-oyuk space-y-3 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-zinc-700">
+                Danışan bilgileri
+              </span>
+              <button
+                type="button"
+                className={baglantiSinifi}
+                onClick={() => setDanisanIslemi("koru")}
+              >
+                Vazgeç
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Alan etiket="Veli adı soyadı" hata={durum.alanHatalari?.veliAdi}>
+                <Girdi
+                  name="veliAdi"
+                  required
+                  maxLength={120}
+                  defaultValue={deger("veliAdi") ?? randevu.veliAdi ?? ""}
+                />
+              </Alan>
+              <Alan etiket="Veli telefonu" hata={durum.alanHatalari?.veliTelefon}>
+                <Girdi
+                  name="veliTelefon"
+                  type="tel"
+                  maxLength={30}
+                  defaultValue={deger("veliTelefon") ?? randevu.veliTelefon ?? ""}
+                />
+              </Alan>
+            </div>
+            {randevu.ogrenciId ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Alan etiket="Öğrenci adı" hata={durum.alanHatalari?.ogrenciAd}>
+                    <Girdi
+                      name="ogrenciAd"
+                      required
+                      maxLength={60}
+                      defaultValue={deger("ogrenciAd") ?? randevu.ogrenciAd ?? ""}
+                    />
+                  </Alan>
+                  <Alan etiket="Öğrenci soyadı" hata={durum.alanHatalari?.ogrenciSoyad}>
+                    <Girdi
+                      name="ogrenciSoyad"
+                      required
+                      maxLength={60}
+                      defaultValue={deger("ogrenciSoyad") ?? randevu.ogrenciSoyad ?? ""}
+                    />
+                  </Alan>
+                </div>
+                <Alan
+                  etiket="Doğum tarihi (isteğe bağlı)"
+                  hata={durum.alanHatalari?.ogrenciDogumTarihi}
+                >
+                  <Girdi
+                    name="ogrenciDogumTarihi"
+                    type="date"
+                    defaultValue={
+                      deger("ogrenciDogumTarihi") ?? randevu.ogrenciDogumTarihi ?? ""
+                    }
+                  />
+                </Alan>
+              </>
+            ) : null}
+            <p className="text-xs text-zinc-500">
+              Veli ve öğrenci kaydının kendisi düzeltilir; değişiklik bu kişinin
+              bütün randevularında ve Öğrenciler ekranında görünür.
+            </p>
+          </div>
         ) : (
           <Kart className="space-y-1 p-3 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -174,13 +249,22 @@ function IcerikFormu({
                 {randevu.veliAdi}
                 {randevu.ogrenciAdi ? ` · ${randevu.ogrenciAdi}` : ""}
               </p>
-              <button
-                type="button"
-                className="text-sm font-semibold text-marka-700 hover:underline"
-                onClick={() => setDanisanDegistir(true)}
-              >
-                Danışanı değiştir
-              </button>
+              <span className="flex gap-3">
+                <button
+                  type="button"
+                  className={baglantiSinifi}
+                  onClick={() => setDanisanIslemi("guncelle")}
+                >
+                  Bilgileri düzenle
+                </button>
+                <button
+                  type="button"
+                  className={baglantiSinifi}
+                  onClick={() => setDanisanIslemi("degistir")}
+                >
+                  Danışanı değiştir
+                </button>
+              </span>
             </div>
             {randevu.seriDeMi ? (
               <p className="text-xs text-zinc-500">
