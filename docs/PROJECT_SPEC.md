@@ -134,7 +134,7 @@ dosyasında tanımlıdır; seviyeler YOK < LİSTE < GÖRÜNTÜLE < TAM.
 | Raporlar | TAM | TAM | TAM | — | — |
 | Arşiv | TAM | TAM | TAM | — | — |
 | Kullanıcılar | TAM | — | — | — | — |
-| Şube değiştirme | ✓ | — | — | — | Yalnız randevularda (§17.7) |
+| Şube değiştirme | ✓ | Yalnız randevularda (§17.7) | Yalnız randevularda | — | Yalnız randevularda |
 
 - Kurum Yöneticisi şubesizdir; üst şeritten şube seçerek çalışır ve başka
   rolle birleşemez. Diğer bütün roller bir şubeye bağlıdır.
@@ -1087,19 +1087,23 @@ kapsam dışıdır.
 
 ### 17.7 Şube görünürlüğü
 
-Randevu takvimi ve uzman müsaitliği ŞUBELER ARASI görünür — uzmanlar iki
-şubede birden çalışabildiği için çakışma ancak böyle önlenir. Öğrenci ve veli
-kişisel verisi, sağlık bilgisi ve görüşme notları eskisi gibi şubeye kilitli
-kalır.
+Randevu takvimi **sağ üstte seçili şubenin** randevularını gösterir (Eylül
+2026 revizyonu; önceki hâlinde iki şube birlikte görünüyor, öbür şubenin
+danışanı gizleniyordu).
 
-**Danışma görevlisinin randevu şubesi** (Eylül 2026): danışma görevlisi
-Randevular ekranında (ve ciro raporunda) şube seçebilir. Seçtiği şubenin
-randevuları kendi şubesininki gibi açılır: danışan görünür, randevu
-düzenlenir, iptal edilir, yeni randevu o şubeye açılır. Seçim YALNIZ
-randevular ekranını etkiler; öğrenci, aday, kayıt ekranları ve üst şeritteki
-şube kendi şubesinde kalır. Başka şubedeyken seçicinin yanında bunu söyleyen
-bir rozet durur. Yönetici bu seçiciyi almaz — üst şeritteki seçicisi zaten
-bütün paneli çevirir.
+- **Kim seçer:** randevu ekranına erişebilen şubeli roller (Şube Yöneticisi,
+  Koordinatör, Psikolog, Danışma Görevlisi) randevu ekranlarında sağ üstteki
+  şube kutusundan "Randevu şubesi"ni seçer. Seçilen şubenin randevuları
+  görünür, düzenlenir; yeni randevu o şubeye açılır. Ciro raporu da aynı
+  şubeyle çalışır. Yönetici genel şube seçicisini kullanır.
+- **Seçim yalnız randevu ekranlarını etkiler.** Öğrenci, aday ve kayıt
+  ekranlarında kutu yine hesabın kendi şubesini gösterir. Seçim yapılmamışsa
+  randevu şubesi kendi şubesidir.
+- **Çakışma şubeler arası kalır:** uzman iki şubede çalışabildiği için öbür
+  şubedeki seansı takvimde görünmese de aynı saate randevu açılamaz; mesaj
+  hangi şubede dolu olduğunu söyler.
+- Öğrenci ve veli kişisel verisi, sağlık bilgisi ve görüşme notları eskisi
+  gibi şubeye kilitlidir.
 
 ### 17.8 Yetkiler
 

@@ -1,4 +1,5 @@
 import type { Role } from "@/generated/prisma/enums";
+import { yetkiYeter } from "@/lib/yetkiler";
 
 /**
  * Rollerin tek kaynağı.
@@ -106,14 +107,17 @@ export function anaSayfaYolu(roller: readonly Role[]): string {
 /**
  * Randevular ekranında şube seçebilir mi (Eylül 2026 kararı).
  *
- * Danışma görevlisi randevu takvimini fiilen kuran masa; uzmanlar iki şubede
- * çalıştığı için öbür şubenin randevusunu da açıp düzenleyebilmeli. Seçim
- * YALNIZ randevular ekranını etkiler — panelin geri kalanı kendi şubesinde.
+ * Randevu ekranına erişebilen HERKES (koordinatör, psikolog, şube yöneticisi,
+ * danışma görevlisi) sağ üstteki şube kutusundan randevu şubesini seçer ve
+ * takvim yalnız o şubenin randevularını gösterir — uzmanlar iki şubede
+ * çalıştığı için iki şubenin takvimi de yönetilebilmeli. Seçim YALNIZ randevu
+ * ekranlarını etkiler; panelin geri kalanı kendi şubesinde kalır.
+ *
  * Yönetici bu listede değil: onun üst şeritteki seçicisi zaten bütün paneli
- * (randevular dahil) çeviriyor, ikinci bir seçici çelişki yaratırdı.
+ * (randevular dahil) çeviriyor, ikinci bir seçim çelişki yaratırdı.
  */
 export function randevuSubesiSecebilirMi(roller: readonly Role[]): boolean {
-  return roller.includes("DANISMA_GOREVLISI") && !roller.includes("ADMIN");
+  return !roller.includes("ADMIN") && yetkiYeter(roller, "randevular", "GORUNTULE");
 }
 
 /** Koordinatör paneline girebilir mi (STAJYER dışındaki herhangi bir rol). */

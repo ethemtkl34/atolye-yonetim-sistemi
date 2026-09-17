@@ -1,5 +1,5 @@
 import { PanelKabuk } from "@/components/panel-kabuk";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { randevuSubeSecimi, yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { panelBasligi, panelMenusu } from "@/lib/navigasyon";
 
 /**
@@ -13,12 +13,15 @@ export default async function KoordinatorLayout({
   children: React.ReactNode;
 }) {
   const kullanici = await yonetimZorunlu();
+  // Randevu ekranlarında sağ üstteki şube kutusu randevu şubesini seçer.
+  const randevuSubesi = await randevuSubeSecimi(kullanici);
 
   return (
     <PanelKabuk
       kullanici={kullanici}
       menu={panelMenusu(kullanici.roller)}
       baslik={panelBasligi(kullanici.roller)}
+      randevuSubesi={randevuSubesi}
     >
       {children}
     </PanelKabuk>

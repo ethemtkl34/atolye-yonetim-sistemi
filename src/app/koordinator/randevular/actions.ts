@@ -10,7 +10,7 @@ import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { bugun, tarihCozumle, zamanMetni } from "@/lib/tarih";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
-import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
+import { engelMesaji, uzmanBaglami } from "@/lib/randevu/uzman-baglami";
 import { veliyiCoz } from "@/lib/randevu/veli";
 import {
   randevuAraligi,
@@ -58,11 +58,11 @@ function tazele(): void {
 }
 
 /**
- * Danışma görevlisinin randevular ekranında çalıştığı şubeyi değiştirir
- * (Eylül 2026 kararı, bkz. `randevuZorunlu`).
+ * Randevu ekranlarında çalışılan şubeyi değiştirir — sağ üstteki şube kutusu
+ * (Eylül 2026 kararı, bkz. `randevuSubeSecimi`).
  *
- * Yalnız randevular ekranını etkiler: ayrı bir çerez yazılıyor ve onu
- * yalnız `randevuZorunlu` okuyor. Yöneticinin genel şube seçimine
+ * Yalnız randevu ekranlarını etkiler: ayrı bir çerez yazılıyor ve onu
+ * yalnız randevu kapısı okuyor. Yöneticinin genel şube seçimine
  * (`app/sube/actions.ts`) dokunmaz. Değer yazılmadan önce aktif şube olduğu
  * doğrulanıyor; okuma tarafı da tanımadığı değeri kendi şubesine düşürüyor.
  */
@@ -83,8 +83,9 @@ export async function randevuSubesiDegistir(subeId: string): Promise<void> {
     maxAge: SUBE_CEREZ_OMRU,
   });
 
-  // "layout": ciro raporu (`/randevular/rapor`) de aynı seçimle çalışıyor.
-  revalidatePath("/koordinator/randevular", "layout");
+  // Panel çerçevesi (sağ üstteki kutu) ve ciro raporu da bu seçimle
+  // çiziliyor: koordinatör alanının tamamı tazelenmeli.
+  revalidatePath("/koordinator", "layout");
 }
 
 /**
@@ -263,7 +264,7 @@ export async function randevuEkle(
       araliklar.length === 1
         ? ""
         : ` (${sira + 1}. hafta — ${zamanMetni(aralik.baslangic)})`;
-    const mesaj = `${engel.mesaj}${nerede}`;
+    const mesaj = `${engelMesaji(engel, baglam, subeId)}${nerede}`;
     if (engel.tur === "mesai") {
       return { onayGerekli: mesaj, degerler: girilenler };
     }
@@ -445,7 +446,7 @@ export async function randevuDuzenle(
   const engel = randevuEngeli({ randevu: aralik, ...baglam, mesaiyiYokSay: mesaiZorla });
   if (engel) {
     if (engel.tur === "mesai") return { onayGerekli: engel.mesaj, degerler: girilenler };
-    return { hata: engel.mesaj, degerler: girilenler };
+    return { hata: engelMesaji(engel, baglam, subeId), degerler: girilenler };
   }
 
   const seansVerisi = {

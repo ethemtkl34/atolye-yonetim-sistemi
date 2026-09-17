@@ -51,24 +51,23 @@ describe("kullaniciYonetimiKapsami", () => {
 });
 
 describe("randevuSubesiSecebilirMi", () => {
-  it("danışma görevlisi randevu şubesi seçebilir", () => {
+  it("randevu ekranına erişen şubeli roller seçebilir", () => {
     expect(randevuSubesiSecebilirMi(["DANISMA_GOREVLISI"])).toBe(true);
-  });
-
-  it("çoklu rolde danışma görevlisi rolü yeter", () => {
+    expect(randevuSubesiSecebilirMi(["KOORDINATOR"])).toBe(true);
+    expect(randevuSubesiSecebilirMi(["ATOLYE_PSIKOLOGU"])).toBe(true);
+    expect(randevuSubesiSecebilirMi(["SUBE_YONETICISI"])).toBe(true);
     // Canlıda "Koordinatör + Test Uygulayıcısı + Danışma Görevlisi" hesabı var.
     expect(
       randevuSubesiSecebilirMi(["KOORDINATOR", "TEST_UYGULAYICISI", "DANISMA_GOREVLISI"]),
     ).toBe(true);
   });
 
-  it("koordinatör, psikolog ve şube yöneticisi seçemez", () => {
-    expect(randevuSubesiSecebilirMi(["KOORDINATOR"])).toBe(false);
-    expect(randevuSubesiSecebilirMi(["ATOLYE_PSIKOLOGU"])).toBe(false);
-    expect(randevuSubesiSecebilirMi(["SUBE_YONETICISI"])).toBe(false);
+  it("randevu ekranını görmeyen roller seçemez", () => {
+    expect(randevuSubesiSecebilirMi(["TEST_UYGULAYICISI"])).toBe(false);
+    expect(randevuSubesiSecebilirMi(["STAJYER"])).toBe(false);
   });
 
-  it("yönetici ayrı seçici almaz — üst şeritteki seçici zaten her şeyi çeviriyor", () => {
+  it("yönetici ayrı seçim almaz — üst şeritteki seçici zaten her şeyi çeviriyor", () => {
     expect(randevuSubesiSecebilirMi(["ADMIN"])).toBe(false);
   });
 });

@@ -37,7 +37,6 @@ import { HaftaIzgarasi } from "./hafta-izgarasi";
 import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
-import { RandevuSubesiSecici } from "./randevu-subesi-secici";
 import { IsaretsizRandevular } from "./isaretsiz-randevular";
 
 export const metadata: Metadata = {
@@ -62,15 +61,12 @@ const TEMEL_YOL = "/koordinator/randevular";
  * GÜN, satır saat olan bir ızgara — kimin randevusu olduğu artık bir sütun
  * başlığından değil bloğun renginden okunuyor (bkz. o dosyanın şerhi).
  *
- * ŞUBE SEÇİMİ (Eylül 2026): danışma görevlisi bu ekranda şube seçebilir ve
- * seçtiği şubenin randevularını kendi şubesininki gibi yönetir; seçim panelin
- * geri kalanına taşınmaz (bkz. `randevuZorunlu`, `RandevuSubesiSecici`).
- *
- * ŞUBE: takvim ŞUBELER ARASI okunur (§17.7) — uzmanlar iki şubede birden
- * çalışabildiği için çakışma ancak böyle görünür. Kendi şubesi dışındaki
- * randevuda danışan adı, öğrenci ve not GİZLENİR; uzman, hizmet ve saat
- * görünür. Kişisel veri sınırı eskisi gibi duruyor, görünen şey "o saat
- * dolu" bilgisi.
+ * ŞUBE (Eylül 2026 kararı): takvim yalnız SAĞ ÜSTTE SEÇİLİ şubenin
+ * randevularını gösterir. Randevu ekranına erişen şubeli roller şubeyi
+ * oradan seçer (`randevuSubeSecimi`), yönetici genel şube seçicisinden.
+ * Uzman iki şubede çalışabildiği için ÇAKIŞMA kontrolü şubeler arası
+ * kalıyor (`uzmanBaglami`); öbür şubedeki dolu saat takvimde görünmez ama
+ * kaydederken hangi şubede dolu olduğu mesajda yazılır.
  *
  * Süzgeçler diğer liste ekranlarıyla aynı sözleşmede: etiketli, adres
  * satırında, paylaşılabilir; süzme sunucuda.
@@ -151,6 +147,7 @@ export default async function RandevularSayfasi(
       hizmetSuzgeci,
       iptalleriGoster,
       gecmisiDuzenleyebilir,
+      yalnizBuSube: true,
     }),
     // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
     // `subeId` filtresi yeter — hangi uzmana ait olduğuna bakılmaksızın BU
@@ -269,7 +266,7 @@ export default async function RandevularSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Randevular"
-        aciklama="Zekâ testleri ve danışmanlık seansları. Takvim iki şubeyi birlikte gösterir; danışan bilgisi yalnız kendi şubenizde açılır."
+        aciklama={`Zekâ testleri ve danışmanlık seansları — ${kullanici.aktifSubeAdi} şubesi. Şubeyi sağ üstten değiştirebilirsiniz.`}
         aksiyon={
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -311,15 +308,6 @@ export default async function RandevularSayfasi(
       />
 
       <SuzgecCubugu>
-        {/* Danışma görevlisi öbür şubenin randevularını da yönetir: seçim
-            yalnız bu ekranı etkiler (bkz. `randevuZorunlu`). */}
-        {kullanici.randevuSubesiSecebilir ? (
-          <RandevuSubesiSecici
-            aktifSubeId={subeId}
-            kendiSubeAdi={kullanici.kendiSubeAdi}
-            subeler={kullanici.randevuSubeleri}
-          />
-        ) : null}
         {/* Görünüm üç seçenek: çip. Uzman ve hizmet onlarca olabilir: açılır
             liste (öğrenci süzgecindeki ayrımın aynısı). */}
         <SuzgecGrubu
@@ -339,10 +327,13 @@ export default async function RandevularSayfasi(
           anahtar="uzman"
           secili={uzmanSuzgeci === "tumu" ? "" : uzmanSuzgeci}
           digerler={{ ...korunanlar, gorunum }}
-          secenekler={uzmanlar.map((uzman) => ({
-            deger: uzman.id,
-            etiket: uzman.ad,
-          }))}
+          // Yalnız bu şubede çalışan uzmanlar: takvim şubeye göre süzülü.
+          secenekler={uzmanlar
+            .filter((uzman) => uzman.subeler.some((bag) => bag.subeId === subeId))
+            .map((uzman) => ({
+              deger: uzman.id,
+              etiket: uzman.ad,
+            }))}
         />
         <SuzgecSecici
           etiket="Hizmet"

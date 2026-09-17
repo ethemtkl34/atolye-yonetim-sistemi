@@ -254,21 +254,25 @@ Karar gerekçeleri:
 - **Çakışma ENGELLENİR, uyarılmaz.** Kayıt çakışmasından farkı: orada
   koordinatör bilinçli olarak devam edebiliyor, burada aynı uzman aynı anda
   iki yerde olamaz.
-- **Takvim şubeler arası görünür, kişisel veri değil.** Uzman iki şubede
-  çalışabildiği için çakışma ancak böyle önlenir; öğrenci/veri mahremiyeti
-  eskisi gibi şubeye kilitli.
-- **Danışma görevlisi randevularda şube seçebilir (Eylül 2026).** Randevuların
-  neredeyse tamamı Ümraniye'de, Güneşli'ye bağlı danışma görevlileri ise
-  onları görüp düzenleyemiyordu — takvim şubeler arası okunuyor ama yalnız
-  "üzerinde çalışılan" şubenin randevusu düzenleniyor. Seçenekler arasında
-  hesabı Ümraniye'ye taşımak (Güneşli'nin öğrencilerini kaybettirirdi) ve
-  takvimde bütün şubeleri düzenlenebilir yapmak (seçim olmadan öbür şubenin
-  veli telefonlarını açardı) vardı; kurum şube seçiciyi seçti. Seçim AYRI bir
-  çerezde (`randevu-subesi`) ve yalnız `randevuZorunlu` kapısı onu okuyor:
-  genel şube çerezini paylaşsaydı randevularda yapılan seçim öğrenci ve aday
-  ekranlarını sessizce başka şubeye çevirirdi. Seçim yokken ya da bozukken
-  kendi şubesine düşer (yöneticideki "ilk şube" davranışı değil). Adaydan
-  randevu akışı adayın şubesinde kalır, seçimi okumaz.
+- **Takvim sağ üstte seçili şubeyi gösterir (Eylül 2026 revizyonu).** İlk
+  kararda takvim iki şubeyi birlikte gösteriyor, öbür şubenin danışanını
+  gizliyordu; kurum her şubenin takvimini ayrı görmek istedi. Çakışma
+  kontrolü şubeler arası KALDI (uzman iki şubede çalışabiliyor): öbür
+  şubedeki seans takvimde görünmez ama kaydederken reddedilir ve mesaj şube
+  adını söyler. Öğrenci/veli mahremiyeti eskisi gibi şubeye kilitli. Aday
+  sayfasındaki randevu seçicisi bu revizyonun dışında: orada öbür şubenin
+  dolu saati hâlâ "dolu" olarak görünüyor.
+- **Randevu şubesi sağ üstten seçilir (Eylül 2026).** İlk hâli yalnız
+  danışma görevlisine sayfa içinde bir seçiciydi (Güneşli'ye bağlı masa
+  Ümraniye randevularını düzenleyemiyordu). Revizyonda randevu ekranına
+  erişen BÜTÜN şubeli roller aldı ve seçici sağ üstteki şube kutusuna taşındı:
+  randevu ekranlarında kutu "Randevu şubesi" seçicisi, diğer ekranlarda yine
+  hesabın kendi şubesi. Seçim AYRI bir çerezde (`randevu-subesi`) ve yalnız
+  randevu kapısı (`randevuZorunlu`) okuyor: genel şube çerezini paylaşsaydı
+  randevularda yapılan seçim öğrenci ve aday ekranlarını sessizce başka
+  şubeye çevirirdi. Seçim yokken ya da bozukken kendi şubesine düşer.
+  Adaydan randevu akışı adayın şubesinde kalır, seçimi okumaz. Yönetici
+  ayrı seçim almaz — genel seçicisi zaten her şeyi çeviriyor.
 - **Geçmiş randevu kilidi (Eylül 2026).** Günü BİTMİŞ randevunun saati,
   uzmanı, hizmeti, ücreti değiştirilemez ve iptal edilemez; geçmiş bir güne
   yeni randevu da açılamaz — yalnız Kurum ve Şube Yöneticisi yapabilir.

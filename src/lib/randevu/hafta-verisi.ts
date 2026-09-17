@@ -25,10 +25,18 @@ export async function randevuSatirlariGetir(args: {
   iptalleriGoster?: boolean;
   /** Oturumdaki kullanıcı geçmiş randevuyu değiştirebilir mi (yöneticiler). */
   gecmisiDuzenleyebilir?: boolean;
+  /**
+   * Yalnız `subeId` şubesinin randevuları (Eylül 2026): Randevular takvimi
+   * sağ üstte seçili şubeyi gösterir. Verilmezse şubeler arası okunur ve
+   * başka şubenin satırında kişisel veri gizlenir — aday seçicisi "o saat
+   * dolu" bilgisini bu yolla görmeye devam ediyor.
+   */
+  yalnizBuSube?: boolean;
 }): Promise<RandevuSatiri[]> {
   const simdi = new Date();
   const randevular = await db.randevu.findMany({
     where: {
+      ...(args.yalnizBuSube ? { branchId: args.subeId } : {}),
       baslangic: { gte: args.aralik.ilk, lt: args.aralik.son },
       ...(args.iptalleriGoster ? { durum: "IPTAL" } : { durum: { not: "IPTAL" } }),
       ...(args.uzmanSuzgeci && args.uzmanSuzgeci !== "tumu"

@@ -21,7 +21,6 @@ import {
   subeCiroRaporu,
 } from "@/lib/randevu/rapor-verisi";
 import { paraMetni } from "../../uzmanlar/sema";
-import { RandevuSubesiSecici } from "../randevu-subesi-secici";
 
 export const metadata: Metadata = {
   title: "Ciro raporu",
@@ -103,13 +102,6 @@ export default async function CiroRaporuSayfasi(
       />
 
       <SuzgecCubugu>
-        {kullanici.randevuSubesiSecebilir ? (
-          <RandevuSubesiSecici
-            aktifSubeId={kullanici.aktifSubeId}
-            kendiSubeAdi={kullanici.kendiSubeAdi}
-            subeler={kullanici.randevuSubeleri}
-          />
-        ) : null}
         <SuzgecGrubu
           etiket="Kapsam"
           temelYol={TEMEL_YOL}

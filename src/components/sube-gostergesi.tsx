@@ -1,7 +1,9 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import { subeDegistir } from "@/app/sube/actions";
+import { randevuSubesiDegistir } from "@/app/koordinator/randevular/actions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,17 +17,34 @@ import { cn } from "@/lib/utils";
  * Koordinatör ve stajyerde okunur bir etiket; yöneticide aynı yerde açılır
  * seçici. İkisi de aynı kutuya oturuyor ki panel roller arasında yer
  * değiştirmesin.
+ *
+ * RANDEVU EKRANLARINDA (Eylül 2026): randevu şubesi seçebilen şubeli
+ * rollerde kutu "Randevu şubesi" seçicisine dönüşür; takvim yalnız seçilen
+ * şubenin randevularını gösterir. Seçim ayrı bir çerezde durur ve randevu
+ * ekranlarından çıkınca kutu yine hesabın kendi şubesini gösterir — öğrenci,
+ * aday ve kayıt ekranları bu seçimden etkilenmez.
  */
 export function SubeGostergesi({
-  aktifSubeId,
-  subeler,
-  degistirebilir,
+  aktifSubeId: genelSubeId,
+  subeler: genelSubeler,
+  degistirebilir: genelDegistirebilir,
+  randevuSubesi = null,
 }: {
   aktifSubeId: string;
   subeler: readonly { id: string; ad: string }[];
   degistirebilir: boolean;
+  randevuSubesi?: { aktifSubeId: string; subeler: readonly { id: string; ad: string }[] } | null;
 }) {
   const [bekliyor, gecisBaslat] = useTransition();
+  const yol = usePathname();
+  const randevuEkrani =
+    randevuSubesi !== null && (yol?.startsWith("/koordinator/randevular") ?? false);
+
+  const aktifSubeId = randevuEkrani ? randevuSubesi.aktifSubeId : genelSubeId;
+  const subeler = randevuEkrani ? randevuSubesi.subeler : genelSubeler;
+  const degistirebilir = randevuEkrani || genelDegistirebilir;
+  const degistir = randevuEkrani ? randevuSubesiDegistir : subeDegistir;
+  const etiket = randevuEkrani ? "Randevu şubesi" : "Çalışılan şube";
 
   /**
    * Gösterilen şube: sunucudan gelen değer değil, kullanıcının SEÇTİĞİ değer.
@@ -81,7 +100,7 @@ export function SubeGostergesi({
       <span aria-hidden className={cn("h-5 w-1 rounded-full", seritRengi)} />
       <label className="min-w-0">
         <span className="block text-[0.6875rem] leading-tight text-zinc-500">
-          {bekliyor ? "Şube değişiyor…" : "Çalışılan şube"}
+          {bekliyor ? "Şube değişiyor…" : etiket}
         </span>
         {/*
           Sıradan bir <select>: değiştirildiği anda eylem çalışıyor, ayrıca
@@ -89,7 +108,7 @@ export function SubeGostergesi({
           bir bakış açısı değiştirmek — araya adım koymak yorucu olurdu.
         */}
         <select
-          aria-label="Çalışılan şube"
+          aria-label={etiket}
           value={gosterilenSubeId}
           // `disabled` YOK: seçiciyi devre dışı bırakmak odağı kaybettiriyor
           // ve klavyeyle gezinen kullanıcıyı şeridin başına atıyordu. Bekleme
@@ -101,7 +120,7 @@ export function SubeGostergesi({
             // iyimser değer sunucu cevabından önce geri alınıyordu.
             gecisBaslat(async () => {
               iyimserSec(secilen);
-              await subeDegistir(secilen);
+              await degistir(secilen);
             });
           }}
           // Telefonda 44px: seçici 20px'ti ve üst şeritteki en küçük hedefti.

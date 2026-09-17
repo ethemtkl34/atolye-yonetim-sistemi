@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { cikisYap } from "@/app/cikis/actions";
-import { rolEtiketi, type SubeliKullanici } from "@/lib/yetki-kapisi";
+import {
+  rolEtiketi,
+  type RandevuSubeSecimi,
+  type SubeliKullanici,
+} from "@/lib/yetki-kapisi";
 import type { MenuOgesi } from "@/lib/navigasyon";
 import { MobilMenu } from "./mobil-menu";
 import { SubeGostergesi } from "./sube-gostergesi";
@@ -36,11 +40,14 @@ export function PanelKabuk({
   kullanici,
   menu,
   baslik,
+  randevuSubesi = null,
   children,
 }: {
   kullanici: SubeliKullanici;
   menu: readonly MenuOgesi[];
   baslik: string;
+  /** Randevu ekranlarında şube kutusunun seçeceği randevu şubesi. */
+  randevuSubesi?: RandevuSubeSecimi | null;
   children: React.ReactNode;
 }) {
   return (
@@ -103,6 +110,7 @@ export function PanelKabuk({
               aktifSubeId={kullanici.aktifSubeId}
               subeler={kullanici.secilebilirSubeler}
               degistirebilir={kullanici.subeDegistirebilir}
+              randevuSubesi={randevuSubesi}
             />
 
             <form action={cikisYap}>

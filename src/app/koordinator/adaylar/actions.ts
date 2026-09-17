@@ -14,7 +14,7 @@ import {
 } from "@/lib/formlar";
 import { tarihCozumle, zamanMetni } from "@/lib/tarih";
 import { randevuAraligi, randevuEngeli } from "@/lib/randevu/cakisma";
-import { uzmanBaglami } from "@/lib/randevu/uzman-baglami";
+import { engelMesaji, uzmanBaglami } from "@/lib/randevu/uzman-baglami";
 import { veliyiCoz } from "@/lib/randevu/veli";
 import { saatiDakikayaCevir } from "../uzmanlar/sema";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
@@ -335,7 +335,7 @@ export async function randevuVer(
     if (engel.tur === "mesai") {
       return { onayGerekli: engel.mesaj, degerler: girilenler };
     }
-    return { hata: engel.mesaj, degerler: girilenler };
+    return { hata: engelMesaji(engel, baglam, subeId), degerler: girilenler };
   }
 
   const sonuc = await db.$transaction(async (tx) => {

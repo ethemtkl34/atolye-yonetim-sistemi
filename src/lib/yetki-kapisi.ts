@@ -229,64 +229,65 @@ export async function yonetimZorunlu(
   return subeBaglamiEkle(kullanici);
 }
 
+/** Randevu ekranlarında sağ üstteki şube seçicisinin verisi. */
+export type RandevuSubeSecimi = {
+  /** Randevu ekranlarında üzerinde çalışılan şube. */
+  aktifSubeId: string;
+  subeler: readonly { id: string; ad: string }[];
+};
+
+/**
+ * Randevu şubesini çözer (Eylül 2026 kararı): randevu ekranına erişebilen
+ * şubeli roller (`randevuSubesiSecebilirMi`) sağ üstten şube seçer, takvim
+ * yalnız o şubenin randevularını gösterir. Seçim yoksa ya da bozuksa kendi
+ * şubesi. Yöneticide ve seçemeyen rolde null — onlar için `aktifSubeId`
+ * zaten doğru şube.
+ *
+ * Hem panel çerçevesi (sağ üstteki seçici) hem `randevuZorunlu` bunu
+ * kullanır: seçicinin gösterdiği şube ile sorguların şubesi ayrışamasın.
+ */
+export async function randevuSubeSecimi(
+  kullanici: OturumKullanicisi,
+): Promise<RandevuSubeSecimi | null> {
+  if (!randevuSubesiSecebilirMi(kullanici.roller) || !kullanici.subeId) return null;
+  const subeler = await subeleriOku();
+  return {
+    aktifSubeId: randevuSubesiniCoz(kullanici.subeId, await randevuSubesiCerezi(), subeler),
+    subeler: subeler.map((sube) => ({ id: sube.id, ad: sube.name })),
+  };
+}
+
 /** Randevular ekranının kullanıcısı — şube seçimi o ekrana göre çözülmüş. */
 export type RandevuKullanicisi = SubeliKullanici & {
-  /**
-   * Randevular ekranında şube seçicisi çizilsin mi. Yöneticide false: onun
-   * seçicisi üst şeritte ve `aktifSubeId` zaten ondan geliyor.
-   */
+  /** Sağ üstten randevu şubesi seçebilir mi (yöneticide false). */
   randevuSubesiSecebilir: boolean;
-  /** Seçicinin listesi (aktif şubeler). Seçemeyen rolde boş. */
-  randevuSubeleri: readonly { id: string; ad: string }[];
-  /** Hesabın kendi şubesinin adı — başka şubede çalışırken uyarı için. */
-  kendiSubeAdi: string;
 };
 
 /**
  * Randevular modülünün kapısı: `yonetimZorunlu("randevular", …)` ARTI
- * randevu şubesi (Eylül 2026 kararı).
+ * randevu şubesi (bkz. `randevuSubeSecimi`).
  *
- * Danışma görevlisinde `aktifSubeId` hesabın şubesi değil, randevular
- * ekranında SEÇTİĞİ şube olur (`RANDEVU_SUBE_CEREZI`). Böylece öbür şubenin
- * randevusu takvimde "bizim" sayılır; danışan adı açılır, düzenlenir, iptal
- * edilir, yeni randevu o şubeye açılır. Diğer bütün sayfalar
- * `yonetimZorunlu` kullandığı için seçim randevular dışına SIZMAZ.
+ * Şubeli rollerde `aktifSubeId` hesabın şubesi değil, randevu ekranında sağ
+ * üstten SEÇİLEN şubedir (`RANDEVU_SUBE_CEREZI`): takvim o şubenin
+ * randevularını gösterir, yeni randevu o şubeye açılır. Diğer bütün sayfalar
+ * `yonetimZorunlu` kullandığı için seçim randevu ekranları dışına SIZMAZ.
  *
- * Çerez burada da güvenle okunabilir: değer yalnız aktif şubeler arasındaysa
- * kabul ediliyor ve bu roller için iki şubenin randevusu zaten yetki
- * kapsamında — istemcinin değeri görüş alanını yetkinin ötesine taşıyamaz.
+ * Çerez güvenle okunabilir: değer yalnız aktif şubeler arasındaysa kabul
+ * ediliyor ve bu roller için iki şubenin randevusu zaten yetki kapsamında.
  */
 export async function randevuZorunlu(
   gereken: Seviye = "GORUNTULE",
 ): Promise<RandevuKullanicisi> {
   const kullanici = await yonetimZorunlu("randevular", gereken);
-  const kendiSubeAdi = kullanici.aktifSubeAdi;
+  const secim = await randevuSubeSecimi(kullanici);
+  if (!secim) return { ...kullanici, randevuSubesiSecebilir: false };
 
-  if (!randevuSubesiSecebilirMi(kullanici.roller) || !kullanici.subeId) {
-    return {
-      ...kullanici,
-      randevuSubesiSecebilir: false,
-      randevuSubeleri: [],
-      kendiSubeAdi,
-    };
-  }
-
-  const subeler = await subeleriOku();
-  const secilen = randevuSubesiniCoz(
-    kullanici.subeId,
-    await randevuSubesiCerezi(),
-    subeler,
-  );
-  // Kendi şubesi pasife alınmışsa bile `subeBaglamiEkle` onu çözmüş olurdu;
-  // bulunamayan seçimde mevcut bağlamı olduğu gibi bırak.
-  const sube = subeler.find((aday) => aday.id === secilen);
-
+  const sube = secim.subeler.find((aday) => aday.id === secim.aktifSubeId);
   return {
     ...kullanici,
-    ...(sube ? { aktifSubeId: sube.id, aktifSubeAdi: sube.name } : {}),
+    // Kendi şubesi pasife alınmışsa listede bulunmaz; mevcut bağlam kalır.
+    ...(sube ? { aktifSubeId: sube.id, aktifSubeAdi: sube.ad } : {}),
     randevuSubesiSecebilir: true,
-    randevuSubeleri: subeler.map((aday) => ({ id: aday.id, ad: aday.name })),
-    kendiSubeAdi,
   };
 }
 
