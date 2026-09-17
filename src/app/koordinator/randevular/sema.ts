@@ -39,89 +39,137 @@ export const GORUNUM_ADLARI: Record<Gorunum, string> = {
 const bosuNullYap = (deger: unknown) =>
   typeof deger === "string" && deger.trim() === "" ? null : deger;
 
-export const randevuSemasi = z
-  .object({
-    uzmanId: z.string().min(1, "Uzman seçin"),
-    hizmetId: z.string().min(1, "Hizmet seçin"),
-
-    /**
-     * Danışan VELİ (§17.1). İki yol var: kayıtlı veliyi seçmek ya da adı ve
-     * telefonuyla yenisini açmak — telefonla arayan bir veli için önce
-     * öğrenci kaydı açtırmak kabul edilemez bir sürtünme olurdu.
-     */
-    veliId: z.preprocess(bosuNullYap, z.string().nullable()),
-    yeniVeliAdi: z.preprocess(
-      bosuNullYap,
-      z
-        .string()
-        .trim()
-        .min(2, "Veli adı en az 2 karakter olmalı")
-        .max(120, "Ad en fazla 120 karakter olabilir")
-        .nullable(),
-    ),
-    yeniVeliTelefon: z.preprocess(
-      bosuNullYap,
-      z.string().trim().max(30, "Telefon en fazla 30 karakter").nullable(),
-    ),
-
-    /** Seansa giren çocuk; aile danışmanlığında boş kalır. */
-    ogrenciId: z.preprocess(bosuNullYap, z.string().nullable()),
-
-    /**
-     * "Yeni öğrenci ekle" — veli aranan çocuk henüz kayıtlı değilse (bkz.
-     * `veli-secici.tsx`). Bilinçli olarak dar: yalnız ad/soyad/doğum tarihi;
-     * okul, sağlık, veli bağı (Guardian) gibi alanlar burada YOK — telefonda
-     * randevu veren biri için tam öğrenci formunu doldurtmak (§6.1'deki gibi)
-     * kabul edilemez bir sürtünme olurdu. Eksik kalan bilgi gerekirse
-     * Öğrenciler ekranından tamamlanır.
-     */
-    yeniOgrenciAdi: z.preprocess(
-      bosuNullYap,
-      z
-        .string()
-        .trim()
-        .min(2, "Öğrenci adı en az 2 karakter olmalı")
-        .max(60, "Ad en fazla 60 karakter olabilir")
-        .nullable(),
-    ),
-    yeniOgrenciSoyadi: z.preprocess(
-      bosuNullYap,
-      z
-        .string()
-        .trim()
-        .min(2, "Öğrenci soyadı en az 2 karakter olmalı")
-        .max(60, "Soyad en fazla 60 karakter olabilir")
-        .nullable(),
-    ),
-    yeniOgrenciDogumTarihi: z.preprocess(
-      bosuNullYap,
-      z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir doğum tarihi girin")
-        .refine((deger) => tarihCozumle(deger) !== null, {
-          message: "Geçerli bir doğum tarihi girin",
-        })
-        .nullable(),
-    ),
-
-    tarih: z.string().trim().min(1, "Tarih seçin"),
-    saat: z
+/**
+ * Danışan alanları — yeni randevu ve düzenleme formlarının ORTAK parçası.
+ *
+ * Danışan VELİ (§17.1). İki yol var: kayıtlı veliyi seçmek ya da adı ve
+ * telefonuyla yenisini açmak — telefonla arayan bir veli için önce
+ * öğrenci kaydı açtırmak kabul edilemez bir sürtünme olurdu.
+ */
+const danisanAlanlari = {
+  veliId: z.preprocess(bosuNullYap, z.string().nullable()),
+  yeniVeliAdi: z.preprocess(
+    bosuNullYap,
+    z
       .string()
       .trim()
-      .refine((deger) => saatiDakikayaCevir(deger) !== null, {
-        message: "Saat SS:DD biçiminde olmalı",
-      }),
+      .min(2, "Veli adı en az 2 karakter olmalı")
+      .max(120, "Ad en fazla 120 karakter olabilir")
+      .nullable(),
+  ),
+  yeniVeliTelefon: z.preprocess(
+    bosuNullYap,
+    z.string().trim().max(30, "Telefon en fazla 30 karakter").nullable(),
+  ),
 
-    /** Lira olarak girilen indirim; kuruşa eylemde çevriliyor. */
-    indirimLira: z.coerce
-      .number()
-      .min(0, "İndirim eksi olamaz")
-      .max(1_000_000, "İndirim çok yüksek görünüyor")
-      .default(0),
-    indirimNotu: z.preprocess(
-      bosuNullYap,
-      z.string().trim().max(200, "Not en fazla 200 karakter").nullable(),
-    ),
+  /** Seansa giren çocuk; aile danışmanlığında boş kalır. */
+  ogrenciId: z.preprocess(bosuNullYap, z.string().nullable()),
+
+  /**
+   * "Yeni öğrenci ekle" — veli aranan çocuk henüz kayıtlı değilse (bkz.
+   * `veli-secici.tsx`). Bilinçli olarak dar: yalnız ad/soyad/doğum tarihi;
+   * okul, sağlık, veli bağı (Guardian) gibi alanlar burada YOK — telefonda
+   * randevu veren biri için tam öğrenci formunu doldurtmak (§6.1'deki gibi)
+   * kabul edilemez bir sürtünme olurdu. Eksik kalan bilgi gerekirse
+   * Öğrenciler ekranından tamamlanır.
+   */
+  yeniOgrenciAdi: z.preprocess(
+    bosuNullYap,
+    z
+      .string()
+      .trim()
+      .min(2, "Öğrenci adı en az 2 karakter olmalı")
+      .max(60, "Ad en fazla 60 karakter olabilir")
+      .nullable(),
+  ),
+  yeniOgrenciSoyadi: z.preprocess(
+    bosuNullYap,
+    z
+      .string()
+      .trim()
+      .min(2, "Öğrenci soyadı en az 2 karakter olmalı")
+      .max(60, "Soyad en fazla 60 karakter olabilir")
+      .nullable(),
+  ),
+  yeniOgrenciDogumTarihi: z.preprocess(
+    bosuNullYap,
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir doğum tarihi girin")
+      .refine((deger) => tarihCozumle(deger) !== null, {
+        message: "Geçerli bir doğum tarihi girin",
+      })
+      .nullable(),
+  ),
+} as const;
+
+export type DanisanGirdisi = z.infer<z.ZodObject<typeof danisanAlanlari>>;
+
+/** Danışan kuralları — iki form da aynı denetimden geçer. */
+function danisanKurallari(veri: DanisanGirdisi, ctx: z.RefinementCtx): void {
+  // Ya kayıtlı veli seçilmiş olmalı ya da yeni velinin adı girilmiş.
+  if (!veri.veliId && !veri.yeniVeliAdi) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["veliId"],
+      message: "Kayıtlı bir veli seçin ya da yeni velinin adını yazın.",
+    });
+  }
+  // Yeni öğrenci açılıyorsa ad VE soyad birlikte gelmeli — biri diğerini
+  // sessizce boş bırakırsa öğrenci yarım bir adla kaydolurdu.
+  if (Boolean(veri.yeniOgrenciAdi) !== Boolean(veri.yeniOgrenciSoyadi)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["yeniOgrenciSoyadi"],
+      message: "Yeni öğrencinin adını ve soyadını birlikte yazın.",
+    });
+  }
+}
+
+export const DANISAN_FORM_ALANLARI = [
+  "veliId",
+  "yeniVeliAdi",
+  "yeniVeliTelefon",
+  "ogrenciId",
+  "yeniOgrenciAdi",
+  "yeniOgrenciSoyadi",
+  "yeniOgrenciDogumTarihi",
+] as const;
+
+/** Uzman/hizmet/zaman/ücret/not — iki formun ortak gövdesi. */
+const seansAlanlari = {
+  uzmanId: z.string().min(1, "Uzman seçin"),
+  hizmetId: z.string().min(1, "Hizmet seçin"),
+
+  tarih: z.string().trim().min(1, "Tarih seçin"),
+  saat: z
+    .string()
+    .trim()
+    .refine((deger) => saatiDakikayaCevir(deger) !== null, {
+      message: "Saat SS:DD biçiminde olmalı",
+    }),
+
+  /** Lira olarak girilen indirim; kuruşa eylemde çevriliyor. */
+  indirimLira: z.coerce
+    .number()
+    .min(0, "İndirim eksi olamaz")
+    .max(1_000_000, "İndirim çok yüksek görünüyor")
+    .default(0),
+  indirimNotu: z.preprocess(
+    bosuNullYap,
+    z.string().trim().max(200, "Not en fazla 200 karakter").nullable(),
+  ),
+
+  not: z.preprocess(
+    bosuNullYap,
+    z.string().trim().max(2000, "Not en fazla 2000 karakter").nullable(),
+  ),
+} as const;
+
+export const randevuSemasi = z
+  .object({
+    ...seansAlanlari,
+    ...danisanAlanlari,
 
     haftaSayisi: z.coerce
       .number()
@@ -129,31 +177,8 @@ export const randevuSemasi = z
       .min(EN_AZ_TEKRAR_HAFTASI)
       .max(EN_FAZLA_TEKRAR_HAFTASI)
       .default(VARSAYILAN_TEKRAR_HAFTASI),
-
-    not: z.preprocess(
-      bosuNullYap,
-      z.string().trim().max(2000, "Not en fazla 2000 karakter").nullable(),
-    ),
   })
-  .superRefine((veri, ctx) => {
-    // Ya kayıtlı veli seçilmiş olmalı ya da yeni velinin adı girilmiş.
-    if (!veri.veliId && !veri.yeniVeliAdi) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["veliId"],
-        message: "Kayıtlı bir veli seçin ya da yeni velinin adını yazın.",
-      });
-    }
-    // Yeni öğrenci açılıyorsa ad VE soyad birlikte gelmeli — biri diğerini
-    // sessizce boş bırakırsa öğrenci yarım bir adla kaydolurdu.
-    if (Boolean(veri.yeniOgrenciAdi) !== Boolean(veri.yeniOgrenciSoyadi)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["yeniOgrenciSoyadi"],
-        message: "Yeni öğrencinin adını ve soyadını birlikte yazın.",
-      });
-    }
-  });
+  .superRefine(danisanKurallari);
 
 export type RandevuGirdisi = z.infer<typeof randevuSemasi>;
 
@@ -178,35 +203,27 @@ export const RANDEVU_FORM_ALANLARI = [
 /**
  * §17.4 — Var olan bir randevuyu düzenleme şeması.
  *
- * `randevuSemasi`'nin daraltılmış hâli: danışan (veli/çocuk) burada YOK —
- * randevuyu kimin aldığını değiştirmek ayrı ve daha riskli bir işlem, bu
- * ekranın kapsamı değil. `haftaSayisi` de yok: düzenleme her zaman TEK
- * randevuyu hedefler, seriye yeni hafta eklemez.
+ * `randevuSemasi`'nin tek randevuya indirgenmiş hâli: `haftaSayisi` yok —
+ * düzenleme her zaman TEK randevuyu hedefler, seriye yeni hafta eklemez.
+ *
+ * Danışan (veli/çocuk) İSTEĞE BAĞLI değişir (Eylül 2026 kararı): form
+ * varsayılan olarak mevcut danışanı gösterir ve alanları hiç göndermez;
+ * kullanıcı "Danışanı değiştir" dediğinde `danisanDegistir=1` ile birlikte
+ * yeni randevudaki aynı alanlar gelir ve aynı kurallardan geçer. Bayrak
+ * yokken danışan alanları tamamen YOK SAYILIR — yanlışlıkla boş gelen bir
+ * `veliId` mevcut danışanı silmesin.
  */
-export const randevuDuzenleSemasi = z.object({
-  uzmanId: z.string().min(1, "Uzman seçin"),
-  hizmetId: z.string().min(1, "Hizmet seçin"),
-  tarih: z.string().trim().min(1, "Tarih seçin"),
-  saat: z
-    .string()
-    .trim()
-    .refine((deger) => saatiDakikayaCevir(deger) !== null, {
-      message: "Saat SS:DD biçiminde olmalı",
-    }),
-  indirimLira: z.coerce
-    .number()
-    .min(0, "İndirim eksi olamaz")
-    .max(1_000_000, "İndirim çok yüksek görünüyor")
-    .default(0),
-  indirimNotu: z.preprocess(
-    bosuNullYap,
-    z.string().trim().max(200, "Not en fazla 200 karakter").nullable(),
-  ),
-  not: z.preprocess(
-    bosuNullYap,
-    z.string().trim().max(2000, "Not en fazla 2000 karakter").nullable(),
-  ),
-});
+export const randevuDuzenleSemasi = z
+  .object({
+    ...seansAlanlari,
+    ...danisanAlanlari,
+    danisanDegistir: z
+      .preprocess((deger) => deger === "1", z.boolean())
+      .default(false),
+  })
+  .superRefine((veri, ctx) => {
+    if (veri.danisanDegistir) danisanKurallari(veri, ctx);
+  });
 
 export type RandevuDuzenleGirdisi = z.infer<typeof randevuDuzenleSemasi>;
 
@@ -218,6 +235,8 @@ export const RANDEVU_DUZENLE_FORM_ALANLARI = [
   "indirimLira",
   "indirimNotu",
   "not",
+  "danisanDegistir",
+  ...DANISAN_FORM_ALANLARI,
 ] as const;
 
 export const DURUM_ADLARI = {

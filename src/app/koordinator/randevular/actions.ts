@@ -103,6 +103,49 @@ function formuOku(formVerisi: FormData) {
   );
 }
 
+/**
+ * Randevunun çocuğunu çözer: "yeni öğrenci ekle" doluysa öğrenciyi açar,
+ * yoksa seçilen `ogrenciId`nin bu şubede olduğunu doğrular.
+ *
+ * "Yeni öğrenci" var olan `ogrenciId`nin ÖNÜNE geçer: arayüz ikisini aynı
+ * anda göstermiyor, ama iki değer de gelirse yeni açma niyeti (kullanıcının
+ * SON tıkladığı şey) esas alınır. `randevuEkle` ve `randevuDuzenle` aynı
+ * kuralı paylaşsın diye tek yerde.
+ */
+async function ogrenciyiCoz(
+  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  args: {
+    subeId: string;
+    ogrenciId: string | null;
+    yeniAd: string | null;
+    yeniSoyad: string | null;
+    yeniDogumTarihi: string | null;
+  },
+): Promise<{ ogrenciId: string | null; yeniAcildi: boolean } | { hata: string }> {
+  if (args.yeniAd && args.yeniSoyad) {
+    const yeniOgrenci = await tx.student.create({
+      data: {
+        firstName: args.yeniAd,
+        lastName: args.yeniSoyad,
+        birthDate: args.yeniDogumTarihi ? tarihCozumle(args.yeniDogumTarihi) : null,
+        branchId: args.subeId,
+        searchName: normalizeArama(`${args.yeniAd} ${args.yeniSoyad}`),
+      },
+      select: { id: true },
+    });
+    return { ogrenciId: yeniOgrenci.id, yeniAcildi: true };
+  }
+  if (args.ogrenciId) {
+    // şube-muaf: öğrencinin bu şubeye ait olduğu doğrulanıyor.
+    const ogrenci = await tx.student.findFirst({
+      where: { id: args.ogrenciId, branchId: args.subeId },
+      select: { id: true },
+    });
+    if (!ogrenci) return { hata: "Seçilen öğrenci bu şubede bulunamadı." };
+  }
+  return { ogrenciId: args.ogrenciId, yeniAcildi: false };
+}
+
 export async function randevuEkle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
@@ -239,33 +282,15 @@ export async function randevuEkle(
     });
     if (typeof veli !== "string") return veli;
 
-    // "Yeni öğrenci ekle" — veli aranan çocuk henüz kayıtlı değil (bkz.
-    // `veli-secici.tsx` `CocukSecimi` şerhi). Var olan `ogrenciId`nin ÖNÜNE
-    // geçer: arayüz ikisini aynı anda göstermiyor, ama iki değer de gelirse
-    // yeni açma niyeti (kullanıcının SON tıkladığı şey) esas alınır.
-    let ogrenciId = veri.ogrenciId;
-    if (veri.yeniOgrenciAdi && veri.yeniOgrenciSoyadi) {
-      const yeniOgrenci = await tx.student.create({
-        data: {
-          firstName: veri.yeniOgrenciAdi,
-          lastName: veri.yeniOgrenciSoyadi,
-          birthDate: veri.yeniOgrenciDogumTarihi
-            ? tarihCozumle(veri.yeniOgrenciDogumTarihi)
-            : null,
-          branchId: subeId,
-          searchName: normalizeArama(`${veri.yeniOgrenciAdi} ${veri.yeniOgrenciSoyadi}`),
-        },
-        select: { id: true },
-      });
-      ogrenciId = yeniOgrenci.id;
-    } else if (ogrenciId) {
-      // şube-muaf: öğrencinin bu şubeye ait olduğu doğrulanıyor.
-      const ogrenci = await tx.student.findFirst({
-        where: { id: ogrenciId, branchId: subeId },
-        select: { id: true },
-      });
-      if (!ogrenci) return { hata: "Seçilen öğrenci bu şubede bulunamadı." };
-    }
+    const ogrenci = await ogrenciyiCoz(tx, {
+      subeId,
+      ogrenciId: veri.ogrenciId,
+      yeniAd: veri.yeniOgrenciAdi,
+      yeniSoyad: veri.yeniOgrenciSoyadi,
+      yeniDogumTarihi: veri.yeniOgrenciDogumTarihi,
+    });
+    if ("hata" in ogrenci) return ogrenci;
+    const ogrenciId = ogrenci.ogrenciId;
 
     await tx.randevu.createMany({
       data: araliklar.map((aralik) => ({
@@ -304,7 +329,9 @@ export async function randevuEkle(
 
 /**
  * §17.4 revizyonu — var olan bir randevuyu düzenler (uzman/hizmet/tarih/
- * saat/indirim/not). Danışan (veli/çocuk) değişmez — bkz. `sema.ts` şerhi.
+ * saat/indirim/not). Danışan (veli/çocuk) yalnız form "Danışanı değiştir"
+ * dediyse (`danisanDegistir=1`) değişir — bkz. `sema.ts` şerhi. Seriyi
+ * etkilemez: tek randevu, tek satır.
  *
  * `randevuEkle` ile AYNI çakışma/mesai kuralları uygulanır; tek fark
  * `uzmanBaglami`ya `haricId` verilmesi — randevu kendi eski hâliyle
@@ -413,25 +440,58 @@ export async function randevuDuzenle(
     return { hata: engel.mesaj, degerler: girilenler };
   }
 
-  await db.randevu.update({
-    where: { id: randevuId },
-    data: {
-      uzmanId: veri.uzmanId,
-      hizmetId: veri.hizmetId,
-      baslangic: aralik.baslangic,
-      bitis: aralik.bitis,
-      // Ücret düzenleme anındaki katalog fiyatına GÜNCELLENİR — hizmet
-      // değişmiş olabilir, `randevuEkle`'deki "açılış anında kopyalanır"
-      // kuralının düzenlemedeki karşılığı.
-      ucretKurus: yetkinlik.hizmet.ucretKurus,
-      indirimKurus,
-      indirimNotu: veri.indirimNotu,
-      not: veri.not,
-    },
+  const seansVerisi = {
+    uzmanId: veri.uzmanId,
+    hizmetId: veri.hizmetId,
+    baslangic: aralik.baslangic,
+    bitis: aralik.bitis,
+    // Ücret düzenleme anındaki katalog fiyatına GÜNCELLENİR — hizmet
+    // değişmiş olabilir, `randevuEkle`'deki "açılış anında kopyalanır"
+    // kuralının düzenlemedeki karşılığı.
+    ucretKurus: yetkinlik.hizmet.ucretKurus,
+    indirimKurus,
+    indirimNotu: veri.indirimNotu,
+    not: veri.not,
+  };
+
+  if (!veri.danisanDegistir) {
+    await db.randevu.update({ where: { id: randevuId }, data: seansVerisi });
+    tazele();
+    return { basari: `Randevu güncellendi: ${zamanMetni(baslangic)}.` };
+  }
+
+  // Danışan da değişiyor: veli/öğrenci çözümü ve güncelleme TEK işlemde —
+  // yeni veli açılıp randevu güncellenemezse sahipsiz veli kalmasın.
+  const sonuc = await db.$transaction(async (tx) => {
+    const veli = await veliyiCoz(tx, {
+      subeId,
+      veliId: veri.veliId,
+      ad: veri.yeniVeliAdi,
+      telefon: veri.yeniVeliTelefon,
+    });
+    if (typeof veli !== "string") return veli;
+
+    const ogrenci = await ogrenciyiCoz(tx, {
+      subeId,
+      ogrenciId: veri.ogrenciId,
+      yeniAd: veri.yeniOgrenciAdi,
+      yeniSoyad: veri.yeniOgrenciSoyadi,
+      yeniDogumTarihi: veri.yeniOgrenciDogumTarihi,
+    });
+    if ("hata" in ogrenci) return ogrenci;
+
+    await tx.randevu.update({
+      where: { id: randevuId },
+      data: { ...seansVerisi, veliId: veli, ogrenciId: ogrenci.ogrenciId },
+    });
+    return ogrenci.yeniAcildi ? { yeniOgrenci: true } : null;
   });
 
+  if (sonuc && "hata" in sonuc) return { ...sonuc, degerler: girilenler };
+  if (sonuc?.yeniOgrenci) revalidatePath("/koordinator/ogrenciler");
+
   tazele();
-  return { basari: `Randevu güncellendi: ${zamanMetni(baslangic)}.` };
+  return { basari: `Randevu ve danışanı güncellendi: ${zamanMetni(baslangic)}.` };
 }
 
 /**

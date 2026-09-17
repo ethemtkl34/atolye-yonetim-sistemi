@@ -9,14 +9,20 @@ import { kurustanLiraya, paraMetni, sureMetni } from "../uzmanlar/sema";
 import { randevuDuzenle } from "./actions";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 import type { RandevuSatiri } from "./takvim";
+import { VeliSecici, type VeliSecimi } from "./veli-secici";
 
 /**
  * §17.4 revizyonu — var olan randevuyu düzenleme.
  *
  * `RandevuFormu`nun (yeni randevu) KOPYASI değil, kasıtlı olarak daha dar bir
  * form — bkz. `randevu-planlama.tsx`'teki `RandevuOnayFormu` şerhindeki aynı
- * gerekçe. Danışan (veli/çocuk) burada hiç sorulmuyor: bir randevunun kime
- * ait olduğunu değiştirmek ayrı ve daha riskli bir işlem, bu ekranın dışında.
+ * gerekçe: seri yok, tek randevu.
+ *
+ * Danışan (veli/çocuk) varsayılan olarak yalnız GÖSTERİLİR; "Danışanı
+ * değiştir" denirse yeni randevudaki aynı seçici açılır ve form
+ * `danisanDegistir=1` ile gönderilir (Eylül 2026 kararı: masa yanlış veliye
+ * açılan randevuyu silip yeniden açmak zorunda kalıyordu). Bayrak yoksa
+ * sunucu danışan alanlarına hiç bakmaz (bkz. `sema.ts`).
  */
 export function RandevuDuzenleFormu({
   randevu,
@@ -90,42 +96,105 @@ function IcerikFormu({
   const [uzmanId, setUzmanId] = useState(randevu.uzmanId);
   const [hizmetId, setHizmetId] = useState(randevu.hizmetId);
 
+  // `randevu-formu.tsx`'teki aynı tuzak: eylem bitince (mesai onayı ya da
+  // doğrulama hatasıyla dönüşte de) React bu `<select>`lerin DOM değerini ilk
+  // seçeneğe düşürüyor; state değişmediği için yeniden uygulanmıyor ve
+  // "Hizmet" görünürde boşalıyor. İmparatif senkron bunu düzeltiyor.
+  const uzmanSecimi = useRef<HTMLSelectElement>(null);
+  const hizmetSecimi = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (uzmanSecimi.current) uzmanSecimi.current.value = uzmanId;
+    if (hizmetSecimi.current) hizmetSecimi.current.value = hizmetId;
+  }, [durum, uzmanId, hizmetId]);
+
   const secilenUzman = secilebilirUzmanlar.find((u) => u.id === uzmanId);
   const uygunHizmetler = secilenUzman
     ? hizmetler.filter((hizmet) => secilenUzman.hizmetIdleri.includes(hizmet.id))
     : [];
   const secilenHizmet = uygunHizmetler.find((h) => h.id === hizmetId);
 
+  // Danışan değişikliği: doğrulama hatasıyla dönüşte (ör. mesai onayı
+  // beklerken) seçici açık kalsın diye başlangıç değeri sunucudan dönen
+  // bayraktan okunuyor (bkz. `formlar.ts` `degerler` şerhi).
+  const [danisanDegistir, setDanisanDegistir] = useState(
+    deger("danisanDegistir") === "1",
+  );
+  const [veli, setVeli] = useState<VeliSecimi>({ tur: "yok" });
+
   return (
     <Pencere
       acik
       onKapat={onKapat}
       baslik="Randevuyu düzenle"
-      altBaslik="Danışan değişmez; yalnız uzman, hizmet, zaman ve ücret güncellenir."
+      altBaslik="Uzman, hizmet, zaman ve ücret güncellenir; gerekirse danışan da değiştirilebilir."
       genislik="36rem"
       govdeSinifi="space-y-4 overflow-y-auto px-4 pt-4"
     >
       <form ref={formRef} action={gonder} className="space-y-4">
         <input type="hidden" name="mesaiZorla" value={mesaiZorla ? "1" : ""} />
+        <input type="hidden" name="danisanDegistir" value={danisanDegistir ? "1" : ""} />
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
 
-        <Kart className="space-y-1 p-3 text-sm">
-          <p>
-            <span className="font-semibold text-zinc-900">Danışan:</span>{" "}
-            {randevu.veliAdi}
-            {randevu.ogrenciAdi ? ` · ${randevu.ogrenciAdi}` : ""}
-          </p>
-          {randevu.seriDeMi ? (
-            <p className="text-xs text-zinc-500">
-              Bu randevu bir serinin parçası; bu değişiklik yalnız bu haftayı
-              etkiler, serinin diğer haftalarını değiştirmez.
-            </p>
-          ) : null}
-        </Kart>
+        {danisanDegistir ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-zinc-700">
+                Yeni danışan
+              </span>
+              <button
+                type="button"
+                className="text-sm font-semibold text-marka-700 hover:underline"
+                onClick={() => {
+                  setDanisanDegistir(false);
+                  setVeli({ tur: "yok" });
+                }}
+              >
+                Mevcut danışanı koru
+              </button>
+            </div>
+            <VeliSecici
+              secim={veli}
+              onDegis={setVeli}
+              hata={durum.alanHatalari?.veliId}
+              cocukIsteniyor={secilenHizmet?.danisanTuru !== "VELI"}
+              degerler={{
+                yeniVeliAdi: deger("yeniVeliAdi"),
+                yeniVeliTelefon: deger("yeniVeliTelefon"),
+                yeniOgrenciAdi: deger("yeniOgrenciAdi"),
+                yeniOgrenciSoyadi: deger("yeniOgrenciSoyadi"),
+                yeniOgrenciDogumTarihi: deger("yeniOgrenciDogumTarihi"),
+              }}
+            />
+          </div>
+        ) : (
+          <Kart className="space-y-1 p-3 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p>
+                <span className="font-semibold text-zinc-900">Danışan:</span>{" "}
+                {randevu.veliAdi}
+                {randevu.ogrenciAdi ? ` · ${randevu.ogrenciAdi}` : ""}
+              </p>
+              <button
+                type="button"
+                className="text-sm font-semibold text-marka-700 hover:underline"
+                onClick={() => setDanisanDegistir(true)}
+              >
+                Danışanı değiştir
+              </button>
+            </div>
+            {randevu.seriDeMi ? (
+              <p className="text-xs text-zinc-500">
+                Bu randevu bir serinin parçası; bu değişiklik yalnız bu haftayı
+                etkiler, serinin diğer haftalarını değiştirmez.
+              </p>
+            ) : null}
+          </Kart>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Uzman" hata={durum.alanHatalari?.uzmanId}>
             <select
+              ref={uzmanSecimi}
               name="uzmanId"
               className={secimStili}
               value={uzmanId}
@@ -153,6 +222,7 @@ function IcerikFormu({
             }
           >
             <select
+              ref={hizmetSecimi}
               name="hizmetId"
               className={secimStili}
               value={hizmetId}
