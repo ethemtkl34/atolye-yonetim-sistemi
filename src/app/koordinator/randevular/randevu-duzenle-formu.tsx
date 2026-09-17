@@ -210,40 +210,42 @@ function IcerikFormu({
                 />
               </Alan>
             </div>
-            {randevu.ogrenciId ? (
-              <>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Alan etiket="Öğrenci adı" hata={durum.alanHatalari?.ogrenciAd}>
-                    <Girdi
-                      name="ogrenciAd"
-                      required
-                      maxLength={60}
-                      defaultValue={deger("ogrenciAd") ?? randevu.ogrenciAd ?? ""}
-                    />
-                  </Alan>
-                  <Alan etiket="Öğrenci soyadı" hata={durum.alanHatalari?.ogrenciSoyad}>
-                    <Girdi
-                      name="ogrenciSoyad"
-                      required
-                      maxLength={60}
-                      defaultValue={deger("ogrenciSoyad") ?? randevu.ogrenciSoyad ?? ""}
-                    />
-                  </Alan>
-                </div>
-                <Alan
-                  etiket="Doğum tarihi (isteğe bağlı)"
-                  hata={durum.alanHatalari?.ogrenciDogumTarihi}
-                >
-                  <Girdi
-                    name="ogrenciDogumTarihi"
-                    type="date"
-                    defaultValue={
-                      deger("ogrenciDogumTarihi") ?? randevu.ogrenciDogumTarihi ?? ""
-                    }
-                  />
-                </Alan>
-              </>
-            ) : null}
+            {randevu.ogrenciId ? null : (
+              <p className="text-sm text-zinc-600">
+                Bu randevuya bağlı öğrenci kaydı yok. Adını ve soyadını yazarsanız
+                öğrenci kaydı açılır ve bu randevuya bağlanır.
+              </p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Alan etiket="Öğrenci adı" hata={durum.alanHatalari?.ogrenciAd}>
+                <Girdi
+                  name="ogrenciAd"
+                  required={Boolean(randevu.ogrenciId)}
+                  maxLength={60}
+                  defaultValue={deger("ogrenciAd") ?? randevu.ogrenciAd ?? ""}
+                />
+              </Alan>
+              <Alan etiket="Öğrenci soyadı" hata={durum.alanHatalari?.ogrenciSoyad}>
+                <Girdi
+                  name="ogrenciSoyad"
+                  required={Boolean(randevu.ogrenciId)}
+                  maxLength={60}
+                  defaultValue={deger("ogrenciSoyad") ?? randevu.ogrenciSoyad ?? ""}
+                />
+              </Alan>
+            </div>
+            <Alan
+              etiket="Doğum tarihi (isteğe bağlı)"
+              hata={durum.alanHatalari?.ogrenciDogumTarihi}
+            >
+              <Girdi
+                name="ogrenciDogumTarihi"
+                type="date"
+                defaultValue={
+                  deger("ogrenciDogumTarihi") ?? randevu.ogrenciDogumTarihi ?? ""
+                }
+              />
+            </Alan>
             <p className="text-xs text-zinc-500">
               Veli ve öğrenci kaydının kendisi düzeltilir; değişiklik bu kişinin
               bütün randevularında ve Öğrenciler ekranında görünür.

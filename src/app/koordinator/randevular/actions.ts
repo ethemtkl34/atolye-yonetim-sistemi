@@ -469,9 +469,10 @@ export async function randevuDuzenle(
   }
 
   if (veri.danisanIslemi === "guncelle") {
-    // Danışan aynı, kaydı düzeltiliyor: veli + (varsa) öğrenci + randevu tek
-    // işlemde. Öğrencisi olan randevuda ad/soyad boş bırakılamaz — öğrenci
-    // kaydı yarım adla kalmasın; öğrencisiz randevuda bu alanlar yok sayılır.
+    // Danışan aynı, kaydı düzeltiliyor: veli + öğrenci + randevu tek işlemde.
+    // Öğrencisi olan randevuda ad/soyad boş bırakılamaz — öğrenci kaydı yarım
+    // adla kalmasın; öğrencisiz randevuda ad/soyad girildiyse öğrenci açılır,
+    // boşsa öğrenci tarafı atlanır.
     const sonuc = await db.$transaction(async (tx) => {
       const sahip = await tx.randevu.findUniqueOrThrow({
         where: { id: randevuId },
@@ -488,22 +489,41 @@ export async function randevuDuzenle(
         },
       });
 
+      const ogrenciAlanlari =
+        veri.ogrenciAd && veri.ogrenciSoyad
+          ? {
+              firstName: veri.ogrenciAd,
+              lastName: veri.ogrenciSoyad,
+              birthDate: veri.ogrenciDogumTarihi ? tarihCozumle(veri.ogrenciDogumTarihi) : null,
+              searchName: normalizeArama(`${veri.ogrenciAd} ${veri.ogrenciSoyad}`),
+            }
+          : null;
+
       if (sahip.ogrenciId) {
-        if (!veri.ogrenciAd || !veri.ogrenciSoyad) {
+        if (!ogrenciAlanlari) {
           return { alanHatalari: { ogrenciAd: "Öğrencinin adı ve soyadı gerekli." } };
         }
-        await tx.student.update({
-          where: { id: sahip.ogrenciId },
-          data: {
-            firstName: veri.ogrenciAd,
-            lastName: veri.ogrenciSoyad,
-            birthDate: veri.ogrenciDogumTarihi ? tarihCozumle(veri.ogrenciDogumTarihi) : null,
-            searchName: normalizeArama(`${veri.ogrenciAd} ${veri.ogrenciSoyad}`),
-          },
-        });
+        await tx.student.update({ where: { id: sahip.ogrenciId }, data: ogrenciAlanlari });
+        await tx.randevu.update({ where: { id: randevuId }, data: seansVerisi });
+        return null;
       }
 
-      await tx.randevu.update({ where: { id: randevuId }, data: seansVerisi });
+      // Randevuya bağlı öğrenci yok (canlıda planlı randevuların çoğu böyle:
+      // masa çocuğun adını veli alanına yazmış). Ad/soyad girildiyse öğrenci
+      // kaydı BURADA açılır ve bu randevuya bağlanır — `ogrenciyiCoz`'daki
+      // "yeni öğrenci" ile aynı darlıkta: yalnız ad/soyad/doğum tarihi.
+      if (!ogrenciAlanlari) {
+        await tx.randevu.update({ where: { id: randevuId }, data: seansVerisi });
+        return null;
+      }
+      const yeniOgrenci = await tx.student.create({
+        data: { ...ogrenciAlanlari, branchId: subeId },
+        select: { id: true },
+      });
+      await tx.randevu.update({
+        where: { id: randevuId },
+        data: { ...seansVerisi, ogrenciId: yeniOgrenci.id },
+      });
       return null;
     });
 
