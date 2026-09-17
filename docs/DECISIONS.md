@@ -293,6 +293,26 @@ Karar gerekçeleri:
   ücret yalnız çalışılan şubede açık. Veli için ayrı sayfa açılmadı (istenmedi).
 - **Takvimde tarihe atlama.** Hafta hafta tıklamak yerine üç görünümün
   başlığında tarih kutusu; seçilen gün görünümün çapası olur.
+- **Eski CRM (AppSheet) randevuları aktarıldı (17 Eylül 2026).** Ocak 2024'ten
+  bu yana 9.352 randevu; betik `scripts/appsheet-randevu/` (`--kuru` deneme,
+  `geri-al.ts`). Önce üretimin Neon kopyasında koşturulup ay × şube ciro
+  toplamları dosyayla karşılaştırıldı. Kurum kararları:
+  - "Son Durum" boş geçmiş randevu **Gerçekleşti** sayıldı (AppSheet'te durum
+    neredeyse hiç işaretlenmemişti); İptal → İptal, Tamamlandı/Ödendi/Uzman
+    Sonlandırdı → Gerçekleşti, Kaparo Bekliyor → Planlandı.
+  - Kesim: **Ümraniye 9 Eylül öncesi** (sonrası panelde zaten vardı), **Güneşli
+    tamamı** — Güneşli bundan sonra paneli kullanmalı.
+  - Kayıtlı olmayan çocuk için **kısa öğrenci kaydı** açıldı (ad, soyad).
+    Veli bağı (`Guardian`) kurulmadı: anne/baba türü dosyada yok; randevu
+    veliye bağlı.
+  - Hizmet eşlemesi: OYUN TERAPİSİ → Oyun Temelli Danışmanlık, ERGEN TERAPİ →
+    Ergen Danışmanlığı, **Ergoterapi → Duyu Bütünleme Programı**.
+  - Sistemde olmayan uzmanlar **pasif** açıldı.
+  - Veli eşleştirmesi aktarıma özel: aynı telefonda tam ad, yoksa ilk adı
+    uyan TEK veli (canlıdaki velilerin çoğu yalnız ilk adla girilmişti),
+    yoksa yeni veli. Var olan velinin adı değiştirilmedi.
+  - Her satır `Randevu.disKaynakId = "appsheet:<id>"` taşır: tekrar aktarım
+    hiçbir şey eklemez, geri alma yalnız bunlara dokunur.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
   `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
   Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda

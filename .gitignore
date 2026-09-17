@@ -58,3 +58,6 @@ ornek-rapor.pdf
 
 # Geçmiş veri aktarımının ara çıktıları — veli telefonları içerir.
 scripts/gecmis-veri/cikti/
+
+# AppSheet randevu aktarımının çıktıları — kimlik listesi ve rapor, veli adları içerebilir.
+scripts/appsheet-randevu/cikti/

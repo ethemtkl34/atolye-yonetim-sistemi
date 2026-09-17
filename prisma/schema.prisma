@@ -1964,6 +1964,12 @@ model Randevu {
   leadId String?
   lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
+  /// Dış sistemden aktarılan randevunun kaynak kimliği, örn.
+  /// "appsheet:11e2ccd2" (Eylül 2026, eski CRM aktarımı). Benzersiz: aynı dosya
+  /// iki kez aktarılırsa ikinci koşu hiçbir şey yazmaz; `geri-al` yalnız bu
+  /// önekle açılan satırlara dokunur. Panelden açılan randevuda boş.
+  disKaynakId String? @unique
+
   baslangic DateTime
   /// `baslangic + hizmet.sureDk` — kayda DONAR. Hizmetin süresi sonradan
   /// değişse geçmiş randevunun bittiği saat kaymaz.
