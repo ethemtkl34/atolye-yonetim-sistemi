@@ -26,6 +26,10 @@ import {
 } from "@/lib/randevu/izgara-verisi";
 import { KURUM_ADI } from "@/lib/kurallar";
 import { randevuSatirlariGetir } from "@/lib/randevu/hafta-verisi";
+import {
+  gecmisRandevuyuDuzenleyebilirMi,
+  istanbulBugunu,
+} from "@/lib/randevu/gecmis-kilidi";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
 import { Takvim } from "./takvim";
 import { Izgara } from "./izgara";
@@ -34,6 +38,7 @@ import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
 import { RandevuSubesiSecici } from "./randevu-subesi-secici";
+import { IsaretsizRandevular } from "./isaretsiz-randevular";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -95,7 +100,24 @@ export default async function RandevularSayfasi(
 
   const aralik = takvimAraligi(gorunum, capa);
 
-  const [uzmanlar, hizmetler, randevular, mesailer, izinler] = await Promise.all([
+  // Geçmiş kilidi (lib/randevu/gecmis-kilidi.ts): yönetici olmayan günü
+  // bitmiş randevuyu değiştiremez, geçmiş güne randevu açamaz.
+  const gecmisiDuzenleyebilir = gecmisRandevuyuDuzenleyebilirMi(kullanici.roller);
+  const istanbulBugun = istanbulBugunu();
+  const enErkenTarih = gecmisiDuzenleyebilir ? undefined : tarihMetni(istanbulBugun);
+
+  /** "İşaretlenmemiş geçmiş randevular" listesinde en fazla bu kadar satır. */
+  const ISARETSIZ_SINIRI = 30;
+
+  const [
+    uzmanlar,
+    hizmetler,
+    randevular,
+    mesailer,
+    izinler,
+    isaretsizler,
+    isaretsizSayisi,
+  ] = await Promise.all([
     // şube-muaf: uzman kadrosu çok şubeli ve takvim şubeler arası okunuyor
     // (§17.7); şube bağı `UzmanSube` üzerinden.
     db.uzman.findMany({
@@ -128,6 +150,7 @@ export default async function RandevularSayfasi(
       uzmanSuzgeci,
       hizmetSuzgeci,
       iptalleriGoster,
+      gecmisiDuzenleyebilir,
     }),
     // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
     // `subeId` filtresi yeter — hangi uzmana ait olduğuna bakılmaksızın BU
@@ -147,6 +170,27 @@ export default async function RandevularSayfasi(
           select: { uzmanId: true, baslangic: true, bitis: true },
         })
       : Promise.resolve([]),
+    // İşaretlenmemiş geçmiş randevular — yalnız yazabilene; süzgeçlerden ve
+    // görünümden bağımsız, şubenin tamamı.
+    yazabilir
+      ? db.randevu.findMany({
+          where: { branchId: subeId, durum: "PLANLANDI", baslangic: { lt: istanbulBugun } },
+          orderBy: { baslangic: "asc" },
+          take: ISARETSIZ_SINIRI,
+          select: {
+            id: true,
+            baslangic: true,
+            bitis: true,
+            uzman: { select: { ad: true, renk: true } },
+            hizmet: { select: { ad: true } },
+            veli: { select: { fullName: true } },
+            ogrenci: { select: { firstName: true, lastName: true } },
+          },
+        })
+      : Promise.resolve([]),
+    yazabilir ? db.randevu.count({
+          where: { branchId: subeId, durum: "PLANLANDI", baslangic: { lt: istanbulBugun } },
+        }) : Promise.resolve(0),
   ]);
 
   const satirlar = randevular;
@@ -207,6 +251,8 @@ export default async function RandevularSayfasi(
     return `${TEMEL_YOL}?${p.toString()}`;
   };
 
+  const tarihAtlama = { tarih: tarihMetni(capa), tarihsizYol: adres({ tarih: "" }) };
+
   // Hafta başlığı aralığın kendisini yazar ("31 Ağustos – 6 Eylül 2026"):
   // "31.08.2026 haftası" okuyucuya haftanın nerede bittiğini söylemiyordu ve
   // ay sınırını gizliyordu.
@@ -241,10 +287,27 @@ export default async function RandevularSayfasi(
               uzmanlar={formUzmanlari}
               hizmetler={hizmetler}
               varsayilanTarih={tarihMetni(capa)}
+              enErkenTarih={enErkenTarih}
             />
             ) : null}
           </div>
         }
+      />
+
+      <IsaretsizRandevular
+        toplam={isaretsizSayisi}
+        randevular={isaretsizler.map((randevu) => ({
+          id: randevu.id,
+          baslangic: randevu.baslangic,
+          bitis: randevu.bitis,
+          uzmanAdi: randevu.uzman.ad,
+          uzmanRengi: randevu.uzman.renk,
+          hizmetAdi: randevu.hizmet.ad,
+          veliAdi: randevu.veli.fullName,
+          ogrenciAdi: randevu.ogrenci
+            ? `${randevu.ogrenci.firstName} ${randevu.ogrenci.lastName}`
+            : null,
+        }))}
       />
 
       <SuzgecCubugu>
@@ -306,6 +369,8 @@ export default async function RandevularSayfasi(
           geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          {...tarihAtlama}
+          enErkenTarih={enErkenTarih}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
           varsayilanTarih={tarihMetni(capa)}
@@ -322,6 +387,8 @@ export default async function RandevularSayfasi(
           geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          {...tarihAtlama}
+          enErkenTarih={enErkenTarih}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
@@ -339,6 +406,8 @@ export default async function RandevularSayfasi(
           geriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, -1)) })}
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
+          {...tarihAtlama}
+          enErkenTarih={enErkenTarih}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}

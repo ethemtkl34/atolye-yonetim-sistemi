@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
-import { Rozet, SayfaBasligi, geriBaglantiStili } from "@/components/ui";
-import { tarihBicimle } from "@/lib/tarih";
+import { randevuZorunlu, yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { Kart, Rozet, SayfaBasligi, butonStili, geriBaglantiStili } from "@/components/ui";
+import { ayBasi, ayMetni, tarihBicimle } from "@/lib/tarih";
+import { istanbulBugunu } from "@/lib/randevu/gecmis-kilidi";
+import { uzmanRandevulari } from "@/lib/randevu/gecmis-verisi";
+import { RandevuGecmisiListesi } from "@/components/randevu-gecmisi-listesi";
 import { uzmanRengi } from "@/lib/uzman-renkleri";
 import { dakikayiSaateCevir } from "../sema";
 import {
@@ -51,12 +54,40 @@ function izinMetni(baslangic: Date, bitis: Date): string {
     : `${tarihBicimle(baslangic)} ${saat(baslangic)} – ${tarihBicimle(bitis)} ${saat(bitis)}`;
 }
 
+/** "YYYY-AA" → ayın ilk günü (UTC gece yarısı); geçersizse null. */
+function ayCozumle(deger: string | string[] | undefined): Date | null {
+  if (typeof deger !== "string") return null;
+  const eslesme = /^(\d{4})-(\d{2})$/.exec(deger);
+  if (!eslesme) return null;
+  const yil = Number(eslesme[1]);
+  const ay = Number(eslesme[2]);
+  if (yil < 2000 || yil > 2100 || ay < 1 || ay > 12) return null;
+  return new Date(Date.UTC(yil, ay - 1, 1));
+}
+
+function ayAnahtari(tarih: Date): string {
+  return `${tarih.getUTCFullYear()}-${String(tarih.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export default async function UzmanSayfasi(
   props: PageProps<"/koordinator/uzmanlar/[id]">,
 ) {
   const kullanici = await yonetimZorunlu("uzmanlar");
   const { id } = await props.params;
   const duzenleyebilir = kullanici.yetkiler.uzmanlar === "TAM";
+  // Randevu geçmişi (Eylül 2026) yalnız randevuları görebilene; danışan
+  // bilgisinin hangi şubede açık olduğu takvimle aynı kapıdan çözülüyor
+  // (danışma görevlisinde randevular ekranında seçtiği şube).
+  const randevuGorebilir = kullanici.yetkiler.randevular !== "YOK";
+  const parametreler = await props.searchParams;
+  const randevuBugunu = istanbulBugunu();
+  const secilenAy = ayCozumle(parametreler.ay) ?? ayBasi(randevuBugunu);
+  const sonrakiAy = new Date(
+    Date.UTC(secilenAy.getUTCFullYear(), secilenAy.getUTCMonth() + 1, 1),
+  );
+  const oncekiAy = new Date(
+    Date.UTC(secilenAy.getUTCFullYear(), secilenAy.getUTCMonth() - 1, 1),
+  );
 
   // şube-muaf: uzman çok şubeli, kendi `branchId` sütunu yok; kadro
   // şubeler arası görünür (bkz. uzmanlar/page.tsx şerhi).
@@ -90,6 +121,16 @@ export default async function UzmanSayfasi(
   });
 
   if (!uzman) notFound();
+
+  const randevuSubesi = randevuGorebilir ? (await randevuZorunlu()).aktifSubeId : null;
+  const randevular = randevuSubesi
+    ? await uzmanRandevulari({
+        uzmanId: uzman.id,
+        subeId: randevuSubesi,
+        ilk: secilenAy,
+        son: sonrakiAy,
+      })
+    : [];
 
   const simdi = new Date();
   const ton = uzmanRengi(uzman.renk);
@@ -160,6 +201,51 @@ export default async function UzmanSayfasi(
         subeler={subeSecenekleri}
         duzenleyebilir={duzenleyebilir && subeSecenekleri.length > 0}
       />
+
+      {randevuGorebilir ? (
+        <section className="space-y-3">
+          <Kart className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/koordinator/uzmanlar/${uzman.id}?ay=${ayAnahtari(oncekiAy)}`}
+                className={butonStili("ikincil")}
+                aria-label="Önceki ay"
+              >
+                ‹
+              </Link>
+              <Link
+                href={`/koordinator/uzmanlar/${uzman.id}`}
+                className={butonStili("sade")}
+              >
+                Bu ay
+              </Link>
+              <Link
+                href={`/koordinator/uzmanlar/${uzman.id}?ay=${ayAnahtari(sonrakiAy)}`}
+                className={butonStili("ikincil")}
+                aria-label="Sonraki ay"
+              >
+                ›
+              </Link>
+              <span className="ml-1 font-semibold text-zinc-900">
+                Randevular · {ayMetni(secilenAy)}
+              </span>
+            </div>
+            <Link
+              href={`/koordinator/randevular?gorunum=ay&uzman=${uzman.id}&tarih=${ayAnahtari(secilenAy)}-01`}
+              className={butonStili("sade")}
+            >
+              Takvimde aç
+            </Link>
+          </Kart>
+          <RandevuGecmisiListesi
+            satirlar={randevular}
+            bugun={randevuBugunu}
+            kisi="danisan"
+            bosMetin="Bu ay randevu yok."
+            yaklasanlariAyir={false}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

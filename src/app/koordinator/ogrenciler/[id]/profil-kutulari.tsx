@@ -27,6 +27,7 @@ const RENKLER = {
   saglik: ["#cf4f43", "#a93a30"],
   gecmis: ["#9a8570", "#7d6a57"],
   stajyer: ["#5563c9", "#3f4dab"],
+  randevu: ["#c46a2f", "#a2531d"],
 } as const;
 
 export type KutuRengi = keyof typeof RENKLER;
@@ -77,6 +78,13 @@ const IKONLAR: Record<KutuRengi, React.ReactNode> = {
       <circle cx="9" cy="9" r="3.2" />
       <circle cx="17" cy="10" r="2.6" />
       <path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5M15.6 15.2c2.3.2 4 1.5 4.9 3.8" />
+    </>
+  ),
+  randevu: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M12 13v3l2 1.2" />
     </>
   ),
 };

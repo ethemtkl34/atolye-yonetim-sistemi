@@ -33,6 +33,11 @@ import {
   randevuVerSemasi,
   takipSemasi,
 } from "./sema";
+import {
+  GECMIS_TARIH_MESAJI,
+  gecmisRandevuyuDuzenleyebilirMi,
+  randevuGecmisMi,
+} from "@/lib/randevu/gecmis-kilidi";
 
 /**
  * §16 — Aday (CRM) eylemleri.
@@ -268,6 +273,9 @@ export async function randevuVer(
   const gun = tarihCozumle(tarih);
   if (!gun) return { hata: "Randevu zamanı çözümlenemedi.", degerler: girilenler };
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(saat)! * 60_000);
+  if (randevuGecmisMi(baslangic) && !gecmisRandevuyuDuzenleyebilirMi(kullanici.roller)) {
+    return { hata: GECMIS_TARIH_MESAJI, degerler: girilenler };
+  }
 
   const aday = await db.lead.findFirst({
     where: { id: adayId, branchId: subeId },

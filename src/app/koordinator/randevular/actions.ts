@@ -30,6 +30,12 @@ import {
   randevuSemasi,
 } from "./sema";
 import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
+import {
+  GECMIS_KILIDI_MESAJI,
+  GECMIS_TARIH_MESAJI,
+  gecmisRandevuyuDuzenleyebilirMi,
+  randevuGecmisMi,
+} from "@/lib/randevu/gecmis-kilidi";
 
 /**
  * §17.4 — Randevu yazma işlemleri.
@@ -120,6 +126,13 @@ export async function randevuEkle(
     return { alanHatalari: { tarih: "Tarih seçilmeli." }, degerler: girilenler };
   }
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(veri.saat)! * 60_000);
+
+  // Geçmiş kilidi (bkz. lib/randevu/gecmis-kilidi.ts): günü bitmiş bir tarihe
+  // randevu girmek geçmiş haftanın cirosunu değiştirir. Serinin ilk tarihi en
+  // erkeni olduğu için yalnız onu denetlemek yeter.
+  if (randevuGecmisMi(baslangic) && !gecmisRandevuyuDuzenleyebilirMi(kullanici.roller)) {
+    return { alanHatalari: { tarih: GECMIS_TARIH_MESAJI }, degerler: girilenler };
+  }
 
   // Uzman bu hizmeti yapabiliyor mu — arayüz zaten süzüyor, asıl sınır burası.
   // şube-muaf: yetkinlik ve hizmet şubeden bağımsız (bkz. sube-sizinti.ts).
@@ -307,11 +320,15 @@ export async function randevuDuzenle(
 
   const mevcut = await db.randevu.findFirst({
     where: { id: randevuId, branchId: subeId },
-    select: { id: true, durum: true },
+    select: { id: true, durum: true, baslangic: true },
   });
   if (!mevcut) return { hata: "Randevu bulunamadı." };
   if (mevcut.durum === "IPTAL") {
     return { hata: "İptal edilmiş randevu düzenlenemez." };
+  }
+  const gecmisiDuzenleyebilir = gecmisRandevuyuDuzenleyebilirMi(kullanici.roller);
+  if (randevuGecmisMi(mevcut.baslangic) && !gecmisiDuzenleyebilir) {
+    return { hata: GECMIS_KILIDI_MESAJI };
   }
 
   const cozumlenen = randevuDuzenleSemasi.safeParse(
@@ -334,6 +351,11 @@ export async function randevuDuzenle(
     return { alanHatalari: { tarih: "Tarih seçilmeli." }, degerler: girilenler };
   }
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(veri.saat)! * 60_000);
+
+  // Gelecekteki randevuyu geçmişe taşımak da kilide takılır.
+  if (randevuGecmisMi(baslangic) && !gecmisiDuzenleyebilir) {
+    return { alanHatalari: { tarih: GECMIS_TARIH_MESAJI }, degerler: girilenler };
+  }
 
   const yetkinlik = await db.uzmanHizmet.findUnique({
     where: {
@@ -412,7 +434,13 @@ export async function randevuDuzenle(
   return { basari: `Randevu güncellendi: ${zamanMetni(baslangic)}.` };
 }
 
-/** Randevunun sonucunu işaretler: gerçekleşti / gelmedi / planlandı. */
+/**
+ * Randevunun sonucunu işaretler: gerçekleşti / gelmedi / planlandı.
+ *
+ * Geçmiş kilidine TABİ DEĞİL (Eylül 2026 kararı): seansın sonucu çoğu zaman
+ * ertesi gün işaretleniyor ve "işaretlenmemiş geçmiş randevular" listesini
+ * danışma masası kapatıyor.
+ */
 export async function randevuDurumDegistir(
   randevuId: string,
   durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI",
@@ -465,6 +493,12 @@ export async function randevuIptalEt(
 
   if (!randevu) return { hata: "Randevu bulunamadı." };
   if (randevu.durum === "IPTAL") return { hata: "Randevu zaten iptal edilmiş." };
+  if (
+    randevuGecmisMi(randevu.baslangic) &&
+    !gecmisRandevuyuDuzenleyebilirMi(kullanici.roller)
+  ) {
+    return { hata: GECMIS_KILIDI_MESAJI };
+  }
 
   const seridekiler =
     randevu.seriId && kapsam === "bu-ve-sonrakiler"

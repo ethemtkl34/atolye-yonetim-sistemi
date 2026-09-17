@@ -1,6 +1,6 @@
 "use client";
 
-import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni } from "@/lib/tarih";
+import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni, tarihMetni } from "@/lib/tarih";
 import {
   dakikadanOran,
   orandanDakika,
@@ -34,12 +34,18 @@ export function HaftaIzgarasiGovdesi({
   sutunlar,
   eksen,
   bosAlanTiklanabilir = false,
+  enErkenTarih,
   onBlokTikla,
   onBosAlanaTikla,
 }: {
   sutunlar: HaftaSutunu<RandevuSatiri>[];
   eksen: IzgaraEkseni;
   bosAlanTiklanabilir?: boolean;
+  /**
+   * Geçmiş kilidi: bu günden ("YYYY-AA-GG") önceki sütunlar tıklanamaz.
+   * Yöneticide ve aday seçicisinde verilmez.
+   */
+  enErkenTarih?: string;
   onBlokTikla?: (randevu: RandevuSatiri) => void;
   onBosAlanaTikla?: (gun: Date, saat: string) => void;
 }) {
@@ -51,8 +57,12 @@ export function HaftaIzgarasiGovdesi({
     saatCizgileri.push(dk);
   }
 
+  const gunTiklanabilir = (gun: Date) =>
+    bosAlanTiklanabilir &&
+    (enErkenTarih === undefined || tarihMetni(gun) >= enErkenTarih);
+
   function bosAlanaTikla(olay: React.MouseEvent<HTMLDivElement>, gun: Date) {
-    if (!bosAlanTiklanabilir) return;
+    if (!gunTiklanabilir(gun)) return;
     const kutu = olay.currentTarget.getBoundingClientRect();
     const oran = Math.max(0, Math.min(1, (olay.clientY - kutu.top) / kutu.height));
     const dakika = orandanDakika(oran, eksen);
@@ -139,7 +149,7 @@ export function HaftaIzgarasiGovdesi({
           {sutunlar.map((sutun) => (
             <div
               key={sutun.gun.toISOString()}
-              className={bosAlanTiklanabilir ? "relative cursor-pointer" : "relative"}
+              className={gunTiklanabilir(sutun.gun) ? "relative cursor-pointer" : "relative"}
               style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
               onClick={(olay) => bosAlanaTikla(olay, sutun.gun)}
             >

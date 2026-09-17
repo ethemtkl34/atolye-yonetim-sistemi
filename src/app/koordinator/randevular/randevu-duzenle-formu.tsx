@@ -22,11 +22,14 @@ export function RandevuDuzenleFormu({
   randevu,
   uzmanlar,
   hizmetler,
+  enErkenTarih,
   onKapat,
 }: {
   randevu: RandevuSatiri | null;
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
+  /** Geçmiş kilidi: yönetici olmayan için bugün; randevu daha erkene taşınamaz. */
+  enErkenTarih?: string;
   onKapat: () => void;
 }) {
   if (!randevu) return null;
@@ -36,6 +39,7 @@ export function RandevuDuzenleFormu({
       randevu={randevu}
       uzmanlar={uzmanlar}
       hizmetler={hizmetler}
+      enErkenTarih={enErkenTarih}
       onKapat={onKapat}
     />
   );
@@ -45,11 +49,13 @@ function IcerikFormu({
   randevu,
   uzmanlar,
   hizmetler,
+  enErkenTarih,
   onKapat,
 }: {
   randevu: RandevuSatiri;
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
+  enErkenTarih?: string;
   onKapat: () => void;
 }) {
   const [durum, gonder] = useActionState<EylemDurumu, FormData>(
@@ -170,6 +176,7 @@ function IcerikFormu({
               name="tarih"
               type="date"
               defaultValue={deger("tarih") ?? tarihMetni(randevu.baslangic)}
+              min={enErkenTarih}
               required
             />
           </Alan>

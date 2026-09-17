@@ -269,6 +269,30 @@ Karar gerekçeleri:
   ekranlarını sessizce başka şubeye çevirirdi. Seçim yokken ya da bozukken
   kendi şubesine düşer (yöneticideki "ilk şube" davranışı değil). Adaydan
   randevu akışı adayın şubesinde kalır, seçimi okumaz.
+- **Geçmiş randevu kilidi (Eylül 2026).** Günü BİTMİŞ randevunun saati,
+  uzmanı, hizmeti, ücreti değiştirilemez ve iptal edilemez; geçmiş bir güne
+  yeni randevu da açılamaz — yalnız Kurum ve Şube Yöneticisi yapabilir.
+  Gerekçe: raporlanmış haftanın cirosu ve seans sayısı sessizce değişmemeli.
+  **Durum işaretleme (Gerçekleşti/Gelmedi) herkese açık**: seansın sonucu çoğu
+  zaman ertesi gün işaretleniyor ve bunu danışma masası yapıyor. Kilit anı
+  "gün bitince" ve İSTANBUL takvimine göre (`gecmis-kilidi.ts`
+  `istanbulBugunu`): `bugun()` UTC tarihini verdiği için gece 00:00–03:00
+  arasında dünün randevuları açık kalırdı. Kilit sunucu eylemlerinde
+  (`randevuEkle`, `randevuDuzenle`, `randevuIptalEt`, aday `randevuVer`)
+  uygulanıyor; arayüz yalnız düğmeleri gizliyor ve tarih kutusuna `min`
+  koyuyor.
+- **İşaretlenmemiş geçmiş randevular listesi.** Günü geçmiş ama hâlâ
+  "Planlandı" duran randevu ciroya girmez ve "kaç seans boşa gitti" sayısını
+  yanıltır. Randevular ekranının üstünde varsayılan KAPALI bir şerit hepsini
+  (süzgeç ve görünümden bağımsız, şubenin tamamı) tek tıkla kapatılabilir
+  listeler.
+- **Kişi bazlı randevu geçmişi öğrenci kartında ve uzman sayfasında.**
+  Öğrenci kartında bütün randevular (yaklaşan / geçmiş ve iptaller), uzman
+  sayfasında ay ay. Görünürlük `randevular` modülünü görenle sınırlı, ücret
+  dahil. Uzman sayfası takvimle aynı ilkeyle şubeler arası okur; danışan ve
+  ücret yalnız çalışılan şubede açık. Veli için ayrı sayfa açılmadı (istenmedi).
+- **Takvimde tarihe atlama.** Hafta hafta tıklamak yerine üç görünümün
+  başlığında tarih kutusu; seçilen gün görünümün çapası olur.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
   `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
   Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda

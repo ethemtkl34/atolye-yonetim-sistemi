@@ -44,6 +44,9 @@ import {
 } from "@/components/zeka-testleri-bolumu";
 import { AKTIF_DONEM_DURUMLARI, AKTIF_KULUP_DURUMLARI } from "@/lib/durumlar";
 import { bugun, tarihBicimle, tarihMetni, yasBicimle } from "@/lib/tarih";
+import { ogrenciRandevulari } from "@/lib/randevu/gecmis-verisi";
+import { istanbulBugunu } from "@/lib/randevu/gecmis-kilidi";
+import { RandevuGecmisiListesi } from "@/components/randevu-gecmisi-listesi";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -103,6 +106,9 @@ export default async function OgrenciProfilSayfasi(
   // menüden kaldırıldı). Yetki kaydın kendi modülünden okunur; düğme yoksa
   // sunucu eylemi de zaten `kayitlar: TAM` istiyor.
   const kayitCikarabilir = kullanici.yetkiler.kayitlar === "TAM";
+  // Randevu geçmişi (Eylül 2026): randevular modülünü görebilen herkes —
+  // ücret dahil, "modülü gören ücreti de görür" kuralı (§17.8).
+  const randevuGorebilir = kullanici.yetkiler.randevular !== "YOK";
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
   // dashboard'dan ve eski rapor adreslerinden gelen bağlantılar bunu kullanır.
@@ -162,6 +168,7 @@ export default async function OgrenciProfilSayfasi(
     oturumGunleri,
     veliFormuAtolyeKayitlari,
     arsivRaporKayitlari,
+    randevuKayitlari,
   ] = await Promise.all([
     raporGorebilir ? raporOzetleri({ subeId, ogrenciId: id }) : [],
     // Yeni rapor penceresinin kapsam seçenekleri; küçük bir liste olduğu için
@@ -280,6 +287,7 @@ export default async function OgrenciProfilSayfasi(
           },
         })
       : [],
+    randevuGorebilir ? ogrenciRandevulari(id, subeId) : [],
   ]);
 
   const arsivRaporlar: ArsivRaporSatiri[] = arsivRaporKayitlari.map(
@@ -452,6 +460,14 @@ export default async function OgrenciProfilSayfasi(
         guncellemeTarihi: basvuruKaydi.updatedAt,
       }
     : null;
+
+  const randevuBugunu = istanbulBugunu();
+  const yaklasanRandevu = randevuKayitlari
+    .filter(
+      (randevu) =>
+        randevu.durum !== "IPTAL" && randevu.baslangic.getTime() >= randevuBugunu.getTime(),
+    )
+    .at(-1);
 
   const sonTerapi = gorusmeler[0]?.tarih;
   const sonVeliGorusmesi = veliGorusmeleri[0]?.tarih;
@@ -627,6 +643,28 @@ export default async function OgrenciProfilSayfasi(
               </div>
             </ProfilKutusu>
           </>
+        ) : null}
+
+        {randevuGorebilir ? (
+          <ProfilKutusu
+            renk="randevu"
+            baslik="Randevular"
+            altyazi={
+              yaklasanRandevu
+                ? `Sıradaki: ${tarihBicimle(yaklasanRandevu.baslangic)}`
+                : randevuKayitlari.length > 0
+                  ? `Son: ${tarihBicimle(randevuKayitlari[0].baslangic)}`
+                  : "Henüz randevu yok"
+            }
+            adet={randevuKayitlari.length}
+          >
+            <RandevuGecmisiListesi
+              satirlar={randevuKayitlari}
+              bugun={randevuBugunu}
+              kisi="uzman"
+              bosMetin="Bu öğrencinin hiç randevusu yok."
+            />
+          </ProfilKutusu>
         ) : null}
 
         {zekaTestiYetkisi !== "YOK" ? (

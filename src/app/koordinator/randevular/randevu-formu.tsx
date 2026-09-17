@@ -52,6 +52,7 @@ export function RandevuFormuAcici({
   varsayilanTarih,
   varsayilanUzmanId,
   varsayilanSaat,
+  enErkenTarih,
   acik: acikDisarida,
   onAcikDegis,
 }: {
@@ -62,6 +63,11 @@ export function RandevuFormuAcici({
   varsayilanUzmanId?: string;
   /** Program hücresinin dakikasından önerilen saat, "SS:DD". */
   varsayilanSaat?: string;
+  /**
+   * Geçmiş kilidi: yönetici olmayan için bugün ("YYYY-AA-GG"). Tarih kutusu
+   * bundan erkenini seçtirmez; sunucu ayrıca reddediyor.
+   */
+  enErkenTarih?: string;
   /**
    * Açık/kapalı durumunu DIŞARIDAN kontrol etmek için (Program hücresi
    * tıklamasıyla açma gibi). Verilmezse bileşen kendi durumunu tutar ve
@@ -89,6 +95,7 @@ export function RandevuFormuAcici({
           varsayilanTarih={varsayilanTarih}
           varsayilanUzmanId={varsayilanUzmanId}
           varsayilanSaat={varsayilanSaat}
+          enErkenTarih={enErkenTarih}
           onKapat={kapat}
         />
       ) : null}
@@ -102,6 +109,7 @@ function RandevuFormu({
   varsayilanTarih,
   varsayilanUzmanId,
   varsayilanSaat,
+  enErkenTarih,
   onKapat,
 }: {
   uzmanlar: UzmanSecenegi[];
@@ -109,8 +117,14 @@ function RandevuFormu({
   varsayilanTarih: string;
   varsayilanUzmanId?: string;
   varsayilanSaat?: string;
+  enErkenTarih?: string;
   onKapat: () => void;
 }) {
+  // Takvimde geçmiş bir haftaya gidilmişken "Randevu aç" o haftanın gününü
+  // önerirdi; kilitli kullanıcıda öneri bugüne çekiliyor ki form ilk
+  // denemede reddedilmesin.
+  const onerilenTarih =
+    enErkenTarih && varsayilanTarih < enErkenTarih ? enErkenTarih : varsayilanTarih;
   const [durum, gonder] = useActionState<EylemDurumu, FormData>(
     async (_onceki, veri) => {
       const sonuc = await randevuEkle(_onceki, veri);
@@ -262,7 +276,8 @@ function RandevuFormu({
             <Girdi
               name="tarih"
               type="date"
-              defaultValue={deger("tarih") ?? varsayilanTarih}
+              defaultValue={deger("tarih") ?? onerilenTarih}
+              min={enErkenTarih}
               required
             />
           </Alan>

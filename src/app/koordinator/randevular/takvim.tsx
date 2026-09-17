@@ -13,6 +13,7 @@ import { DURUM_ADLARI, DURUM_ROZETLERI, type Gorunum } from "./sema";
 import { randevuDurumDegistir, randevuIptalEt } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
+import { TarihAtlayici } from "./tarih-atlayici";
 import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 
@@ -41,6 +42,12 @@ export type RandevuSatiri = {
   /** Ham indirim (kuruş) — düzenleme formunun "İndirim (₺)" alanı için; başka şubede null. */
   indirimKurus: number | null;
   indirimNotu: string | null;
+  /**
+   * Günü bitmiş ve oturumdaki kullanıcı geçmişi değiştiremiyor: düzenleme ve
+   * iptal çizilmez, yalnız durum işaretlenir (bkz. lib/randevu/gecmis-kilidi.ts).
+   * Sunucu eylemleri kilidi ayrıca uyguluyor; bu alan yalnız arayüz için.
+   */
+  kilitli: boolean;
 };
 
 export type GunGrubu = { gun: Date; randevular: RandevuSatiri[] };
@@ -64,6 +71,9 @@ export function Takvim({
   geriYolu,
   ileriYolu,
   bugunYolu,
+  tarih,
+  tarihsizYol,
+  enErkenTarih,
   iptalYolu,
   formUzmanlari,
   hizmetler,
@@ -79,6 +89,15 @@ export function Takvim({
   geriYolu: string;
   ileriYolu: string;
   bugunYolu: string;
+  /** Görünümün çapası ("YYYY-AA-GG") — "tarihe git" kutusu. */
+  tarih: string;
+  /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
+  tarihsizYol: string;
+  /**
+   * Yönetici olmayan için bugün ("YYYY-AA-GG"): daha erken güne randevu
+   * açılamaz, taşınamaz (geçmiş kilidi). Yöneticide verilmez.
+   */
+  enErkenTarih?: string;
   iptalYolu: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
@@ -98,7 +117,7 @@ export function Takvim({
       {mesaj?.hata ? <Bildirim tur="hata">{mesaj.hata}</Bildirim> : null}
 
       <Kart className="flex flex-wrap items-center justify-between gap-3 p-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href={geriYolu} className={butonStili("ikincil")} aria-label="Önceki">
             ‹
           </Link>
@@ -108,6 +127,7 @@ export function Takvim({
           <Link href={ileriYolu} className={butonStili("ikincil")} aria-label="Sonraki">
             ›
           </Link>
+          <TarihAtlayici tarih={tarih} tarihsizYol={tarihsizYol} />
           <span className="ml-1 font-semibold text-zinc-900">{baslik}</span>
           <span className="text-sm text-zinc-500">
             {toplam} randevu
@@ -200,6 +220,7 @@ export function Takvim({
         randevu={duzenleHedefi}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
+        enErkenTarih={enErkenTarih}
         onKapat={() => setDuzenleHedefi(null)}
       />
     </div>

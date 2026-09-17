@@ -10,6 +10,7 @@ import {
   haftaSutunlariniOlustur,
 } from "@/lib/randevu/izgara-verisi";
 import type { RandevuSatiri } from "@/app/koordinator/randevular/takvim";
+import { randevuGecmisMi } from "@/lib/randevu/gecmis-kilidi";
 
 /**
  * Hem `randevular/page.tsx` (dört görünüm) hem aday akışının randevu
@@ -22,7 +23,10 @@ export async function randevuSatirlariGetir(args: {
   uzmanSuzgeci?: string;
   hizmetSuzgeci?: string;
   iptalleriGoster?: boolean;
+  /** Oturumdaki kullanıcı geçmiş randevuyu değiştirebilir mi (yöneticiler). */
+  gecmisiDuzenleyebilir?: boolean;
 }): Promise<RandevuSatiri[]> {
+  const simdi = new Date();
   const randevular = await db.randevu.findMany({
     where: {
       baslangic: { gte: args.aralik.ilk, lt: args.aralik.son },
@@ -84,6 +88,7 @@ export async function randevuSatirlariGetir(args: {
       // yazılamaz; ham indirim burada ayrıca taşınıyor.
       indirimKurus: bizim ? randevu.indirimKurus : null,
       indirimNotu: bizim ? randevu.indirimNotu : null,
+      kilitli: !args.gecmisiDuzenleyebilir && randevuGecmisMi(randevu.baslangic, simdi),
     };
   });
 }

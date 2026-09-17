@@ -1029,6 +1029,16 @@ Danışanı velidir; çocuk seçimi isteğe bağlıdır.
   ad, soyad ve isteğe bağlı doğum tarihiyle kısa kayıt açılır.
 - **Öğrenci geçmişi**: kayıtlı bir öğrenci aranır ve bütün randevuları
   (geçmiş + gelecek) salt okunur listelenir. Şubeye kilitlidir.
+- **Tarihe atlama**: Hafta, Program ve Liste/Ay başlığındaki tarih kutusuyla
+  doğrudan bir güne gidilir.
+- **Geçmiş kilidi**: günü bitmiş randevuyu yalnız Kurum ve Şube Yöneticisi
+  düzenler, iptal eder; geçmiş güne randevu da yalnız onlar açar. Durum
+  (Gerçekleşti/Gelmedi) herkes tarafından işaretlenir.
+- **İşaretlenmemiş geçmiş randevular**: ekranın üstünde, günü geçmiş ama
+  "Planlandı" duran randevuların tek tıkla kapatılan listesi.
+- **Kişi bazlı geçmiş**: öğrenci kartında "Randevular" kutusu (bütün
+  randevular, özet sayılar, ücret) ve uzman sayfasında ay ay randevu listesi;
+  ikisi de `randevular` modülünü görene.
 - **Uzman renkleri** penceresi takvimden `Uzman.renk` alanını düzeltir.
   Paletin başında kurumun sekiz marka rengi var; blok üstündeki yazı rengi
   zeminin parlaklığına göre seçilir.
