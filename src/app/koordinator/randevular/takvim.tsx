@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { EylemDurumu } from "@/lib/formlar";
 import { paraMetni } from "../uzmanlar/sema";
 import { DURUM_ADLARI, DURUM_ROZETLERI, type Gorunum } from "./sema";
-import { randevuDurumDegistir, randevuIptalEt } from "./actions";
+import { randevuDurumDegistir, randevuIptalEt, randevuSil } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { TarihAtlayici } from "./tarih-atlayici";
@@ -56,6 +56,8 @@ export type RandevuSatiri = {
    * Sunucu eylemleri kilidi ayrıca uyguluyor; bu alan yalnız arayüz için.
    */
   kilitli: boolean;
+  /** Günü geçmemiş (bugün ya da ileri): kalıcı silme yalnız bunlarda. */
+  silinebilir: boolean;
 };
 
 export type GunGrubu = { gun: Date; randevular: RandevuSatiri[] };
@@ -112,6 +114,7 @@ export function Takvim({
 }) {
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
+  const [silHedefi, setSilHedefi] = useState<RandevuSatiri | null>(null);
   const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
   const [bekliyor, basla] = useTransition();
 
@@ -199,6 +202,7 @@ export function Takvim({
                             )
                           }
                           onIptal={() => setIptalHedefi(randevu)}
+                          onSil={() => setSilHedefi(randevu)}
                           onDuzenle={() => setDuzenleHedefi(randevu)}
                         />
                       ))}
@@ -224,6 +228,18 @@ export function Takvim({
         }}
       />
 
+      <IptalPenceresi
+        tur="sil"
+        randevu={silHedefi}
+        onKapat={() => setSilHedefi(null)}
+        onOnayla={(kapsam) => {
+          const hedef = silHedefi;
+          setSilHedefi(null);
+          if (!hedef) return;
+          basla(async () => setMesaj(await randevuSil(hedef.id, kapsam)));
+        }}
+      />
+
       <RandevuDuzenleFormu
         randevu={duzenleHedefi}
         uzmanlar={formUzmanlari}
@@ -242,6 +258,7 @@ function RandevuTabloSatiri({
   bekliyor,
   onDurum,
   onIptal,
+  onSil,
   onDuzenle,
 }: {
   randevu: RandevuSatiri;
@@ -250,6 +267,7 @@ function RandevuTabloSatiri({
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onSil: () => void;
   onDuzenle: () => void;
 }) {
   const ton = uzmanRengi(randevu.uzmanRengi);
@@ -339,6 +357,7 @@ function RandevuTabloSatiri({
           bekliyor={bekliyor}
           onDurum={onDurum}
           onIptal={onIptal}
+          onSil={onSil}
           onDuzenle={onDuzenle}
         />
       </td>
@@ -363,9 +382,10 @@ function RandevuIslemMenusu(props: {
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onSil: () => void;
   onDuzenle: () => void;
 }) {
-  const { randevu, yazabilir, onDurum, onIptal, onDuzenle } = props;
+  const { randevu, yazabilir, onDurum, onIptal, onSil, onDuzenle } = props;
   const [acik, setAcik] = useState(false);
   // Sabit (fixed) konumlanan panelin ekrandaki yeri — düğmenin altına ve
   // sağına hizalı, GERÇEK piksel olarak açılış anında ölçülüyor.
@@ -454,6 +474,10 @@ function RandevuIslemMenusu(props: {
                 onIptal={() => {
                   setAcik(false);
                   onIptal();
+                }}
+                onSil={() => {
+                  setAcik(false);
+                  onSil();
                 }}
                 onDuzenle={() => {
                   setAcik(false);

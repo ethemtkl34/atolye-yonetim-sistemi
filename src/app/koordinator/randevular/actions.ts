@@ -607,6 +607,55 @@ export async function randevuDurumDegistir(
 }
 
 /**
+ * Randevuyu KALICI olarak siler (Eylül 2026 kararı) — yanlış girilmiş kaydın
+ * yolu. Asıl akış iptaldir: iptal iz bırakır, silme bırakmaz.
+ *
+ * Yalnız bugünkü ve gelecek randevu silinir, yöneticide de: günü geçmiş
+ * seans ciroya ve raporlara girmiş olabilir, o iptal edilir. Yetki
+ * düzenlemeyle aynı (`randevular` TAM). Seride kapsam iptaldeki gibi
+ * sorulur; "bu ve sonrakiler" geçmiş haftalara hiç dokunmaz.
+ */
+export async function randevuSil(
+  randevuId: string,
+  kapsam: TekrarKapsami,
+): Promise<EylemDurumu> {
+  const kullanici = await randevuZorunlu("TAM");
+
+  const randevu = await db.randevu.findFirst({
+    where: { id: randevuId, branchId: kullanici.aktifSubeId },
+    select: { id: true, baslangic: true, seriId: true },
+  });
+  if (!randevu) return { hata: "Randevu bulunamadı." };
+  if (randevuGecmisMi(randevu.baslangic)) {
+    return { hata: "Günü geçmiş randevu silinemez; iptal edebilirsiniz." };
+  }
+
+  const seridekiler =
+    randevu.seriId && kapsam === "bu-ve-sonrakiler"
+      ? await db.randevu.findMany({
+          where: { seriId: randevu.seriId, branchId: kullanici.aktifSubeId },
+          select: { id: true, baslangic: true },
+        })
+      : [{ id: randevu.id, baslangic: randevu.baslangic }];
+
+  const hedefler = kapsamdakiRandevular(seridekiler, randevu, kapsam).filter(
+    (hedef) => !randevuGecmisMi(hedef.baslangic),
+  );
+
+  const sonuc = await db.randevu.deleteMany({
+    where: {
+      id: { in: hedefler.map((hedef) => hedef.id) },
+      branchId: kullanici.aktifSubeId,
+    },
+  });
+
+  tazele();
+  return {
+    basari: sonuc.count === 1 ? "Randevu silindi." : `${sonuc.count} randevu silindi.`,
+  };
+}
+
+/**
  * Randevuyu iptal eder. SİLMEZ — iptal edilen randevu takvimden düşer ama
  * geçmişiyle ayrı listede durur (§17.4).
  *

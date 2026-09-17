@@ -23,6 +23,7 @@ export function RandevuEylemleri({
   bekliyor,
   onDurum,
   onIptal,
+  onSil,
   onDuzenle,
 }: {
   randevu: RandevuSatiri;
@@ -31,6 +32,7 @@ export function RandevuEylemleri({
   bekliyor: boolean;
   onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
   onIptal: () => void;
+  onSil: () => void;
   onDuzenle: () => void;
 }) {
   const iptalEdilmis = randevu.durum === "IPTAL";
@@ -123,6 +125,12 @@ export function RandevuEylemleri({
           İptal
         </Buton>
       )}
+      {/* Kalıcı silme yalnız günü geçmemiş randevuda (bkz. `randevuSil`). */}
+      {randevu.silinebilir ? (
+        <Buton type="button" tur="sade" disabled={bekliyor} onClick={onSil}>
+          Sil
+        </Buton>
+      ) : null}
     </div>
   );
 }

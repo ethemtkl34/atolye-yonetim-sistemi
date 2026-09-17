@@ -10,8 +10,9 @@ import type { RandevuSatiri } from "./takvim";
 /**
  * §17.4 — Randevu iptali.
  *
- * SİLME DEĞİL: iptal edilen randevu takvimden düşer ama geçmişiyle "İptaller"
- * listesinde durur. Bu yüzden pencere "silinecek" demiyor.
+ * İPTAL SİLME DEĞİL: iptal edilen randevu takvimden düşer ama geçmişiyle
+ * "İptaller" listesinde durur. Kalıcı silme (`tur="sil"`) aynı pencereyi
+ * kullanır ama bunu açıkça yazar.
  *
  * Seriden açılmış randevuda KAPSAM sorulur. Sormamak iki yanlıştan birine
  * götürürdü: ya haftalık danışmanlığı bırakan bir aile için koordinatör 8
@@ -20,13 +21,20 @@ import type { RandevuSatiri } from "./takvim";
  */
 export function IptalPenceresi({
   randevu,
+  tur = "iptal",
   onKapat,
   onOnayla,
 }: {
   randevu: RandevuSatiri | null;
+  /**
+   * "sil" (Eylül 2026): aynı kapsam sorusu, ama kalıcı silme — not alanı
+   * yok, pencere geri alınamayacağını açıkça söylüyor.
+   */
+  tur?: "iptal" | "sil";
   onKapat: () => void;
   onOnayla: (kapsam: TekrarKapsami, not: string | null) => void;
 }) {
+  const silme = tur === "sil";
   const [kapsam, setKapsam] = useState<TekrarKapsami>("yalniz-bu");
   const [not, setNot] = useState("");
 
@@ -42,7 +50,7 @@ export function IptalPenceresi({
     <Pencere
       acik
       onKapat={kapat}
-      baslik="Randevuyu iptal et"
+      baslik={silme ? "Randevuyu sil" : "Randevuyu iptal et"}
       altBaslik={`${tarihGunleBicimle(randevu.baslangic)} · ${saatAraligiMetni(
         randevu.baslangic,
         randevu.bitis,
@@ -54,6 +62,14 @@ export function IptalPenceresi({
         {randevu.ogrenciAdi ? ` · ${randevu.ogrenciAdi}` : ""} ·{" "}
         {randevu.uzmanAdi}
       </p>
+
+      {silme ? (
+        <p className="kil-uyari px-3 py-2 text-sm text-amber-900">
+          Randevu <strong>kalıcı olarak silinecek</strong> ve geri alınamaz: takvimde,
+          öğrenci kartında ve raporlarda hiç iz kalmaz. Yanlış girilmiş bir kayıt
+          değilse silmek yerine iptal edin.
+        </p>
+      ) : null}
 
       {randevu.seriDeMi ? (
         <fieldset className="kil-oyuk space-y-2 p-3">
@@ -93,6 +109,7 @@ export function IptalPenceresi({
         </fieldset>
       ) : null}
 
+      {silme ? null : (
       <Alan etiket="İptal notu (isteğe bağlı)">
         <CokSatirli
           rows={2}
@@ -102,6 +119,7 @@ export function IptalPenceresi({
           placeholder="Veli erteledi, hasta…"
         />
       </Alan>
+      )}
 
       <div className="flex justify-end gap-2 pt-1">
         <Buton type="button" tur="sade" onClick={kapat}>
@@ -110,11 +128,15 @@ export function IptalPenceresi({
         <Buton
           type="button"
           tur="tehlike"
-          onClick={() => onOnayla(kapsam, not.trim() || null)}
+          onClick={() => onOnayla(kapsam, silme ? null : not.trim() || null)}
         >
           {kapsam === "bu-ve-sonrakiler" && randevu.seriDeMi
-            ? "Bu ve sonrakileri iptal et"
-            : "Randevuyu iptal et"}
+            ? silme
+              ? "Bu ve sonrakileri sil"
+              : "Bu ve sonrakileri iptal et"
+            : silme
+              ? "Randevuyu kalıcı olarak sil"
+              : "Randevuyu iptal et"}
         </Buton>
       </div>
     </Pencere>

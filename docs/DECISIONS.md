@@ -325,6 +325,13 @@ Karar gerekçeleri:
   (kurum tercihi). Düzenlemede listede olmayan eski indirim (aktarılan %18
   gibi) "Mevcut indirim" seçeneğiyle korunur: formu başka bir alan için açan
   kullanıcı indirimi farkında olmadan silmemeli.
+- **Randevu kalıcı olarak silinebilir, ama yalnız günü geçmemişse (Eylül
+  2026).** İlk kararda silme yoktu, yalnız iptal vardı. Kurum yanlış girilen
+  kayıtlar için silme istedi. Sınır tarihte çizildi, rolde değil:
+  randevuyu düzenleyebilen herkes bugünkü ve gelecek randevuyu siler; günü
+  geçmiş seans ciroya ve raporlara girmiş olabileceği için yöneticide de
+  silinmez, iptal edilir. İptal penceresi kapsam sorusuyla birlikte yeniden
+  kullanılıyor ve silmede "kalıcı, geri alınamaz" diye açıkça uyarıyor.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
   `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
   Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda

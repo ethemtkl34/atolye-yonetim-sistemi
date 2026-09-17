@@ -103,6 +103,9 @@ export async function randevuSatirlariGetir(args: {
       indirimKurus: bizim ? randevu.indirimKurus : null,
       indirimNotu: bizim ? randevu.indirimNotu : null,
       kilitli: !args.gecmisiDuzenleyebilir && randevuGecmisMi(randevu.baslangic, simdi),
+      // Silme yalnız bugünkü ve gelecek randevuda — yöneticide de (ciroya
+      // girmiş geçmiş seans silinmez, iptal edilir).
+      silinebilir: !randevuGecmisMi(randevu.baslangic, simdi),
     };
   });
 }

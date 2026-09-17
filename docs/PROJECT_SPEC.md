@@ -1012,6 +1012,12 @@ Danışanı velidir; çocuk seçimi isteğe bağlıdır.
   ve saate eklenir. Zekâ testleri bu otomasyonun dışındadır.
 - **İptal edilen randevu silinmez**: takvimden düşer, ayrı bir listede
   geçmişiyle görünür.
+- **Kalıcı silme** (Eylül 2026) yanlış girilmiş kayıt içindir: "İptal"in
+  yanındaki "Sil", onay penceresiyle. Randevuyu düzenleyebilen herkes siler;
+  yalnız **bugünkü ve gelecek** randevu silinebilir (günü geçmiş seans
+  iptal edilir, yöneticide de). Seride "yalnız bu / bu ve sonrakiler"
+  sorulur, geçmiş haftalara dokunulmaz. Silinen randevu hiçbir listede
+  kalmaz.
 - Randevu, ilgili görüşme veya zekâ testi kaydına isteğe bağlı olarak bağlanır;
   o kayıtlar (§11, danışmanlık ve zekâ testleri) yerinde kalır.
 

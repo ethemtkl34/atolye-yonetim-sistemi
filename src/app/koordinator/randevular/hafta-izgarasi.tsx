@@ -8,7 +8,7 @@ import { saatAraligiMetni, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import type { HaftaSutunu, IzgaraEkseni } from "@/lib/randevu/izgara-verisi";
 import type { EylemDurumu } from "@/lib/formlar";
 import { DURUM_ADLARI, DURUM_ROZETLERI } from "./sema";
-import { randevuDurumDegistir, randevuIptalEt } from "./actions";
+import { randevuDurumDegistir, randevuIptalEt, randevuSil } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { HaftaIzgarasiGovdesi } from "./hafta-izgarasi-govde";
@@ -74,6 +74,7 @@ export function HaftaIzgarasi({
   const [mesaj, setMesaj] = useState<EylemDurumu | null>(null);
   const [detay, setDetay] = useState<RandevuSatiri | null>(null);
   const [iptalHedefi, setIptalHedefi] = useState<RandevuSatiri | null>(null);
+  const [silHedefi, setSilHedefi] = useState<RandevuSatiri | null>(null);
   const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
   const [hucreSecimi, setHucreSecimi] = useState<{
     tarih: string;
@@ -195,6 +196,10 @@ export function HaftaIzgarasi({
                 setIptalHedefi(detay);
                 setDetay(null);
               }}
+              onSil={() => {
+                setSilHedefi(detay);
+                setDetay(null);
+              }}
               onDuzenle={() => {
                 setDuzenleHedefi(detay);
                 setDetay(null);
@@ -212,6 +217,18 @@ export function HaftaIzgarasi({
           setIptalHedefi(null);
           if (!hedef) return;
           basla(async () => setMesaj(await randevuIptalEt(hedef.id, kapsam, not)));
+        }}
+      />
+
+      <IptalPenceresi
+        tur="sil"
+        randevu={silHedefi}
+        onKapat={() => setSilHedefi(null)}
+        onOnayla={(kapsam) => {
+          const hedef = silHedefi;
+          setSilHedefi(null);
+          if (!hedef) return;
+          basla(async () => setMesaj(await randevuSil(hedef.id, kapsam)));
         }}
       />
 
