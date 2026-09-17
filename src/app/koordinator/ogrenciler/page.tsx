@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
+import { db } from "@/lib/db";
 import { Bildirim, BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
-import { SuzgecCubugu, SuzgecGrubu } from "@/components/suzgec";
+import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { Sayfalama, sayfaNumarasiCoz } from "@/components/sayfalama";
 import { tarihBicimle } from "@/lib/tarih";
 
@@ -45,10 +46,30 @@ export default async function OgrencilerSayfasi(
 
   const istenenSayfa = sayfaNumarasiCoz(parametreler.sayfa);
 
+  /**
+   * Dönem süzgeci (Eylül 2026): seçilen dönemde aktif kaydı olan öğrenciler.
+   *
+   * Liste yalnız BU ŞUBEDE grubu olan dönemleri gösteriyor: dönem tanımı iki
+   * şubede ortak ama gruplar şubeye ait — başka şubenin dönemini seçmek boş
+   * liste üretirdi. Geçersiz bir `donem` parametresi yok sayılıyor.
+   */
+  const donemler = await db.term.findMany({
+    where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
+    orderBy: [{ createdAt: "desc" }],
+    select: { id: true, name: true },
+  });
+  const donemId =
+    typeof parametreler.donem === "string" &&
+    donemler.some((donem) => donem.id === parametreler.donem)
+      ? parametreler.donem
+      : undefined;
+  const secilenDonem = donemler.find((donem) => donem.id === donemId);
+
   const ara = (sayfa: number) =>
     ogrenciAra(sorgu, {
       subeId: kullanici.aktifSubeId,
       kapsam,
+      donemId,
       enFazla: SAYFA_BOYUTU,
       atla: (sayfa - 1) * SAYFA_BOYUTU,
     });
@@ -68,6 +89,7 @@ export default async function OgrencilerSayfasi(
   const suzgecler: Record<string, string> = {
     ...(sorgu ? { q: sorgu } : {}),
     ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
+    ...(donemId ? { donem: donemId } : {}),
   };
 
   const ilkSira = toplam === 0 ? 0 : (sayfa - 1) * SAYFA_BOYUTU + 1;
@@ -97,6 +119,7 @@ export default async function OgrencilerSayfasi(
         {kapsam === "aktif" ? (
           <input type="hidden" name="kapsam" value="aktif" />
         ) : null}
+        {donemId ? <input type="hidden" name="donem" value={donemId} /> : null}
         <Girdi
           name="q"
           type="search"
@@ -122,8 +145,27 @@ export default async function OgrencilerSayfasi(
             { deger: "tumu", etiket: "Tümü" },
           ]}
           secili={kapsam}
-          digerler={sorgu ? { q: sorgu } : {}}
+          digerler={{
+            ...(sorgu ? { q: sorgu } : {}),
+            ...(donemId ? { donem: donemId } : {}),
+          }}
         />
+        {donemler.length > 0 ? (
+          <SuzgecSecici
+            etiket="Dönem"
+            temelYol={TEMEL_YOL}
+            anahtar="donem"
+            secili={donemId ?? ""}
+            digerler={{
+              ...(sorgu ? { q: sorgu } : {}),
+              ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
+            }}
+            secenekler={donemler.map((donem) => ({
+              deger: donem.id,
+              etiket: donem.name,
+            }))}
+          />
+        ) : null}
       </SuzgecCubugu>
 
       {toplam > 0 ? (
@@ -135,9 +177,12 @@ export default async function OgrencilerSayfasi(
             <>
               {" · "}
               <Link
-                href={
-                  kapsam === "aktif" ? `${TEMEL_YOL}?kapsam=aktif` : TEMEL_YOL
-                }
+                href={(() => {
+                  const p = new URLSearchParams(suzgecler);
+                  p.delete("q");
+                  const sorgusuz = p.toString();
+                  return sorgusuz ? `${TEMEL_YOL}?${sorgusuz}` : TEMEL_YOL;
+                })()}
                 className={baglantiStili}
               >
                 aramayı temizle
@@ -158,16 +203,20 @@ export default async function OgrencilerSayfasi(
           baslik={
             sorgu
               ? `"${sorgu}" için sonuç bulunamadı.`
-              : kapsam === "aktif"
-                ? "Aktif programda kayıtlı öğrenci yok."
-                : "Henüz öğrenci kaydı yok."
+              : secilenDonem
+                ? `${secilenDonem.name} döneminde kayıtlı öğrenci yok.`
+                : kapsam === "aktif"
+                  ? "Aktif programda kayıtlı öğrenci yok."
+                  : "Henüz öğrenci kaydı yok."
           }
           aciklama={
             sorgu
               ? "Farklı bir yazım deneyin veya yeni öğrenci ekleyin."
-              : kapsam === "aktif"
-                ? "“Tümü” süzgeciyle bütün öğrencileri görebilirsiniz."
-                : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."
+              : secilenDonem
+                ? "Dönem süzgecini “Tümü” yaparak bütün öğrencileri görebilirsiniz."
+                : kapsam === "aktif"
+                  ? "“Tümü” süzgeciyle bütün öğrencileri görebilirsiniz."
+                  : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."
           }
         />
       ) : (

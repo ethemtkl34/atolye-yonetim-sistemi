@@ -311,6 +311,14 @@ Koordinatör öğrenciyi aşağıdaki bilgilerle arayabilmelidir:
 
 Arama sonuçlarında aynı isimli öğrencileri ayırmak için doğum tarihi, okul veya sınıf gibi yardımcı bilgiler gösterilmelidir.
 
+Liste iki süzgeçle daraltılır:
+
+- **Kapsam:** "Aktif programlarda" ya da "Tümü".
+- **Dönem** (Eylül 2026): açılır listeden bir dönem seçilince yalnız o
+  dönemde AKTİF kaydı olan öğrenciler listelenir; iptal edilmiş kayıt
+  saymaz. Listede yalnız çalışılan şubede grubu olan dönemler bulunur —
+  dönem tanımı iki şubede ortaktır, gruplar şubeye aittir.
+
 ### 6.3 Öğrenci profili
 
 Öğrenci profili aşağıdaki bölümleri içermelidir:

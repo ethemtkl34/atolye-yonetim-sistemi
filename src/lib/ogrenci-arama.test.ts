@@ -81,3 +81,32 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
     expect(ogrenciAramaKosulu("Ali 532", { subeId: SUBE }).OR).toHaveLength(2);
   });
 });
+
+describe("ogrenciAramaKosulu — dönem süzgeci", () => {
+  it("dönem verilince o dönemde AKTİF kaydı olanlar süzülür", () => {
+    const kosul = ogrenciAramaKosulu("", { subeId: SUBE, donemId: "donem-1" });
+    expect(kosul.branchId).toBe(SUBE);
+    expect(kosul.AND).toEqual([
+      {
+        enrollments: {
+          some: { status: "AKTIF", group: { termId: "donem-1", branchId: SUBE } },
+        },
+      },
+    ]);
+  });
+
+  it("dönem ve 'aktif programlarda' birlikte durur — biri diğerini ezmez", () => {
+    const kosul = ogrenciAramaKosulu("", {
+      subeId: SUBE,
+      kapsam: "aktif",
+      donemId: "donem-1",
+    });
+    // `kapsam` kendi `enrollments` koşulunu koyuyor; dönem AND dalında kalmalı.
+    expect(kosul.enrollments).toEqual(aktifOgrenciKosulu(SUBE).enrollments);
+    expect(kosul.AND).toHaveLength(1);
+  });
+
+  it("dönem verilmezse AND dalı hiç açılmaz", () => {
+    expect(ogrenciAramaKosulu("", { subeId: SUBE }).AND).toBeUndefined();
+  });
+});
