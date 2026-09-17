@@ -32,11 +32,13 @@ export type AramaSecenekleri = {
    */
   kapsam?: "tumu" | "aktif";
   /**
-   * Dönem süzgeci (Eylül 2026): yalnız bu dönemde AKTİF kaydı olan
-   * öğrenciler. İptal edilmiş kayıt "o döneme kayıtlı" saymaz — listeden
-   * çıkarılmış öğrenci dönemin listesinde görünmemeli.
+   * Program süzgeci (Eylül 2026): yalnız bu dönemde ya da kulüpte AKTİF
+   * kaydı olan öğrenciler. İptal edilmiş kayıt "kayıtlı" saymaz — listeden
+   * çıkarılmış öğrenci programın listesinde görünmemeli. İkisi birden
+   * verilmez; süzgeç tek bir program seçtiriyor.
    */
   donemId?: string;
+  kulupId?: string;
 };
 
 /**
@@ -54,7 +56,8 @@ export function ogrenciAramaKosulu(
     subeId,
     kapsam = "tumu",
     donemId,
-  }: Pick<AramaSecenekleri, "subeId" | "kapsam" | "donemId">,
+    kulupId,
+  }: Pick<AramaSecenekleri, "subeId" | "kapsam" | "donemId" | "kulupId">,
 ): Prisma.StudentWhereInput {
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
@@ -85,24 +88,22 @@ export function ogrenciAramaKosulu(
       }
     : {};
 
-  // Dönem koşulu AYRI bir `AND` dalında: `kapsam === "aktif"` de
+  // Program koşulu AYRI bir `AND` dalında: `kapsam === "aktif"` de
   // `enrollments`e koşul koyuyor ve tek anahtar altında ikisi birbirini
-  // ezerdi. Grup şubesi ayrıca süzülü — dönem iki şubede ortak, gruplar değil.
-  const donemKosulu: Prisma.StudentWhereInput = donemId
-    ? {
-        AND: [
-          {
-            enrollments: {
-              some: { status: "AKTIF", group: { termId: donemId, branchId: subeId } },
-            },
-          },
-        ],
-      }
+  // ezerdi. Grup şubesi ayrıca süzülü — dönem ve kulüp iki şubede ortak,
+  // gruplar değil.
+  const grupKosulu = donemId
+    ? { termId: donemId, branchId: subeId }
+    : kulupId
+      ? { clubId: kulupId, branchId: subeId }
+      : null;
+  const programKosulu: Prisma.StudentWhereInput = grupKosulu
+    ? { AND: [{ enrollments: { some: { status: "AKTIF", group: grupKosulu } } }] }
     : {};
 
   return {
     ...aramaKosulu,
-    ...donemKosulu,
+    ...programKosulu,
     ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
   };
 }

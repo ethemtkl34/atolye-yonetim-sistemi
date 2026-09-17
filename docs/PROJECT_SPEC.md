@@ -314,10 +314,11 @@ Arama sonuçlarında aynı isimli öğrencileri ayırmak için doğum tarihi, ok
 Liste iki süzgeçle daraltılır:
 
 - **Kapsam:** "Aktif programlarda" ya da "Tümü".
-- **Dönem** (Eylül 2026): açılır listeden bir dönem seçilince yalnız o
-  dönemde AKTİF kaydı olan öğrenciler listelenir; iptal edilmiş kayıt
-  saymaz. Listede yalnız çalışılan şubede grubu olan dönemler bulunur —
-  dönem tanımı iki şubede ortaktır, gruplar şubeye aittir.
+- **Program** (Eylül 2026): açılır listede dönemler ve kulüpler birlikte
+  bulunur (kulüpler "Kulüp · …" etiketiyle). Biri seçilince yalnız o
+  programda AKTİF kaydı olan öğrenciler listelenir; iptal edilmiş kayıt
+  saymaz. Listede yalnız çalışılan şubede grubu olan program bulunur —
+  dönem ve kulüp tanımı iki şubede ortaktır, gruplar şubeye aittir.
 
 ### 6.3 Öğrenci profili
 

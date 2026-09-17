@@ -47,29 +47,52 @@ export default async function OgrencilerSayfasi(
   const istenenSayfa = sayfaNumarasiCoz(parametreler.sayfa);
 
   /**
-   * Dönem süzgeci (Eylül 2026): seçilen dönemde aktif kaydı olan öğrenciler.
+   * Program süzgeci (Eylül 2026): seçilen dönemde ya da kulüpte aktif kaydı
+   * olan öğrenciler. Tek liste, iki tür — değer önekle ayrılıyor
+   * ("kulup:<id>"); dönem değeri çıplak kimlik olarak kaldı ki daha önce
+   * paylaşılmış adresler çalışmaya devam etsin.
    *
-   * Liste yalnız BU ŞUBEDE grubu olan dönemleri gösteriyor: dönem tanımı iki
-   * şubede ortak ama gruplar şubeye ait — başka şubenin dönemini seçmek boş
-   * liste üretirdi. Geçersiz bir `donem` parametresi yok sayılıyor.
+   * Liste yalnız BU ŞUBEDE grubu olan dönem ve kulüpleri gösteriyor: tanım
+   * iki şubede ortak ama gruplar şubeye ait — başka şubenin programını
+   * seçmek boş liste üretirdi. Geçersiz parametre yok sayılıyor.
    */
-  const donemler = await db.term.findMany({
-    where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
-    orderBy: [{ createdAt: "desc" }],
-    select: { id: true, name: true },
-  });
+  const [donemler, kulupler] = await Promise.all([
+    db.term.findMany({
+      where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
+      orderBy: [{ createdAt: "desc" }],
+      select: { id: true, name: true },
+    }),
+    db.club.findMany({
+      where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
+      orderBy: [{ createdAt: "desc" }],
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  const KULUP_ONEKI = "kulup:";
+  const programParametresi =
+    typeof parametreler.donem === "string" ? parametreler.donem : "";
+  const istenenKulupId = programParametresi.startsWith(KULUP_ONEKI)
+    ? programParametresi.slice(KULUP_ONEKI.length)
+    : "";
+  const kulupId = kulupler.some((kulup) => kulup.id === istenenKulupId)
+    ? istenenKulupId
+    : undefined;
   const donemId =
-    typeof parametreler.donem === "string" &&
-    donemler.some((donem) => donem.id === parametreler.donem)
-      ? parametreler.donem
+    !kulupId && donemler.some((donem) => donem.id === programParametresi)
+      ? programParametresi
       : undefined;
-  const secilenDonem = donemler.find((donem) => donem.id === donemId);
+  const programDegeri = kulupId ? `${KULUP_ONEKI}${kulupId}` : (donemId ?? "");
+  const secilenProgram =
+    donemler.find((donem) => donem.id === donemId) ??
+    kulupler.find((kulup) => kulup.id === kulupId);
 
   const ara = (sayfa: number) =>
     ogrenciAra(sorgu, {
       subeId: kullanici.aktifSubeId,
       kapsam,
       donemId,
+      kulupId,
       enFazla: SAYFA_BOYUTU,
       atla: (sayfa - 1) * SAYFA_BOYUTU,
     });
@@ -89,7 +112,7 @@ export default async function OgrencilerSayfasi(
   const suzgecler: Record<string, string> = {
     ...(sorgu ? { q: sorgu } : {}),
     ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
-    ...(donemId ? { donem: donemId } : {}),
+    ...(programDegeri ? { donem: programDegeri } : {}),
   };
 
   const ilkSira = toplam === 0 ? 0 : (sayfa - 1) * SAYFA_BOYUTU + 1;
@@ -119,7 +142,9 @@ export default async function OgrencilerSayfasi(
         {kapsam === "aktif" ? (
           <input type="hidden" name="kapsam" value="aktif" />
         ) : null}
-        {donemId ? <input type="hidden" name="donem" value={donemId} /> : null}
+        {programDegeri ? (
+          <input type="hidden" name="donem" value={programDegeri} />
+        ) : null}
         <Girdi
           name="q"
           type="search"
@@ -147,23 +172,28 @@ export default async function OgrencilerSayfasi(
           secili={kapsam}
           digerler={{
             ...(sorgu ? { q: sorgu } : {}),
-            ...(donemId ? { donem: donemId } : {}),
+            ...(programDegeri ? { donem: programDegeri } : {}),
           }}
         />
-        {donemler.length > 0 ? (
+        {donemler.length + kulupler.length > 0 ? (
           <SuzgecSecici
-            etiket="Dönem"
+            etiket="Program"
             temelYol={TEMEL_YOL}
             anahtar="donem"
-            secili={donemId ?? ""}
+            secili={programDegeri}
             digerler={{
               ...(sorgu ? { q: sorgu } : {}),
               ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
             }}
-            secenekler={donemler.map((donem) => ({
-              deger: donem.id,
-              etiket: donem.name,
-            }))}
+            secenekler={[
+              ...donemler.map((donem) => ({ deger: donem.id, etiket: donem.name })),
+              // Kulüp adları dönem adlarına karışmasın: aynı listede ama
+              // etiketiyle işaretli.
+              ...kulupler.map((kulup) => ({
+                deger: `${KULUP_ONEKI}${kulup.id}`,
+                etiket: `Kulüp · ${kulup.name}`,
+              })),
+            ]}
           />
         ) : null}
       </SuzgecCubugu>
@@ -203,8 +233,8 @@ export default async function OgrencilerSayfasi(
           baslik={
             sorgu
               ? `"${sorgu}" için sonuç bulunamadı.`
-              : secilenDonem
-                ? `${secilenDonem.name} döneminde kayıtlı öğrenci yok.`
+              : secilenProgram
+                ? `${secilenProgram.name} programında kayıtlı öğrenci yok.`
                 : kapsam === "aktif"
                   ? "Aktif programda kayıtlı öğrenci yok."
                   : "Henüz öğrenci kaydı yok."
@@ -212,8 +242,8 @@ export default async function OgrencilerSayfasi(
           aciklama={
             sorgu
               ? "Farklı bir yazım deneyin veya yeni öğrenci ekleyin."
-              : secilenDonem
-                ? "Dönem süzgecini “Tümü” yaparak bütün öğrencileri görebilirsiniz."
+              : secilenProgram
+                ? "Program süzgecini “Tümü” yaparak bütün öğrencileri görebilirsiniz."
                 : kapsam === "aktif"
                   ? "“Tümü” süzgeciyle bütün öğrencileri görebilirsiniz."
                   : "Dönem veya kulüp kaydı oluşturmak için önce öğrenci ekleyin."

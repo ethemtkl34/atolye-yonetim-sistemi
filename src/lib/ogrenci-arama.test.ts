@@ -82,7 +82,7 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
   });
 });
 
-describe("ogrenciAramaKosulu — dönem süzgeci", () => {
+describe("ogrenciAramaKosulu — program süzgeci", () => {
   it("dönem verilince o dönemde AKTİF kaydı olanlar süzülür", () => {
     const kosul = ogrenciAramaKosulu("", { subeId: SUBE, donemId: "donem-1" });
     expect(kosul.branchId).toBe(SUBE);
@@ -106,7 +106,18 @@ describe("ogrenciAramaKosulu — dönem süzgeci", () => {
     expect(kosul.AND).toHaveLength(1);
   });
 
-  it("dönem verilmezse AND dalı hiç açılmaz", () => {
+  it("program verilmezse AND dalı hiç açılmaz", () => {
     expect(ogrenciAramaKosulu("", { subeId: SUBE }).AND).toBeUndefined();
+  });
+
+  it("kulüp verilince o kulüpte AKTİF kaydı olanlar süzülür", () => {
+    const kosul = ogrenciAramaKosulu("", { subeId: SUBE, kulupId: "kulup-1" });
+    expect(kosul.AND).toEqual([
+      {
+        enrollments: {
+          some: { status: "AKTIF", group: { clubId: "kulup-1", branchId: SUBE } },
+        },
+      },
+    ]);
   });
 });
