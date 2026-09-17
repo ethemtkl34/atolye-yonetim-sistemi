@@ -96,6 +96,22 @@ export const GOZLEM_ALANLARI: readonly GozlemAlani[] = [
   },
 ];
 
+/**
+ * Doldurulmamış gözlem puanlarının başlıkları.
+ *
+ * Dokuz puan da ZORUNLU (`veli-gorusme-eylemleri.ts`): biri boşken kayıt
+ * reddediliyor ve hata o alanın yanında yazılıyor. Alanlar "Atölye süreci"
+ * sekmesinde, form ise başka bir sekmeyle açıldığı için bu ret ekranda
+ * görünmüyordu; form artık eksikleri düğmelerin üstünde adıyla söylüyor.
+ */
+export function eksikGozlemPuanlari(
+  doluMu: (anahtar: string) => boolean,
+): string[] {
+  return GOZLEM_ALANLARI.filter((alan) => !doluMu(alan.anahtar)).map(
+    (alan) => alan.baslik,
+  );
+}
+
 /** 1–5; puanlama ölçeğiyle aynı yön: 5 en olumlu. */
 export type GozlemCevabi = {
   anahtar: string;

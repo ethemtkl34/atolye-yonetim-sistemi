@@ -664,6 +664,13 @@ ve gelişim testinden yararlanır:
 
 ---
 
+**Zorunlu alanlar görünür olmalı** (Eylül 2026 düzeltmesi): dokuz gözlem
+puanının tamamı zorunlu ve bu alanlar "Atölye süreci" sekmesinde; form başka
+bir sekmeyle açıldığı için eksik puanla kaydetmeye çalışan kullanıcı hiçbir
+uyarı görmüyor, kayıt sessizce düşüyordu. Form artık düğmelerin üstünde hangi
+puanların boş olduğunu adıyla söylüyor, sekme başlığında doldurulan puan
+sayısını gösteriyor ve sunucu hata döndürdüğünde ilgili sekmeye geçiyor.
+
 ## 12. Dashboard ve ana ekranlar
 
 ### 12.1 Koordinatör dashboardu

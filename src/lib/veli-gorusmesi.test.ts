@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   GOZLEM_ALANLARI,
   atolyeOzetiMetniUret,
+  eksikGozlemPuanlari,
   gorusmeCercevesiUret,
   gozlemYorumuUret,
   veliBriefiCozumle,
@@ -362,5 +363,21 @@ describe("veliFormuCozumle", () => {
 
     expect(form?.genel).toEqual([{ anahtar: "azimli", baslik: "Azimli" }]);
     expect(form?.atolyeNotlari).toEqual([]);
+  });
+});
+
+describe("eksikGozlemPuanlari", () => {
+  it("hiç puan yoksa dokuz alanın hepsi eksik", () => {
+    expect(eksikGozlemPuanlari(() => false)).toHaveLength(GOZLEM_ALANLARI.length);
+  });
+
+  it("dolu olanlar listeden düşer, eksikler başlığıyla döner", () => {
+    const dolu = new Set(GOZLEM_ALANLARI.slice(0, 7).map((alan) => alan.anahtar));
+    const eksikler = eksikGozlemPuanlari((anahtar) => dolu.has(anahtar));
+    expect(eksikler).toEqual(GOZLEM_ALANLARI.slice(7).map((alan) => alan.baslik));
+  });
+
+  it("tamamı doluysa uyarı çıkmaz", () => {
+    expect(eksikGozlemPuanlari(() => true)).toEqual([]);
   });
 });

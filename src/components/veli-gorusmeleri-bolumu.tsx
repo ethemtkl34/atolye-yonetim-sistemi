@@ -42,6 +42,7 @@ import {
   EN_BUYUK_YAS,
   EN_KUCUK_YAS,
   GOZLEM_ALANLARI,
+  eksikGozlemPuanlari,
   gorusmeCercevesiUret,
   yasBandiSec,
   type GozlemCevabi,
@@ -227,6 +228,7 @@ function PuanSatiri({
   varsayilan,
   oneri,
   onOneriUygula,
+  onSecim,
 }: {
   anahtar: string;
   baslik: string;
@@ -237,6 +239,8 @@ function PuanSatiri({
   /** Sistemin bu alan için önerdiği puan ve gerekçesi; yoksa rozet çizilmez. */
   oneri?: { deger: number; dayanak: string };
   onOneriUygula?: (deger: number) => void;
+  /** Puan seçilince üst forma haber verir. */
+  onSecim?: (puan: string) => void;
 }) {
   const [secim, setSecim] = useState<string>(varsayilan ?? "");
   const oneriUygulandi = oneri !== undefined && secim === String(oneri.deger);
@@ -290,7 +294,10 @@ function PuanSatiri({
               name={`cevap-${anahtar}`}
               value={deger}
               defaultChecked={varsayilan === deger}
-              onChange={(olay) => setSecim(olay.target.value)}
+              onChange={(olay) => {
+                setSecim(olay.target.value);
+                onSecim?.(olay.target.value);
+              }}
               className="peer sr-only"
             />
             <span
@@ -677,6 +684,21 @@ function GorusmeFormuPenceresi({
   const { band, bandDisi } = yasBandiSec(yas ?? EN_KUCUK_YAS);
   const yasBelli = yas !== null;
 
+  /**
+   * Zorunlu 9 gözlem puanından kaçı dolu — satırlar bildirdikçe birikiyor.
+   *
+   * Puan satırları denetimsiz radio (form sıfırlaması denetimli kutuyu bile
+   * boşaltıyor, bkz. `PuanSatiri`); sayım için satırın kendi `onChange`ı
+   * yukarı haber veriyor. Sunucudan dönen `degerler` ve kabul edilen öneriler
+   * de varsayılan olarak yazıldığı için sayıma dahil.
+   *
+   * GEREKÇE: puanlar "Atölye süreci" sekmesinde, form ise "Genel izlenim"
+   * ile açılıyor. Puanlar boşken "Kaydet"e basan kullanıcıya sunucu alan
+   * hatası döndürüyor ama hata O SEKMENİN İÇİNDE çizildiği için ekranda
+   * hiçbir şey olmuyor gibi görünüyordu — kayıt sessizce düşüyordu.
+   */
+  const [girilenPuanlar, setGirilenPuanlar] = useState<Record<string, string>>({});
+
   const genel = useIsaretYankisi(durum.coklular?.genel);
   const guclu = useIsaretYankisi(durum.coklular?.guclu);
   const zorlanma = useIsaretYankisi(durum.coklular?.zorlanma);
@@ -732,6 +754,16 @@ function GorusmeFormuPenceresi({
       ? uygulananKutusu.puanlar
       : {};
 
+  /** Satırdan, kabul edilen öneriden ya da sunucudan gelen puan. */
+  const puanDolu = (anahtar: string) =>
+    Boolean(
+      girilenPuanlar[anahtar] ??
+        uygulananPuanlar[anahtar] ??
+        deger(`cevap-${anahtar}`),
+    );
+  const eksikPuanlar = eksikGozlemPuanlari(puanDolu);
+  const puanlanan = GOZLEM_ALANLARI.length - eksikPuanlar.length;
+
   function puanlariUygula(girdiler: Record<string, string>) {
     if (!oneriAnahtari) return;
     setUygulananKutusu({
@@ -766,10 +798,28 @@ function GorusmeFormuPenceresi({
       })
     : [];
 
+  /**
+   * Sunucu alan hatası döndüğünde ilgili sekmeye geç: hata o sekmedeki
+   * alanın altında yazılı, kullanıcı başka sekmedeyse hiç görmüyordu.
+   *
+   * `queueMicrotask`: durum güncellemesi efektin GÖVDESİNDEN değil bir
+   * sonraki mikro görevden geliyor (`react-hooks/set-state-in-effect`,
+   * randevu formundaki aynı desen).
+   */
+  useEffect(() => {
+    const hatalar = Object.keys(durum.alanHatalari ?? {});
+    const atolyeSekmesinde = hatalar.some(
+      (alan) => alan.startsWith("cevap-") || alan.startsWith("atolyeNot-"),
+    );
+    if (atolyeSekmesinde) queueMicrotask(() => setSekme("atolye"));
+  }, [durum]);
+
   const sekmeler = SEKMELER.map((s) => ({
     ...s,
     rozet:
-      s.deger === "genel"
+      s.deger === "atolye"
+        ? puanlanan
+        : s.deger === "genel"
         ? genel.secili.size
         : s.deger === "guclu"
           ? guclu.secili.size
@@ -899,6 +949,9 @@ function GorusmeFormuPenceresi({
                 oneriDurumu={oneriDurumu}
                 uygulanan={uygulananPuanlar}
                 onUygula={puanlariUygula}
+                onPuan={(anahtar, puan) =>
+                  setGirilenPuanlar((onceki) => ({ ...onceki, [anahtar]: puan }))
+                }
               />
             </SekmePaneli>
 
@@ -950,6 +1003,14 @@ function GorusmeFormuPenceresi({
         ) : null}
 
         {durum.hata ? <Bildirim tur="hata">{durum.hata}</Bildirim> : null}
+
+        {/* Kaydı düşüren tek zorunlu alan bu dokuz puan; eksikse düğmelerin
+            hemen üstünde, hangi sekmede olduğuyla birlikte söyleniyor. */}
+        {yasBelli && eksikPuanlar.length > 0 ? (
+          <Bildirim tur="bilgi">
+            {`Kaydetmek için ${GOZLEM_ALANLARI.length} gözlem puanının tamamı gerekli. “Atölye süreci” sekmesinde ${eksikPuanlar.length} tanesi boş: ${eksikPuanlar.join(", ")}.`}
+          </Bildirim>
+        ) : null}
 
         {/* Kaydırılan gövdenin dibine yapışır: 6 sekmelik formda düğmeleri
             aramak için en alta inmek gerekmesin. */}
@@ -1252,6 +1313,7 @@ function AtolyeSekmesi({
   oneriDurumu,
   uygulanan,
   onUygula,
+  onPuan,
 }: {
   atolyeler: { id: string; ad: string }[];
   deger: (alan: string) => string | undefined;
@@ -1262,6 +1324,8 @@ function AtolyeSekmesi({
   /** Kabul edilen öneriler; satırın varsayılanını bu belirler. */
   uygulanan: Record<string, string>;
   onUygula: (girdiler: Record<string, string>) => void;
+  /** Satır puanlandıkça üst forma haber verir (eksik puan uyarısı için). */
+  onPuan: (anahtar: string, puan: string) => void;
 }) {
   const uygulanmamis = [...oneriler].filter(
     ([anahtar, oneri]) => uygulanan[anahtar] !== String(oneri.deger),
@@ -1337,6 +1401,7 @@ function AtolyeSekmesi({
               onOneriUygula={(deger) =>
                 onUygula({ [alan.anahtar]: String(deger) })
               }
+              onSecim={(puan) => onPuan(alan.anahtar, puan)}
             />
           );
         })}
