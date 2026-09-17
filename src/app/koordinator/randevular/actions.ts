@@ -22,7 +22,8 @@ import {
   tekrarTarihleri,
   type TekrarKapsami,
 } from "@/lib/randevu/tekrar";
-import { liradanKurusa, saatiDakikayaCevir } from "../uzmanlar/sema";
+import { saatiDakikayaCevir } from "../uzmanlar/sema";
+import { MEVCUT_INDIRIM, yuzdeIndirimi } from "@/lib/randevu/indirim";
 import {
   RANDEVU_DUZENLE_FORM_ALANLARI,
   RANDEVU_FORM_ALANLARI,
@@ -213,13 +214,11 @@ export async function randevuEkle(
     };
   }
 
-  const indirimKurus = liradanKurusa(veri.indirimLira);
-  if (indirimKurus > yetkinlik.hizmet.ucretKurus) {
-    return {
-      alanHatalari: { indirimLira: "İndirim, hizmetin ücretini aşamaz." },
-      degerler: girilenler,
-    };
+  // "Mevcut indirim" yalnız düzenlemede anlamlı; yeni randevuda yok.
+  if (veri.indirimYuzde === MEVCUT_INDIRIM) {
+    return { alanHatalari: { indirimYuzde: "Listeden bir indirim seçin." }, degerler: girilenler };
   }
+  const indirimKurus = yuzdeIndirimi(yetkinlik.hizmet.ucretKurus, veri.indirimYuzde);
 
   // Tekrar YALNIZ tekrarlı hizmetlerde; zekâ testleri her seferinde elle.
   const haftaSayisi = yetkinlik.hizmet.tekrarli ? veri.haftaSayisi : 1;
@@ -349,7 +348,7 @@ export async function randevuDuzenle(
 
   const mevcut = await db.randevu.findFirst({
     where: { id: randevuId, branchId: subeId },
-    select: { id: true, durum: true, baslangic: true },
+    select: { id: true, durum: true, baslangic: true, indirimKurus: true },
   });
   if (!mevcut) return { hata: "Randevu bulunamadı." };
   if (mevcut.durum === "IPTAL") {
@@ -417,10 +416,17 @@ export async function randevuDuzenle(
     };
   }
 
-  const indirimKurus = liradanKurusa(veri.indirimLira);
+  // Listede olmayan eski indirim ("mevcut") tutarıyla korunur; hizmet
+  // değiştiyse yeni ücreti aşmamalı. Yüzde seçildiyse (yeni) ücretten hesap.
+  const indirimKurus =
+    veri.indirimYuzde === MEVCUT_INDIRIM
+      ? mevcut.indirimKurus
+      : yuzdeIndirimi(yetkinlik.hizmet.ucretKurus, veri.indirimYuzde);
   if (indirimKurus > yetkinlik.hizmet.ucretKurus) {
     return {
-      alanHatalari: { indirimLira: "İndirim, hizmetin ücretini aşamaz." },
+      alanHatalari: {
+        indirimYuzde: "Mevcut indirim yeni hizmetin ücretini aşıyor; bir yüzde seçin.",
+      },
       degerler: girilenler,
     };
   }

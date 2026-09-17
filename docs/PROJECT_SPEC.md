@@ -998,7 +998,11 @@ Belirli bir uzmana, belirli bir hizmet için, belirli bir saatte açılan kayıt
 Danışanı velidir; çocuk seçimi isteğe bağlıdır.
 
 - **Ücret randevuya KOPYALANIR.** Katalogdaki zam geçmiş randevuyu ve geçmiş
-  haftaların cirosunu değiştirmez. Randevu bazında elle indirim girilebilir.
+  haftaların cirosunu değiştirmez. Randevu bazında indirim **yüzde olarak
+  seçilir** (İndirim yok, %5, %10, %15, %25, %50); tutar hizmetin ücretinden
+  hesaplanıp kuruş olarak saklanır. Düzenlemede listede olmayan eski bir
+  indirim "Mevcut indirim" olarak korunur. İndirimin sebebi "İndirim notu"na
+  elle yazılır.
   Tahsilat takibi kapsam dışı.
 - **Çakışma ve izin ENGELLENİR** (uyarı değil, aşılamaz). **Mesai dışı** ise
   kesin ret değildir: kullanıcı "yine de kaydedilsin mi?" onayıyla, mesai

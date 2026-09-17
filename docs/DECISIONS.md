@@ -313,6 +313,14 @@ Karar gerekçeleri:
     yoksa yeni veli. Var olan velinin adı değiştirilmedi.
   - Her satır `Randevu.disKaynakId = "appsheet:<id>"` taşır: tekrar aktarım
     hiçbir şey eklemez, geri alma yalnız bunlara dokunur.
+- **İndirim yüzde olarak seçilir (Eylül 2026).** Tutar yazmak yavaştı ve elle
+  hesap hatası üretiyordu. Oranlar eski CRM'de fiilen kullanılanlar: %5
+  (kardeş), %10, %15, %25, %50 — serbest yüzde yok, sunucu listede olmayan
+  oranı reddeder. Veritabanında yine kuruş saklanır; ciro hesabı değişmedi.
+  Sebep ayrı bir etiket olarak tutulmuyor, "İndirim notu" elle yazılıyor
+  (kurum tercihi). Düzenlemede listede olmayan eski indirim (aktarılan %18
+  gibi) "Mevcut indirim" seçeneğiyle korunur: formu başka bir alan için açan
+  kullanıcı indirimi farkında olmadan silmemeli.
 - **Ciro için ayrı yetki yok**; `randevular` modülünü gören ücreti de görür.
   `uzmanlar` (kadro + fiyat listesi): Kurum Yöneticisi, Şube Yöneticisi ve
   Danışma Görevlisi TAM, koordinatör ve psikolog GÖRÜNTÜLE. İlk kararda

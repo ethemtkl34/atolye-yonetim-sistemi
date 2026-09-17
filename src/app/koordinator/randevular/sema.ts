@@ -6,6 +6,7 @@ import {
   VARSAYILAN_TEKRAR_HAFTASI,
 } from "@/lib/randevu/tekrar";
 import { saatiDakikayaCevir } from "../uzmanlar/sema";
+import { indirimSeciminiCoz } from "@/lib/randevu/indirim";
 
 /**
  * §17.4 — Randevu formunun doğrulama şeması.
@@ -149,12 +150,21 @@ const seansAlanlari = {
       message: "Saat SS:DD biçiminde olmalı",
     }),
 
-  /** Lira olarak girilen indirim; kuruşa eylemde çevriliyor. */
-  indirimLira: z.coerce
-    .number()
-    .min(0, "İndirim eksi olamaz")
-    .max(1_000_000, "İndirim çok yüksek görünüyor")
-    .default(0),
+  /**
+   * İndirim YÜZDE olarak seçilir (Eylül 2026, `lib/randevu/indirim.ts`):
+   * 0 = indirim yok, listedeki oranlar ya da düzenlemede "mevcut" (kayıtlı
+   * tutarı koru). Kuruşa eylemde, hizmetin ücretinden çevriliyor.
+   */
+  indirimYuzde: z
+    .preprocess((deger) => (typeof deger === "string" ? deger : ""), z.string())
+    .transform((deger, ctx) => {
+      const secim = indirimSeciminiCoz(deger);
+      if (secim === null) {
+        ctx.addIssue({ code: "custom", message: "Listeden bir indirim seçin." });
+        return z.NEVER;
+      }
+      return secim;
+    }),
   indirimNotu: z.preprocess(
     bosuNullYap,
     z.string().trim().max(200, "Not en fazla 200 karakter").nullable(),
@@ -194,7 +204,7 @@ export const RANDEVU_FORM_ALANLARI = [
   "yeniOgrenciDogumTarihi",
   "tarih",
   "saat",
-  "indirimLira",
+  "indirimYuzde",
   "indirimNotu",
   "haftaSayisi",
   "not",
@@ -284,7 +294,7 @@ export const RANDEVU_DUZENLE_FORM_ALANLARI = [
   "hizmetId",
   "tarih",
   "saat",
-  "indirimLira",
+  "indirimYuzde",
   "indirimNotu",
   "not",
   "danisanIslemi",

@@ -5,7 +5,9 @@ import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 import { saatMetni, tarihMetni } from "@/lib/tarih";
-import { kurustanLiraya, paraMetni, sureMetni } from "../uzmanlar/sema";
+import { paraMetni, sureMetni } from "../uzmanlar/sema";
+import { MEVCUT_INDIRIM, kayitliYuzde } from "@/lib/randevu/indirim";
+import { IndirimSecici } from "./indirim-secici";
 import { randevuDuzenle } from "./actions";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 import type { DanisanIslemi } from "./sema";
@@ -114,6 +116,12 @@ function IcerikFormu({
     ? hizmetler.filter((hizmet) => secilenUzman.hizmetIdleri.includes(hizmet.id))
     : [];
   const secilenHizmet = uygunHizmetler.find((h) => h.id === hizmetId);
+
+  // Kayıtlı indirimin yüzde karşılığı — `ucretKurus` satırda NET tutar,
+  // brüt ücret net + indirim. Listede olmayan oran "mevcut" olarak açılır.
+  const kayitliIndirim = randevu.indirimKurus ?? 0;
+  const kayitliOran = kayitliYuzde((randevu.ucretKurus ?? 0) + kayitliIndirim, kayitliIndirim);
+  const kayitliIndirimSecimi = kayitliOran === null ? MEVCUT_INDIRIM : String(kayitliOran);
 
   // Danışan modu: doğrulama hatasıyla dönüşte (ör. mesai onayı beklerken)
   // açık panel açık kalsın diye başlangıç değeri sunucudan dönen değerden
@@ -354,25 +362,13 @@ function IcerikFormu({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Alan
-            etiket="İndirim (₺)"
-            hata={durum.alanHatalari?.indirimLira}
-            ipucu={
-              secilenHizmet
-                ? `Katalog ücreti ${paraMetni(secilenHizmet.ucretKurus)}.`
-                : undefined
-            }
-          >
-            <Girdi
-              name="indirimLira"
-              type="number"
-              min={0}
-              step="0.01"
-              defaultValue={
-                deger("indirimLira") ?? String(kurustanLiraya(randevu.indirimKurus ?? 0))
-              }
-            />
-          </Alan>
+          <IndirimSecici
+            varsayilan={deger("indirimYuzde") ?? kayitliIndirimSecimi}
+            ucretKurus={secilenHizmet?.ucretKurus}
+            mevcutIndirimKurus={kayitliIndirimSecimi === MEVCUT_INDIRIM ? kayitliIndirim : null}
+            hata={durum.alanHatalari?.indirimYuzde}
+            durum={durum}
+          />
 
           <Alan etiket="İndirim notu" hata={durum.alanHatalari?.indirimNotu}>
             <Girdi

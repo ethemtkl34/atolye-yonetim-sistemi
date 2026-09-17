@@ -1,5 +1,6 @@
 "use client";
 
+import { IndirimSecici } from "./indirim-secici";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import {
@@ -335,23 +336,12 @@ function RandevuFormu({
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Alan
-            etiket="İndirim (₺)"
-            hata={durum.alanHatalari?.indirimLira}
-            ipucu={
-              secilenHizmet
-                ? `Katalog ücreti ${paraMetni(secilenHizmet.ucretKurus)}.`
-                : undefined
-            }
-          >
-            <Girdi
-              name="indirimLira"
-              type="number"
-              min={0}
-              step="0.01"
-              defaultValue={deger("indirimLira") ?? "0"}
-            />
-          </Alan>
+          <IndirimSecici
+            varsayilan={deger("indirimYuzde") ?? "0"}
+            ucretKurus={secilenHizmet?.ucretKurus}
+            hata={durum.alanHatalari?.indirimYuzde}
+            durum={durum}
+          />
 
           <Alan etiket="İndirim notu" hata={durum.alanHatalari?.indirimNotu}>
             <Girdi
