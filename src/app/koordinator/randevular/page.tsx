@@ -376,8 +376,9 @@ export default async function RandevularSayfasi(
         />
         {/* Yalnız takvimde gösterileni süzer; şube değişince uzman süzgeci
             düşer (öbür şubede çalışmayan uzmanla takvim boş kalırdı). */}
-        <SuzgecGrubu
+        <SuzgecSecici
           etiket="Şube"
+          bosSecenek={null}
           temelYol={TEMEL_YOL}
           anahtar="sube"
           secili={subeSuzgeci ?? "tumu"}

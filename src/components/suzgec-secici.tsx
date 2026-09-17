@@ -21,6 +21,7 @@ export function SuzgecSecici({
   secili,
   secenekler,
   digerler = {},
+  bosSecenek = "Tümü",
 }: {
   etiket: string;
   /** Süzgecin bağlandığı sayfa, örn. "/koordinator/danismanlik". */
@@ -32,6 +33,12 @@ export function SuzgecSecici({
   secenekler: readonly SuzgecSecenegi[];
   /** Adreste korunacak diğer süzgeçler. */
   digerler?: Record<string, string>;
+  /**
+   * Boş değerli (süzgeç kapalı) seçeneğin etiketi; `null` verilirse seçenek
+   * çizilmez — varsayılanı "hepsi" olmayan süzgeçler için (örn. randevu
+   * takviminin şube süzgeci, varsayılanı çalışılan şube).
+   */
+  bosSecenek?: string | null;
 }) {
   const router = useRouter();
 
@@ -50,7 +57,7 @@ export function SuzgecSecici({
         }}
         className={`${secimStili} w-auto`}
       >
-        <option value="">Tümü</option>
+        {bosSecenek === null ? null : <option value="">{bosSecenek}</option>}
         {secenekler.map((secenek) => (
           <option key={secenek.deger} value={secenek.deger}>
             {secenek.etiket}
