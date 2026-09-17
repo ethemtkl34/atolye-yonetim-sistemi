@@ -3,8 +3,8 @@
 Hangi pakette olduğumuzun tek kaynağı bu dosyadır. Her paket bittiğinde
 işaretlenir ve "Şu an" satırı güncellenir.
 
-**Şu an:** P23 bitti (randevu revizyonu, 8–11 Eylül 2026). Sırada randevu
-ekranının yeni revize turu. *(Sistem `atolye-yonetim-sistemi.vercel.app`
+**Şu an:** P24 bitti (randevu geçmişi ve AppSheet aktarımı, 17 Eylül 2026).
+Sırada randevu ekranının revize turu. *(Sistem `atolye-yonetim-sistemi.vercel.app`
 adresinde canlı; alan adı planından vazgeçildi.)*
 
 ---
@@ -33,6 +33,7 @@ adresinde canlı; alan adı planından vazgeçildi.)*
 | P21 | Randevu Faz 2 — takvim | ✅ Tamam | Çakışma/izin reddi, haftalık seri, iptal arşivi |
 | P22 | Randevu Faz 3 — ciro ve mesajlar | ✅ Tamam | Kurumun Excel haftası rapordan birebir çıkar |
 | P23 | Randevu revizyonu (8–11 Eylül) | ✅ Tamam | Hafta ızgarası, düzenleme, adaydan gerçek randevu |
+| P24 | Randevu geçmişi + AppSheet aktarımı (17 Eylül) | ✅ Tamam | Geçmiş kilidi, kişi bazlı geçmiş; 9.352 eski randevu canlıda |
 
 ---
 
@@ -1371,6 +1372,32 @@ eski AppSheet CRM'i referans alındı. Tanım `PROJECT_SPEC.md` §17.4
 - Kapalı adayda sayfa null zorlamasından çöküyordu; "Bugün" düğmesi UTC
   yerine yerel saatle bir gün kayabiliyordu; `"use server"` dosyasından tip
   türetme kaldırıldı (bkz. canlıda 500 tuzağı).
+
+---
+
+## P24 — Randevu geçmişi ve AppSheet aktarımı (17 Eylül 2026)
+
+Kararlar `DECISIONS.md` "Randevu yönetimi", tanım `PROJECT_SPEC.md` §17.4.
+
+- **Geçmiş kilidi** (`lib/randevu/gecmis-kilidi.ts`): günü bitmiş randevuyu
+  yalnız Kurum/Şube Yöneticisi düzenler, iptal eder; geçmiş güne randevuyu
+  yalnız onlar açar. Durum işaretleme herkese açık.
+- **İşaretlenmemiş geçmiş randevular** şeridi, **tarihe atlama** kutusu.
+- **Kişi bazlı geçmiş**: öğrenci kartında "Randevular" kutusu, uzman
+  sayfasında ay ay liste (`lib/randevu/gecmis-verisi.ts`,
+  `components/randevu-gecmisi-listesi.tsx`).
+- **Danışma görevlisinin randevu şubesi** (aynı gün, `e1a0d1f`).
+- **AppSheet aktarımı** (`scripts/appsheet-randevu/`): 9.352 randevu (Güneşli
+  5.528, Ümraniye 3.824; Ocak 2024 – Şubat 2027), 1.862 yeni veli, 1.952
+  kısa öğrenci kaydı, 17 pasif uzman. Önce üretimin Neon kopyasında
+  koşturuldu; tekrar koşu 0 ekledi, geri alma kopyayı üretimle birebir
+  aynı sayılara döndürdü. Canlıda 66 ay × şube ciro hücresinin 65'i dosyayla
+  kuruşu kuruşuna tuttu (tek fark: canlıda zaten bulunduğu için atlanan bir
+  ₺7.800'lük randevu). Aktarım öncesi yedek: Neon dalı
+  `yedek-appsheet-oncesi`. Geri alma:
+  `APPSHEET_ONAY=evet npx tsx scripts/appsheet-randevu/geri-al.ts
+  scripts/appsheet-randevu/cikti/manifest-<zaman>.json` (manifest yalnız
+  aktarımı yapan bilgisayarda, depoya girmez).
 
 ---
 
