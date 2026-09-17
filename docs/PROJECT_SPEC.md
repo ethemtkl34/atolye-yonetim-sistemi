@@ -1093,7 +1093,8 @@ danışanı gizleniyordu).
 
 - **Kim seçer:** randevu ekranına erişebilen şubeli roller (Şube Yöneticisi,
   Koordinatör, Psikolog, Danışma Görevlisi) randevu ekranlarında sağ üstteki
-  şube kutusundan "Randevu şubesi"ni seçer. Seçilen şubenin randevuları
+  şube kutusundan ya da takvimin süzgeç çubuğundaki "Şube" seçicisinden
+  (ikisi aynı seçim) "Randevu şubesi"ni seçer. Seçilen şubenin randevuları
   görünür, düzenlenir; yeni randevu o şubeye açılır. Ciro raporu da aynı
   şubeyle çalışır. Yönetici genel şube seçicisini kullanır.
 - **Seçim yalnız randevu ekranlarını etkiler.** Öğrenci, aday ve kayıt

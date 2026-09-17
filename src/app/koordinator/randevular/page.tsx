@@ -38,6 +38,7 @@ import { RandevuFormuAcici } from "./randevu-formu";
 import { OgrenciGecmisiButonu } from "./ogrenci-gecmisi-penceresi";
 import { UzmanRenkleriButonu } from "./uzman-renkleri-penceresi";
 import { IsaretsizRandevular } from "./isaretsiz-randevular";
+import { SubeSuzgeci } from "./sube-suzgeci";
 
 export const metadata: Metadata = {
   title: "Randevular",
@@ -346,6 +347,15 @@ export default async function RandevularSayfasi(
             etiket: hizmet.ad,
           }))}
         />
+        {/* Sağ üstteki şube kutusuyla aynı seçim (bkz. `SubeSuzgeci`). */}
+        {kullanici.randevuSubeleri.length > 1 ? (
+          <SubeSuzgeci
+            aktifSubeId={subeId}
+            subeler={kullanici.randevuSubeleri}
+            yonetici={kullanici.subeDegistirebilir}
+            suzgecsizYol={uzmanSuzgeci !== "tumu" ? adres({ uzman: "" }) : undefined}
+          />
+        ) : null}
       </SuzgecCubugu>
 
       {gorunum === "izgara" ? (
