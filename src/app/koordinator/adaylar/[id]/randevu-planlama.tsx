@@ -143,6 +143,7 @@ export function RandevuPlanlamaPenceresi({
             <HaftaIzgarasiGovdesi
               sutunlar={hafta.sutunlar}
               eksen={hafta.eksen}
+              blokAltYazisi={(randevu) => randevu.uzmanAdi}
               bosAlanTiklanabilir
               onBosAlanaTikla={(gun, saat) =>
                 setSecim({ tarih: tarihMetni(gun), saat })

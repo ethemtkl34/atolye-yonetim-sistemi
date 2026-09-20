@@ -165,6 +165,7 @@ export function HaftaIzgarasi({
           tekGun={dar}
           sutunlar={gosterilenSutunlar}
           eksen={eksen}
+          blokAltYazisi={(randevu) => randevu.uzmanAdi}
           onBlokTikla={setDetay}
           bosAlanTiklanabilir={yazabilir}
           enErkenTarih={enErkenTarih}

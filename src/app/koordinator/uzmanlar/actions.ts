@@ -7,6 +7,7 @@ import { alanHatalari, formDegerleri } from "@/lib/formlar";
 import type { EylemDurumu } from "@/lib/formlar";
 import { tarihCozumle } from "@/lib/tarih";
 import { uzmanRengiMi } from "@/lib/uzman-renkleri";
+import { programJetonuUret } from "@/lib/randevu/program-linki";
 import {
   hizmetSemasi,
   izinSemasi,
@@ -249,6 +250,48 @@ export async function uzmanDurumDegistir(
       ? `${uzman.ad} yeniden kadroya alındı.`
       : `${uzman.ad} pasife alındı; yeni randevu açılamaz.`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Program linki (§17.8)
+// ---------------------------------------------------------------------------
+
+/**
+ * Uzmanın giriş gerektirmeyen haftalık program adresini üretir ya da yeniler.
+ *
+ * YENİLEME GERİ ALINAMAZ ve amaç bu: yeni jeton eskisinin YERİNE yazılıyor,
+ * yani dağıtılmış eski adres aynı anda ölüyor. "İptal et" ayrı bir eylem
+ * değil, jetonu boşaltmak (`programLinkiKapat`).
+ *
+ * Yetki kadro yönetimiyle aynı kapıdan (`uzmanlar` TAM): takvimi fiilen
+ * kuran masa linki de yönetebilmeli.
+ */
+export async function programLinkiUret(uzmanId: string): Promise<EylemDurumu> {
+  await yonetimZorunlu("uzmanlar", "TAM");
+
+  // şube-muaf: uzman çok şubeli (bkz. `uzmanEkle`).
+  const uzman = await db.uzman.update({
+    where: { id: uzmanId },
+    data: { programJetonu: programJetonuUret(), programSonGoruntuleme: null },
+    select: { ad: true },
+  });
+
+  tazele(uzmanId);
+  return { basari: `${uzman.ad} için yeni program adresi üretildi.` };
+}
+
+/** Program adresini kapatır; elindeki linki olan hiç kimse açamaz. */
+export async function programLinkiKapat(uzmanId: string): Promise<EylemDurumu> {
+  await yonetimZorunlu("uzmanlar", "TAM");
+
+  const uzman = await db.uzman.update({
+    where: { id: uzmanId },
+    data: { programJetonu: null, programSonGoruntuleme: null },
+    select: { ad: true },
+  });
+
+  tazele(uzmanId);
+  return { basari: `${uzman.ad} için program adresi kapatıldı.` };
 }
 
 // ---------------------------------------------------------------------------

@@ -1820,6 +1820,18 @@ model Uzman {
   userId String? @unique
   user   User?   @relation("UzmanHesabi", fields: [userId], references: [id], onDelete: SetNull)
 
+  /// §17.8 — Uzmanın giriş gerektirmeyen haftalık program adresinin sırrı.
+  ///
+  /// Adresin KENDİSİ anahtar (capability URL): `/program/<jeton>`. Boş
+  /// olmak normal — link ancak koordinatör üretince doğar, üretilmemiş
+  /// uzmanın adresi yoktur. Yenilemek eski jetonun yerine yazar, yani
+  /// dağıtılmış eski adres aynı anda ölür.
+  programJetonu String? @unique
+
+  /// Program adresinin en son ne zaman açıldığı. Tek amacı koordinatörün
+  /// "bu link kullanılıyor mu, kapatsam olur mu" sorusuna cevap vermesi.
+  programSonGoruntuleme DateTime?
+
   aktif     Boolean @default(true)
   sortOrder Int     @default(0)
 

@@ -10,7 +10,24 @@ import {
 import { blokYazisi, uzmanRengi } from "@/lib/uzman-renkleri";
 import { cn } from "@/lib/utils";
 import { dakikayiSaateCevir } from "../uzmanlar/sema";
-import type { RandevuSatiri } from "./takvim";
+
+/**
+ * Izgaranın bir bloğu çizmek için gerçekten OKUDUĞU alanlar.
+ *
+ * Bileşen `RandevuSatiri`'ne değil bu yapısal tipe bağlı. Sebebi somut:
+ * uzmanın giriş gerektirmeyen program sayfası (§17.8) aynı ızgarayı
+ * kullanıyor ama oraya ücret, indirim, veli telefonu taşıyan şişman satır
+ * GİTMEMELİ. Dar tip, o sayfanın yanlışlıkla fazla veri göndermesini
+ * derleme anında imkânsız kılıyor.
+ */
+export type IzgaraBlokIcerigi = {
+  id: string;
+  baslangic: Date;
+  bitis: Date;
+  durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI" | "IPTAL";
+  uzmanRengi: string;
+  hizmetAdi: string;
+};
 
 /** Bir dakikanın piksel karşılığı (Izgara/Program ile aynı yoğunluk). */
 const PX_PER_DK = 1.5;
@@ -31,16 +48,17 @@ const ZAMAN_SUTUNU_REM = 4;
  * formunda belirleniyor. Sayfa görünümünde (`HaftaIzgarasi`) bu prop hiç
  * verilmez; oradaki tıklama hâlâ yalnız var olan bloklar üzerinde çalışır.
  */
-export function HaftaIzgarasiGovdesi({
+export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
   sutunlar,
   eksen,
   bosAlanTiklanabilir = false,
   tekGun = false,
   enErkenTarih,
+  blokAltYazisi,
   onBlokTikla,
   onBosAlanaTikla,
 }: {
-  sutunlar: HaftaSutunu<RandevuSatiri>[];
+  sutunlar: HaftaSutunu<T>[];
   eksen: IzgaraEkseni;
   bosAlanTiklanabilir?: boolean;
   /**
@@ -53,7 +71,14 @@ export function HaftaIzgarasiGovdesi({
    * Yöneticide ve aday seçicisinde verilmez.
    */
   enErkenTarih?: string;
-  onBlokTikla?: (randevu: RandevuSatiri) => void;
+  /**
+   * Blokun ÜÇÜNCÜ satırı. Panelde uzman adı (bir ızgarada birden çok uzman
+   * var, ayırt etmek gerekiyor); program linkinde danışan adı (orada tek
+   * uzman var, kendi adını her blokta okumak gürültü). Verilmezse üçüncü
+   * satır hiç çizilmez.
+   */
+  blokAltYazisi?: (randevu: T) => string | null;
+  onBlokTikla?: (randevu: T) => void;
   onBosAlanaTikla?: (gun: Date, saat: string) => void;
 }) {
   const toplamPiksel = (eksen.bitisDk - eksen.baslangicDk) * PX_PER_DK;
@@ -175,6 +200,7 @@ export function HaftaIzgarasiGovdesi({
               {sutun.bloklar.map(
                 ({ baslangicDk, bitisDk, randevu, lane, laneSayisi }) => {
                   const ton = uzmanRengi(randevu.uzmanRengi);
+                  const altYazi = blokAltYazisi?.(randevu) ?? null;
                   return (
                     <button
                       key={randevu.id}
@@ -208,9 +234,11 @@ export function HaftaIzgarasiGovdesi({
                       <span className="block truncate text-[0.65rem] font-medium">
                         {randevu.hizmetAdi}
                       </span>
-                      <span className="block truncate text-[0.6rem] opacity-80">
-                        {randevu.uzmanAdi}
-                      </span>
+                      {altYazi ? (
+                        <span className="block truncate text-[0.6rem] opacity-80">
+                          {altYazi}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 },

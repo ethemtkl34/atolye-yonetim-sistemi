@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { SayfaBasligi } from "@/components/ui";
 import { turkceKarsilastir } from "@/lib/turkce";
@@ -41,6 +42,8 @@ export default async function UzmanlarSayfasi() {
         calismaTipi: true,
         aktif: true,
         userId: true,
+        programJetonu: true,
+        programSonGoruntuleme: true,
         subeler: { select: { subeId: true, sube: { select: { name: true } } } },
         hizmetler: {
           select: { hizmetId: true, hizmet: { select: { ad: true } } },
@@ -76,6 +79,9 @@ export default async function UzmanlarSayfasi() {
     calismaTipi: uzman.calismaTipi,
     aktif: uzman.aktif,
     userId: uzman.userId,
+    programJetonu: uzman.programJetonu,
+    // Date istemci bileşenine ISO metin olarak geçiyor; biçimleme orada.
+    programSonGoruntuleme: uzman.programSonGoruntuleme?.toISOString() ?? null,
     subeIdleri: uzman.subeler.map((bag) => bag.subeId),
     subeAdlari: uzman.subeler.map((bag) => bag.sube.name),
     hizmetIdleri: uzman.hizmetler.map((bag) => bag.hizmetId),
@@ -94,6 +100,7 @@ export default async function UzmanlarSayfasi() {
       />
 
       <UzmanYonetimi
+        kokAdres={env.AUTH_URL ?? ""}
         uzmanlar={satirlar}
         subeler={subeler.map((sube) => ({ id: sube.id, ad: sube.name }))}
         hizmetler={hizmetler}

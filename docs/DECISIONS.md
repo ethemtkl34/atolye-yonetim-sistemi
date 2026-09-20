@@ -392,3 +392,18 @@ Karar gerekçeleri:
   ilişkisi.
 - **Alan adı**: `panel.tuzder.org` planından vazgeçildi; sistem
   `atolye-yonetim-sistemi.vercel.app` adresinde kalıyor.
+- **Uzmanın haftalık programı giriş gerektirmeyen bir linkle paylaşılır**
+  (§17.8, Eylül 2026). Uzmanların çoğunun panel hesabı yok ve kurum
+  "linke bassın, programını görsün" istiyor. Her uzmana tahmin edilemez bir
+  jeton üretiliyor; adresin KENDİSİ anahtar (`/program/<jeton>`, 192 bit).
+  Parola ve PIN bilerek yok — istenen tam olarak sürtünmesiz erişimdi.
+  Karşılığında üç sınır konuldu: link **yalnız bu haftayı ve sonrasını**
+  açar (sızan adres geçmiş danışan listesini vermesin), arama motorlarına
+  kapalıdır, ve pasife alınan uzmanın linki kendiliğinden ölür.
+  Koordinatör linki her an yenileyebilir; yenileme eskisinin YERİNE yazdığı
+  için dağıtılmış adres aynı anda geçersizleşir. Sayfa ücret, indirim, veli
+  telefonu ve randevu notunu HİÇ OKUMAZ — panelin `haftaRandevuVerisi`'si
+  yerine kendi dar sorgusu var, yani sızdıracak veri sayfaya hiç gelmiyor.
+  Danışan adı tam görünür: uzman kime seans vereceğini bilmeli (kurum
+  kararı). Uzman çok şubeliyse bütün şubelerinin seansları tek takvimde,
+  şube adı blokta yazılı.

@@ -16,8 +16,11 @@ import {
   secimStili,
 } from "@/components/ui";
 import { UZMAN_RENKLERI, uzmanRengi } from "@/lib/uzman-renkleri";
+import { programAdresi } from "@/lib/randevu/program-linki";
 import type { EylemDurumu } from "@/lib/formlar";
 import {
+  programLinkiKapat,
+  programLinkiUret,
   uzmanDurumDegistir,
   uzmanEkle,
   uzmanGuncelle,
@@ -41,6 +44,10 @@ export type UzmanSatiri = {
   hizmetAdlari: string[];
   mesaiSayisi: number;
   izinSayisi: number;
+  /** §17.8 — giriş gerektirmeyen program adresinin jetonu; yoksa link kapalı. */
+  programJetonu: string | null;
+  /** Adresin en son açıldığı an (ISO); hiç açılmadıysa null. */
+  programSonGoruntuleme: string | null;
 };
 
 const CALISMA_ADLARI = {
@@ -66,11 +73,14 @@ export function UzmanYonetimi({
   hizmetler,
   hesaplar,
   duzenleyebilir,
+  kokAdres,
 }: {
   uzmanlar: UzmanSatiri[];
   subeler: SubeSecenegi[];
   hizmetler: HizmetSecenegi[];
   hesaplar: HesapSecenegi[];
+  /** Program adresinin kökü (`AUTH_URL`); boşsa göreli yol gösterilir. */
+  kokAdres: string;
   /**
    * `uzmanlar` modülünde TAM yetki var mı. Koordinatör ve danışma masası
    * kadroyu görür ama değiştiremez; asıl sınır eylemlerde (`yonetimZorunlu`),
@@ -176,6 +186,16 @@ export function UzmanYonetimi({
                       ? "izin yok"
                       : `${uzman.izinSayisi} izin`}
                   </p>
+
+                  {duzenleyebilir ? (
+                    <ProgramLinki
+                      uzman={uzman}
+                      kokAdres={kokAdres}
+                      bekliyor={bekliyor}
+                      onSonuc={setMesaj}
+                      basla={basla}
+                    />
+                  ) : null}
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -438,5 +458,115 @@ function UzmanFormu({
         </div>
       </form>
     </Pencere>
+  );
+}
+
+/**
+ * §17.8 — Uzmanın giriş gerektirmeyen haftalık program adresi.
+ *
+ * Adres kurulu değilken tek bir düğme var; kurulduktan sonra adresin kendisi,
+ * kopyalama, yenileme ve kapatma. "Yenile" eskisini ANINDA öldürdüğü için
+ * onay soruluyor: uzmanın telefonundaki link sessizce çalışmaz olmasın.
+ *
+ * Kök adres SUNUCUDAN geliyor (`AUTH_URL`). `window.location.origin` ile
+ * kurmak bir efekt ve bir durum gerektiriyordu; efektin içinde durum
+ * ayarlamak da lint kuralına takılıyor. Kök tanımsızsa alan göreli yolu
+ * gösterir — kopyalanan metin eksik kalır ama ekran bozulmaz.
+ */
+function ProgramLinki({
+  uzman,
+  kokAdres,
+  bekliyor,
+  onSonuc,
+  basla,
+}: {
+  uzman: UzmanSatiri;
+  kokAdres: string;
+  bekliyor: boolean;
+  onSonuc: (durum: EylemDurumu) => void;
+  basla: (is: () => void) => void;
+}) {
+  const [kopyalandi, setKopyalandi] = useState(false);
+
+  if (!uzman.programJetonu) {
+    return (
+      <div className="mt-2">
+        <Buton
+          type="button"
+          tur="ikincil"
+          disabled={bekliyor}
+          onClick={() =>
+            basla(async () => onSonuc(await programLinkiUret(uzman.id)))
+          }
+        >
+          Program linki oluştur
+        </Buton>
+      </div>
+    );
+  }
+
+  const adres = programAdresi(kokAdres, uzman.programJetonu);
+
+  return (
+    <div className="kil-oyuk mt-2 space-y-2 p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Rozet tur="olumlu">Program linki açık</Rozet>
+        <span className="text-xs text-zinc-500">
+          {uzman.programSonGoruntuleme
+            ? `son açılış ${new Date(uzman.programSonGoruntuleme).toLocaleString("tr-TR")}`
+            : "henüz açılmadı"}
+        </span>
+      </div>
+
+      <Girdi readOnly value={adres} onFocus={(olay) => olay.target.select()} />
+
+      <div className="flex flex-wrap gap-2">
+        <Buton
+          type="button"
+          tur="ikincil"
+          onClick={async () => {
+            await navigator.clipboard.writeText(adres);
+            setKopyalandi(true);
+            window.setTimeout(() => setKopyalandi(false), 2000);
+          }}
+        >
+          {kopyalandi ? "Kopyalandı" : "Kopyala"}
+        </Buton>
+        <Buton
+          type="button"
+          tur="ikincil"
+          disabled={bekliyor}
+          onClick={() => {
+            if (
+              !window.confirm(
+                `${uzman.ad} için YENİ bir adres üretilecek ve şu anki adres hemen çalışmaz olacak.\n\nUzmana yeni adresi göndermeniz gerekir. Devam edilsin mi?`,
+              )
+            ) {
+              return;
+            }
+            basla(async () => onSonuc(await programLinkiUret(uzman.id)));
+          }}
+        >
+          Yenile
+        </Buton>
+        <Buton
+          type="button"
+          tur="tehlike"
+          disabled={bekliyor}
+          onClick={() => {
+            if (
+              !window.confirm(
+                `${uzman.ad} için program adresi kapatılacak; elindeki linki olan hiç kimse açamayacak.\n\nDevam edilsin mi?`,
+              )
+            ) {
+              return;
+            }
+            basla(async () => onSonuc(await programLinkiKapat(uzman.id)));
+          }}
+        >
+          Kapat
+        </Buton>
+      </div>
+    </div>
   );
 }
