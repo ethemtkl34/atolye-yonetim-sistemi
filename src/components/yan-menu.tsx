@@ -209,7 +209,11 @@ export function YanMenu({
               href={oge.yol}
               aria-current={aktif ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2 text-sm",
+                // Telefonda 44px: bu liste çekmecedeki ANA gezinme ve
+                // maddeler 36 pikseldi. Masaüstü kenar menüsü zaten `md`
+                // üstünde göründüğü için orada eski sıkı ölçü kalıyor
+                // (Eylül 2026 mobil turu).
+                "flex min-h-[2.75rem] items-center gap-2.5 px-3 py-2 text-sm md:min-h-0",
                 yatay && "whitespace-nowrap",
                 // Aktif sayfa koyu mürdüm zemine oturtulmuş açık bir plaka;
                 // seçili olmayanlar dokunulunca zemine gömülüyor. Koyu kilin
