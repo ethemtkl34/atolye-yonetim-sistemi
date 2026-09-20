@@ -77,7 +77,10 @@ export function SubeGostergesi({
 
   // Şube göstergesi üst şeritte GÖMÜK duruyor: kabarık olsaydı buton gibi
   // okunurdu, oysa asıl işi "neredeyim" sorusunu sessizce cevaplamak.
-  const kutu = "kil-cip flex items-center gap-2 rounded-[var(--kil-r-md)] py-1 pl-2.5 pr-1";
+  // Telefonda kendi satırında ve TAM genişlikte duruyor (bkz. panel-kabuk);
+  // masaüstünde eski sıkı kutu.
+  const kutu =
+    "kil-cip flex w-full items-center gap-2 rounded-[var(--kil-r-md)] py-1 pl-2.5 pr-1 sm:w-auto";
 
   if (!degistirebilir) {
     return (
@@ -87,7 +90,7 @@ export function SubeGostergesi({
           <span className="block text-[0.6875rem] leading-tight text-zinc-500">
             Şube
           </span>
-          <span className="block max-w-[10rem] truncate text-sm font-medium leading-tight text-zinc-900 sm:max-w-none">
+          <span className="block truncate text-sm font-medium leading-tight text-zinc-900">
             {aktifSube?.ad ?? "—"}
           </span>
         </span>
@@ -98,7 +101,7 @@ export function SubeGostergesi({
   return (
     <div className={cn(kutu, bekliyor && "opacity-60")}>
       <span aria-hidden className={cn("h-5 w-1 rounded-full", seritRengi)} />
-      <label className="min-w-0">
+      <label className="min-w-0 flex-1 sm:flex-none">
         <span className="block text-[0.6875rem] leading-tight text-zinc-500">
           {bekliyor ? "Şube değişiyor…" : etiket}
         </span>
@@ -125,7 +128,7 @@ export function SubeGostergesi({
           }}
           // Telefonda 44px: seçici 20px'ti ve üst şeritteki en küçük hedefti.
           // Masaüstünde eski sıkı ölçüye dönüyor.
-          className="-ml-1 min-h-[2.75rem] max-w-[11rem] cursor-pointer truncate rounded bg-transparent py-0 pl-1 pr-6 text-base font-medium leading-tight text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:min-h-0 sm:max-w-none sm:text-sm"
+          className="-ml-1 min-h-[2.75rem] w-full cursor-pointer truncate rounded bg-transparent py-0 pl-1 pr-6 text-base font-medium leading-tight text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-600 sm:min-h-0 sm:w-auto sm:max-w-none sm:text-sm"
         >
           {subeler.map((sube) => (
             <option key={sube.id} value={sube.id}>

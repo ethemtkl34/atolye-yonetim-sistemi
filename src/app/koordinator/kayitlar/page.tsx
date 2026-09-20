@@ -103,7 +103,7 @@ export default async function KayitlarSayfasi(
         }
       />
 
-      <SuzgecCubugu>
+      <SuzgecCubugu etkin={suzgec === "atanmamis" ? 1 : 0}>
         <SuzgecGrubu
           etiket="Süzgeç"
           temelYol={TEMEL_YOL}

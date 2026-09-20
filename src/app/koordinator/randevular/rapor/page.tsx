@@ -163,10 +163,58 @@ export default async function CiroRaporuSayfasi(
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          <Kart className="space-y-3 p-4">
+          {/*
+            `min-w-0`: ızgara öğesi varsayılan olarak içeriğinden dar olamıyor;
+            geniş tablo yüzünden kart 361 piksele büyüyüp 375'lik ekranı
+            taşırıyordu (Eylül 2026 mobil turu).
+          */}
+          <Kart className="min-w-0 space-y-3 p-4">
             <h2 className={kartBasligiStili}>Uzman bazında</h2>
 
-            <div className="overflow-x-auto">
+            {/* Telefonda tablo yerine kart listesi; masaüstünde tablo. */}
+            <ul className="kil-bolmeli sm:hidden">
+              {rapor.uzmanlar.map((uzman) => {
+                const ton = uzmanRengi(renkHaritasi.get(uzman.uzmanId) ?? "");
+                return (
+                  <li key={uzman.uzmanId} className="space-y-1 py-2">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: ton.blok }}
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-900">
+                        {uzman.uzmanAdi}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
+                        {paraMetni(uzman.ciroKurus)}
+                      </span>
+                    </span>
+                    <span className="block h-1 rounded-full bg-zinc-100">
+                      <span
+                        className="block h-1 rounded-full"
+                        style={{
+                          width: `${Math.round((uzman.ciroKurus / enYuksekCiro) * 100)}%`,
+                          backgroundColor: ton.blok,
+                        }}
+                      />
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {uzman.seansSayisi} seans
+                      {uzman.gelmedi ? ` · ${uzman.gelmedi} gelmedi` : ""}
+                    </span>
+                  </li>
+                );
+              })}
+              <li className="flex items-center justify-between gap-2 border-t-2 border-zinc-300 py-2 text-sm">
+                <span className="font-bold text-zinc-900">TOPLAM</span>
+                <span className="font-bold tabular-nums text-zinc-900">
+                  {rapor.toplamSeans} seans · {paraMetni(rapor.toplamCiro)}
+                </span>
+              </li>
+            </ul>
+
+            <div className="hidden overflow-x-auto sm:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500">
@@ -237,7 +285,7 @@ export default async function CiroRaporuSayfasi(
             </div>
           </Kart>
 
-          <Kart className="space-y-3 p-4">
+          <Kart className="min-w-0 space-y-3 p-4">
             <h2 className={kartBasligiStili}>Hizmet kırılımı</h2>
             {rapor.hizmetler.length === 0 ? (
               <p className="text-sm text-zinc-500">

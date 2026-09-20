@@ -332,7 +332,10 @@ export default async function RandevularSayfasi(
         }))}
       />
 
-      <SuzgecCubugu>
+      <SuzgecCubugu etkin={(uzmanSuzgeci !== "tumu" ? 1 : 0) +
+          (hizmetSuzgeci !== "tumu" ? 1 : 0) +
+          (subeParametresi ? 1 : 0) +
+          (iptalleriGoster ? 1 : 0)}>
         {/* Görünüm üç seçenek: çip. Uzman ve hizmet onlarca olabilir: açılır
             liste (öğrenci süzgecindeki ayrımın aynısı). */}
         <SuzgecGrubu

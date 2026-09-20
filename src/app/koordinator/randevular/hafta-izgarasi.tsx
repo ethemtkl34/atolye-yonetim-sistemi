@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
+import { Bildirim, Buton, Kart, Rozet, butonStili } from "@/components/ui";
 import { Pencere } from "@/components/ui-istemci";
-import { saatAraligiMetni, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
+import { bugun, saatAraligiMetni, tarihGunleBicimle, tarihMetni } from "@/lib/tarih";
 import type { HaftaSutunu, IzgaraEkseni } from "@/lib/randevu/izgara-verisi";
 import type { EylemDurumu } from "@/lib/formlar";
 import { DURUM_ADLARI, DURUM_ROZETLERI } from "./sema";
@@ -13,6 +13,7 @@ import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { HaftaIzgarasiGovdesi } from "./hafta-izgarasi-govde";
 import { TarihAtlayici } from "./tarih-atlayici";
+import { useDarEkran } from "@/components/mobil";
 import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import {
   RandevuFormuAcici,
@@ -82,6 +83,25 @@ export function HaftaIzgarasi({
   } | null>(null);
   const [bekliyor, basla] = useTransition();
 
+  /**
+   * TELEFONDA TEK GÜN (Eylül 2026 mobil turu): yedi günlük ızgara 1072
+   * piksel genişliğindeydi, 375'lik ekrana bir buçuk gün sığıyordu. Dar
+   * ekranda ızgara tek güne iniyor ve gün oklarla değişiyor; hafta içinde
+   * kalındığı için üstteki hafta gezinmesi olduğu gibi duruyor.
+   */
+  const dar = useDarEkran();
+  const [secilenGun, setSecilenGun] = useState<number | null>(null);
+  const bugunIndeksi = sutunlar.findIndex(
+    (sutun) => tarihMetni(sutun.gun) === tarihMetni(bugun()),
+  );
+  const gunIndeksi = Math.min(
+    Math.max(secilenGun ?? (bugunIndeksi >= 0 ? bugunIndeksi : 0), 0),
+    Math.max(sutunlar.length - 1, 0),
+  );
+  const gosterilenSutunlar =
+    dar && sutunlar.length > 0 ? sutunlar.slice(gunIndeksi, gunIndeksi + 1) : sutunlar;
+  const gosterilenGun = sutunlar[gunIndeksi]?.gun ?? null;
+
   return (
     <div className="space-y-4">
       {mesaj?.basari ? <Bildirim tur="basari">{mesaj.basari}</Bildirim> : null}
@@ -111,9 +131,39 @@ export function HaftaIzgarasi({
         </Link>
       </Kart>
 
+      {dar && gosterilenGun ? (
+        <Kart className="flex items-center justify-between gap-2 p-2">
+          <Buton
+            type="button"
+            tur="ikincil"
+            disabled={gunIndeksi === 0}
+            onClick={() => setSecilenGun(gunIndeksi - 1)}
+            aria-label="Önceki gün"
+          >
+            ‹
+          </Buton>
+          <span className="text-sm font-semibold text-zinc-900">
+            {tarihGunleBicimle(gosterilenGun)}
+            <span className="ml-2 font-normal text-zinc-500">
+              {sutunlar[gunIndeksi]?.bloklar.length ?? 0} randevu
+            </span>
+          </span>
+          <Buton
+            type="button"
+            tur="ikincil"
+            disabled={gunIndeksi >= sutunlar.length - 1}
+            onClick={() => setSecilenGun(gunIndeksi + 1)}
+            aria-label="Sonraki gün"
+          >
+            ›
+          </Buton>
+        </Kart>
+      ) : null}
+
       <Kart className="overflow-hidden p-0">
         <HaftaIzgarasiGovdesi
-          sutunlar={sutunlar}
+          tekGun={dar}
+          sutunlar={gosterilenSutunlar}
           eksen={eksen}
           onBlokTikla={setDetay}
           bosAlanTiklanabilir={yazabilir}

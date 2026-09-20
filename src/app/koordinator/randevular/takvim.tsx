@@ -14,6 +14,7 @@ import { randevuDurumDegistir, randevuIptalEt, randevuSil } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { TarihAtlayici } from "./tarih-atlayici";
+import { useDarEkran } from "@/components/mobil";
 import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 
@@ -117,6 +118,9 @@ export function Takvim({
   const [silHedefi, setSilHedefi] = useState<RandevuSatiri | null>(null);
   const [duzenleHedefi, setDuzenleHedefi] = useState<RandevuSatiri | null>(null);
   const [bekliyor, basla] = useTransition();
+  // Telefonda tablo yerine kart: yedi sütun 672 piksel genişliğindeydi ve
+  // yan kaydırma istiyordu (Eylül 2026 mobil turu).
+  const dar = useDarEkran();
 
   // Ay görünümünde boş günler tek satıra iner (bkz. bileşen şerhi).
   const gosterilecek =
@@ -170,6 +174,27 @@ export function Takvim({
                 Randevu yok
               </p>
             ) : (
+              dar ? (
+              <div className="space-y-1.5">
+                {grup.randevular.map((randevu) => (
+                  <RandevuMobilKarti
+                    key={randevu.id}
+                    randevu={randevu}
+                    yazabilir={yazabilir}
+                    kurumAdi={kurumAdi}
+                    bekliyor={bekliyor}
+                    onDurum={(durum) =>
+                      basla(async () =>
+                        setMesaj(await randevuDurumDegistir(randevu.id, durum)),
+                      )
+                    }
+                    onIptal={() => setIptalHedefi(randevu)}
+                    onSil={() => setSilHedefi(randevu)}
+                    onDuzenle={() => setDuzenleHedefi(randevu)}
+                  />
+                ))}
+              </div>
+            ) : (
               <Kart className="overflow-hidden p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[42rem] text-sm">
@@ -210,6 +235,7 @@ export function Takvim({
                   </table>
                 </div>
               </Kart>
+            )
             )}
           </div>
         ))}
@@ -248,6 +274,97 @@ export function Takvim({
         onKapat={() => setDuzenleHedefi(null)}
       />
     </div>
+  );
+}
+
+/**
+ * Liste görünümünün TELEFON biçimi: tablonun bir satırı = bir kart.
+ *
+ * Masaüstündeki tabloyla aynı bilgiyi taşıyor (saat, uzman, hizmet, danışan,
+ * durum, ücret) ve eylemleri aynı "⋮" menüsünden veriyor — iki görünüm
+ * arasında ayrışma olmasın diye eylem bileşeni ortak.
+ */
+function RandevuMobilKarti({
+  randevu,
+  yazabilir,
+  kurumAdi,
+  bekliyor,
+  onDurum,
+  onIptal,
+  onSil,
+  onDuzenle,
+}: {
+  randevu: RandevuSatiri;
+  yazabilir: boolean;
+  kurumAdi: string;
+  bekliyor: boolean;
+  onDurum: (durum: "PLANLANDI" | "GERCEKLESTI" | "GELMEDI") => void;
+  onIptal: () => void;
+  onSil: () => void;
+  onDuzenle: () => void;
+}) {
+  const ton = uzmanRengi(randevu.uzmanRengi);
+  const iptalEdilmis = randevu.durum === "IPTAL";
+
+  return (
+    <Kart className={cn("space-y-1.5 p-3 text-sm", iptalEdilmis && "opacity-60")}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-semibold tabular-nums text-zinc-900">
+          {saatAraligiMetni(randevu.baslangic, randevu.bitis)}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <Rozet tur={DURUM_ROZETLERI[randevu.durum]}>
+            {DURUM_ADLARI[randevu.durum]}
+          </Rozet>
+          <RandevuIslemMenusu
+            randevu={randevu}
+            yazabilir={yazabilir}
+            kurumAdi={kurumAdi}
+            bekliyor={bekliyor}
+            onDurum={onDurum}
+            onIptal={onIptal}
+            onSil={onSil}
+            onDuzenle={onDuzenle}
+          />
+        </span>
+      </div>
+
+      <p className="flex flex-wrap items-center gap-1.5">
+        <span
+          className="inline-flex max-w-full items-center gap-1.5 rounded-full py-0.5 pr-2.5 pl-1.5 text-xs font-medium whitespace-nowrap"
+          style={{ backgroundColor: ton.zemin, color: ton.metin }}
+        >
+          <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+          {randevu.uzmanAdi}
+        </span>
+        <span className="text-zinc-800">{randevu.hizmetAdi}</span>
+        {randevu.seriDeMi ? <Rozet tur="notr">Seri</Rozet> : null}
+        {randevu.bizim ? null : <Rozet tur="pasif">{randevu.subeAdi}</Rozet>}
+      </p>
+
+      <p className="text-zinc-700">
+        {randevu.bizim ? (
+          <>
+            {randevu.veliAdi}
+            {randevu.ogrenciAdi ? (
+              <span className="text-zinc-500"> · {randevu.ogrenciAdi}</span>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-zinc-500">diğer şube</span>
+        )}
+        {randevu.ucretKurus !== null && randevu.ucretKurus > 0 ? (
+          <span className="float-right font-medium tabular-nums text-zinc-800">
+            {paraMetni(randevu.ucretKurus)}
+          </span>
+        ) : null}
+      </p>
+
+      {randevu.not ? <p className="text-xs text-zinc-500">{randevu.not}</p> : null}
+      {randevu.iptalNotu ? (
+        <p className="text-xs text-zinc-500">İptal notu: {randevu.iptalNotu}</p>
+      ) : null}
+    </Kart>
   );
 }
 
@@ -446,7 +563,8 @@ function RandevuIslemMenusu(props: {
         aria-label="İşlemler"
         className={cn(
           butonStili("sade"),
-          "!min-h-9 w-9 !px-0 text-base leading-none sm:!min-h-8 sm:w-8",
+          // Telefonda 44px dokunma hedefi; masaüstünde eski sıkı ölçü.
+          "!min-h-11 w-11 !px-0 text-base leading-none sm:!min-h-8 sm:w-8",
         )}
       >
         ⋮

@@ -43,7 +43,8 @@ export function SuzgecSecici({
   const router = useRouter();
 
   return (
-    <label className="flex items-center gap-2">
+    // Telefonda etiket üstte, kutu tam genişlik (bkz. `SuzgecGrubu`).
+    <label className="flex w-full flex-col items-start gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
       <span className="text-sm text-zinc-500">{etiket}:</span>
       <select
         value={secili}
@@ -55,7 +56,7 @@ export function SuzgecSecici({
           }
           router.push(`${temelYol}?${parametreler.toString()}`);
         }}
-        className={`${secimStili} w-auto`}
+        className={`${secimStili} w-full sm:w-auto`}
       >
         {bosSecenek === null ? null : <option value="">{bosSecenek}</option>}
         {secenekler.map((secenek) => (

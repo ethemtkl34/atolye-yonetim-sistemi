@@ -355,7 +355,57 @@ export default async function OgrenciGecmisiSayfasi(
           }
         />
       ) : (
-        <Kart className="overflow-x-auto">
+        <>
+          {/*
+            Telefonda TABLO DEĞİL KART (Eylül 2026 mobil turu): yedi sütunluk
+            tablo 832 piksel genişliğindeydi ve yan kaydırma gerektiriyordu.
+            Aynı veri iki biçimde çiziliyor; ikisi de sunucuda üretildiği için
+            ek maliyeti yok, etkileşimli öğe içermiyor.
+          */}
+          <div className="space-y-2 sm:hidden">
+            {puanlamalar.map((puanlama) => {
+              const grup = puanlama.enrollment.group;
+              const ortalama = puanlamaOrtalamasi({
+                attended: puanlama.attended,
+                answers: puanlama.answers,
+              });
+
+              return (
+                <Kart key={puanlama.id} className="space-y-1.5 p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Link
+                      href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
+                      className={kartBasligiStili}
+                    >
+                      {tarihGunleBicimle(puanlama.session.date)}
+                    </Link>
+                    <span className="flex items-center gap-1.5">
+                      <Rozet>{grup.term ? "Dönem" : "Kulüp"}</Rozet>
+                      <Rozet tur={puanlama.attended ? "olumlu" : "pasif"}>
+                        {puanlama.attended ? "Katıldı" : "Katılmadı"}
+                      </Rozet>
+                    </span>
+                  </div>
+                  <p className="text-zinc-700">
+                    {puanlama.session.workshopType.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {grup.term?.name ?? grup.club?.name ?? "Program"} · {grup.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Ortalama:{" "}
+                    <span className="tabular-nums text-zinc-700">
+                      {ortalamaBicimle(ortalama)}
+                    </span>
+                    {" · "}
+                    Stajyer: {puanlama.enrollment.intern?.name ?? "—"}
+                  </p>
+                </Kart>
+              );
+            })}
+          </div>
+
+          <Kart className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[52rem] text-sm">
             <thead className="border-b border-yuzey-200 bg-yuzey-50 text-left text-xs font-medium text-marka-800">
               <tr>
@@ -412,7 +462,8 @@ export default async function OgrenciGecmisiSayfasi(
               })}
             </tbody>
           </table>
-        </Kart>
+          </Kart>
+        </>
       )}
 
       {puanlamalar.length > 0 ? (

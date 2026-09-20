@@ -160,7 +160,7 @@ export default async function OgrencilerSayfasi(
         </button>
       </form>
 
-      <SuzgecCubugu>
+      <SuzgecCubugu etkin={(kapsam === "aktif" ? 1 : 0) + (programDegeri ? 1 : 0)}>
         <SuzgecGrubu
           etiket="Kapsam"
           temelYol={TEMEL_YOL}

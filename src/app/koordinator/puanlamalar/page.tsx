@@ -53,7 +53,7 @@ export default async function PuanlamalarSayfasi(
         aciklama="Stajyerlerin doldurduğu bütün formlar burada görüntülenir ve düzenlenebilir. Yalnızca yapılmış oturumlar sayılır; gelecek haftaların formları eksik sayılmaz."
       />
 
-      <SuzgecCubugu>
+      <SuzgecCubugu etkin={(suzgec === "tumu" ? 1 : 0) + (kapsam === "tumu" ? 1 : 0)}>
         <SuzgecGrubu
           etiket="Formlar"
           temelYol={TEMEL_YOL}

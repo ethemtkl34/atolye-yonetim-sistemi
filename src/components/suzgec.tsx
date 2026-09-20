@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Kart } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,11 +20,9 @@ export type SuzgecSecenegi = {
 // süzgeç ailesini tek modülden görsün.
 export { SuzgecSecici } from "@/components/suzgec-secici";
 
-export function SuzgecCubugu({ children }: { children: React.ReactNode }) {
-  return (
-    <Kart className="flex flex-wrap items-center gap-4 p-3">{children}</Kart>
-  );
-}
+// Çubuğun kendisi telefonda katlanıyor ve durum tutuyor: "use client"
+// gerektirdiği için ayrı dosyada (bkz. suzgec-cubugu.tsx).
+export { SuzgecCubugu } from "@/components/suzgec-cubugu";
 
 export function SuzgecGrubu({
   etiket,
@@ -46,7 +43,9 @@ export function SuzgecGrubu({
   digerler?: Record<string, string>;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    // Telefonda etiket kontrolün ÜSTÜNDE ve grup tam genişlik: yan yana
+    // dizilim 375 pikselde etiketi çiplerden koparıyordu.
+    <div className="flex w-full flex-col items-start gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
       <span className="text-sm text-zinc-500">{etiket}:</span>
       <div className="flex flex-wrap gap-1">
         {secenekler.map((secenek) => {

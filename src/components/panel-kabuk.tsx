@@ -73,11 +73,17 @@ export function PanelKabuk({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Üst şerit sayfanın zemininden bir tık kabarık: altındaki içerik
             kaydıkça şeridin sabit durduğu gölgesinden anlaşılıyor. */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-[linear-gradient(180deg,#fdfbfc,#f6f0f3)] px-4 py-2.5 shadow-[0_6px_16px_-8px_var(--kil-golge),inset_0_1px_0_#fff] sm:px-6">
+        {/*
+          Telefonda İKİ SATIR (Eylül 2026 mobil turu): üstte menü + hesap +
+          çıkış, altında tam genişlikte şube kutusu. Tek satıra sığmadığı için
+          şube kutusu avatarın üstüne biniyordu. `order-*` sınıfları
+          masaüstündeki sırayı (hesap · şube · çıkış) koruyor.
+        */}
+        <header className="sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 bg-[linear-gradient(180deg,#fdfbfc,#f6f0f3)] px-4 py-2.5 shadow-[0_6px_16px_-8px_var(--kil-golge),inset_0_1px_0_#fff] sm:flex-nowrap sm:justify-between sm:px-6">
           {/* Ad, hesap sayfasına giden bağlantı: parola değiştirme buradan
               bulunuyor. Menüye ayrı madde eklenmedi — 13 modülün arasına
               karışmaması, kullanıcının kendi hesabına ait olması gerekiyor. */}
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="order-1 flex min-w-0 flex-1 items-center gap-1">
             {/* Dar ekranda sol menü gizli; buradaki düğme çekmeceyi açıyor. */}
             <MobilMenu menu={menu} baslik={baslik} />
 
@@ -105,23 +111,23 @@ export function PanelKabuk({
             </Link>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="order-3 w-full shrink-0 sm:order-2 sm:w-auto">
             <SubeGostergesi
               aktifSubeId={kullanici.aktifSubeId}
               subeler={kullanici.secilebilirSubeler}
               degistirebilir={kullanici.subeDegistirebilir}
               randevuSubesi={randevuSubesi}
             />
-
-            <form action={cikisYap}>
-              <button
-                type="submit"
-                className="kil-buton kil-buton-ikincil min-h-[2.75rem] px-3.5 py-1.5 text-sm sm:min-h-[2.25rem]"
-              >
-                Çıkış
-              </button>
-            </form>
           </div>
+
+          <form action={cikisYap} className="order-2 shrink-0 sm:order-3 sm:ml-3">
+            <button
+              type="submit"
+              className="kil-buton kil-buton-ikincil min-h-[2.75rem] px-3.5 py-1.5 text-sm sm:min-h-[2.25rem]"
+            >
+              Çıkış
+            </button>
+          </form>
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">

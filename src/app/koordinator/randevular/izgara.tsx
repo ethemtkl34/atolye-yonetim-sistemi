@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Bildirim, Kart, Rozet, butonStili } from "@/components/ui";
+import { Bildirim, Buton, Kart, Rozet, butonStili } from "@/components/ui";
 import { Pencere } from "@/components/ui-istemci";
 import {
   saatAraligiMetni,
@@ -24,6 +24,7 @@ import { randevuDurumDegistir, randevuIptalEt, randevuSil } from "./actions";
 import { IptalPenceresi } from "./iptal-penceresi";
 import { RandevuEylemleri } from "./randevu-eylemleri";
 import { TarihAtlayici } from "./tarih-atlayici";
+import { useDarEkran } from "@/components/mobil";
 import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import type { RandevuSatiri } from "./takvim";
 import {
@@ -103,6 +104,23 @@ export function Izgara({
   const [bekliyor, basla] = useTransition();
 
   const toplamPiksel = (eksen.bitisDk - eksen.baslangicDk) * PX_PER_DK;
+
+  /**
+   * TELEFONDA TEK UZMAN (Eylül 2026 mobil turu): on bir uzmanlık ızgara 2000
+   * piksel genişliğindeydi, 375'lik ekranda altıda biri görünüyordu. Dar
+   * ekranda tek uzman sütunu ekranı dolduruyor, uzman oklarla değişiyor.
+   */
+  const dar = useDarEkran();
+  const [secilenUzman, setSecilenUzman] = useState(0);
+  const uzmanIndeksi = Math.min(
+    Math.max(secilenUzman, 0),
+    Math.max(uzmanlar.length - 1, 0),
+  );
+  const gosterilenUzmanlar =
+    dar && uzmanlar.length > 0
+      ? uzmanlar.slice(uzmanIndeksi, uzmanIndeksi + 1)
+      : uzmanlar;
+
   // Geçmiş kilidi: yönetici olmayan günü bitmiş bir güne hücreden randevu açamaz.
   const gunKilitli = enErkenTarih !== undefined && varsayilanTarih < enErkenTarih;
 
@@ -153,6 +171,35 @@ export function Izgara({
         </div>
       </Kart>
 
+      {dar && uzmanlar.length > 0 ? (
+        <Kart className="flex items-center justify-between gap-2 p-2">
+          <Buton
+            type="button"
+            tur="ikincil"
+            disabled={uzmanIndeksi === 0}
+            onClick={() => setSecilenUzman(uzmanIndeksi - 1)}
+            aria-label="Önceki uzman"
+          >
+            ‹
+          </Buton>
+          <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-zinc-900">
+            {uzmanlar[uzmanIndeksi]?.ad}
+            <span className="ml-2 font-normal text-zinc-500">
+              {uzmanIndeksi + 1}/{uzmanlar.length}
+            </span>
+          </span>
+          <Buton
+            type="button"
+            tur="ikincil"
+            disabled={uzmanIndeksi >= uzmanlar.length - 1}
+            onClick={() => setSecilenUzman(uzmanIndeksi + 1)}
+            aria-label="Sonraki uzman"
+          >
+            ›
+          </Buton>
+        </Kart>
+      ) : null}
+
       {uzmanlar.length === 0 ? (
         <div className="kil-bos p-8 text-center">
           <p className="text-sm font-medium text-zinc-600">
@@ -167,7 +214,9 @@ export function Izgara({
           <div className="overflow-x-auto">
             <div
               style={{
-                minWidth: `${ZAMAN_SUTUNU_REM + uzmanlar.length * SUTUN_GENISLIGI_REM}rem`,
+                minWidth: dar
+                  ? undefined
+                  : `${ZAMAN_SUTUNU_REM + uzmanlar.length * SUTUN_GENISLIGI_REM}rem`,
               }}
             >
               {/*
@@ -185,13 +234,13 @@ export function Izgara({
                   className="sticky left-0 z-20 shrink-0 bg-[var(--color-yuzey-50)]"
                   style={{ width: `${ZAMAN_SUTUNU_REM}rem` }}
                 />
-                {uzmanlar.map((uzman) => {
+                {gosterilenUzmanlar.map((uzman) => {
                   const ton = uzmanRengi(uzman.renk);
                   return (
                     <div
                       key={uzman.id}
                       className="flex shrink-0 items-center gap-1.5 px-2 py-2"
-                      style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
+                      style={dar ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
                     >
                       <span
                         className="size-2.5 shrink-0 rounded-full"
@@ -248,7 +297,7 @@ export function Izgara({
                   </div>
                 </div>
 
-                {uzmanlar.map((uzman) => {
+                {gosterilenUzmanlar.map((uzman) => {
                   const sutun = sutunlar.find((s) => s.uzmanId === uzman.id);
                   if (!sutun) return null;
                   const ton = uzmanRengi(uzman.renk);
@@ -260,7 +309,7 @@ export function Izgara({
                     <div
                       key={uzman.id}
                       className={cnTikla(yazabilir && !sutun.mesaiYok && !gunKilitli)}
-                      style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
+                      style={dar ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
                       onClick={(olay) => hucreyeTikla(olay, sutun)}
                     >
                       {bosluklar.map((blok, i) => (

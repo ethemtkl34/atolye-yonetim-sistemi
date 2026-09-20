@@ -163,7 +163,14 @@ export default async function AdaylarSayfasi(
         </button>
       </form>
 
-      <SuzgecCubugu>
+      <SuzgecCubugu
+        etkin={
+          (kapsam !== "acik" ? 1 : 0) +
+          (asama ? 1 : 0) +
+          (kaynak ? 1 : 0) +
+          (sorumluId ? 1 : 0)
+        }
+      >
         <SuzgecGrubu
           etiket="Kapsam"
           temelYol={TEMEL_YOL}

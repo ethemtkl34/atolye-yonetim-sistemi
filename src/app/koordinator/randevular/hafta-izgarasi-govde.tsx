@@ -8,6 +8,7 @@ import {
   type IzgaraEkseni,
 } from "@/lib/randevu/izgara-verisi";
 import { blokYazisi, uzmanRengi } from "@/lib/uzman-renkleri";
+import { cn } from "@/lib/utils";
 import { dakikayiSaateCevir } from "../uzmanlar/sema";
 import type { RandevuSatiri } from "./takvim";
 
@@ -34,6 +35,7 @@ export function HaftaIzgarasiGovdesi({
   sutunlar,
   eksen,
   bosAlanTiklanabilir = false,
+  tekGun = false,
   enErkenTarih,
   onBlokTikla,
   onBosAlanaTikla,
@@ -41,6 +43,11 @@ export function HaftaIzgarasiGovdesi({
   sutunlar: HaftaSutunu<RandevuSatiri>[];
   eksen: IzgaraEkseni;
   bosAlanTiklanabilir?: boolean;
+  /**
+   * TEK GÜN kipi (telefon): sütun ekranı doldurur, yan kaydırma olmaz.
+   * Hafta kipinde sütunlar sabit genişlikte ve ızgara yana kayar.
+   */
+  tekGun?: boolean;
   /**
    * Geçmiş kilidi: bu günden ("YYYY-AA-GG") önceki sütunlar tıklanamaz.
    * Yöneticide ve aday seçicisinde verilmez.
@@ -72,9 +79,13 @@ export function HaftaIzgarasiGovdesi({
   return (
     <div className="overflow-x-auto">
       <div
-        style={{
-          minWidth: `${ZAMAN_SUTUNU_REM + sutunlar.length * SUTUN_GENISLIGI_REM}rem`,
-        }}
+        style={
+          tekGun
+            ? undefined
+            : {
+                minWidth: `${ZAMAN_SUTUNU_REM + sutunlar.length * SUTUN_GENISLIGI_REM}rem`,
+              }
+        }
       >
         {/* Bkz. Izgara (Program) bileşenindeki aynı şerh: başlık satırı
             yalnız yatayda sabit, dikey sticky sayfa kaydırmasıyla
@@ -89,8 +100,12 @@ export function HaftaIzgarasiGovdesi({
             return (
               <div
                 key={sutun.gun.toISOString()}
-                className="flex shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
-                style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
+                className={
+                  tekGun
+                    ? "flex flex-1 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
+                    : "flex shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
+                }
+                style={tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
               >
                 <span
                   className={
@@ -149,8 +164,12 @@ export function HaftaIzgarasiGovdesi({
           {sutunlar.map((sutun) => (
             <div
               key={sutun.gun.toISOString()}
-              className={gunTiklanabilir(sutun.gun) ? "relative cursor-pointer" : "relative"}
-              style={{ width: `${SUTUN_GENISLIGI_REM}rem` }}
+              className={cn(
+                "relative",
+                tekGun && "flex-1",
+                gunTiklanabilir(sutun.gun) && "cursor-pointer",
+              )}
+              style={tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
               onClick={(olay) => bosAlanaTikla(olay, sutun.gun)}
             >
               {sutun.bloklar.map(
