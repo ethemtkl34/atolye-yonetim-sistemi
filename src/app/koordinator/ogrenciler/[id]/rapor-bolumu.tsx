@@ -339,7 +339,9 @@ export function RaporBolumu({
         <button
           type="button"
           onClick={kapat}
-          className="-my-1 inline-block py-1 text-sm text-marka-700 hover:underline"
+          // Telefonda 44px hedef; masaüstünde eski sıkı ölçü (ui.tsx
+          // `baglantiStili` ile aynı numara).
+          className="-my-2.5 inline-block py-2.5 text-sm text-marka-700 hover:underline sm:-my-1 sm:py-1"
         >
           ← Raporlar
         </button>

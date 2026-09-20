@@ -212,7 +212,8 @@ export function ProfilKutusu({
               type="button"
               onClick={() => pencereRef.current?.close()}
               aria-label="Pencereyi kapat"
-              className="kil-rozet grid size-9 place-items-center rounded-full text-sm font-bold text-zinc-700"
+              // Telefonda 44px dokunma hedefi (Eylül 2026 mobil turu).
+              className="kil-rozet grid size-11 place-items-center rounded-full text-sm font-bold text-zinc-700 sm:size-9"
             >
               ✕
             </button>

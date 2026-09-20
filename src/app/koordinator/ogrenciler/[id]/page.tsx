@@ -525,7 +525,7 @@ export default async function OgrenciProfilSayfasi(
                     {" · "}
                     <a
                       href={`tel:${veli.phone}`}
-                      className="text-marka-700 hover:underline"
+                      className="-my-2.5 inline-block py-2.5 text-marka-700 hover:underline sm:my-0 sm:py-0"
                     >
                       {veli.phone}
                     </a>

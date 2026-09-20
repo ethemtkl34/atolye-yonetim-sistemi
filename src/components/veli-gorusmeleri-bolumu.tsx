@@ -189,7 +189,9 @@ function IsaretKutusu({
   ipucu?: string;
 }) {
   return (
-    <label className="flex items-start gap-2 text-sm text-zinc-700">
+    // Telefonda satırın tamamı dokunma hedefi: 16 piksellik kutuya nişan
+    // almak gerekiyordu (Eylül 2026 mobil turu).
+    <label className="flex min-h-[2.75rem] items-start gap-2 py-1.5 text-sm text-zinc-700 sm:min-h-0 sm:py-0">
       <input
         type="checkbox"
         name={ad}

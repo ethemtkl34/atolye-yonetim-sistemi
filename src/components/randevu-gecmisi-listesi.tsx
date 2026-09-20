@@ -97,15 +97,18 @@ function Satir({
     satir.durum === "PLANLANDI" && satir.baslangic.getTime() < bugun.getTime();
 
   return (
+    // `relative` + bağlantıdaki `after:inset-0`: satırın TAMAMI hedef.
+    // Telefonda 20 piksellik tarih bağlantısına nişan almak gerekiyordu
+    // (Eylül 2026 mobil turu).
     <li
-      className={`kil-satir flex flex-wrap items-start justify-between gap-2 px-3 py-2 text-sm ${
+      className={`kil-satir relative flex flex-wrap items-start justify-between gap-2 px-3 py-2 text-sm ${
         satir.durum === "IPTAL" ? "opacity-60" : ""
       }`}
     >
       <span className="min-w-0 space-y-0.5">
         <Link
           href={`/koordinator/randevular?gorunum=gun&tarih=${tarihMetni(satir.baslangic)}`}
-          className="block font-semibold text-zinc-900 hover:underline"
+          className="block font-semibold text-zinc-900 after:absolute after:inset-0 hover:underline"
         >
           {tarihGunleBicimle(satir.baslangic)} · {saatAraligiMetni(satir.baslangic, satir.bitis)}
         </Link>

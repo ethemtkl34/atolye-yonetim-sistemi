@@ -76,7 +76,7 @@ export function IptalPenceresi({
           <legend className="px-1 text-sm font-semibold text-zinc-700">
             Bu randevu haftalık bir serinin parçası
           </legend>
-          <label className="flex items-start gap-2 text-sm">
+          <label className="flex min-h-[2.75rem] items-start gap-2 py-1.5 text-sm sm:min-h-0 sm:py-0">
             <input
               type="radio"
               name="kapsam"
@@ -91,7 +91,7 @@ export function IptalPenceresi({
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm">
+          <label className="flex min-h-[2.75rem] items-start gap-2 py-1.5 text-sm sm:min-h-0 sm:py-0">
             <input
               type="radio"
               name="kapsam"

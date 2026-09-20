@@ -198,7 +198,8 @@ export function Pencere({
               type="button"
               onClick={onKapat}
               aria-label="Pencereyi kapat"
-              className="kil-rozet flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-zinc-600 hover:text-zinc-900"
+              // Telefonda 44px dokunma hedefi (Eylül 2026 mobil turu).
+              className="kil-rozet flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-zinc-600 hover:text-zinc-900 sm:size-9"
             >
               ✕
             </button>

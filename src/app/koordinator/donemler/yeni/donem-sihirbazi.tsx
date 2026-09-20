@@ -290,7 +290,9 @@ export function DonemSihirbazi({
               <li key={metin}>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                    // Telefonda 44px dokunma hedefi; masaüstünde eski sıkı ölçü
+                      // (Eylül 2026 mobil turu).
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
                     // Seçili hafta kile gömülür; seçilmemiş olan düz kalır.
                     secili
                       ? "kil-cip text-marka-700"
@@ -355,7 +357,9 @@ export function DonemSihirbazi({
                 <li key={atolye.id}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Telefonda 44px dokunma hedefi; masaüstünde eski sıkı ölçü
+                      // (Eylül 2026 mobil turu).
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
                       // Seçili atölye kile gömülür; seçilmemiş olan düz kalır.
                       secili
                         ? "kil-cip text-marka-700"
@@ -412,7 +416,9 @@ export function DonemSihirbazi({
                 <li key={stajyer.id}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-sm",
+                      // Telefonda 44px dokunma hedefi; masaüstünde eski sıkı ölçü
+                      // (Eylül 2026 mobil turu).
+                      "flex min-h-[2.75rem] cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm sm:min-h-0 sm:py-1.5",
                       // Seçili stajyer kile gömülür; seçilmemiş olan düz kalır.
                       secili
                         ? "kil-cip text-marka-700"
