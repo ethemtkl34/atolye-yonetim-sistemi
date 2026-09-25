@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  gecmisRandevuyuDuzenleyebilirMi,
-  istanbulBugunu,
-  randevuGecmisMi,
-} from "./gecmis-kilidi";
+import { istanbulBugunu, randevuGecmisMi } from "./gecmis-kilidi";
 
 /** Randevu saatleri duvar saati olarak UTC alanlarında: "17 Eylül 14:00" → 14:00Z. */
 const randevu = (metin: string) => new Date(`${metin}Z`);
@@ -23,42 +19,29 @@ describe("istanbulBugunu", () => {
   });
 });
 
-describe("randevuGecmisMi — gün bitince kilit", () => {
+/**
+ * Rol kuralının testleri 25 Eylül 2026'da SİLİNDİ: geçmiş randevu kilidi
+ * kaldırıldı, `randevular` TAM yetkisi olan herkes geçmişe randevu açıp
+ * düzenliyor. Geriye kalan `randevuGecmisMi` yalnız SİLME kuralını besliyor
+ * (günü geçmiş randevu silinmez, iptal edilir) — testleri o yüzden duruyor.
+ */
+describe("randevuGecmisMi — günü bitmiş randevu", () => {
   const ogleden = new Date("2026-09-17T12:00:00Z"); // 17 Eylül 15:00 İstanbul
 
-  it("bugünün saati geçmiş randevusu hâlâ AÇIK", () => {
+  it("bugünün saati geçmiş randevusu hâlâ SİLİNEBİLİR", () => {
     expect(randevuGecmisMi(randevu("2026-09-17T09:00:00"), ogleden)).toBe(false);
   });
 
-  it("bugünün ileri saatli randevusu açık", () => {
+  it("bugünün ileri saatli randevusu silinebilir", () => {
     expect(randevuGecmisMi(randevu("2026-09-17T18:00:00"), ogleden)).toBe(false);
   });
 
-  it("dünün son randevusu kilitli", () => {
+  it("dünün son randevusu artık geçmiş", () => {
     expect(randevuGecmisMi(randevu("2026-09-16T23:30:00"), ogleden)).toBe(true);
   });
 
-  it("gece yarısını geçer geçmez dün kilitlenir (UTC'de hâlâ dün olsa da)", () => {
+  it("gece yarısını geçer geçmez dün geçmişe düşer (UTC'de hâlâ dün olsa da)", () => {
     const geceBir = new Date("2026-09-16T22:00:00Z"); // 17 Eylül 01:00 İstanbul
     expect(randevuGecmisMi(randevu("2026-09-16T20:00:00"), geceBir)).toBe(true);
-  });
-});
-
-describe("gecmisRandevuyuDuzenleyebilirMi", () => {
-  it("Kurum ve Şube Yöneticisi düzenler", () => {
-    expect(gecmisRandevuyuDuzenleyebilirMi(["ADMIN"])).toBe(true);
-    expect(gecmisRandevuyuDuzenleyebilirMi(["SUBE_YONETICISI"])).toBe(true);
-    expect(
-      gecmisRandevuyuDuzenleyebilirMi(["SUBE_YONETICISI", "ATOLYE_PSIKOLOGU"]),
-    ).toBe(true);
-  });
-
-  it("koordinatör, psikolog ve danışma masası düzenleyemez", () => {
-    expect(gecmisRandevuyuDuzenleyebilirMi(["KOORDINATOR"])).toBe(false);
-    expect(gecmisRandevuyuDuzenleyebilirMi(["ATOLYE_PSIKOLOGU"])).toBe(false);
-    expect(gecmisRandevuyuDuzenleyebilirMi(["DANISMA_GOREVLISI"])).toBe(false);
-    expect(
-      gecmisRandevuyuDuzenleyebilirMi(["KOORDINATOR", "TEST_UYGULAYICISI", "DANISMA_GOREVLISI"]),
-    ).toBe(false);
   });
 });

@@ -31,12 +31,7 @@ import {
   randevuSemasi,
 } from "./sema";
 import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
-import {
-  GECMIS_KILIDI_MESAJI,
-  GECMIS_TARIH_MESAJI,
-  gecmisRandevuyuDuzenleyebilirMi,
-  randevuGecmisMi,
-} from "@/lib/randevu/gecmis-kilidi";
+import { randevuGecmisMi } from "@/lib/randevu/gecmis-kilidi";
 
 /**
  * §17.4 — Randevu yazma işlemleri.
@@ -171,13 +166,6 @@ export async function randevuEkle(
     return { alanHatalari: { tarih: "Tarih seçilmeli." }, degerler: girilenler };
   }
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(veri.saat)! * 60_000);
-
-  // Geçmiş kilidi (bkz. lib/randevu/gecmis-kilidi.ts): günü bitmiş bir tarihe
-  // randevu girmek geçmiş haftanın cirosunu değiştirir. Serinin ilk tarihi en
-  // erkeni olduğu için yalnız onu denetlemek yeter.
-  if (randevuGecmisMi(baslangic) && !gecmisRandevuyuDuzenleyebilirMi(kullanici.roller)) {
-    return { alanHatalari: { tarih: GECMIS_TARIH_MESAJI }, degerler: girilenler };
-  }
 
   // Uzman bu hizmeti yapabiliyor mu — arayüz zaten süzüyor, asıl sınır burası.
   // şube-muaf: yetkinlik ve hizmet şubeden bağımsız (bkz. sube-sizinti.ts).
@@ -355,10 +343,6 @@ export async function randevuDuzenle(
   if (mevcut.durum === "IPTAL") {
     return { hata: "İptal edilmiş randevu düzenlenemez." };
   }
-  const gecmisiDuzenleyebilir = gecmisRandevuyuDuzenleyebilirMi(kullanici.roller);
-  if (randevuGecmisMi(mevcut.baslangic) && !gecmisiDuzenleyebilir) {
-    return { hata: GECMIS_KILIDI_MESAJI };
-  }
 
   const cozumlenen = randevuDuzenleSemasi.safeParse(
     Object.fromEntries(
@@ -380,11 +364,6 @@ export async function randevuDuzenle(
     return { alanHatalari: { tarih: "Tarih seçilmeli." }, degerler: girilenler };
   }
   const baslangic = new Date(gun.getTime() + saatiDakikayaCevir(veri.saat)! * 60_000);
-
-  // Gelecekteki randevuyu geçmişe taşımak da kilide takılır.
-  if (randevuGecmisMi(baslangic) && !gecmisiDuzenleyebilir) {
-    return { alanHatalari: { tarih: GECMIS_TARIH_MESAJI }, degerler: girilenler };
-  }
 
   const yetkinlik = await db.uzmanHizmet.findUnique({
     where: {
@@ -676,12 +655,6 @@ export async function randevuIptalEt(
 
   if (!randevu) return { hata: "Randevu bulunamadı." };
   if (randevu.durum === "IPTAL") return { hata: "Randevu zaten iptal edilmiş." };
-  if (
-    randevuGecmisMi(randevu.baslangic) &&
-    !gecmisRandevuyuDuzenleyebilirMi(kullanici.roller)
-  ) {
-    return { hata: GECMIS_KILIDI_MESAJI };
-  }
 
   const seridekiler =
     randevu.seriId && kapsam === "bu-ve-sonrakiler"

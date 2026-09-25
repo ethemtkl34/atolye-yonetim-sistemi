@@ -273,18 +273,22 @@ Karar gerekçeleri:
   şubeye çevirirdi. Seçim yokken ya da bozukken kendi şubesine düşer.
   Adaydan randevu akışı adayın şubesinde kalır, seçimi okumaz. Yönetici
   ayrı seçim almaz — genel seçicisi zaten her şeyi çeviriyor.
-- **Geçmiş randevu kilidi (Eylül 2026).** Günü BİTMİŞ randevunun saati,
-  uzmanı, hizmeti, ücreti değiştirilemez ve iptal edilemez; geçmiş bir güne
-  yeni randevu da açılamaz — yalnız Kurum ve Şube Yöneticisi yapabilir.
-  Gerekçe: raporlanmış haftanın cirosu ve seans sayısı sessizce değişmemeli.
-  **Durum işaretleme (Gerçekleşti/Gelmedi) herkese açık**: seansın sonucu çoğu
-  zaman ertesi gün işaretleniyor ve bunu danışma masası yapıyor. Kilit anı
-  "gün bitince" ve İSTANBUL takvimine göre (`gecmis-kilidi.ts`
-  `istanbulBugunu`): `bugun()` UTC tarihini verdiği için gece 00:00–03:00
-  arasında dünün randevuları açık kalırdı. Kilit sunucu eylemlerinde
-  (`randevuEkle`, `randevuDuzenle`, `randevuIptalEt`, aday `randevuVer`)
-  uygulanıyor; arayüz yalnız düğmeleri gizliyor ve tarih kutusuna `min`
-  koyuyor.
+- **Geçmiş randevu kilidi KALDIRILDI (25 Eylül 2026).** Eylül başındaki kural
+  şuydu: günü bitmiş randevunun saati, uzmanı, hizmeti ve ücreti
+  değiştirilemez, iptal edilemez, geçmiş güne yeni randevu açılamaz; yalnız
+  Kurum ve Şube Yöneticisi yapabilir. Gerekçesi raporlanmış haftanın cirosunun
+  sessizce değişmemesiydi. Pratikte kural yanlış kişiyi durdurdu: takvimi
+  fiilen kuran danışma masası dünkü seansı hiç giremiyor, her düzeltme için
+  yönetici bekliyordu ve "2465 TL ONLINE" gibi sonradan öğrenilen bilgiler
+  kayda geçemiyordu. **Artık `randevular` modülünde TAM yetkisi olan HERKES**
+  (danışma görevlisi ve koordinatör dahil) geçmiş tarihe randevu açar, geçmiş
+  randevuyu düzenler ve iptal eder. Geriye dönük gün sınırı da YOK — kurum
+  "sınırsız" dedi, kapanmış ayları düzeltmek de gerekebiliyor.
+  **Silme bu kapsamda DEĞİL ve kilitli kaldı**: günü geçmiş randevu silinemez,
+  iptal edilir (yöneticide de). Silme ciroya girmiş seansın izini tamamen
+  siler, iptal ise görünür bir karar olarak durur. `gecmis-kilidi.ts`'ten
+  geriye yalnız `randevuGecmisMi` kaldı ve tek tüketicisi bu silme kuralı.
+  Durum işaretleme (Gerçekleşti/Gelmedi) zaten hep herkese açıktı.
 - **İşaretlenmemiş geçmiş randevular listesi.** Günü geçmiş ama hâlâ
   "Planlandı" duran randevu ciroya girmez ve "kaç seans boşa gitti" sayısını
   yanıltır. Randevular ekranının üstünde varsayılan KAPALI bir şerit hepsini

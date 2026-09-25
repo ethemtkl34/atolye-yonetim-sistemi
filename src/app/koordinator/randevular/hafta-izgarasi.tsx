@@ -42,7 +42,6 @@ export function HaftaIzgarasi({
   bugunYolu,
   tarih,
   tarihsizYol,
-  enErkenTarih,
   iptalYolu,
   formUzmanlari,
   hizmetler,
@@ -62,11 +61,6 @@ export function HaftaIzgarasi({
   tarih: string;
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
-  /**
-   * Yönetici olmayan için bugün ("YYYY-AA-GG"): daha erken güne randevu
-   * açılamaz, taşınamaz (geçmiş kilidi). Yöneticide verilmez.
-   */
-  enErkenTarih?: string;
   iptalYolu: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
@@ -168,7 +162,6 @@ export function HaftaIzgarasi({
           blokAltYazisi={(randevu) => randevu.uzmanAdi}
           onBlokTikla={setDetay}
           bosAlanTiklanabilir={yazabilir}
-          enErkenTarih={enErkenTarih}
           onBosAlanaTikla={(gun, saat) =>
             setHucreSecimi({ tarih: tarihMetni(gun), saat })
           }
@@ -187,7 +180,6 @@ export function HaftaIzgarasi({
         hizmetler={hizmetler}
         varsayilanTarih={hucreSecimi?.tarih ?? varsayilanTarih}
         varsayilanSaat={hucreSecimi?.saat}
-        enErkenTarih={enErkenTarih}
         acik={hucreSecimi !== null}
         onAcikDegis={(acik) => {
           if (!acik) setHucreSecimi(null);
@@ -287,7 +279,6 @@ export function HaftaIzgarasi({
         randevu={duzenleHedefi}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
-        enErkenTarih={enErkenTarih}
         onKapat={() => setDuzenleHedefi(null)}
       />
     </div>

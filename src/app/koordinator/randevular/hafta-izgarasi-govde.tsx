@@ -1,6 +1,6 @@
 "use client";
 
-import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni, tarihMetni } from "@/lib/tarih";
+import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni } from "@/lib/tarih";
 import {
   dakikadanOran,
   orandanDakika,
@@ -53,7 +53,6 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
   eksen,
   bosAlanTiklanabilir = false,
   tekGun = false,
-  enErkenTarih,
   blokAltYazisi,
   onBlokTikla,
   onBosAlanaTikla,
@@ -66,11 +65,6 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
    * Hafta kipinde sütunlar sabit genişlikte ve ızgara yana kayar.
    */
   tekGun?: boolean;
-  /**
-   * Geçmiş kilidi: bu günden ("YYYY-AA-GG") önceki sütunlar tıklanamaz.
-   * Yöneticide ve aday seçicisinde verilmez.
-   */
-  enErkenTarih?: string;
   /**
    * Blokun ÜÇÜNCÜ satırı. Panelde uzman adı (bir ızgarada birden çok uzman
    * var, ayırt etmek gerekiyor); program linkinde danışan adı (orada tek
@@ -89,12 +83,10 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
     saatCizgileri.push(dk);
   }
 
-  const gunTiklanabilir = (gun: Date) =>
-    bosAlanTiklanabilir &&
-    (enErkenTarih === undefined || tarihMetni(gun) >= enErkenTarih);
+  const gunTiklanabilir = () => bosAlanTiklanabilir;
 
   function bosAlanaTikla(olay: React.MouseEvent<HTMLDivElement>, gun: Date) {
-    if (!gunTiklanabilir(gun)) return;
+    if (!gunTiklanabilir()) return;
     const kutu = olay.currentTarget.getBoundingClientRect();
     const oran = Math.max(0, Math.min(1, (olay.clientY - kutu.top) / kutu.height));
     const dakika = orandanDakika(oran, eksen);
@@ -192,7 +184,7 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
               className={cn(
                 "relative",
                 tekGun && "flex-1",
-                gunTiklanabilir(sutun.gun) && "cursor-pointer",
+                gunTiklanabilir() && "cursor-pointer",
               )}
               style={tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
               onClick={(olay) => bosAlanaTikla(olay, sutun.gun)}

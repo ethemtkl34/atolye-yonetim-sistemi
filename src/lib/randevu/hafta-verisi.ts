@@ -24,7 +24,6 @@ export async function randevuSatirlariGetir(args: {
   hizmetSuzgeci?: string;
   iptalleriGoster?: boolean;
   /** Oturumdaki kullanıcı geçmiş randevuyu değiştirebilir mi (yöneticiler). */
-  gecmisiDuzenleyebilir?: boolean;
   /**
    * Takvimin "Şube" süzgeci (Eylül 2026): yalnız bu şubenin randevuları.
    * Verilmezse şubeler arası okunur. Hangi satırın "bizim" sayılacağı
@@ -102,7 +101,6 @@ export async function randevuSatirlariGetir(args: {
       // yazılamaz; ham indirim burada ayrıca taşınıyor.
       indirimKurus: bizim ? randevu.indirimKurus : null,
       indirimNotu: bizim ? randevu.indirimNotu : null,
-      kilitli: !args.gecmisiDuzenleyebilir && randevuGecmisMi(randevu.baslangic, simdi),
       // Silme yalnız bugünkü ve gelecek randevuda — yöneticide de (ciroya
       // girmiş geçmiş seans silinmez, iptal edilir).
       silinebilir: !randevuGecmisMi(randevu.baslangic, simdi),

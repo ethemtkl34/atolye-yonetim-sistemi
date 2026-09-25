@@ -90,12 +90,9 @@ export function RandevuEylemleri({
           Anket
         </a>
       ) : null}
-      {/* Geçmiş kilidi: günü bitmiş randevuda yalnız sonuç işaretlenir. */}
-      {randevu.kilitli ? null : (
-        <Buton type="button" tur="ikincil" disabled={bekliyor} onClick={onDuzenle}>
-          Düzenle
-        </Buton>
-      )}
+      <Buton type="button" tur="ikincil" disabled={bekliyor} onClick={onDuzenle}>
+        Düzenle
+      </Buton>
       {randevu.durum === "GERCEKLESTI" ? null : (
         <Buton
           type="button"
@@ -116,15 +113,9 @@ export function RandevuEylemleri({
           Gelmedi
         </Buton>
       )}
-      {randevu.kilitli ? (
-        <p className="w-full text-xs text-zinc-500">
-          Geçmiş randevu: saat, uzman ve iptal yalnız yöneticide.
-        </p>
-      ) : (
-        <Buton type="button" tur="tehlike" disabled={bekliyor} onClick={onIptal}>
-          İptal
-        </Buton>
-      )}
+      <Buton type="button" tur="tehlike" disabled={bekliyor} onClick={onIptal}>
+        İptal
+      </Buton>
       {/* Kalıcı silme yalnız günü geçmemiş randevuda (bkz. `randevuSil`). */}
       {randevu.silinebilir ? (
         <Buton type="button" tur="sade" disabled={bekliyor} onClick={onSil}>

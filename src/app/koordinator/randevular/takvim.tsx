@@ -51,12 +51,6 @@ export type RandevuSatiri = {
   /** Ham indirim (kuruş) — düzenleme formunun "İndirim (₺)" alanı için; başka şubede null. */
   indirimKurus: number | null;
   indirimNotu: string | null;
-  /**
-   * Günü bitmiş ve oturumdaki kullanıcı geçmişi değiştiremiyor: düzenleme ve
-   * iptal çizilmez, yalnız durum işaretlenir (bkz. lib/randevu/gecmis-kilidi.ts).
-   * Sunucu eylemleri kilidi ayrıca uyguluyor; bu alan yalnız arayüz için.
-   */
-  kilitli: boolean;
   /** Günü geçmemiş (bugün ya da ileri): kalıcı silme yalnız bunlarda. */
   silinebilir: boolean;
 };
@@ -84,7 +78,6 @@ export function Takvim({
   bugunYolu,
   tarih,
   tarihsizYol,
-  enErkenTarih,
   iptalYolu,
   formUzmanlari,
   hizmetler,
@@ -104,11 +97,6 @@ export function Takvim({
   tarih: string;
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
-  /**
-   * Yönetici olmayan için bugün ("YYYY-AA-GG"): daha erken güne randevu
-   * açılamaz, taşınamaz (geçmiş kilidi). Yöneticide verilmez.
-   */
-  enErkenTarih?: string;
   iptalYolu: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
@@ -270,7 +258,6 @@ export function Takvim({
         randevu={duzenleHedefi}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
-        enErkenTarih={enErkenTarih}
         onKapat={() => setDuzenleHedefi(null)}
       />
     </div>

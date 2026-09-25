@@ -1,22 +1,25 @@
-import type { Role } from "@/generated/prisma/enums";
-
 /**
- * §17.4 — Geçmiş randevu kilidi (Eylül 2026 kararı).
+ * §17.4 — Randevunun günü bitti mi.
  *
- * Günü BİTMİŞ bir randevunun saati, uzmanı, hizmeti, ücreti değiştirilemez ve
- * iptal edilemez; yalnız Kurum ve Şube Yöneticisi değiştirebilir. Gerekçe:
- * geçmiş haftanın cirosu ve seans sayısı raporlandıktan sonra sessizce
- * değişmemeli. "Gerçekleşti / Gelmedi" işaretlemesi ise HERKESE açık kalır —
- * seansın sonucu çoğu zaman ertesi gün işaretleniyor.
+ * ESKİ KARAR KALDIRILDI (25 Eylül 2026). Eylül başında "günü bitmiş randevuyu
+ * yalnız Kurum ve Şube Yöneticisi değiştirebilir" kuralı vardı; gerekçe
+ * raporlanmış geçmiş haftanın cirosunun sessizce değişmemesiydi. Pratikte
+ * takvimi kuran danışma masası dünkü seansı hiç giremiyor, her düzeltme için
+ * yönetici bekliyordu — kurum kuralı kaldırdı. Artık `randevular` modülünde
+ * TAM yetkisi olan HERKES geçmiş tarihe randevu açar, geçmiş randevuyu
+ * düzenler ve iptal eder; geriye dönük bir gün sınırı da yok.
  *
- * Kilit anı "gün bitince": bugünün randevuları gece yarısına kadar serbest,
- * gün içi saat kaydırmaları masada kalıyor.
+ * Buradan geriye kalan tek şey "bu randevunun günü bitti mi" sorusu. Tek
+ * tüketicisi SİLME kuralı (`randevuSil`): günü geçmiş randevu silinmez,
+ * iptal edilir. Silme kaydı ortadan kaldırır ve ciroya girmiş bir seansın
+ * izi kalmaz; iptal ise görünür bir karar olarak durur. Bu ayrım yöneticide
+ * de geçerli ve kaldırılmadı.
  *
  * SAAT SÖZLEŞMESİ: randevu saatleri duvar saati olarak UTC alanlarında
  * tutuluyor (14:00 randevusu `14:00Z`, bkz. `lib/tarih.ts`). "Bugün" de aynı
  * çapada olmalı ama İSTANBUL takvimine göre: `bugun()` UTC tarihini veriyor ve
  * gece 00:00–03:00 arasında hâlâ dünü gösterirdi — dünün randevuları üç saat
- * fazladan açık kalırdı.
+ * fazladan silinebilir kalırdı.
  */
 
 const ISTANBUL_TARIHI = new Intl.DateTimeFormat("en-CA", {
@@ -36,14 +39,3 @@ export function istanbulBugunu(simdi: Date = new Date()): Date {
 export function randevuGecmisMi(baslangic: Date, simdi: Date = new Date()): boolean {
   return baslangic.getTime() < istanbulBugunu(simdi).getTime();
 }
-
-/** Geçmiş randevuyu değiştirebilen roller: Kurum ve Şube Yöneticisi. */
-export function gecmisRandevuyuDuzenleyebilirMi(roller: readonly Role[]): boolean {
-  return roller.includes("ADMIN") || roller.includes("SUBE_YONETICISI");
-}
-
-export const GECMIS_KILIDI_MESAJI =
-  "Geçmiş tarihli randevuyu yalnız Kurum ve Şube Yöneticisi değiştirebilir. Seansın sonucunu \"Gerçekleşti\" ya da \"Gelmedi\" olarak işaretleyebilirsiniz.";
-
-export const GECMIS_TARIH_MESAJI =
-  "Geçmiş bir tarihe randevu yalnız Kurum ve Şube Yöneticisi tarafından girilebilir.";

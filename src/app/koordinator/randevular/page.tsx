@@ -27,7 +27,6 @@ import {
 import { KURUM_ADI } from "@/lib/kurallar";
 import { randevuSatirlariGetir } from "@/lib/randevu/hafta-verisi";
 import {
-  gecmisRandevuyuDuzenleyebilirMi,
   istanbulBugunu,
 } from "@/lib/randevu/gecmis-kilidi";
 import { GORUNUM_ADLARI, GORUNUMLER, gorunumMu } from "./sema";
@@ -115,11 +114,7 @@ export default async function RandevularSayfasi(
 
   const aralik = takvimAraligi(gorunum, capa);
 
-  // Geçmiş kilidi (lib/randevu/gecmis-kilidi.ts): yönetici olmayan günü
-  // bitmiş randevuyu değiştiremez, geçmiş güne randevu açamaz.
-  const gecmisiDuzenleyebilir = gecmisRandevuyuDuzenleyebilirMi(kullanici.roller);
   const istanbulBugun = istanbulBugunu();
-  const enErkenTarih = gecmisiDuzenleyebilir ? undefined : tarihMetni(istanbulBugun);
 
   /** "İşaretlenmemiş geçmiş randevular" listesinde en fazla bu kadar satır. */
   const ISARETSIZ_SINIRI = 30;
@@ -169,7 +164,6 @@ export default async function RandevularSayfasi(
       uzmanSuzgeci,
       hizmetSuzgeci,
       iptalleriGoster,
-      gecmisiDuzenleyebilir,
       gosterilenSube: subeSuzgeci,
     }),
     // Program (ızgara) görünümü dışında gereksiz: yalnız o modda çalışır.
@@ -309,7 +303,6 @@ export default async function RandevularSayfasi(
               uzmanlar={formUzmanlari}
               hizmetler={hizmetler}
               varsayilanTarih={tarihMetni(capa)}
-              enErkenTarih={enErkenTarih}
             />
             ) : null}
           </div>
@@ -411,7 +404,6 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
-          enErkenTarih={enErkenTarih}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
           varsayilanTarih={tarihMetni(capa)}
@@ -429,7 +421,6 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
-          enErkenTarih={enErkenTarih}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
@@ -448,7 +439,6 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
-          enErkenTarih={enErkenTarih}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}

@@ -64,7 +64,6 @@ export function Izgara({
   bugunYolu,
   tarih,
   tarihsizYol,
-  enErkenTarih,
   formUzmanlari,
   hizmetler,
   varsayilanTarih,
@@ -83,11 +82,6 @@ export function Izgara({
   tarih: string;
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
-  /**
-   * Yönetici olmayan için bugün ("YYYY-AA-GG"): daha erken güne randevu
-   * açılamaz, taşınamaz (geçmiş kilidi). Yöneticide verilmez.
-   */
-  enErkenTarih?: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   varsayilanTarih: string;
@@ -122,7 +116,6 @@ export function Izgara({
       : uzmanlar;
 
   // Geçmiş kilidi: yönetici olmayan günü bitmiş bir güne hücreden randevu açamaz.
-  const gunKilitli = enErkenTarih !== undefined && varsayilanTarih < enErkenTarih;
 
   const saatCizgileri: number[] = [];
   for (let dk = eksen.baslangicDk; dk <= eksen.bitisDk; dk += eksen.adimDk) {
@@ -133,7 +126,7 @@ export function Izgara({
     olay: React.MouseEvent<HTMLDivElement>,
     sutun: IzgaraSutunu<RandevuSatiri>,
   ) {
-    if (!yazabilir || gunKilitli) return;
+    if (!yazabilir) return;
     const kutu = olay.currentTarget.getBoundingClientRect();
     const oran = (olay.clientY - kutu.top) / kutu.height;
     const dakika = orandanDakika(oran, eksen);
@@ -308,7 +301,7 @@ export function Izgara({
                   return (
                     <div
                       key={uzman.id}
-                      className={cnTikla(yazabilir && !sutun.mesaiYok && !gunKilitli)}
+                      className={cnTikla(yazabilir && !sutun.mesaiYok)}
                       style={dar ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
                       onClick={(olay) => hucreyeTikla(olay, sutun)}
                     >
@@ -383,7 +376,6 @@ export function Izgara({
         varsayilanTarih={varsayilanTarih}
         varsayilanUzmanId={hucreSecimi?.uzmanId}
         varsayilanSaat={hucreSecimi?.saat}
-        enErkenTarih={enErkenTarih}
         acik={hucreSecimi !== null}
         onAcikDegis={(acik) => {
           if (!acik) setHucreSecimi(null);
@@ -483,7 +475,6 @@ export function Izgara({
         randevu={duzenleHedefi}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
-        enErkenTarih={enErkenTarih}
         onKapat={() => setDuzenleHedefi(null)}
       />
     </div>
