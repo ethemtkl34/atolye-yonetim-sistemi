@@ -32,6 +32,7 @@ import {
 } from "./sema";
 import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 import { randevuGecmisMi } from "@/lib/randevu/gecmis-kilidi";
+import { randevuHedefSubesi } from "@/lib/randevu/hedef-sube";
 
 /**
  * §17.4 — Randevu yazma işlemleri.
@@ -148,7 +149,6 @@ export async function randevuEkle(
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
   const kullanici = await randevuZorunlu("TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = randevuSemasi.safeParse(formuOku(formVerisi));
   if (!cozumlenen.success) {
@@ -160,6 +160,25 @@ export async function randevuEkle(
 
   const veri = cozumlenen.data;
   const girilenler = formDegerleri(formVerisi, RANDEVU_FORM_ALANLARI);
+
+  /**
+   * Randevunun yazılacağı şube (Eylül 2026): formdan geliyorsa o, yoksa
+   * ekranın aktif şubesi.
+   *
+   * YETKİ GENİŞLEMESİ DEĞİL: randevu ekranına erişen şubeli roller sağ
+   * üstteki randevu şubesi seçicisiyle, yönetici de panel şubesiyle zaten
+   * her aktif şubeye randevu açabiliyordu. Kaldırılan tek şey "önce bütün
+   * ekranı öbür şubeye çevir" adımı. Yine de kimlik DOĞRULANIYOR: aktif
+   * şubeler arasında değilse kesin ret — sessizce aktif şubeye düşmek
+   * randevuyu kullanıcının görmediği bir takvime yazardı.
+   */
+  const subeId = await randevuHedefSubesi(kullanici.aktifSubeId, veri.subeId);
+  if (!subeId) {
+    return {
+      alanHatalari: { subeId: "Seçilen şube bulunamadı." },
+      degerler: girilenler,
+    };
+  }
 
   const gun = tarihCozumle(veri.tarih);
   if (!gun) {

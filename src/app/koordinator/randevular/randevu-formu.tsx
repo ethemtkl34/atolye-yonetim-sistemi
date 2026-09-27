@@ -21,10 +21,13 @@ export type UzmanSecenegi = {
   id: string;
   ad: string;
   renk: string;
-  /** Bu şubede çalışıyor mu — çalışmıyorsa randevu açılamaz. */
-  buSubede: boolean;
+  /** Çalıştığı şubeler — seçilen şubede çalışmıyorsa listede çıkmaz. */
+  subeIdleri: string[];
   hizmetIdleri: string[];
 };
+
+/** Randevunun açılabileceği şube. */
+export type SubeSecenegi = { id: string; ad: string };
 
 export type HizmetSecenegi = {
   id: string;
@@ -50,6 +53,8 @@ export type HizmetSecenegi = {
 export function RandevuFormuAcici({
   uzmanlar,
   hizmetler,
+  subeler,
+  varsayilanSubeId,
   varsayilanTarih,
   varsayilanUzmanId,
   varsayilanSaat,
@@ -58,6 +63,10 @@ export function RandevuFormuAcici({
 }: {
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
+  /** Randevunun açılabileceği şubeler; tek elemanlıysa seçici çizilmez. */
+  subeler: SubeSecenegi[];
+  /** Ekranda çalışılan şube — seçicinin açılış değeri. */
+  varsayilanSubeId: string;
   varsayilanTarih: string;
   /** Program (ızgara) hücresinden önerilen uzman — verilmezse ilk uygun uzman. */
   varsayilanUzmanId?: string;
@@ -87,6 +96,8 @@ export function RandevuFormuAcici({
         <RandevuFormu
           uzmanlar={uzmanlar}
           hizmetler={hizmetler}
+          subeler={subeler}
+          varsayilanSubeId={varsayilanSubeId}
           varsayilanTarih={varsayilanTarih}
           varsayilanUzmanId={varsayilanUzmanId}
           varsayilanSaat={varsayilanSaat}
@@ -100,6 +111,8 @@ export function RandevuFormuAcici({
 function RandevuFormu({
   uzmanlar,
   hizmetler,
+  subeler,
+  varsayilanSubeId,
   varsayilanTarih,
   varsayilanUzmanId,
   varsayilanSaat,
@@ -107,6 +120,8 @@ function RandevuFormu({
 }: {
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
+  subeler: SubeSecenegi[];
+  varsayilanSubeId: string;
   varsayilanTarih: string;
   varsayilanUzmanId?: string;
   varsayilanSaat?: string;
@@ -158,7 +173,17 @@ function RandevuFormu({
   // `ogrenci-formu.tsx`'teki aynı desen).
   const deger = (alan: string) => durum.degerler?.[alan];
 
-  const secilebilirUzmanlar = uzmanlar.filter((uzman) => uzman.buSubede);
+  /**
+   * Randevunun AÇILACAĞI şube (Eylül 2026). Eskiden sessizce ekranın aktif
+   * şubesine açılıyordu; masa başka şubeye randevu girmek için önce bütün
+   * ekranı o şubeye çevirmek zorundaydı. Şube değişince uzman listesi de
+   * değişiyor — çift şubeli olmayan uzman öbür şubede randevu alamaz.
+   */
+  const [subeId, setSubeId] = useState(varsayilanSubeId);
+
+  const secilebilirUzmanlar = uzmanlar.filter((uzman) =>
+    uzman.subeIdleri.includes(subeId),
+  );
   const [uzmanId, setUzmanId] = useState(
     varsayilanUzmanId ?? secilebilirUzmanlar[0]?.id ?? "",
   );
@@ -176,10 +201,12 @@ function RandevuFormu({
    */
   const uzmanSecimi = useRef<HTMLSelectElement>(null);
   const hizmetSecimi = useRef<HTMLSelectElement>(null);
+  const subeSecimi = useRef<HTMLSelectElement>(null);
   useEffect(() => {
     if (uzmanSecimi.current) uzmanSecimi.current.value = uzmanId;
     if (hizmetSecimi.current) hizmetSecimi.current.value = hizmetId;
-  }, [durum, uzmanId, hizmetId]);
+    if (subeSecimi.current) subeSecimi.current.value = subeId;
+  }, [durum, uzmanId, hizmetId, subeId]);
 
   const secilenUzman = secilebilirUzmanlar.find((u) => u.id === uzmanId);
   // Elle `useMemo` YOK: React Compiler bunu kendisi belleğe alıyor ve elle
@@ -210,6 +237,47 @@ function RandevuFormu({
             tanımlayın.
           </Bildirim>
         ) : null}
+
+        {/* Tek şube varsa seçici çizmeye gerek yok; gizli alan yine gider ki
+            sunucu her zaman açık bir şube kimliği görsün. */}
+        {subeler.length > 1 ? (
+          <Alan
+            etiket="Şube"
+            hata={durum.alanHatalari?.subeId}
+            ipucu={
+              subeId === varsayilanSubeId
+                ? "Randevu bu şubenin takvimine ve cirosuna yazılır."
+                : // Takvim ekranın şubesini gösterdiği için yeni kayıt burada
+                  // ÇIKMAZ; uyarı olmasa kullanıcı kaydolmadı sanıp ikinci kez
+                  // açardı.
+                  `Randevu ${
+                    subeler.find((sube) => sube.id === subeId)?.ad ?? "seçilen şube"
+                  } takvimine yazılacak; bu ekranda görünmeyecek.`
+            }
+          >
+            <select
+              ref={subeSecimi}
+              name="subeId"
+              className={secimStili}
+              defaultValue={subeId}
+              onChange={(olay) => {
+                setSubeId(olay.target.value);
+                // Uzman kadrosu şubeye bağlı; eski seçim geçersiz olabilir.
+                setUzmanId("");
+                setHizmetId("");
+              }}
+              required
+            >
+              {subeler.map((sube) => (
+                <option key={sube.id} value={sube.id}>
+                  {sube.ad}
+                </option>
+              ))}
+            </select>
+          </Alan>
+        ) : (
+          <input type="hidden" name="subeId" value={subeId} />
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Alan etiket="Uzman" hata={durum.alanHatalari?.uzmanId}>
@@ -294,6 +362,7 @@ function RandevuFormu({
           onDegis={setVeli}
           hata={durum.alanHatalari?.veliId}
           cocukIsteniyor={secilenHizmet?.danisanTuru !== "VELI"}
+          subeId={subeId}
           degerler={{
             yeniVeliAdi: deger("yeniVeliAdi"),
             yeniVeliTelefon: deger("yeniVeliTelefon"),

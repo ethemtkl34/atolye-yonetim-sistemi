@@ -30,6 +30,7 @@ import type { RandevuSatiri } from "./takvim";
 import {
   RandevuFormuAcici,
   type HizmetSecenegi,
+  type SubeSecenegi,
   type UzmanSecenegi,
 } from "./randevu-formu";
 
@@ -64,6 +65,8 @@ export function Izgara({
   bugunYolu,
   tarih,
   tarihsizYol,
+  formSubeleri,
+  aktifSubeId,
   formUzmanlari,
   hizmetler,
   varsayilanTarih,
@@ -82,6 +85,10 @@ export function Izgara({
   tarih: string;
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
+  /** Yeni randevu formunun şube seçenekleri. */
+  formSubeleri: SubeSecenegi[];
+  /** Ekranda çalışılan şube — form seçicisinin açılış değeri. */
+  aktifSubeId: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   varsayilanTarih: string;
@@ -371,6 +378,8 @@ export function Izgara({
 
       <RandevuFormuAcici
         key={`${hucreSecimi?.uzmanId ?? ""}-${hucreSecimi?.saat ?? ""}`}
+        subeler={formSubeleri}
+        varsayilanSubeId={aktifSubeId}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
         varsayilanTarih={varsayilanTarih}
@@ -473,6 +482,7 @@ export function Izgara({
 
       <RandevuDuzenleFormu
         randevu={duzenleHedefi}
+        subeId={aktifSubeId}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
         onKapat={() => setDuzenleHedefi(null)}

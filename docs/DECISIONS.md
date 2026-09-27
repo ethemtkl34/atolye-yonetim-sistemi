@@ -273,6 +273,29 @@ Karar gerekçeleri:
   şubeye çevirirdi. Seçim yokken ya da bozukken kendi şubesine düşer.
   Adaydan randevu akışı adayın şubesinde kalır, seçimi okumaz. Yönetici
   ayrı seçim almaz — genel seçicisi zaten her şeyi çeviriyor.
+- **Yeni randevu formunda şube seçilebilir (27 Eylül 2026).** Randevu eskiden
+  sessizce ekranın aktif şubesine açılıyordu; öbür şubeye kayıt girmek için
+  önce sağ üstten BÜTÜN ekranı o şubeye çevirmek, sonra geri almak
+  gerekiyordu. Form artık bir "Şube" alanı taşıyor ve randevu seçilen şubeye
+  yazılıyor. YETKİ GENİŞLEMESİ DEĞİL: şubeli roller randevu şubesi
+  seçicisiyle, yönetici de genel seçiciyle zaten her aktif şubeye randevu
+  açabiliyordu; kaldırılan tek şey ekranı çevirme adımı. Kimlik yine
+  doğrulanıyor (`lib/randevu/hedef-sube.ts`) ve geçersizse kesin ret —
+  sessizce aktif şubeye düşmek randevuyu kullanıcının görmediği bir takvime
+  yazardı. Seçim üç yeri birden çeviriyor: kaydın şubesi, uzman listesi
+  (çift şubeli olmayan uzman öbür şubede çıkmaz) ve VELİ ARAMASI. Sonuncusu
+  şart: arama aktif şubeye sabit kalsaydı öbür şubenin velisi hiç bulunamaz,
+  masa "kayıtlı değil" sanıp ikinci bir kopya açardı. Seçilen şube ekranın
+  şubesinden farklıysa form kaydetmeden ÖNCE uyarıyor ("bu ekranda
+  görünmeyecek") — takvim aktif şubeyi gösterdiği için yeni kayıt listede
+  çıkmaz ve uyarı olmasa kullanıcı kaydolmadı sanırdı. Düzenleme formunda
+  şube seçimi YOK: randevuyu başka şubeye taşımak ciro kırılımını değiştirir,
+  ayrı bir iş.
+- **Hafta ızgarasında gün başlığı o güne gider (27 Eylül 2026).** Hafta
+  görünümünde yoğun bir günü görüp detayına inmek için üstteki tarih kutusunu
+  ya da ileri/geri oklarını kullanmak gerekiyordu. Gün başlıkları artık
+  bağlantı: tıklayınca o günün Liste görünümü açılıyor, süzgeçler korunuyor.
+  Haftalar arası gezinme okları duruyor — gün tıklaması hafta değiştiremez.
 - **Geçmiş randevu kilidi KALDIRILDI (25 Eylül 2026).** Eylül başındaki kural
   şuydu: günü bitmiş randevunun saati, uzmanı, hizmeti ve ücreti
   değiştirilemez, iptal edilemez, geçmiş güne yeni randevu açılamaz; yalnız

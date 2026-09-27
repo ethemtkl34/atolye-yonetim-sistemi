@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { randevuZorunlu } from "@/lib/yetki-kapisi";
 import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
+import { randevuHedefSubesi } from "@/lib/randevu/hedef-sube";
 
 /**
  * §17.4 — Randevu formundaki veli araması.
@@ -15,10 +16,17 @@ import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
  *
  * ARAMA: ad VEYA telefon, `Veli` kaydının normalize sütunlarından —
  * öğrenci aramasıyla aynı sözleşme (§6.2). Şube süzgeci zorunlu.
+ *
+ * ŞUBE: formda seçilen şube (Eylül 2026, bkz. `lib/randevu/hedef-sube.ts`).
+ * Ekranın aktif şubesine sabitlenseydi başka şubeye randevu açan kişi o
+ * şubenin velisini HİÇ bulamaz, "kayıtlı değil" sanıp ikinci bir kopya
+ * açardı.
  */
 
-export async function veliAra(sorgu: string) {
+export async function veliAra(sorgu: string, subeId?: string) {
   const kullanici = await randevuZorunlu();
+  const hedefSube = await randevuHedefSubesi(kullanici.aktifSubeId, subeId);
+  if (!hedefSube) return [];
 
   const temiz = sorgu.trim();
   if (temiz.length < 2) return [];
@@ -29,7 +37,7 @@ export async function veliAra(sorgu: string) {
 
   const veliler = await db.veli.findMany({
     where: {
-      branchId: kullanici.aktifSubeId,
+      branchId: hedefSube,
       OR: [
         { searchName: { contains: isimAnahtari } },
         ...(telefonAranabilir

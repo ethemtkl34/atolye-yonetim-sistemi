@@ -18,6 +18,7 @@ import { RandevuDuzenleFormu } from "./randevu-duzenle-formu";
 import {
   RandevuFormuAcici,
   type HizmetSecenegi,
+  type SubeSecenegi,
   type UzmanSecenegi,
 } from "./randevu-formu";
 import type { RandevuSatiri } from "./takvim";
@@ -43,6 +44,9 @@ export function HaftaIzgarasi({
   tarih,
   tarihsizYol,
   iptalYolu,
+  gunTemelYolu,
+  formSubeleri,
+  aktifSubeId,
   formUzmanlari,
   hizmetler,
   varsayilanTarih,
@@ -62,6 +66,12 @@ export function HaftaIzgarasi({
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
   iptalYolu: string;
+  /** Gün başlığı bu adrese + `&tarih=` ile o güne gider. */
+  gunTemelYolu: string;
+  /** Yeni randevu formunun şube seçenekleri. */
+  formSubeleri: SubeSecenegi[];
+  /** Ekranda çalışılan şube — form seçicisinin açılış değeri. */
+  aktifSubeId: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   varsayilanTarih: string;
@@ -159,6 +169,7 @@ export function HaftaIzgarasi({
           tekGun={dar}
           sutunlar={gosterilenSutunlar}
           eksen={eksen}
+          gunTemelYolu={gunTemelYolu}
           blokAltYazisi={(randevu) => randevu.uzmanAdi}
           onBlokTikla={setDetay}
           bosAlanTiklanabilir={yazabilir}
@@ -176,6 +187,8 @@ export function HaftaIzgarasi({
       */}
       <RandevuFormuAcici
         key={`${hucreSecimi?.tarih ?? ""}-${hucreSecimi?.saat ?? ""}`}
+        subeler={formSubeleri}
+        varsayilanSubeId={aktifSubeId}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
         varsayilanTarih={hucreSecimi?.tarih ?? varsayilanTarih}
@@ -277,6 +290,7 @@ export function HaftaIzgarasi({
 
       <RandevuDuzenleFormu
         randevu={duzenleHedefi}
+        subeId={aktifSubeId}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
         onKapat={() => setDuzenleHedefi(null)}

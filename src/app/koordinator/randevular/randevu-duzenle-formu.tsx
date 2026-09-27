@@ -30,11 +30,18 @@ import { VeliSecici, type VeliSecimi } from "./veli-secici";
  */
 export function RandevuDuzenleFormu({
   randevu,
+  subeId,
   uzmanlar,
   hizmetler,
   onKapat,
 }: {
   randevu: RandevuSatiri | null;
+  /**
+   * Randevunun şubesi — ekranda çalışılan şube. Düzenleme randevuyu BAŞKA
+   * şubeye taşımaz (sunucu da randevuyu bu şubede arıyor); burada yalnız
+   * "bu şubede çalışan uzmanlar" listesini süzmek için.
+   */
+  subeId: string;
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   /** Geçmiş kilidi: yönetici olmayan için bugün; randevu daha erkene taşınamaz. */
@@ -45,6 +52,7 @@ export function RandevuDuzenleFormu({
     <IcerikFormu
       key={randevu.id}
       randevu={randevu}
+      subeId={subeId}
       uzmanlar={uzmanlar}
       hizmetler={hizmetler}
       onKapat={onKapat}
@@ -54,11 +62,13 @@ export function RandevuDuzenleFormu({
 
 function IcerikFormu({
   randevu,
+  subeId,
   uzmanlar,
   hizmetler,
   onKapat,
 }: {
   randevu: RandevuSatiri;
+  subeId: string;
   uzmanlar: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
   onKapat: () => void;
@@ -91,7 +101,9 @@ function IcerikFormu({
 
   const deger = (alan: string) => durum.degerler?.[alan];
 
-  const secilebilirUzmanlar = uzmanlar.filter((uzman) => uzman.buSubede);
+  const secilebilirUzmanlar = uzmanlar.filter((uzman) =>
+    uzman.subeIdleri.includes(subeId),
+  );
   const [uzmanId, setUzmanId] = useState(randevu.uzmanId);
   const [hizmetId, setHizmetId] = useState(randevu.hizmetId);
 

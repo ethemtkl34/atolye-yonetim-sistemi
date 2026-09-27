@@ -79,6 +79,7 @@ export function Takvim({
   tarih,
   tarihsizYol,
   iptalYolu,
+  aktifSubeId,
   formUzmanlari,
   hizmetler,
 }: {
@@ -98,6 +99,8 @@ export function Takvim({
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
   iptalYolu: string;
+  /** Ekranda çalışılan şube — form seçicisinin açılış değeri. */
+  aktifSubeId: string;
   formUzmanlari: UzmanSecenegi[];
   hizmetler: HizmetSecenegi[];
 }) {
@@ -256,6 +259,7 @@ export function Takvim({
 
       <RandevuDuzenleFormu
         randevu={duzenleHedefi}
+        subeId={aktifSubeId}
         uzmanlar={formUzmanlari}
         hizmetler={hizmetler}
         onKapat={() => setDuzenleHedefi(null)}

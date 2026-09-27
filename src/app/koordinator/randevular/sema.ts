@@ -181,6 +181,15 @@ export const randevuSemasi = z
     ...seansAlanlari,
     ...danisanAlanlari,
 
+    /**
+     * Randevunun AÇILACAĞI şube (Eylül 2026). Boş gelirse eylem ekranın
+     * aktif şubesine düşer — eski davranış, tek şubeli kurulumda form bu
+     * alanı gizli gönderiyor. Dolu gelirse sunucu ayrıca AKTİF bir şube
+     * kimliği olduğunu doğrular; uydurma bir kimlikle başka bir kuruma
+     * kayıt düşmek mümkün olmasın.
+     */
+    subeId: z.preprocess(bosuNullYap, z.string().nullable()),
+
     haftaSayisi: z.coerce
       .number()
       .int()
@@ -193,6 +202,7 @@ export const randevuSemasi = z
 export type RandevuGirdisi = z.infer<typeof randevuSemasi>;
 
 export const RANDEVU_FORM_ALANLARI = [
+  "subeId",
   "uzmanId",
   "hizmetId",
   "veliId",

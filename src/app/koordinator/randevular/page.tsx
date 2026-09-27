@@ -215,7 +215,7 @@ export default async function RandevularSayfasi(
     id: uzman.id,
     ad: uzman.ad,
     renk: uzman.renk,
-    buSubede: uzman.subeler.some((bag) => bag.subeId === subeId),
+    subeIdleri: uzman.subeler.map((bag) => bag.subeId),
     hizmetIdleri: uzman.hizmetler.map((bag) => bag.hizmetId),
   }));
 
@@ -269,6 +269,19 @@ export default async function RandevularSayfasi(
 
   const tarihAtlama = { tarih: tarihMetni(capa), tarihsizYol: adres({ tarih: "" }) };
 
+  // Hafta ızgarasında gün başlığına tıklayınca o günün listesine gidilir
+  // (Eylül 2026): `tarih` çıkarılmış adres, günü ızgara kendisi ekliyor.
+  const gunTemelYolu = adres({ gorunum: "gun", tarih: "" });
+
+  /**
+   * Yeni randevu formundaki şube seçeneği (Eylül 2026). Randevu yazma
+   * yetkisi zaten bütün aktif şubeleri kapsıyor: şubeli roller sağ üstteki
+   * randevu şubesi seçicisiyle, yönetici de panel şubesiyle istediği şubeye
+   * randevu açabiliyordu. Buradaki liste yetkiyi GENİŞLETMİYOR, yalnız
+   * "önce bütün ekranı öbür şubeye çevir" adımını kaldırıyor.
+   */
+  const formSubeleri = subeler.map((sube) => ({ id: sube.id, ad: sube.name }));
+
   // Hafta başlığı aralığın kendisini yazar ("31 Ağustos – 6 Eylül 2026"):
   // "31.08.2026 haftası" okuyucuya haftanın nerede bittiğini söylemiyordu ve
   // ay sınırını gizliyordu.
@@ -300,6 +313,8 @@ export default async function RandevularSayfasi(
             {kadroyuYonetir ? <UzmanRenkleriButonu uzmanlar={izgaraUzmanlar} /> : null}
             {yazabilir ? (
             <RandevuFormuAcici
+              subeler={formSubeleri}
+              varsayilanSubeId={subeId}
               uzmanlar={formUzmanlari}
               hizmetler={hizmetler}
               varsayilanTarih={tarihMetni(capa)}
@@ -404,6 +419,8 @@ export default async function RandevularSayfasi(
           ileriYolu={adres({ tarih: tarihMetni(takvimKaydir(gorunum, capa, 1)) })}
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
+          formSubeleri={formSubeleri}
+          aktifSubeId={subeId}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
           varsayilanTarih={tarihMetni(capa)}
@@ -422,6 +439,9 @@ export default async function RandevularSayfasi(
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+          gunTemelYolu={gunTemelYolu}
+          formSubeleri={formSubeleri}
+          aktifSubeId={subeId}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
           varsayilanTarih={tarihMetni(capa)}
@@ -440,6 +460,7 @@ export default async function RandevularSayfasi(
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
+          aktifSubeId={subeId}
           formUzmanlari={formUzmanlari}
           hizmetler={hizmetler}
         />

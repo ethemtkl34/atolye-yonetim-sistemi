@@ -39,11 +39,17 @@ export function VeliSecici({
   onDegis,
   hata,
   cocukIsteniyor,
+  subeId,
   degerler,
 }: {
   secim: VeliSecimi;
   onDegis: (secim: VeliSecimi) => void;
   hata?: string;
+  /**
+   * Danışanın aranacağı şube — formda seçilen şube. Verilmezse ekranın
+   * aktif şubesi (düzenleme formu şube değiştirmiyor, orada verilmiyor).
+   */
+  subeId?: string;
   /** Hizmetin danışanı çocuksa çocuk seçimi öne çıkarılır. */
   cocukIsteniyor: boolean;
   /**
@@ -85,14 +91,14 @@ export function VeliSecici({
     // çözüyor — geç dönen eski cevap yeniyi ezmemeli.
     const istek = ++sonIstek.current;
     const zamanlayici = setTimeout(async () => {
-      const bulunan = await veliAra(aranan);
+      const bulunan = await veliAra(aranan, subeId);
       if (istek === sonIstek.current) {
         setSonuc({ sorgu: aranan, liste: bulunan });
       }
     }, 250);
 
     return () => clearTimeout(zamanlayici);
-  }, [sorgu]);
+  }, [sorgu, subeId]);
 
   if (secim.tur === "kayitli") {
     const veli = secim.veli;

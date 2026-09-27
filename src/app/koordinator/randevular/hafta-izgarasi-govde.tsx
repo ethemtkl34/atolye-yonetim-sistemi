@@ -1,6 +1,7 @@
 "use client";
 
-import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni } from "@/lib/tarih";
+import Link from "next/link";
+import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni, tarihMetni } from "@/lib/tarih";
 import {
   dakikadanOran,
   orandanDakika,
@@ -53,6 +54,7 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
   eksen,
   bosAlanTiklanabilir = false,
   tekGun = false,
+  gunTemelYolu,
   blokAltYazisi,
   onBlokTikla,
   onBosAlanaTikla,
@@ -65,6 +67,15 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
    * Hafta kipinde sütunlar sabit genişlikte ve ızgara yana kayar.
    */
   tekGun?: boolean;
+  /**
+   * Verilirse gün başlığı O GÜNE giden bir bağlantı olur (Eylül 2026): hafta
+   * ızgarasında yoğun bir günü görüp üstteki tarih kutusuyla uğraşmadan
+   * doğrudan o günün listesine geçmek için. Adres `tarih` parametresi
+   * ÇIKARILMIŞ gelir, gün burada ekleniyor.
+   *
+   * Aday akışının seçicisi bunu vermez — orada gezinecek bir sayfa yok.
+   */
+  gunTemelYolu?: string;
   /**
    * Blokun ÜÇÜNCÜ satırı. Panelde uzman adı (bir ızgarada birden çok uzman
    * var, ayırt etmek gerekiyor); program linkinde danışan adı (orada tek
@@ -114,16 +125,8 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
           />
           {sutunlar.map((sutun) => {
             const buGunMu = sutun.gun.getTime() === buGun.getTime();
-            return (
-              <div
-                key={sutun.gun.toISOString()}
-                className={
-                  tekGun
-                    ? "flex flex-1 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
-                    : "flex shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-1.5"
-                }
-                style={tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
-              >
+            const icerik = (
+              <>
                 <span
                   className={
                     buGunMu
@@ -136,6 +139,28 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
                 <span className="text-xs text-zinc-500">
                   {GUN_KISA_ADLARI[gunundenGun(sutun.gun)]}
                 </span>
+              </>
+            );
+            const sinif = cn(
+              "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5",
+              tekGun ? "flex-1" : "shrink-0",
+              gunTemelYolu && "rounded-[var(--kil-r-sm)] hover:bg-white/70",
+            );
+            const olcu = tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` };
+
+            return gunTemelYolu ? (
+              <Link
+                key={sutun.gun.toISOString()}
+                href={`${gunTemelYolu}&tarih=${tarihMetni(sutun.gun)}`}
+                className={sinif}
+                style={olcu}
+                title={`${tarihMetni(sutun.gun)} gününe git`}
+              >
+                {icerik}
+              </Link>
+            ) : (
+              <div key={sutun.gun.toISOString()} className={sinif} style={olcu}>
+                {icerik}
               </div>
             );
           })}
