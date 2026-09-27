@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni, tarihMetni } from "@/lib/tarih";
+import { useState } from "react";
+import { GUN_KISA_ADLARI, bugun, gunundenGun, saatMetni } from "@/lib/tarih";
 import {
   dakikadanOran,
   orandanDakika,
@@ -37,6 +37,22 @@ const SUTUN_GENISLIGI_REM = 9;
 const ZAMAN_SUTUNU_REM = 4;
 
 /**
+ * Bir güne odaklanınca (Eylül 2026): o sütun genişler, öbürleri incelir.
+ *
+ * Sorun şuydu: yoğun bir günde çakışan randevular şeritlere bölünüyor
+ * (`lane`/`laneSayisi`) ve üç seans yan yana gelince 9rem'lik sütunda kart
+ * başına 3rem kalıyor — saat bile okunmuyordu. Sakin günlerin kartları geniş
+ * göründüğü için fark daha da batıyordu.
+ *
+ * Açılan sütun 26rem: üç şeritli bir günde bile kart başına ~8rem, yani
+ * normal bir günün tam genişliği. Toplam (26 + 6×4.5 + 4 = 57rem) normal
+ * hâlden (7×9 + 4 = 67rem) DAR, yani odaklanmak yatay kaydırma eklemiyor,
+ * aksine çoğu ekranda kaldırıyor.
+ */
+const GENIS_SUTUN_REM = 26;
+const DAR_SUTUN_REM = 4.5;
+
+/**
  * Haftalık ızgaranın ortak gövdesi — sütun başlıkları, saat çizgileri ve
  * randevu blokları. `randevular/page.tsx`'teki salt-okunur `HaftaIzgarasi`
  * (bkz. o dosya) ve aday akışının randevu seçicisi (`randevu-planlama.tsx`)
@@ -54,7 +70,7 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
   eksen,
   bosAlanTiklanabilir = false,
   tekGun = false,
-  gunTemelYolu,
+  gunOdaklanabilir = false,
   blokAltYazisi,
   onBlokTikla,
   onBosAlanaTikla,
@@ -68,14 +84,12 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
    */
   tekGun?: boolean;
   /**
-   * Verilirse gün başlığı O GÜNE giden bir bağlantı olur (Eylül 2026): hafta
-   * ızgarasında yoğun bir günü görüp üstteki tarih kutusuyla uğraşmadan
-   * doğrudan o günün listesine geçmek için. Adres `tarih` parametresi
-   * ÇIKARILMIŞ gelir, gün burada ekleniyor.
-   *
-   * Aday akışının seçicisi bunu vermez — orada gezinecek bir sayfa yok.
+   * Gün başlığına tıklayınca o sütun genişlesin mi (Eylül 2026). Sayfa
+   * görünümünde açık; aday akışının seçicisinde kapalı — orada ızgara zaten
+   * dar bir pencerede ve tıklama "bu saati seçtim" demek, ikinci bir anlam
+   * kafa karıştırırdı.
    */
-  gunTemelYolu?: string;
+  gunOdaklanabilir?: boolean;
   /**
    * Blokun ÜÇÜNCÜ satırı. Panelde uzman adı (bir ızgarada birden çok uzman
    * var, ayırt etmek gerekiyor); program linkinde danışan adı (orada tek
@@ -88,6 +102,26 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
 }) {
   const toplamPiksel = (eksen.bitisDk - eksen.baslangicDk) * PX_PER_DK;
   const buGun = bugun();
+
+  /** Genişletilmiş günün anahtarı; hiçbiri açık değilken null. */
+  const [odakGunu, setOdakGunu] = useState<string | null>(null);
+
+  /**
+   * Bir sütunun genişliği. Odak yokken hepsi eşit; odak varken açılan sütun
+   * genişler, öbürleri şeride iner. `tekGun` (telefon) kipinde sütun zaten
+   * ekranı doldurduğu için odak hiç devreye girmez.
+   */
+  const sutunGenisligi = (anahtar: string) => {
+    if (tekGun) return undefined;
+    if (!odakGunu) return { width: `${SUTUN_GENISLIGI_REM}rem` };
+    return {
+      width: `${anahtar === odakGunu ? GENIS_SUTUN_REM : DAR_SUTUN_REM}rem`,
+    };
+  };
+
+  const toplamGenislik = odakGunu
+    ? ZAMAN_SUTUNU_REM + GENIS_SUTUN_REM + (sutunlar.length - 1) * DAR_SUTUN_REM
+    : ZAMAN_SUTUNU_REM + sutunlar.length * SUTUN_GENISLIGI_REM;
 
   const saatCizgileri: number[] = [];
   for (let dk = eksen.baslangicDk; dk <= eksen.bitisDk; dk += eksen.adimDk) {
@@ -111,7 +145,7 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
           tekGun
             ? undefined
             : {
-                minWidth: `${ZAMAN_SUTUNU_REM + sutunlar.length * SUTUN_GENISLIGI_REM}rem`,
+                minWidth: `${toplamGenislik}rem`,
               }
         }
       >
@@ -141,25 +175,30 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
                 </span>
               </>
             );
+            const anahtar = sutun.gun.toISOString();
+            const acik = anahtar === odakGunu;
             const sinif = cn(
-              "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5",
+              "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 transition-[width]",
               tekGun ? "flex-1" : "shrink-0",
-              gunTemelYolu && "rounded-[var(--kil-r-sm)] hover:bg-white/70",
+              gunOdaklanabilir && "rounded-[var(--kil-r-sm)] hover:bg-white/70",
+              acik && "bg-white/70",
             );
-            const olcu = tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` };
+            const olcu = sutunGenisligi(anahtar);
 
-            return gunTemelYolu ? (
-              <Link
-                key={sutun.gun.toISOString()}
-                href={`${gunTemelYolu}&tarih=${tarihMetni(sutun.gun)}`}
+            return gunOdaklanabilir && !tekGun ? (
+              <button
+                key={anahtar}
+                type="button"
                 className={sinif}
                 style={olcu}
-                title={`${tarihMetni(sutun.gun)} gününe git`}
+                aria-pressed={acik}
+                title={acik ? "Günü daralt" : "Bu güne odaklan"}
+                onClick={() => setOdakGunu(acik ? null : anahtar)}
               >
                 {icerik}
-              </Link>
+              </button>
             ) : (
-              <div key={sutun.gun.toISOString()} className={sinif} style={olcu}>
+              <div key={anahtar} className={sinif} style={olcu}>
                 {icerik}
               </div>
             );
@@ -207,11 +246,11 @@ export function HaftaIzgarasiGovdesi<T extends IzgaraBlokIcerigi>({
             <div
               key={sutun.gun.toISOString()}
               className={cn(
-                "relative",
+                "relative transition-[width]",
                 tekGun && "flex-1",
                 gunTiklanabilir() && "cursor-pointer",
               )}
-              style={tekGun ? undefined : { width: `${SUTUN_GENISLIGI_REM}rem` }}
+              style={sutunGenisligi(sutun.gun.toISOString())}
               onClick={(olay) => bosAlanaTikla(olay, sutun.gun)}
             >
               {sutun.bloklar.map(

@@ -291,11 +291,19 @@ Karar gerekçeleri:
   çıkmaz ve uyarı olmasa kullanıcı kaydolmadı sanırdı. Düzenleme formunda
   şube seçimi YOK: randevuyu başka şubeye taşımak ciro kırılımını değiştirir,
   ayrı bir iş.
-- **Hafta ızgarasında gün başlığı o güne gider (27 Eylül 2026).** Hafta
-  görünümünde yoğun bir günü görüp detayına inmek için üstteki tarih kutusunu
-  ya da ileri/geri oklarını kullanmak gerekiyordu. Gün başlıkları artık
-  bağlantı: tıklayınca o günün Liste görünümü açılıyor, süzgeçler korunuyor.
-  Haftalar arası gezinme okları duruyor — gün tıklaması hafta değiştiremez.
+- **Hafta ızgarasında gün başlığı O SÜTUNU genişletir (27 Eylül 2026).**
+  Asıl şikâyet gezinme değil OKUNABİLİRLİKTİ: çakışan randevular şeritlere
+  bölünüyor (`lane`/`laneSayisi`) ve üç seans yan yana gelince 9rem'lik
+  sütunda kart başına 3rem kalıyor, saat bile okunmuyordu. Sakin günlerin
+  kartları geniş göründüğü için fark daha da batıyordu. İlk deneme gün
+  başlığını Liste görünümüne bağlantı yapmaktı; kurum bunu istemedi, ızgarada
+  KALIP genişlemesini istedi. Başlığa tıklayınca o sütun 26rem'e açılıyor,
+  öbürleri 4.5rem şeride iniyor, tekrar tıklayınca normale dönüyor. Günlerin
+  sırası bozulmuyor. Açık hâlin toplam genişliği (57rem) normalden (67rem)
+  DAR, yani odaklanmak yatay kaydırma eklemiyor. Telefonda (tekGun kipi)
+  hiç devreye girmiyor — orada zaten tek gün ekranı dolduruyor. Aday
+  akışının seçicisinde de kapalı: orada tıklama "bu saati seçtim" demek,
+  ikinci bir anlam kafa karıştırırdı.
 - **Geçmiş randevu kilidi KALDIRILDI (25 Eylül 2026).** Eylül başındaki kural
   şuydu: günü bitmiş randevunun saati, uzmanı, hizmeti ve ücreti
   değiştirilemez, iptal edilemez, geçmiş güne yeni randevu açılamaz; yalnız

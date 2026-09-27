@@ -44,7 +44,6 @@ export function HaftaIzgarasi({
   tarih,
   tarihsizYol,
   iptalYolu,
-  gunTemelYolu,
   formSubeleri,
   aktifSubeId,
   formUzmanlari,
@@ -66,8 +65,6 @@ export function HaftaIzgarasi({
   /** `tarih` parametresi çıkarılmış adres (görünüm ve süzgeçler korunmuş). */
   tarihsizYol: string;
   iptalYolu: string;
-  /** Gün başlığı bu adrese + `&tarih=` ile o güne gider. */
-  gunTemelYolu: string;
   /** Yeni randevu formunun şube seçenekleri. */
   formSubeleri: SubeSecenegi[];
   /** Ekranda çalışılan şube — form seçicisinin açılış değeri. */
@@ -169,7 +166,7 @@ export function HaftaIzgarasi({
           tekGun={dar}
           sutunlar={gosterilenSutunlar}
           eksen={eksen}
-          gunTemelYolu={gunTemelYolu}
+          gunOdaklanabilir
           blokAltYazisi={(randevu) => randevu.uzmanAdi}
           onBlokTikla={setDetay}
           bosAlanTiklanabilir={yazabilir}

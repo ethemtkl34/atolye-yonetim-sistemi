@@ -269,10 +269,6 @@ export default async function RandevularSayfasi(
 
   const tarihAtlama = { tarih: tarihMetni(capa), tarihsizYol: adres({ tarih: "" }) };
 
-  // Hafta ızgarasında gün başlığına tıklayınca o günün listesine gidilir
-  // (Eylül 2026): `tarih` çıkarılmış adres, günü ızgara kendisi ekliyor.
-  const gunTemelYolu = adres({ gorunum: "gun", tarih: "" });
-
   /**
    * Yeni randevu formundaki şube seçeneği (Eylül 2026). Randevu yazma
    * yetkisi zaten bütün aktif şubeleri kapsıyor: şubeli roller sağ üstteki
@@ -439,7 +435,6 @@ export default async function RandevularSayfasi(
           bugunYolu={adres({ tarih: tarihMetni(bugun()) })}
           {...tarihAtlama}
           iptalYolu={adres({ iptal: iptalleriGoster ? "" : "1" })}
-          gunTemelYolu={gunTemelYolu}
           formSubeleri={formSubeleri}
           aktifSubeId={subeId}
           formUzmanlari={formUzmanlari}
