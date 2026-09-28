@@ -82,6 +82,32 @@ Karar gerekçeleri:
 - Her kayıt için grup ve sorumlu stajyer seçilir.
 - Stajyer ataması öğrenci profiline değil, ilgili kayda bağlıdır.
 
+- **Öğrenci profilinde zaman çizelgesi kartı** (§6.5, 28 Eylül 2026).
+  Profilde on iki kart vardı ve hepsi TEK kategorilik: randevular ayrı,
+  terapi görüşmeleri ayrı, raporlar ayrı. "Bu çocukla ne zaman ne oldu"
+  sorusunun cevabı hiçbirinde yoktu, kullanıcı kartlar arasında gidip gelip
+  tarihleri kafasında birleştiriyordu. Yeni kart hepsini tek sıraya dizer ve
+  ilk kart olarak durur. Aday kaynağı (Meta reklamı gibi) profilde İLK KEZ
+  burada görünüyor. Sıra ESKİDEN YENİYE: kart ilk temastan bugüne okunur.
+  Her hizmetin gerçekleşen ilk seansı "İlk" rozetiyle işaretlenir; gelinmemiş
+  ya da iptal seans ilk sayılmaz. Aday tarafından yalnız DÖNÜM NOKTALARI
+  alınır (aday açıldı, aşama değişimi, öğrenciye dönüşüm) — her arama ve
+  WhatsApp denemesi çizelgeyi boğardı ve aday ekranında zaten duruyor.
+  Başka şubede geçen seans şube etiketiyle görünür; çocuğun geçmişi
+  bölünmemeli.
+  **YETKİ BU KARTIN ASIL RİSKİ:** yedi ayrı modülden besleniyor ve
+  yetkileri farklı. Danışma görevlisinde terapi görüşmeleri, veli
+  görüşmeleri, raporlar ve arşiv kapalı; kaynakları düz toplasaydık matrisin
+  sağlık mahremiyeti gerekçesiyle sakladığı terapi seansı tarihleri o
+  masanın ekranında belirirdi. Her sorgu kendi modülünün kapısının arkasında
+  ve sayfanın "görülemeyen bölümün sorgusu hiç atılmaz" kuralı burada da
+  geçerli.
+  **SIRALAMA TUZAĞI:** kaynakların tarih çapası aynı değil — terapi, veli
+  görüşmesi, zekâ testi ve arşiv GÜN bazlı (`@db.Date`, gece yarısı), randevu
+  ve aday olayları saatli. Gün içinde önce saatli olaylar gerçek saatleriyle,
+  sonra gün bazlı olanlar diziliyor. İlk denemede gün içi sıra tamamen olay
+  türüne bırakılmıştı ve saatler 09:20'den 09:15'e geri sayıyordu.
+
 ## Puanlama
 
 - Her atölyeden sonra öğrenci için ayrı form doldurulur.

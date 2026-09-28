@@ -12,6 +12,8 @@ import {
 import { Bilgi, ProfilKayitListesi, VeliHucresi } from "./profil-kartlari";
 import type { CikisGunu } from "@/components/kayit-cikar-butonu";
 import { ProfilKutusu } from "./profil-kutulari";
+import { ZamanCizelgesi } from "./zaman-cizelgesi";
+import { ogrenciZamanCizelgesi } from "@/lib/ogrenci-zaman-cizelgesi-verisi";
 import { raporKapsamSecenekleri, raporOzetleri } from "@/lib/rapor-verisi";
 import { RaporBolumu } from "./rapor-bolumu";
 import {
@@ -109,6 +111,18 @@ export default async function OgrenciProfilSayfasi(
   // Randevu geçmişi (Eylül 2026): randevular modülünü görebilen herkes —
   // ücret dahil, "modülü gören ücreti de görür" kuralı (§17.8).
   const randevuGorebilir = kullanici.yetkiler.randevular !== "YOK";
+
+  /**
+   * §6.5 — Zaman çizelgesi. Kaynaklarını KENDİ süzüyor: yedi ayrı modülden
+   * besleniyor ve her sorgu kendi modülünün kapısının arkasında (bkz.
+   * `lib/ogrenci-zaman-cizelgesi-verisi.ts`). Bu sayfanın "görülemeyen
+   * bölümün sorgusu hiç atılmaz" kuralı orada da geçerli.
+   */
+  const zamanCizelgesi = await ogrenciZamanCizelgesi({
+    ogrenciId: id,
+    subeId,
+    yetkiler: kullanici.yetkiler,
+  });
 
   // `?rapor=<id>` veya `?rapor=yeni` ile rapor penceresi doğrudan açılabilir;
   // dashboard'dan ve eski rapor adreslerinden gelen bağlantılar bunu kullanır.
@@ -552,6 +566,22 @@ export default async function OgrenciProfilSayfasi(
           kuralları aynen sürüyor: yetkisiz bölümün kutusu HİÇ çizilmez
           (sorgusu da yukarıda hiç atılmıyor). --- */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        {/* İlk sırada: "bu çocukla ne zaman ne oldu" sorusu, kategorilere
+            bakmadan önce sorulan soru. */}
+        <ProfilKutusu
+          renk="gecmis"
+          baslik="Zaman çizelgesi"
+          altyazi={
+            zamanCizelgesi.length > 0
+              ? `${zamanCizelgesi.length} hareket · ilk temastan bugüne`
+              : "Henüz hareket yok"
+          }
+          adet={zamanCizelgesi.length}
+          genislik="52rem"
+        >
+          <ZamanCizelgesi olaylar={zamanCizelgesi} />
+        </ProfilKutusu>
+
         <ProfilKutusu
           renk="kayit"
           baslik="Aktif kayıtlar"
