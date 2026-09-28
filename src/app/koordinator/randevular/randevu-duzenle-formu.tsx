@@ -5,7 +5,12 @@ import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import { Alan, Bildirim, Buton, CokSatirli, Girdi, Kart, secimStili } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 import { saatMetni, tarihMetni } from "@/lib/tarih";
-import { paraMetni, sureMetni } from "../uzmanlar/sema";
+import {
+  dakikayiSaateCevir,
+  paraMetni,
+  saatiDakikayaCevir,
+  sureMetni,
+} from "../uzmanlar/sema";
 import { MEVCUT_INDIRIM, kayitliYuzde } from "@/lib/randevu/indirim";
 import { IndirimSecici } from "./indirim-secici";
 import { randevuDuzenle } from "./actions";
@@ -106,6 +111,25 @@ function IcerikFormu({
   );
   const [uzmanId, setUzmanId] = useState(randevu.uzmanId);
   const [hizmetId, setHizmetId] = useState(randevu.hizmetId);
+
+  /**
+   * Başlangıç ve bitiş saati (28 Eylül 2026). Açılışta randevunun KAYITLI
+   * saatleri geliyor — katalog süresinden yeniden hesaplanmıyor, yoksa
+   * kullanıcının daha önce elle verdiği süre düzenlemeye girer girmez
+   * sessizce katalog süresine dönerdi.
+   */
+  const [saat, setSaat] = useState(deger("saat") ?? saatMetni(randevu.baslangic));
+  const [bitisSaati, setBitisSaati] = useState(
+    deger("bitisSaati") ?? saatMetni(randevu.bitis),
+  );
+
+  const bitisiHesapla = (baslangic: string, sureDk: number | undefined): string => {
+    if (sureDk === undefined) return "";
+    const basla = saatiDakikayaCevir(baslangic);
+    if (basla === null) return "";
+    const bit = basla + sureDk;
+    return bit >= 24 * 60 ? "" : dakikayiSaateCevir(bit);
+  };
 
   // `randevu-formu.tsx`'teki aynı tuzak: eylem bitince (mesai onayı ya da
   // doğrulama hatasıyla dönüşte de) React bu `<select>`lerin DOM değerini ilk
@@ -327,7 +351,11 @@ function IcerikFormu({
               name="hizmetId"
               className={secimStili}
               value={hizmetId}
-              onChange={(olay) => setHizmetId(olay.target.value)}
+              onChange={(olay) => {
+                setHizmetId(olay.target.value);
+                const yeni = uygunHizmetler.find((h) => h.id === olay.target.value);
+                setBitisSaati(bitisiHesapla(saat, yeni?.sureDk));
+              }}
               required
             >
               <option value="">Seçin…</option>
@@ -351,19 +379,35 @@ function IcerikFormu({
             />
           </Alan>
 
+          <Alan etiket="Başlangıç saati" hata={durum.alanHatalari?.saat}>
+            <Girdi
+              name="saat"
+              type="time"
+              value={saat}
+              onChange={(olay) => {
+                setSaat(olay.target.value);
+                setBitisSaati(bitisiHesapla(olay.target.value, secilenHizmet?.sureDk));
+              }}
+              required
+            />
+          </Alan>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <Alan
-            etiket="Saat"
-            hata={durum.alanHatalari?.saat}
+            etiket="Bitiş saati"
+            hata={durum.alanHatalari?.bitisSaati}
             ipucu={
               secilenHizmet
-                ? `Seans ${sureMetni(secilenHizmet.sureDk)} sürer.`
+                ? `Katalogda ${sureMetni(secilenHizmet.sureDk)}; seans farklı sürdüyse değiştirin.`
                 : undefined
             }
           >
             <Girdi
-              name="saat"
+              name="bitisSaati"
               type="time"
-              defaultValue={deger("saat") ?? saatMetni(randevu.baslangic)}
+              value={bitisSaati}
+              onChange={(olay) => setBitisSaati(olay.target.value)}
               required
             />
           </Alan>

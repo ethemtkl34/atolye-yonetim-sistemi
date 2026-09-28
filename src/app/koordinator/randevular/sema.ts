@@ -106,6 +106,32 @@ const danisanAlanlari = {
 
 export type DanisanGirdisi = z.infer<z.ZodObject<typeof danisanAlanlari>>;
 
+/**
+ * Seans kuralları — iki form da aynı denetimden geçer.
+ *
+ * Tek kural: bitiş başlangıçtan SONRA olmalı. Gece yarısını aşan seans
+ * (bitiş < başlangıç) bilerek reddediliyor: randevu saatleri duvar saati
+ * olarak tek bir günün içinde tutuluyor (`lib/tarih.ts`) ve ertesi güne
+ * taşan bir aralık takvimde, çakışma denetiminde ve ciro kırılımında
+ * sessizce yanlış güne düşerdi.
+ */
+function seansKurallari(
+  veri: { saat: string; bitisSaati: string | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (!veri.bitisSaati) return;
+  const basla = saatiDakikayaCevir(veri.saat);
+  const bit = saatiDakikayaCevir(veri.bitisSaati);
+  if (basla === null || bit === null) return;
+  if (bit <= basla) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["bitisSaati"],
+      message: "Bitiş saati başlangıçtan sonra olmalı.",
+    });
+  }
+}
+
 /** Danışan kuralları — iki form da aynı denetimden geçer. */
 function danisanKurallari(veri: DanisanGirdisi, ctx: z.RefinementCtx): void {
   // Ya kayıtlı veli seçilmiş olmalı ya da yeni velinin adı girilmiş.
@@ -149,6 +175,25 @@ const seansAlanlari = {
     .refine((deger) => saatiDakikayaCevir(deger) !== null, {
       message: "Saat SS:DD biçiminde olmalı",
     }),
+
+  /**
+   * Bitiş saati (28 Eylül 2026). Boş gelirse süre KATALOGDAN alınır — eski
+   * davranış ve aday akışının hâlâ tek saat göndermesi bu yüzden kırılmıyor.
+   *
+   * Dolu gelirse seansın süresini kullanıcı belirler: kurum kataloğun
+   * söylediğinden kısa ya da uzun süren seansları gerçek süresiyle kaydetmek
+   * istedi. Ücret yine katalogdan; süre uzadı diye fiyat değişmiyor.
+   */
+  bitisSaati: z.preprocess(
+    bosuNullYap,
+    z
+      .string()
+      .trim()
+      .refine((deger) => saatiDakikayaCevir(deger) !== null, {
+        message: "Bitiş saati SS:DD biçiminde olmalı",
+      })
+      .nullable(),
+  ),
 
   /**
    * İndirim YÜZDE olarak seçilir (Eylül 2026, `lib/randevu/indirim.ts`):
@@ -197,7 +242,10 @@ export const randevuSemasi = z
       .max(EN_FAZLA_TEKRAR_HAFTASI)
       .default(VARSAYILAN_TEKRAR_HAFTASI),
   })
-  .superRefine(danisanKurallari);
+  .superRefine((veri, ctx) => {
+    seansKurallari(veri, ctx);
+    danisanKurallari(veri, ctx);
+  });
 
 export type RandevuGirdisi = z.infer<typeof randevuSemasi>;
 
@@ -214,6 +262,7 @@ export const RANDEVU_FORM_ALANLARI = [
   "yeniOgrenciDogumTarihi",
   "tarih",
   "saat",
+  "bitisSaati",
   "indirimYuzde",
   "indirimNotu",
   "haftaSayisi",
@@ -280,6 +329,7 @@ export const randevuDuzenleSemasi = z
     ),
   })
   .superRefine((veri, ctx) => {
+    seansKurallari(veri, ctx);
     if (veri.danisanIslemi === "degistir") danisanKurallari(veri, ctx);
     if (veri.danisanIslemi === "guncelle") {
       if (!veri.veliAdi) {
@@ -304,6 +354,7 @@ export const RANDEVU_DUZENLE_FORM_ALANLARI = [
   "hizmetId",
   "tarih",
   "saat",
+  "bitisSaati",
   "indirimYuzde",
   "indirimNotu",
   "not",

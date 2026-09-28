@@ -397,6 +397,20 @@ Karar gerekçeleri:
   bir zamanlayıcı yok. Hafta sayısı 1 seçilirse belgenin harfi harfine
   istediği davranış çıkıyor. Serinin bir tarihi engelliyse tamamı reddedilir —
   kısmi seri sessizce eksik bir program üretirdi.
+- **Seansın başlangıç VE bitiş saati soruluyor (28 Eylül 2026).** Form
+  eskiden yalnız başlangıcı alıyor, bitişi hizmetin katalog süresinden
+  hesaplıyordu. Kurum gerçekte kataloğun söylediğinden kısa ya da uzun süren
+  seansları gerçek süresiyle kaydetmek istedi. Bitiş alanı hizmet ya da
+  başlangıç değişince katalog süresinden yeniden doluyor, kullanıcı elle
+  değiştirirse o değer kalıyor. ÜCRET ETKİLENMEZ: süre uzadı diye fiyat
+  değişmiyor, ücret hep katalogdan kopyalanıyor. Bitiş boş gelirse eski
+  davranış (katalog süresi) sürüyor — aday akışı hâlâ tek saat gönderiyor ve
+  kırılmıyor. Bitiş başlangıçtan önce ya da aynı olamaz: sıfır/eksi süreli
+  aralık çakışma hesabını sessizce bozar, gece yarısını aşan seans da aynı
+  dala düşüyor çünkü randevu saatleri tek bir günün içinde tutuluyor.
+  Düzenleme formu kayıtlı saatleri gösteriyor, katalogdan yeniden
+  hesaplamıyor — yoksa elle verilen süre düzenlemeye girer girmez sessizce
+  katalog süresine dönerdi.
 - **Randevu engel sırası: izin → mesai → çakışma.** Uzman o gün hiç
   gelmiyorsa "o saat dolu" demek kullanıcıyı başka saat denemeye iterdi.
 - **Mesai dışı TEK istisna: kesin ret değil, sorulan bir onay** (Eylül 2026

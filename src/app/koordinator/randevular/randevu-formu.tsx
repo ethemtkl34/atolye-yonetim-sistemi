@@ -13,7 +13,12 @@ import {
 } from "@/components/ui";
 import type { EylemDurumu } from "@/lib/formlar";
 import { VARSAYILAN_TEKRAR_HAFTASI, EN_FAZLA_TEKRAR_HAFTASI } from "@/lib/randevu/tekrar";
-import { paraMetni, sureMetni } from "../uzmanlar/sema";
+import {
+  dakikayiSaateCevir,
+  paraMetni,
+  saatiDakikayaCevir,
+  sureMetni,
+} from "../uzmanlar/sema";
 import { randevuEkle } from "./actions";
 import { VeliSecici, type VeliSecimi } from "./veli-secici";
 
@@ -191,6 +196,27 @@ function RandevuFormu({
   const [veli, setVeli] = useState<VeliSecimi>({ tur: "yok" });
 
   /**
+   * Başlangıç ve bitiş saati (28 Eylül 2026).
+   *
+   * Bitiş, hizmet ya da başlangıç değişince katalog süresinden yeniden
+   * hesaplanıyor; kullanıcı elle değiştirirse o değer kalıyor. Hesap
+   * EFEKTLE değil olay işleyicileriyle yapılıyor — efekt içinde durum
+   * ayarlamak lint kuralına takılıyor (`react-hooks/set-state-in-effect`)
+   * ve zincirleme render üretiyor.
+   */
+  const [saat, setSaat] = useState(deger("saat") ?? varsayilanSaat ?? "10:00");
+  const [bitisSaati, setBitisSaati] = useState(deger("bitisSaati") ?? "");
+
+  /** Başlangıç + süre → "SS:DD"; gece yarısını aşarsa boş (şema da reddeder). */
+  const bitisiHesapla = (baslangic: string, sureDk: number | undefined): string => {
+    if (sureDk === undefined) return "";
+    const basla = saatiDakikayaCevir(baslangic);
+    if (basla === null) return "";
+    const bit = basla + sureDk;
+    return bit >= 24 * 60 ? "" : dakikayiSaateCevir(bit);
+  };
+
+  /**
    * `ogrenci-formu.tsx`'teki aynı tuzak: React eylem bitince (başarısız
    * denemede de) bu `<select>`lerin DOM değerini ilk seçeneğe düşürüyor —
    * `value={uzmanId}`/`value={hizmetId}` React state'i DEĞİŞMEDİĞİ için
@@ -290,6 +316,7 @@ function RandevuFormu({
                 setUzmanId(olay.target.value);
                 // Yetkinlik listesi değişti; eski hizmet seçimi geçersiz.
                 setHizmetId("");
+                setBitisSaati("");
               }}
               required
             >
@@ -315,7 +342,11 @@ function RandevuFormu({
               name="hizmetId"
               className={secimStili}
               defaultValue={hizmetId}
-              onChange={(olay) => setHizmetId(olay.target.value)}
+              onChange={(olay) => {
+                setHizmetId(olay.target.value);
+                const yeni = uygunHizmetler.find((h) => h.id === olay.target.value);
+                setBitisSaati(bitisiHesapla(saat, yeni?.sureDk));
+              }}
               required
             >
               <option value="">Seçin…</option>
@@ -339,19 +370,35 @@ function RandevuFormu({
             />
           </Alan>
 
-          <Alan
-            etiket="Saat"
-            hata={durum.alanHatalari?.saat}
-            ipucu={
-              secilenHizmet
-                ? `Seans ${sureMetni(secilenHizmet.sureDk)} sürer.`
-                : undefined
-            }
-          >
+          <Alan etiket="Başlangıç saati" hata={durum.alanHatalari?.saat}>
             <Girdi
               name="saat"
               type="time"
-              defaultValue={deger("saat") ?? varsayilanSaat ?? "10:00"}
+              value={saat}
+              onChange={(olay) => {
+                setSaat(olay.target.value);
+                setBitisSaati(bitisiHesapla(olay.target.value, secilenHizmet?.sureDk));
+              }}
+              required
+            />
+          </Alan>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Alan
+            etiket="Bitiş saati"
+            hata={durum.alanHatalari?.bitisSaati}
+            ipucu={
+              secilenHizmet
+                ? `Katalogda ${sureMetni(secilenHizmet.sureDk)}; seans farklı sürdüyse değiştirin.`
+                : "Önce hizmet seçin."
+            }
+          >
+            <Girdi
+              name="bitisSaati"
+              type="time"
+              value={bitisSaati}
+              onChange={(olay) => setBitisSaati(olay.target.value)}
               required
             />
           </Alan>

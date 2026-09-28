@@ -95,6 +95,26 @@ export async function haftaRandevuVerisiEylemi(tarih: string) {
   return haftaRandevuVerisi({ subeId: kullanici.aktifSubeId, capa: tarihCozumle(tarih) ?? bugun() });
 }
 
+/**
+ * Seansın dakika cinsinden süresi.
+ *
+ * Bitiş saati verilmişse aradaki fark, verilmemişse hizmetin katalog süresi.
+ * Şema bitişin başlangıçtan sonra olduğunu zaten doğruluyor (`seansKurallari`);
+ * buradaki `> 0` denetimi yalnız son bir güvenlik — süresi sıfır ya da eksi
+ * bir aralık çakışma hesabını sessizce bozardı.
+ */
+function seansSuresi(
+  saat: string,
+  bitisSaati: string | null,
+  katalogSuresiDk: number,
+): number {
+  if (!bitisSaati) return katalogSuresiDk;
+  const basla = saatiDakikayaCevir(saat);
+  const bit = saatiDakikayaCevir(bitisSaati);
+  if (basla === null || bit === null || bit <= basla) return katalogSuresiDk;
+  return bit - basla;
+}
+
 function formuOku(formVerisi: FormData) {
   return Object.fromEntries(
     RANDEVU_FORM_ALANLARI.map((alan) => [alan, formVerisi.get(alan) ?? ""]),
@@ -228,12 +248,17 @@ export async function randevuEkle(
   }
   const indirimKurus = yuzdeIndirimi(yetkinlik.hizmet.ucretKurus, veri.indirimYuzde);
 
+  /**
+   * Seansın süresi: form bitiş saati verdiyse ondan, vermediyse katalogdan
+   * (28 Eylül 2026). Ücret her hâlükârda katalogdan — süre uzadı diye fiyat
+   * değişmiyor. Seride her hafta AYNI süre kullanılıyor.
+   */
+  const sureDk = seansSuresi(veri.saat, veri.bitisSaati, yetkinlik.hizmet.sureDk);
+
   // Tekrar YALNIZ tekrarlı hizmetlerde; zekâ testleri her seferinde elle.
   const haftaSayisi = yetkinlik.hizmet.tekrarli ? veri.haftaSayisi : 1;
   const tarihler = tekrarTarihleri(baslangic, haftaSayisi);
-  const araliklar: Aralik[] = tarihler.map((tarih) =>
-    randevuAraligi(tarih, yetkinlik.hizmet.sureDk),
-  );
+  const araliklar: Aralik[] = tarihler.map((tarih) => randevuAraligi(tarih, sureDk));
 
   const baglam = await uzmanBaglami({
     uzmanId: veri.uzmanId,
@@ -430,7 +455,10 @@ export async function randevuDuzenle(
     };
   }
 
-  const aralik = randevuAraligi(baslangic, yetkinlik.hizmet.sureDk);
+  const aralik = randevuAraligi(
+    baslangic,
+    seansSuresi(veri.saat, veri.bitisSaati, yetkinlik.hizmet.sureDk),
+  );
 
   const baglam = await uzmanBaglami({
     uzmanId: veri.uzmanId,

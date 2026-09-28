@@ -1983,8 +1983,13 @@ model Randevu {
   disKaynakId String? @unique
 
   baslangic DateTime
-  /// `baslangic + hizmet.sureDk` — kayda DONAR. Hizmetin süresi sonradan
-  /// değişse geçmiş randevunun bittiği saat kaymaz.
+  /// Seansın bitiş saati — kayda DONAR. Hizmetin süresi sonradan değişse
+  /// geçmiş randevunun bittiği saat kaymaz.
+  ///
+  /// 28 Eylül 2026'dan beri kullanıcı formda bitişi ELLE verebiliyor; artık
+  /// her zaman `baslangic + hizmet.sureDk` değil. Boş bırakılırsa katalog
+  /// süresi kullanılıyor. Ücret bundan ETKİLENMEZ: süre uzadı diye fiyat
+  /// değişmiyor, ücret hep katalogdan kopyalanıyor.
   bitis     DateTime
 
   durum RandevuDurumu @default(PLANLANDI)
