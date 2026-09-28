@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANKET_ADRESI,
   anketMetni,
   hatirlatmaMetni,
   whatsappMesajBaglantisi,
@@ -75,11 +76,22 @@ describe("anketMetni", () => {
     expect(metin).toContain("Oyun Temelli Danışmanlık");
   });
 
-  it("uydurma bir anket adresi İÇERMEZ", () => {
-    // Kurumun anket bağlantısı sistemde tanımlı değil; olmayan bir adres
-    // göndermek hiç göndermemekten kötü.
-    const metin = anketMetni(temel);
-    expect(metin).not.toMatch(/https?:\/\//);
+  it("anket adresini içerir", () => {
+    // 28 Eylül 2026: kurum adresi verdi, elle yapıştırma adımı kalktı.
+    expect(anketMetni(temel)).toContain(ANKET_ADRESI);
+  });
+
+  it("BAŞKA bir adres içermez", () => {
+    // Metinde tek bağlantı olmalı; ikinci bir adres veliyi yanlış yere
+    // götürürdü.
+    const adresler = anketMetni(temel).match(/https?:\/\/\S+/g) ?? [];
+    expect(adresler).toEqual([ANKET_ADRESI]);
+  });
+
+  it("hatırlatma metnine anket adresi SIZMAZ", () => {
+    // Randevu hatırlatması seans ÖNCESİ gidiyor; oraya anket bağlantısı
+    // koymak veliyi olmamış bir seansı değerlendirmeye çağırırdı.
+    expect(hatirlatmaMetni(temel)).not.toContain(ANKET_ADRESI);
   });
 
   it("kurum adıyla biter", () => {

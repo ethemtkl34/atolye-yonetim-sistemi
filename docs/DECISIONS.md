@@ -375,6 +375,18 @@ Karar gerekçeleri:
 - **Mesajlar WhatsApp bağlantısıyla**, otomatik gönderim yok: SMS servisi
   abonelik, API kurulumu ve KVKK aydınlatması demek; mevcut `waBaglantisi`
   deseni bugün çalışıyor.
+- **Anket mesajı kurumun anket adresiyle biter (28 Eylül 2026).** Önceki
+  kararda adres metne EKLENMİYORDU: kurumun bağlantısı sistemde tanımlı
+  değildi ve uydurma bir adres göndermek hiç göndermemekten kötüydü, kullanıcı
+  linki WhatsApp penceresinde elle yapıştırıyordu. Kurum adresi verdi
+  (`ANKET_ADRESI`, `lib/randevu/mesaj.ts`) ve elle yapıştırma adımı kalktı.
+  Adres kurum adının ÜSTÜNDE duruyor: WhatsApp önizlemeyi son satıra bakarak
+  kuruyor, imza en sonda kalırsa önizleme çıkmıyor. Sabit metinde, ortam
+  değişkeninde değil — adres sır değil ve derleme anında okunmayan bir
+  değişken (bkz. `env.ts`) burada gereksiz risk olurdu. Adres yalnız ANKET
+  metnine giriyor; randevu hatırlatması seans ÖNCESİ gittiği için oraya
+  konsaydı veliyi olmamış bir seansı değerlendirmeye çağırırdı, test bunu
+  ayrıca koruyor.
 - **Katalog ve kadro panelden yönetilir; silme de var.** Pasife alma
   kullanılmış kaydın yolu, silme ise yanlışlıkla eklenmiş kaydın. "Kullanılmış
   mı" kontrolü elle sayılan bir listeyle değil YABANCI ANAHTAR KISITIYLA

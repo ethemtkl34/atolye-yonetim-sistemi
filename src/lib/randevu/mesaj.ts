@@ -61,15 +61,29 @@ export function hatirlatmaMetni(bilgi: MesajBilgisi): string {
 }
 
 /**
+ * Kurumun memnuniyet anketinin adresi (28 Eylül 2026'da kurum verdi).
+ *
+ * Metne GÖMÜLÜ, ortam değişkeni değil: adres bir sır değil ve derleme
+ * anında okunmayan bir değişken (bkz. `env.ts` şerhi) burada gereksiz risk
+ * olurdu. Kurum adresi değiştirirse bu satır değişir ve `mesaj.test.ts`
+ * metnin gerçekten adresle bittiğini doğrular.
+ */
+export const ANKET_ADRESI = "https://zetzeka.porsline.com/s/Rh4DsMYL";
+
+/**
  * Seans sonrası anket daveti.
  *
  * Belge: "Anket Gönder butonu: seans veya test kaydı üzerinden yöneticinin
  * anketi manuel olarak danışana göndermesini sağlayan bir buton."
  *
- * Anket ADRESİ metne eklenmiyor: kurumun anket bağlantısı sistemde tanımlı
- * değil ve uydurma bir adres göndermek, hiç göndermemekten kötü. Kullanıcı
- * bağlantıyı WhatsApp penceresinde metnin sonuna yapıştırıyor; metin bunu
- * açıkça söylüyor.
+ * Anket ADRESİ metnin sonunda. Eskiden hiç eklenmiyordu çünkü kurumun
+ * bağlantısı sistemde tanımlı değildi ve uydurma bir adres göndermek hiç
+ * göndermemekten kötüydü; kullanıcı bağlantıyı WhatsApp penceresinde elle
+ * yapıştırıyordu. Kurum adresi 28 Eylül 2026'da verdi, elle yapıştırma
+ * adımı kalktı.
+ *
+ * Adres kurum adının ÜSTÜNDE: WhatsApp bağlantı önizlemesini son satıra
+ * bakarak kuruyor ve imza en sonda kalırsa önizleme çıkmıyor.
  */
 export function anketMetni(bilgi: MesajBilgisi): string {
   const kim = bilgi.cocukAdi ? `${bilgi.cocukAdi} için ` : "";
@@ -82,6 +96,8 @@ export function anketMetni(bilgi: MesajBilgisi): string {
       `için değerli.`,
     "",
     "Kısa değerlendirme formumuzu doldurmak ister misiniz?",
+    "",
+    ANKET_ADRESI,
     "",
     bilgi.kurumAdi,
   ].join("\n");
