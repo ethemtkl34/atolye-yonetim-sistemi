@@ -1,6 +1,8 @@
 "use client";
 
 import { IndirimSecici } from "./indirim-secici";
+import { TarifeSecici } from "./tarife-secici";
+import { tarifeUcreti, type Tarife } from "@/lib/randevu/tarife";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { GonderButonu, Pencere } from "@/components/ui-istemci";
 import {
@@ -39,7 +41,10 @@ export type HizmetSecenegi = {
   ad: string;
   grup: "TEST" | "DANISMANLIK" | "ATOLYE";
   sureDk: number;
+  /** Güncel (yeni danışan) ücreti. */
   ucretKurus: number;
+  /** §17.9 — Eski danışan tarifesi; null ise tarife seçimi hiç sorulmaz. */
+  eskiDanisanUcretKurus: number | null;
   tekrarli: boolean;
   danisanTuru: "COCUK" | "VELI";
 };
@@ -204,6 +209,13 @@ function RandevuFormu({
    * ayarlamak lint kuralına takılıyor (`react-hooks/set-state-in-effect`)
    * ve zincirleme render üretiyor.
    */
+  /**
+   * §17.9 — Randevunun tarifesi. Yeni randevuda varsayılan güncel ücret;
+   * hizmet değişince, yeni hizmetin ikinci ücreti yoksa güncele geri
+   * düşüyor (aksi hâlde sunucu "eski" isteyip bulamaz ve kesin ret verir).
+   */
+  const [tarife, setTarife] = useState(deger("tarife") ?? "guncel");
+
   const [saat, setSaat] = useState(deger("saat") ?? varsayilanSaat ?? "10:00");
   const [bitisSaati, setBitisSaati] = useState(deger("bitisSaati") ?? "");
 
@@ -243,6 +255,12 @@ function RandevuFormu({
     : [];
 
   const secilenHizmet = uygunHizmetler.find((h) => h.id === hizmetId);
+
+  /** İndirimin üzerinden hesaplanacağı ücret — SEÇİLEN tarifeninki. */
+  const secilenUcret =
+    secilenHizmet === undefined
+      ? undefined
+      : (tarifeUcreti(secilenHizmet, tarife as Tarife) ?? undefined);
 
   return (
     <Pencere
@@ -317,6 +335,7 @@ function RandevuFormu({
                 // Yetkinlik listesi değişti; eski hizmet seçimi geçersiz.
                 setHizmetId("");
                 setBitisSaati("");
+                setTarife("guncel");
               }}
               required
             >
@@ -346,6 +365,7 @@ function RandevuFormu({
                 setHizmetId(olay.target.value);
                 const yeni = uygunHizmetler.find((h) => h.id === olay.target.value);
                 setBitisSaati(bitisiHesapla(saat, yeni?.sureDk));
+                if (yeni?.eskiDanisanUcretKurus == null) setTarife("guncel");
               }}
               required
             >
@@ -440,9 +460,17 @@ function RandevuFormu({
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <TarifeSecici
+            deger={tarife}
+            onDegis={setTarife}
+            hizmet={secilenHizmet}
+            hata={durum.alanHatalari?.tarife}
+            durum={durum}
+          />
+
           <IndirimSecici
             varsayilan={deger("indirimYuzde") ?? "0"}
-            ucretKurus={secilenHizmet?.ucretKurus}
+            ucretKurus={secilenUcret}
             hata={durum.alanHatalari?.indirimYuzde}
             durum={durum}
           />

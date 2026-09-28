@@ -154,6 +154,7 @@ export default async function RandevularSayfasi(
         grup: true,
         sureDk: true,
         ucretKurus: true,
+        eskiDanisanUcretKurus: true,
         tekrarli: true,
         danisanTuru: true,
       },

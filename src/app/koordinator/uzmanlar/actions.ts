@@ -37,6 +37,7 @@ const HIZMET_FORM_ALANLARI = [
   "grup",
   "sureDk",
   "ucretLira",
+  "eskiUcretLira",
   "yasAlt",
   "yasUst",
   "danisanTuru",
@@ -468,6 +469,9 @@ function hizmetFormunuOku(formVerisi: FormData) {
     grup: formVerisi.get("grup"),
     sureDk: formVerisi.get("sureDk"),
     ucretLira: formVerisi.get("ucretLira"),
+    // Boş bırakılabilen alanlar "" olarak okunuyor: `undefined` union'a
+    // düşmüyor ve "Invalid input" veriyor (yaş alanlarıyla aynı sebep).
+    eskiUcretLira: formVerisi.get("eskiUcretLira") ?? "",
     yasAlt: formVerisi.get("yasAlt") ?? "",
     yasUst: formVerisi.get("yasUst") ?? "",
     danisanTuru: formVerisi.get("danisanTuru"),
@@ -521,6 +525,8 @@ export async function hizmetEkle(
       grup: veri.grup,
       sureDk: veri.sureDk,
       ucretKurus: liradanKurusa(veri.ucretLira),
+      eskiDanisanUcretKurus:
+        veri.eskiUcretLira === null ? null : liradanKurusa(veri.eskiUcretLira),
       yasAlt: veri.yasAlt,
       yasUst: veri.yasUst,
       danisanTuru: veri.danisanTuru,
@@ -581,6 +587,8 @@ export async function hizmetGuncelle(
       grup: veri.grup,
       sureDk: veri.sureDk,
       ucretKurus: liradanKurusa(veri.ucretLira),
+      eskiDanisanUcretKurus:
+        veri.eskiUcretLira === null ? null : liradanKurusa(veri.eskiUcretLira),
       yasAlt: veri.yasAlt,
       yasUst: veri.yasUst,
       danisanTuru: veri.danisanTuru,

@@ -13,6 +13,8 @@ import {
 } from "../uzmanlar/sema";
 import { MEVCUT_INDIRIM, kayitliYuzde } from "@/lib/randevu/indirim";
 import { IndirimSecici } from "./indirim-secici";
+import { TarifeSecici } from "./tarife-secici";
+import { KAYITLI_TARIFE, tarifeUcreti, type Tarife } from "@/lib/randevu/tarife";
 import { randevuDuzenle } from "./actions";
 import type { HizmetSecenegi, UzmanSecenegi } from "./randevu-formu";
 import type { DanisanIslemi } from "./sema";
@@ -150,9 +152,29 @@ function IcerikFormu({
 
   // Kayıtlı indirimin yüzde karşılığı — `ucretKurus` satırda NET tutar,
   // brüt ücret net + indirim. Listede olmayan oran "mevcut" olarak açılır.
+  /**
+   * §17.9 — Tarife. Düzenlemede VARSAYILAN "kayıtlı ücret": randevunun
+   * ücreti açılış anında kayda kopyalanıyor ve formu açıp yalnız notu
+   * değiştiren kullanıcı, katalog o arada zamlandıysa ücreti farkında
+   * olmadan güncellememeli.
+   */
+  const [tarife, setTarife] = useState(deger("tarife") ?? KAYITLI_TARIFE);
+
   const kayitliIndirim = randevu.indirimKurus ?? 0;
   const kayitliOran = kayitliYuzde((randevu.ucretKurus ?? 0) + kayitliIndirim, kayitliIndirim);
   const kayitliIndirimSecimi = kayitliOran === null ? MEVCUT_INDIRIM : String(kayitliOran);
+
+  /** Kayda yazılmış BRÜT ücret — `randevu.ucretKurus` indirim düşülmüş net. */
+  const kayitliBrutUcret =
+    randevu.ucretKurus === null ? null : randevu.ucretKurus + kayitliIndirim;
+
+  /** İndirimin üzerinden hesaplanacağı ücret — seçilen tarifeninki. */
+  const secilenUcret =
+    tarife === KAYITLI_TARIFE
+      ? (kayitliBrutUcret ?? undefined)
+      : secilenHizmet === undefined
+        ? undefined
+        : (tarifeUcreti(secilenHizmet, tarife as Tarife) ?? undefined);
 
   // Danışan modu: doğrulama hatasıyla dönüşte (ör. mesai onayı beklerken)
   // açık panel açık kalsın diye başlangıç değeri sunucudan dönen değerden
@@ -355,6 +377,9 @@ function IcerikFormu({
                 setHizmetId(olay.target.value);
                 const yeni = uygunHizmetler.find((h) => h.id === olay.target.value);
                 setBitisSaati(bitisiHesapla(saat, yeni?.sureDk));
+                if (tarife === "eski" && yeni?.eskiDanisanUcretKurus == null) {
+                  setTarife("guncel");
+                }
               }}
               required
             >
@@ -414,9 +439,18 @@ function IcerikFormu({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <TarifeSecici
+            deger={tarife}
+            onDegis={setTarife}
+            hizmet={secilenHizmet}
+            kayitliUcretKurus={kayitliBrutUcret}
+            hata={durum.alanHatalari?.tarife}
+            durum={durum}
+          />
+
           <IndirimSecici
             varsayilan={deger("indirimYuzde") ?? kayitliIndirimSecimi}
-            ucretKurus={secilenHizmet?.ucretKurus}
+            ucretKurus={secilenUcret}
             mevcutIndirimKurus={kayitliIndirimSecimi === MEVCUT_INDIRIM ? kayitliIndirim : null}
             hata={durum.alanHatalari?.indirimYuzde}
             durum={durum}

@@ -27,6 +27,8 @@ export type HizmetSatiri = {
   grup: "TEST" | "DANISMANLIK" | "ATOLYE";
   sureDk: number;
   ucretKurus: number;
+  /** §17.9 — Eski danışan tarifesi; yoksa hizmetin tek ücreti var. */
+  eskiDanisanUcretKurus: number | null;
   yasAlt: number | null;
   yasUst: number | null;
   danisanTuru: "COCUK" | "VELI";
@@ -105,6 +107,13 @@ export function HizmetYonetimi({
                     {hizmet.ucretKurus === 0
                       ? "Ücretsiz"
                       : paraMetni(hizmet.ucretKurus)}
+                    {hizmet.eskiDanisanUcretKurus !== null
+                      ? ` · eski danışan ${
+                          hizmet.eskiDanisanUcretKurus === 0
+                            ? "ücretsiz"
+                            : paraMetni(hizmet.eskiDanisanUcretKurus)
+                        }`
+                      : null}
                     {hizmet.yasAlt !== null || hizmet.yasUst !== null
                       ? ` · ${hizmet.yasAlt ?? 0}–${hizmet.yasUst ?? "…"} yaş`
                       : null}
@@ -290,9 +299,9 @@ function HizmetFormu({
           </Alan>
 
           <Alan
-            etiket="Ücret (₺)"
+            etiket="Güncel ücret (₺)"
             hata={durum.alanHatalari?.ucretLira}
-            ipucu="Ücretsiz hizmet için 0 yazın."
+            ipucu="Yeni danışan bu ücreti öder. Ücretsiz hizmet için 0 yazın."
           >
             <Girdi
               name="ucretLira"
@@ -304,6 +313,28 @@ function HizmetFormu({
                 (hizmet ? kurustanLiraya(hizmet.ucretKurus) : 0)
               }
               required
+            />
+          </Alan>
+
+          {/* §17.9 — Zam sonrası devam eden danışanların ücreti. Boş
+              bırakılırsa randevu formu tarife seçimi göstermez. */}
+          <Alan
+            etiket="Eski danışan ücreti (₺)"
+            hata={durum.alanHatalari?.eskiUcretLira}
+            ipucu="Boş bırakılırsa tek ücret olur; randevuda tarife sorulmaz."
+          >
+            <Girdi
+              name="eskiUcretLira"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="Yok"
+              defaultValue={
+                durum.degerler?.eskiUcretLira ??
+                (hizmet?.eskiDanisanUcretKurus != null
+                  ? kurustanLiraya(hizmet.eskiDanisanUcretKurus)
+                  : "")
+              }
             />
           </Alan>
 

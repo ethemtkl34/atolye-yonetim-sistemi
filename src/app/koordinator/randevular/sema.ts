@@ -6,6 +6,7 @@ import {
   VARSAYILAN_TEKRAR_HAFTASI,
 } from "@/lib/randevu/tekrar";
 import { saatiDakikayaCevir } from "../uzmanlar/sema";
+import { tarifeSeciminiCoz } from "@/lib/randevu/tarife";
 import { indirimSeciminiCoz } from "@/lib/randevu/indirim";
 
 /**
@@ -196,6 +197,25 @@ const seansAlanlari = {
   ),
 
   /**
+   * §17.9 — Randevunun tarifesi: "guncel", "eski" ya da düzenlemede
+   * "kayitli" (kayda yazılmış ücreti koru). Tanınmayan değer KESİN RET —
+   * sessizce güncel tarifeye düşmek, kullanıcının eski danışan fiyatı
+   * uyguladığını sandığı bir randevuyu tam fiyattan açardı.
+   */
+  tarife: z
+    .preprocess((deger) => (typeof deger === "string" ? deger : ""), z.string())
+    .transform((deger, ctx) => {
+      // Boş gelen form eski davranışı sürdürür: güncel tarife.
+      if (deger === "") return "guncel" as const;
+      const secim = tarifeSeciminiCoz(deger);
+      if (secim === null) {
+        ctx.addIssue({ code: "custom", message: "Listeden bir tarife seçin." });
+        return z.NEVER;
+      }
+      return secim;
+    }),
+
+  /**
    * İndirim YÜZDE olarak seçilir (Eylül 2026, `lib/randevu/indirim.ts`):
    * 0 = indirim yok, listedeki oranlar ya da düzenlemede "mevcut" (kayıtlı
    * tutarı koru). Kuruşa eylemde, hizmetin ücretinden çevriliyor.
@@ -263,6 +283,7 @@ export const RANDEVU_FORM_ALANLARI = [
   "tarih",
   "saat",
   "bitisSaati",
+  "tarife",
   "indirimYuzde",
   "indirimNotu",
   "haftaSayisi",
@@ -355,6 +376,7 @@ export const RANDEVU_DUZENLE_FORM_ALANLARI = [
   "tarih",
   "saat",
   "bitisSaati",
+  "tarife",
   "indirimYuzde",
   "indirimNotu",
   "not",

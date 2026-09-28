@@ -144,6 +144,17 @@ export const hizmetSemasi = z.object({
     .number()
     .min(0, "Ücret eksi olamaz")
     .max(1_000_000, "Ücret çok yüksek görünüyor"),
+  /**
+   * §17.9 — Eski danışan ücreti (28 Eylül 2026). BOŞ bırakılabilir: ikinci
+   * fiyatı olmayan hizmette randevu formu tarife seçimi göstermez.
+   * Boş dizge `null`a çevriliyor ki 0 (ücretsiz) ile "tanımsız" ayrışsın.
+   */
+  eskiUcretLira: z
+    .union([
+      z.literal(""),
+      z.coerce.number().min(0, "Ücret eksi olamaz").max(1_000_000, "Ücret çok yüksek görünüyor"),
+    ])
+    .transform((deger) => (deger === "" ? null : deger)),
   yasAlt: z
     .union([z.literal(""), z.coerce.number().int().min(0).max(120)])
     .transform((deger) => (deger === "" ? null : deger)),

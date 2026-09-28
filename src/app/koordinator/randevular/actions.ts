@@ -33,6 +33,11 @@ import {
 import { haftaRandevuVerisi } from "@/lib/randevu/hafta-verisi";
 import { randevuGecmisMi } from "@/lib/randevu/gecmis-kilidi";
 import { randevuHedefSubesi } from "@/lib/randevu/hedef-sube";
+import {
+  duzenlemeBrutUcreti,
+  KAYITLI_TARIFE,
+  tarifeUcreti,
+} from "@/lib/randevu/tarife";
 
 /**
  * §17.4 — Randevu yazma işlemleri.
@@ -221,7 +226,14 @@ export async function randevuEkle(
         },
       },
       hizmet: {
-        select: { ad: true, aktif: true, sureDk: true, ucretKurus: true, tekrarli: true },
+        select: {
+          ad: true,
+          aktif: true,
+          sureDk: true,
+          ucretKurus: true,
+          eskiDanisanUcretKurus: true,
+          tekrarli: true,
+        },
       },
     },
   });
@@ -246,7 +258,26 @@ export async function randevuEkle(
   if (veri.indirimYuzde === MEVCUT_INDIRIM) {
     return { alanHatalari: { indirimYuzde: "Listeden bir indirim seçin." }, degerler: girilenler };
   }
-  const indirimKurus = yuzdeIndirimi(yetkinlik.hizmet.ucretKurus, veri.indirimYuzde);
+  /**
+   * §17.9 — Randevunun ücreti SEÇİLEN tarifeden. "kayitli" yeni randevuda
+   * anlamsız (korunacak bir kayıt yok); "eski" seçilmiş ama hizmetin ikinci
+   * ücreti yoksa kesin ret — sessizce güncel ücrete düşmek, eski danışan
+   * fiyatı uygulandığını sanan kullanıcıya tam fiyattan randevu açardı.
+   */
+  if (veri.tarife === KAYITLI_TARIFE) {
+    return { alanHatalari: { tarife: "Listeden bir tarife seçin." }, degerler: girilenler };
+  }
+  const brutUcret = tarifeUcreti(yetkinlik.hizmet, veri.tarife);
+  if (brutUcret === null) {
+    return {
+      alanHatalari: { tarife: "Bu hizmette eski danışan ücreti tanımlı değil." },
+      degerler: girilenler,
+    };
+  }
+
+  // İndirim SEÇİLEN tarifenin üzerinden; hep güncel ücretten hesaplamak eski
+  // danışanda yanlış tutar üretirdi.
+  const indirimKurus = yuzdeIndirimi(brutUcret, veri.indirimYuzde);
 
   /**
    * Seansın süresi: form bitiş saati verdiyse ondan, vermediyse katalogdan
@@ -335,7 +366,7 @@ export async function randevuEkle(
         bitis: aralik.bitis,
         // Ücret açılış anında KOPYALANIYOR: katalogdaki zam bu randevuyu
         // ve geçmiş haftaların cirosunu değiştirmemeli (§17.4).
-        ucretKurus: yetkinlik.hizmet.ucretKurus,
+        ucretKurus: brutUcret,
         indirimKurus,
         indirimNotu: veri.indirimNotu,
         seriId,
@@ -381,7 +412,13 @@ export async function randevuDuzenle(
 
   const mevcut = await db.randevu.findFirst({
     where: { id: randevuId, branchId: subeId },
-    select: { id: true, durum: true, baslangic: true, indirimKurus: true },
+    select: {
+      id: true,
+      durum: true,
+      baslangic: true,
+      ucretKurus: true,
+      indirimKurus: true,
+    },
   });
   if (!mevcut) return { hata: "Randevu bulunamadı." };
   if (mevcut.durum === "IPTAL") {
@@ -420,7 +457,14 @@ export async function randevuDuzenle(
           subeler: { where: { subeId }, select: { subeId: true } },
         },
       },
-      hizmet: { select: { aktif: true, sureDk: true, ucretKurus: true } },
+      hizmet: {
+        select: {
+          aktif: true,
+          sureDk: true,
+          ucretKurus: true,
+          eskiDanisanUcretKurus: true,
+        },
+      },
     },
   });
 
@@ -440,13 +484,33 @@ export async function randevuDuzenle(
     };
   }
 
-  // Listede olmayan eski indirim ("mevcut") tutarıyla korunur; hizmet
-  // değiştiyse yeni ücreti aşmamalı. Yüzde seçildiyse (yeni) ücretten hesap.
+  /**
+   * §17.9 — Düzenlemede ücret SEÇİLEN tarifeden; "kayitli" kayda yazılmış
+   * BRÜT tutarı korur (`ucretKurus` net tutulduğu için indirim geri
+   * ekleniyor). Varsayılan "kayitli": formu açıp yalnız notu değiştiren
+   * kullanıcı, katalog o arada zamlandıysa ücreti farkında olmadan
+   * güncellememeli.
+   */
+  const brutUcret = duzenlemeBrutUcreti(
+    veri.tarife,
+    mevcut.ucretKurus,
+    yetkinlik.hizmet,
+  );
+  if (brutUcret === null) {
+    return {
+      alanHatalari: { tarife: "Bu hizmette eski danışan ücreti tanımlı değil." },
+      degerler: girilenler,
+    };
+  }
+
+  // Listede olmayan eski indirim ("mevcut") tutarıyla korunur; tarife ya da
+  // hizmet değiştiyse yeni ücreti aşmamalı. Yüzde seçildiyse SEÇİLEN
+  // tarifenin ücretinden hesap.
   const indirimKurus =
     veri.indirimYuzde === MEVCUT_INDIRIM
       ? mevcut.indirimKurus
-      : yuzdeIndirimi(yetkinlik.hizmet.ucretKurus, veri.indirimYuzde);
-  if (indirimKurus > yetkinlik.hizmet.ucretKurus) {
+      : yuzdeIndirimi(brutUcret, veri.indirimYuzde);
+  if (indirimKurus > brutUcret) {
     return {
       alanHatalari: {
         indirimYuzde: "Mevcut indirim yeni hizmetin ücretini aşıyor; bir yüzde seçin.",
@@ -480,10 +544,7 @@ export async function randevuDuzenle(
     hizmetId: veri.hizmetId,
     baslangic: aralik.baslangic,
     bitis: aralik.bitis,
-    // Ücret düzenleme anındaki katalog fiyatına GÜNCELLENİR — hizmet
-    // değişmiş olabilir, `randevuEkle`'deki "açılış anında kopyalanır"
-    // kuralının düzenlemedeki karşılığı.
-    ucretKurus: yetkinlik.hizmet.ucretKurus,
+    ucretKurus: brutUcret,
     indirimKurus,
     indirimNotu: veri.indirimNotu,
     not: veri.not,

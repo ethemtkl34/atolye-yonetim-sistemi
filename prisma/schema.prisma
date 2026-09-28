@@ -1758,10 +1758,23 @@ model Hizmet {
   /// ve kayda donar; hizmetin süresi sonradan değişse eski randevu kaymaz.
   sureDk Int
 
-  /// Ücret KURUŞ cinsinden tamsayı. Para hiçbir yerde `Float` tutulmaz:
-  /// 3200.00 TL gibi değerler ikilik kayan noktada tam temsil edilmiyor ve
-  /// ciro toplamı kuruş kaydırıyor. ₺3.200,00 = 320000.
+  /// GÜNCEL ücret, KURUŞ cinsinden tamsayı. Para hiçbir yerde `Float`
+  /// tutulmaz: 3200.00 TL gibi değerler ikilik kayan noktada tam temsil
+  /// edilmiyor ve ciro toplamı kuruş kaydırıyor. ₺3.200,00 = 320000.
   ucretKurus Int @default(0)
+
+  /// §17.9 — Eski danışanlara uygulanan ikinci ücret (28 Eylül 2026).
+  ///
+  /// Kurum zam yaptığında devam eden danışanları eski fiyattan sürdürüyor.
+  /// BOŞ OLABİLİR ve boş olması normal: ikinci fiyatı olmayan hizmette
+  /// randevu formu tarife seçimi hiç göstermez, tek ücret vardır. Katalogdaki
+  /// 12 hizmete zorla bir değer yazmak, hepsinde aynı iki fiyatı gösteren
+  /// anlamsız bir seçici üretirdi.
+  ///
+  /// "Eski" burada GEÇMİŞ FİYAT demek değil — randevunun ücreti zaten açılış
+  /// anında kayda kopyalanıyor. Bu, eski danışan için BUGÜN geçerli olan
+  /// ikinci tarife.
+  eskiDanisanUcretKurus Int?
 
   /// Hizmetin uygulanabildiği yaş aralığı (yıl); boş = sınır yok. Randevu
   /// formunda uyarı üretir, engellemez — kurum istisna yapabiliyor.

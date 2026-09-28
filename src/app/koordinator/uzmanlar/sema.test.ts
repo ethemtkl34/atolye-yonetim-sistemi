@@ -131,6 +131,7 @@ describe("hizmetSemasi", () => {
     grup: "DANISMANLIK" as const,
     sureDk: "60",
     ucretLira: "3200",
+    eskiUcretLira: "",
     yasAlt: "",
     yasUst: "",
     danisanTuru: "COCUK" as const,
@@ -144,6 +145,31 @@ describe("hizmetSemasi", () => {
       expect(sonuc.data.sureDk).toBe(60);
       expect(sonuc.data.ucretLira).toBe(3200);
     }
+  });
+
+  it("boş eski danışan ücretini null yapar", () => {
+    // §17.9 — İkinci ücreti olmayan hizmet normal; 0 (ücretsiz) ile
+    // "tanımsız" ayrışmalı, yoksa randevu formu boş yere tarife sorardı.
+    const sonuc = hizmetSemasi.safeParse(temel);
+    expect(sonuc.success).toBe(true);
+    if (sonuc.success) expect(sonuc.data.eskiUcretLira).toBeNull();
+  });
+
+  it("eski danışan ücretini sayıya çevirir", () => {
+    const sonuc = hizmetSemasi.safeParse({ ...temel, eskiUcretLira: "2400" });
+    expect(sonuc.success).toBe(true);
+    if (sonuc.success) expect(sonuc.data.eskiUcretLira).toBe(2400);
+  });
+
+  it("sıfır eski danışan ücretini null SAYMAZ", () => {
+    // Ücretsiz "eski danışan" tarifesi kurumun kararı olabilir.
+    const sonuc = hizmetSemasi.safeParse({ ...temel, eskiUcretLira: "0" });
+    expect(sonuc.success).toBe(true);
+    if (sonuc.success) expect(sonuc.data.eskiUcretLira).toBe(0);
+  });
+
+  it("eksi eski danışan ücretini reddeder", () => {
+    expect(hizmetSemasi.safeParse({ ...temel, eskiUcretLira: "-5" }).success).toBe(false);
   });
 
   it("boş yaş alanlarını null yapar", () => {

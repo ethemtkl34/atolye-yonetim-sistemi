@@ -411,6 +411,24 @@ Karar gerekçeleri:
   Düzenleme formu kayıtlı saatleri gösteriyor, katalogdan yeniden
   hesaplamıyor — yoksa elle verilen süre düzenlemeye girer girmez sessizce
   katalog süresine dönerdi.
+- **Her hizmetin İKİ ücreti olabilir: güncel ve eski danışan** (§17.9,
+  28 Eylül 2026). Kurum zam yaptığında devam eden danışanları eski fiyattan
+  sürdürüyor. Katalog formunda iki alan var; ikincisi BOŞ bırakılabilir ve
+  boş olması normal — o zaman hizmetin tek ücreti vardır ve randevu formu
+  tarife seçimi hiç göstermez. Katalogdaki mevcut hizmetlere zorla bir değer
+  yazmak, hepsinde aynı iki fiyatı gösteren anlamsız bir seçici üretirdi.
+  Randevu açarken danışman tarifeyi SEÇİYOR ve **indirim seçilen ücretin
+  üzerinden** hesaplanıyor; indirimi hep güncel fiyattan alıp eski danışana
+  uygulamak sessizce yanlış tutar üretirdi. "Eski" seçilmiş ama hizmette
+  ikinci ücret yoksa KESİN RET: sessizce güncel ücrete düşmek, eski danışan
+  fiyatı uygulandığını sanan kullanıcıya tam fiyattan randevu açardı.
+  Düzenlemede üçüncü bir seçenek var ve VARSAYILAN o: **"kayıtlı ücret"**.
+  Randevunun ücreti açılış anında kayda kopyalanıyor (fiyat değişikliği
+  geçmişe işlemiyor) ve formu açıp yalnız notu değiştiren kullanıcı, katalog
+  o arada zamlandıysa ücreti farkında olmadan güncellememeli — `MEVCUT_INDIRIM`
+  ile aynı gerekçe. `Randevu.ucretKurus` BRÜT saklanıyor, indirim ayrı
+  sütunda: kayıtlı ücreti korurken indirimi geri eklemek onu iki kez saymak
+  olur (`duzenlemeBrutUcreti` ve testi bunu koruyor).
 - **Randevu engel sırası: izin → mesai → çakışma.** Uzman o gün hiç
   gelmiyorsa "o saat dolu" demek kullanıcıyı başka saat denemeye iterdi.
 - **Mesai dışı TEK istisna: kesin ret değil, sorulan bir onay** (Eylül 2026
