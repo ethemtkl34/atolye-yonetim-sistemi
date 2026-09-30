@@ -113,6 +113,26 @@ export function OgrenciFormu({
     varsayilanlar.kayitSubesi ?? subeler?.[0]?.id ?? "",
   );
 
+  /**
+   * Mükerrer uyarısı: sunucu aynı adlı öğrenci bulursa `onayGerekli` döner;
+   * EVET ise gizli `mukerrerOnay` alanı 1 yapılıp AYNI form yeniden
+   * gönderilir (randevu formundaki mesai onayıyla aynı desen).
+   */
+  const formRef = useRef<HTMLFormElement>(null);
+  const [mukerrerOnay, setMukerrerOnay] = useState(false);
+
+  useEffect(() => {
+    if (!durum.onayGerekli) return;
+    const devamEt = window.confirm(
+      `${durum.onayGerekli}\n\nYine de yeni öğrenci olarak kaydedilsin mi?`,
+    );
+    if (devamEt) queueMicrotask(() => setMukerrerOnay(true));
+  }, [durum]);
+
+  useEffect(() => {
+    if (mukerrerOnay) formRef.current?.requestSubmit();
+  }, [mukerrerOnay]);
+
   useEffect(() => {
     if (programSecimi.current) programSecimi.current.value = programId;
     if (grupSecimi.current) grupSecimi.current.value = grupId;
@@ -120,7 +140,8 @@ export function OgrenciFormu({
   }, [durum, programId, grupId, kayitSubesi]);
 
   return (
-    <form action={formEylemi} className="space-y-6">
+    <form ref={formRef} action={formEylemi} className="space-y-6">
+      <input type="hidden" name="mukerrerOnay" value={mukerrerOnay ? "1" : ""} />
       {gizliAlanlar
         ? Object.entries(gizliAlanlar).map(([ad, deger]) => (
             <input key={ad} type="hidden" name={ad} value={deger} />

@@ -7,6 +7,8 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { kayitEngeli } from "@/lib/kayit-kurallari";
 import { veliBaglariniYaz } from "@/lib/veli";
 import { adayiKazanildiYap, donusumYolu } from "@/lib/aday/donusum";
+import { normalizeArama } from "@/lib/turkce";
+import { tarihBicimle } from "@/lib/tarih";
 import { donusumHedefiSemasi } from "../adaylar/sema";
 import {
   alanHatalari,
@@ -68,6 +70,44 @@ export async function ogrenciEkle(
       alanHatalari: { kayitSubesi: "Listeden bir şube seçin." },
       degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
     };
+  }
+
+  // Mükerrer uyarısı (ortak havuz, Eylül 2026): aynı ad-soyadla bir öğrenci
+  // iki şubeden birinde zaten varsa kullanıcıya bir kez sorulur. Engel
+  // DEĞİL — aynı adlı iki çocuk gerçekten olabiliyor; form EVET derse aynı
+  // eylemi `mukerrerOnay=1` ile yeniden çağırır.
+  if (formVerisi.get("mukerrerOnay") !== "1") {
+    const ayniAdlilar = await db.student.findMany({
+      where: { searchName: normalizeArama(`${veri.firstName} ${veri.lastName}`) },
+      orderBy: { createdAt: "asc" },
+      take: 5,
+      select: {
+        birthDate: true,
+        school: true,
+        branch: { select: { name: true } },
+      },
+    });
+    if (ayniAdlilar.length > 0) {
+      const satirlar = ayniAdlilar
+        .map(
+          (ogrenci) =>
+            "• " +
+            [
+              ogrenci.birthDate
+                ? `doğum ${tarihBicimle(ogrenci.birthDate)}`
+                : "doğum tarihi yok",
+              ogrenci.school,
+              ogrenci.branch.name,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+        )
+        .join("\n");
+      return {
+        onayGerekli: `"${veri.firstName} ${veri.lastName}" adıyla kayıtlı ${ayniAdlilar.length === 5 ? "en az 5" : ayniAdlilar.length} öğrenci var:\n${satirlar}\n\nAynı çocuksa yeni kayıt açmak yerine Öğrenciler listesinden onu bulun.`,
+        degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+      };
+    }
   }
 
   // Aday bağlamı: yalnız `adaylar` yetkisi olan kullanıcı dönüştürebilir.
