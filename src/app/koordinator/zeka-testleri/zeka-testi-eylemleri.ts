@@ -13,7 +13,7 @@ import type { EylemDurumu } from "@/lib/formlar";
  *
  * Bütün yazma işlemleri Zeka testleri sayfasından yapılır; öğrenci profili
  * kayıtları yalnızca gösterir (Danışmanlık ile aynı desen). Öğrenci formdaki
- * seçiciden gelir ve şube kapısından geçirilir.
+ * seçiciden gelir; öğrenciler iki şubede ortak havuzda (Eylül 2026).
  *
  * GİZLİLİK: Test sonuçları sağlık bilgisi gibi hassastır ve stajyerden
  * tamamen gizlidir; bu eylemler ve okuma sorguları yalnızca koordinatör
@@ -68,7 +68,6 @@ export async function zekaTestiEkle(
   formVerisi: FormData,
 ): Promise<ZekaTestiEylemDurumu> {
   const kullanici = await yonetimZorunlu("zekaTestleri", "TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const girilenler = formDegerleri(formVerisi, ZEKA_TESTI_FORM_ALANLARI);
   const alanHatalari: Record<string, string> = {};
@@ -122,7 +121,7 @@ export async function zekaTestiEkle(
   }
 
   const ogrenci = await db.student.findFirst({
-    where: { id: veri.ogrenciId, branchId: subeId },
+    where: { id: veri.ogrenciId },
     select: { id: true },
   });
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
@@ -170,11 +169,10 @@ export async function zekaTestiEkle(
 export async function zekaTestiSil(
   testId: string,
 ): Promise<ZekaTestiEylemDurumu> {
-  const kullanici = await yonetimZorunlu("zekaTestleri", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("zekaTestleri", "TAM");
 
   const test = await db.intelligenceTest.findFirst({
-    where: { id: testId, student: { branchId: subeId } },
+    where: { id: testId },
     select: { id: true, studentId: true, date: true, testName: true },
   });
   if (!test) return { hata: "Test kaydı bulunamadı." };

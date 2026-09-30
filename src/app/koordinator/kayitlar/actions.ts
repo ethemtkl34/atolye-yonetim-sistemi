@@ -85,10 +85,9 @@ export async function kayitOlustur(
   const internId = cozumlenen.data.internId || null;
   const onaylandi = formVerisi.get("onaylandi") === "1";
 
-  // Grup, öğrenci ve stajyerin ÜÇÜ de aynı şubeden olmalı. Grup şubeye
-  // kilitlenince kayıt da o şubeye ait olur (kaydın şubesi gruptan türüyor);
-  // öğrenci ve stajyer ayrıca kontrol edilmezse başka şubenin öğrencisi bu
-  // şubenin grubuna kaydedilip iki şube birbirine karışırdı.
+  // Grup ve stajyer çalışılan şubeden olmalı: kaydın şubesi gruptan türer.
+  // Öğrenci ise iki şubeden de olabilir — öğrenciler ortak havuzda (Eylül
+  // 2026); Ümraniye etiketli bir çocuk Güneşli'nin grubuna yazılabilir.
   const grup = await db.group.findFirst({
     where: { id: groupId, branchId: subeId },
     include: {
@@ -145,15 +144,17 @@ export async function kayitOlustur(
         status: "AKTIF",
         // Çakışma artık gün KESİŞİMİ: iki grup haftada birden çok gün
         // toplanabildiği için tek bir günün eşitliğine bakmak yetmiyor.
+        // İki şubenin grupları birlikte: ortak havuzda aynı çocuk aynı
+        // saatte öbür şubede de okuyor olabilir.
         group: {
           days: { hasSome: grup.days },
           timeSlot: grup.timeSlot,
-          branchId: subeId,
         },
       },
       include: {
         group: {
           include: {
+            branch: { select: { id: true, name: true } },
             term: { select: { name: true } },
             club: { select: { name: true } },
           },
@@ -166,7 +167,9 @@ export async function kayitOlustur(
         .map((kayit) => {
           const program =
             kayit.group.term?.name ?? kayit.group.club?.name ?? "Program";
-          return `${program} — ${kayit.group.name}`;
+          const sube =
+            kayit.group.branch.id === subeId ? "" : ` (${kayit.group.branch.name})`;
+          return `${program} — ${kayit.group.name}${sube}`;
         })
         .join(", ");
 
@@ -242,7 +245,7 @@ export async function kayitOlustur(
           },
         }),
         tx.student.findFirst({
-          where: { id: studentId, branchId: subeId },
+          where: { id: studentId },
           select: { id: true },
         }),
         internId
@@ -295,9 +298,8 @@ export async function kayitOlustur(
     const guncelDoluHatasi = kontenjanEngeli(guncelGrup);
     if (guncelDoluHatasi) return { hata: guncelDoluHatasi };
 
-    // şube-muaf: kimliklerin hepsi aynı işlemin başında `branchId: subeId` ile
-    // okundu (grup, öğrenci, seçildiyse stajyer); biri başka şubedense yukarıda
-    // dönülüyor.
+    // şube-muaf: grup ve seçildiyse stajyer aynı işlemin başında
+    // `branchId: subeId` ile okundu; öğrenci ortak havuzda.
     await tx.enrollment.create({
       data: { studentId, groupId, internId },
     });
@@ -392,17 +394,21 @@ export async function topluKayitOlustur(
     const engel = programKayitEngeli(grup);
     if (engel) return { basarili: false, durum: { hata: engel } };
 
-    // Kimlikler istemciden geliyor; şube süzgeci burada eleme yapıyor.
+    // Kimlikler istemciden geliyor; var olmayanlar burada eleniyor.
+    // Öğrenciler ortak havuzda (Eylül 2026) — iki şubeden de seçilebilir.
     // Sıralama ekrandaki listeyle aynı olsun diye ada göre: kontenjan
     // yetmediğinde kimin dışarıda kaldığı rastgele değil, öngörülebilir olmalı.
     const ogrenciler = await tx.student.findMany({
-      where: { id: { in: secilenler }, branchId: subeId },
+      where: { id: { in: secilenler } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
     });
 
+    // şube-muaf: seçilen öğrencilerin İKİ şubedeki kayıtları — çakışma
+    // uyarısı öbür şubedeki grubu da görmeli (ortak havuz). Bu gruba ait
+    // satırlar ayrıca `groupId` ile ayıklanıyor.
     const mevcutKayitlar = await tx.enrollment.findMany({
-      where: { studentId: { in: secilenler }, group: { branchId: subeId } },
+      where: { studentId: { in: secilenler } },
       select: {
         id: true,
         studentId: true,
@@ -413,6 +419,8 @@ export async function topluKayitOlustur(
             name: true,
             days: true,
             timeSlot: true,
+            branchId: true,
+            branch: { select: { name: true } },
             term: { select: { name: true } },
             club: { select: { name: true } },
           },
@@ -473,9 +481,7 @@ export async function topluKayitOlustur(
 
     const bulunamayan = secilenler.length - ogrenciler.length;
     if (bulunamayan > 0) {
-      atlananlar.push(
-        `${bulunamayan} seçim bu şubenin öğrencisi değil; atlandı`,
-      );
+      atlananlar.push(`${bulunamayan} seçim bulunamadı; atlandı`);
     }
 
     if (eklenecekler.length === 0 && yenidenAcilacaklar.length === 0) {
@@ -486,8 +492,8 @@ export async function topluKayitOlustur(
     }
 
     if (eklenecekler.length > 0) {
-      // şube-muaf: grup ve öğrencilerin tamamı bu işlemin içinde
-      // `branchId: subeId` ile okundu; listeye başka şubeden kimlik giremiyor.
+      // şube-muaf: grup bu işlemin içinde `branchId: subeId` ile okundu;
+      // öğrenciler ortak havuzda.
       await tx.enrollment.createMany({
         data: eklenecekler.map((ogrenci) => ({
           studentId: ogrenci.id,
@@ -534,7 +540,9 @@ export async function topluKayitOlustur(
       .map((kayit) => {
         const program =
           kayit.group.term?.name ?? kayit.group.club?.name ?? "Program";
-        return `${adlar.get(kayit.studentId)} — aynı zaman diliminde başka kaydı var: ${program} · ${kayit.group.name}`;
+        const sube =
+          kayit.group.branchId === subeId ? "" : ` (${kayit.group.branch.name})`;
+        return `${adlar.get(kayit.studentId)} — aynı zaman diliminde başka kaydı var: ${program} · ${kayit.group.name}${sube}`;
       });
 
     return {

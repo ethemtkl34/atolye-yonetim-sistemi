@@ -82,16 +82,16 @@ function satiraCevir(ham: HamSatir, subeId: string): GecmisRandevuSatiri {
 
 /**
  * Öğrencinin BÜTÜN randevuları — geçmiş ve gelecek, iptaller dahil, en
- * yeniden eskiye. ÇAĞIRAN öğrenciyi şubesiyle doğrulamış olmalı
- * (`student.findFirst({ id, branchId })`).
+ * yeniden eskiye. Öğrenciler ortak havuzda (Eylül 2026); iki şubenin
+ * randevusu da gelir, diğer şubenin satırında danışan, ücret ve not
+ * `satiraCevir` ile gizlenir (takvim ve ciro şubede kalıyor, §17.7).
  */
 export async function ogrenciRandevulari(
   ogrenciId: string,
   subeId: string,
 ): Promise<GecmisRandevuSatiri[]> {
-  // şube-muaf: öğrenci çağıran tarafta şubesiyle doğrulanıyor ve randevu
-  // öğrencinin şubesinde açılıyor; başka şubede açılmış bir satır olsa bile
-  // `satiraCevir` danışan ve ücreti gizliyor.
+  // şube-muaf: öğrenci ortak havuzda; başka şubede açılmış satırda
+  // `satiraCevir` danışan, ücret ve notu gizliyor.
   const randevular = await db.randevu.findMany({
     where: { ogrenciId },
     orderBy: { baslangic: "desc" },

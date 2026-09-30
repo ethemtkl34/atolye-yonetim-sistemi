@@ -107,6 +107,9 @@ export const OGRENCI_FORM_ALANLARI = [
   "saglikNotu",
   "acilDurum",
   "stajyerUyarisi",
+  // Şemada yok (zod bilinmeyen anahtarı atar); eylem ayrıca doğruluyor
+  // (`kayitSubesiCoz`). Listede duruyor ki hata sonrası seçim korunsun.
+  "kayitSubesi",
 ] as const;
 
 /** FormData'yı şemanın beklediği düz nesneye çevirir. */

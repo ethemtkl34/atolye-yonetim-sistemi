@@ -73,17 +73,19 @@ export default async function OgrenciGecmisiSayfasi(
   const baslangicTarihi = baslangic ? tarihCozumle(baslangic) : null;
   const bitisTarihi = bitis ? tarihCozumle(bitis) : null;
 
+  // Öğrenciler ortak havuzda (Eylül 2026): geçmiş iki şubenin kayıtlarını
+  // birlikte gösterir; diğer şubenin satırı grup adında şube adını taşır.
   const ogrenci = await db.student.findFirst({
-    where: { id, branchId: subeId },
+    where: { id },
     select: { id: true, firstName: true, lastName: true },
   });
   if (!ogrenci) notFound();
 
+  // şube-muaf: öğrencinin KENDİ puanlamaları (ortak havuz — iki şube).
   const puanlamalar = await db.score.findMany({
     where: {
       enrollment: {
         studentId: id,
-        group: { branchId: subeId },
         // Program ve tür koşulları aynı `group` anahtarına yazılamaz — nesne
         // literalinde sonraki anahtar öncekini ezer ve program filtresi
         // sessizce kaybolurdu. İkisi AND altında birleştiriliyor.
@@ -137,6 +139,8 @@ export default async function OgrenciGecmisiSayfasi(
           group: {
             select: {
               name: true,
+              branchId: true,
+              branch: { select: { name: true } },
               term: { select: { name: true } },
               club: { select: { name: true } },
             },
@@ -156,9 +160,12 @@ export default async function OgrenciGecmisiSayfasi(
 
   // Filtre seçenekleri yalnızca bu öğrencinin gerçekten ilişkili olduğu
   // programlar ve atölyelerden oluşur; boş sonuç veren seçenek gösterilmez.
+  // şube-muaf: öğrencinin KENDİ kayıtları ve puanlandığı atölyeler — ortak
+  // havuzda iki şubenin kayıtları birlikte.
   const [kayitlar, atolyeler] = await Promise.all([
+    // şube-muaf: öğrencinin KENDİ kayıtları (ortak havuz).
     db.enrollment.findMany({
-      where: { studentId: id, group: { branchId: subeId } },
+      where: { studentId: id },
       select: {
         group: {
           select: {
@@ -174,7 +181,7 @@ export default async function OgrenciGecmisiSayfasi(
           some: {
             scores: {
               some: {
-                enrollment: { studentId: id, group: { branchId: subeId } },
+                enrollment: { studentId: id },
               },
             },
           },
@@ -373,12 +380,20 @@ export default async function OgrenciGecmisiSayfasi(
               return (
                 <Kart key={puanlama.id} className="space-y-1.5 p-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link
-                      href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
-                      className={kartBasligiStili}
-                    >
-                      {tarihGunleBicimle(puanlama.session.date)}
-                    </Link>
+                    {grup.branchId === subeId ? (
+                      <Link
+                        href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
+                        className={kartBasligiStili}
+                      >
+                        {tarihGunleBicimle(puanlama.session.date)}
+                      </Link>
+                    ) : (
+                      // Diğer şubenin puanlama ekranı o şubenin; bağlantı yok.
+                      <span className="flex flex-wrap items-center gap-2 font-medium text-zinc-900">
+                        {tarihGunleBicimle(puanlama.session.date)}
+                        <Rozet tur="pasif">{grup.branch.name}</Rozet>
+                      </span>
+                    )}
                     <span className="flex items-center gap-1.5">
                       <Rozet>{grup.term ? "Dönem" : "Kulüp"}</Rozet>
                       <Rozet tur={puanlama.attended ? "olumlu" : "pasif"}>
@@ -429,12 +444,20 @@ export default async function OgrenciGecmisiSayfasi(
                 return (
                   <tr key={puanlama.id}>
                     <td className="px-4 py-2 whitespace-nowrap text-zinc-700">
-                      <Link
-                        href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
-                        className={kartBasligiStili}
-                      >
-                        {tarihGunleBicimle(puanlama.session.date)}
-                      </Link>
+                      {grup.branchId === subeId ? (
+                        <Link
+                          href={`/koordinator/puanlamalar/${puanlama.enrollment.id}/${tarihMetni(puanlama.session.date)}`}
+                          className={kartBasligiStili}
+                        >
+                          {tarihGunleBicimle(puanlama.session.date)}
+                        </Link>
+                      ) : (
+                        // Diğer şubenin puanlama ekranı o şubenin; bağlantı yok.
+                        <span className="flex flex-wrap items-center gap-2 font-medium text-zinc-900">
+                          {tarihGunleBicimle(puanlama.session.date)}
+                          <Rozet tur="pasif">{grup.branch.name}</Rozet>
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       <Rozet>{grup.term ? "Dönem" : "Kulüp"}</Rozet>

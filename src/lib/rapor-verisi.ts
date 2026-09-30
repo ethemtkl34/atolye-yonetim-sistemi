@@ -19,9 +19,11 @@ import {
  * `updatedAt` değeri raporun `generatedAt` değerinden sonraysa rapor "Güncel
  * değil" görünür. Ayrı bir bayrak veya arka plan işi yok.
  *
- * ŞUBE: Raporun şubesi öğrenciden türer (`report.student.branchId`). Her
- * fonksiyon `subeId`'yi zorunlu alır; başka şubenin rapor id'si yapıştırılırsa
- * sorgu boş döner.
+ * ŞUBE: öğrenciler iki şubede ortak havuzda (Eylül 2026) — öğrenciye ve
+ * raporuna iki şube de erişir, rapor kapsamı öğrencinin iki şubedeki
+ * kayıtlarını birlikte alabilir. Şube yalnız ŞUBE LİSTELERİNDE devrede
+ * (`raporOzetleri`/`pdfGecmisi` öğrenci verilmeden çağrılınca): orada rapor,
+ * kapsadığı kayıtların GRUBUNUN şubesine göre listelenir.
  */
 
 export type KapsamKaydi = {
@@ -35,18 +37,24 @@ export type KapsamKaydi = {
   stajyerAdi: string | null;
 };
 
-/** Rapor kapsamına alınabilecek kayıtlar ve her birinde kaç form dolu. */
+/**
+ * Rapor kapsamına alınabilecek kayıtlar ve her birinde kaç form dolu.
+ * İki şubenin kayıtları birlikte gelir (ortak havuz); diğer şubenin kaydı
+ * grup adının yanında şube adıyla işaretlenir.
+ */
 export async function raporKapsamSecenekleri(
   ogrenciId: string,
   subeId: string,
 ): Promise<KapsamKaydi[]> {
+  // şube-muaf: öğrencinin KENDİ kayıtları — ortak havuzda iki şubenin
+  // kaydı da rapora alınabilir.
   const kayitlar = await db.enrollment.findMany({
     // Geçmişten aktarılan kayıtlar KAPSAM DIŞI: o dönemlerin puanlaması hiç
     // girilmedi, seçilirlerse boş bir rapor üretilirdi. Onların belgesi
     // öğrenci profilindeki "Arşiv raporları" bölümünde duruyor.
     where: {
       studentId: ogrenciId,
-      group: { branchId: subeId, ...GUNCEL_PROGRAM_GRUBU },
+      group: GUNCEL_PROGRAM_GRUBU,
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -57,6 +65,8 @@ export async function raporKapsamSecenekleri(
       group: {
         select: {
           name: true,
+          branchId: true,
+          branch: { select: { name: true } },
           term: { select: { name: true } },
           club: { select: { name: true } },
         },
@@ -67,7 +77,10 @@ export async function raporKapsamSecenekleri(
   return kayitlar.map((kayit) => ({
     id: kayit.id,
     programAdi: kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",
-    grupAdi: kayit.group.name,
+    grupAdi:
+      kayit.group.branchId === subeId
+        ? kayit.group.name
+        : `${kayit.group.name} (${kayit.group.branch.name})`,
     tur: kayit.group.term ? "Dönem" : "Kulüp",
     aktif: kayit.status === "AKTIF",
     puanlanmisOturumSayisi: kayit._count.scores,
@@ -88,21 +101,20 @@ export async function raporKapsamSecenekleri(
 export async function raporGirdisiHazirla(
   ogrenciId: string,
   kayitIdleri: readonly string[],
-  subeId: string,
   secenekler?: { enGecTarih?: Date },
 ): Promise<RaporGirdisi | null> {
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: ogrenciId },
     select: { firstName: true, lastName: true },
   });
 
   if (!ogrenci) return null;
 
+  // şube-muaf: öğrencinin KENDİ kayıtları (ortak havuz — iki şube).
   const kayitlar = await db.enrollment.findMany({
     where: {
       id: { in: [...kayitIdleri] },
       studentId: ogrenciId,
-      group: { branchId: subeId },
     },
     select: {
       group: {
@@ -206,16 +218,20 @@ export const RAPOR_LISTE_SINIRI = 200;
  * Güncellik için kapsamdaki kayıtların en yeni puan güncellemesi okunur;
  * `raporGuncelMi` karşılaştırmayı yapan tek yerdir (`puan-hesaplari.ts`).
  */
-export async function raporOzetleri(kosul: {
-  subeId: string;
-  ogrenciId?: string;
-  enFazla?: number;
-}): Promise<RaporOzeti[]> {
+export async function raporOzetleri(
+  kosul: { ogrenciId: string; enFazla?: number } | { subeId: string; enFazla?: number },
+): Promise<RaporOzeti[]> {
   const raporlar = await db.report.findMany({
-    where: {
-      student: { branchId: kosul.subeId },
-      ...(kosul.ogrenciId ? { studentId: kosul.ogrenciId } : {}),
-    },
+    // Öğrenci verilirse onun BÜTÜN raporları (ortak havuz); verilmezse şube
+    // listesi — raporun kapsadığı kayıtlardan biri bu şubenin grubundaysa.
+    where:
+      "ogrenciId" in kosul
+        ? { studentId: kosul.ogrenciId }
+        : {
+            enrollmentLinks: {
+              some: { enrollment: { group: { branchId: kosul.subeId } } },
+            },
+          },
     orderBy: { generatedAt: "desc" },
     take: kosul.enFazla ?? RAPOR_LISTE_SINIRI,
     select: {
@@ -320,18 +336,12 @@ export type PdfKaydi = {
  * belgeler listede kalır. Sıralama en yeniden eskiye.
  */
 export async function pdfGecmisi(kosul: {
-  subeId: string;
   raporId?: string;
   ogrenciId?: string;
 }): Promise<PdfKaydi[]> {
   const pdfler = await db.reportPdf.findMany({
     where: {
-      report: {
-        student: {
-          branchId: kosul.subeId,
-          ...(kosul.ogrenciId ? { id: kosul.ogrenciId } : {}),
-        },
-      },
+      ...(kosul.ogrenciId ? { report: { studentId: kosul.ogrenciId } } : {}),
       ...(kosul.raporId ? { reportId: kosul.raporId } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -359,16 +369,15 @@ export type RaporDetayi = {
 
 export async function raporDetayi(
   raporId: string,
-  subeId: string,
 ): Promise<RaporDetayi | null> {
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: subeId } },
+    where: { id: raporId },
     select: { id: true, studentId: true, bodyJson: true },
   });
 
   if (!rapor) return null;
 
-  const ozetler = await raporOzetleri({ subeId, ogrenciId: rapor.studentId });
+  const ozetler = await raporOzetleri({ ogrenciId: rapor.studentId });
   const ozet = ozetler.find((aday) => aday.id === raporId);
   if (!ozet) return null;
 
@@ -382,9 +391,8 @@ export async function raporDetayi(
 export async function raporGovdesiUret(
   ogrenciId: string,
   kayitIdleri: readonly string[],
-  subeId: string,
 ): Promise<RaporGovdesi | null> {
-  const girdi = await raporGirdisiHazirla(ogrenciId, kayitIdleri, subeId);
+  const girdi = await raporGirdisiHazirla(ogrenciId, kayitIdleri);
   return girdi ? raporUret(girdi) : null;
 }
 

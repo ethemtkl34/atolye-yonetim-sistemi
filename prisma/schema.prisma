@@ -618,8 +618,11 @@ model Student {
   /// `normalizeArama()` ile üretilir; "Şule Çınar" → "sule cinar".
   searchName String
 
-  /// Öğrenci bir şubeye kayıtlıdır. Aynı çocuk iki şubede de eğitim alıyorsa
-  /// iki ayrı kayıt olur; şubeler arası ortak öğrenci havuzu yok.
+  /// Kayıt şubesi — yalnız ETİKET (Eylül 2026). Öğrenciler iki şubede ortak
+  /// havuzda: iki şubenin personeli bütün öğrencileri görür ve değiştirir,
+  /// öğrenci iki şubenin gruplarına da yazılabilir (kaydın şubesi grubundan
+  /// gelir). Etiket öğrenci formundan değiştirilebilir; silme yetkisini
+  /// belirler (yalnız kayıt şubesi ya da kurum yöneticisi siler).
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
@@ -641,7 +644,9 @@ model Student {
   /// kutusu ve kaynak raporu buradan okur.
   sourceLead         Lead?
 
-  // Her öğrenci sorgusu artık şubeye bağlı; indeksler şube önekiyle.
+  // Şube önekli indeksler "kayıt şubesi" süzgecine hizmet ediyor. Ortak
+  // havuzdaki isim araması `contains` (LIKE '%…%') olduğu için B-ağacı
+  // indeksi zaten kullanamıyor; birkaç bin satırda tam tarama sorun değil.
   @@index([branchId, searchName])
   @@index([branchId, lastName, firstName])
 }

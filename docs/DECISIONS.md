@@ -525,3 +525,41 @@ Karar gerekçeleri:
   Danışan adı tam görünür: uzman kime seans vereceğini bilmeli (kurum
   kararı). Uzman çok şubeliyse bütün şubelerinin seansları tek takvimde,
   şube adı blokta yazılı.
+
+## Ortak öğrenci havuzu (30 Eylül 2026)
+
+- **Öğrenciler iki şubede ORTAK havuzda.** Kurum iki şubenin personelinin
+  bütün öğrencileri görmesini, düzenlemesini, programa yazmasını, zeka testi
+  ve görüşme eklemesini istedi. Önceki kural ("öğrenci/veli mahremiyeti
+  şubeye kilitli", §17.7) bu konuda kaldırıldı. Kurum KVKK açısından da açık
+  onay verdi: sağlık bilgisi, danışmanlık ve veli görüşmesi notları, zeka
+  testi belgeleri ve raporlar iki şubeye açık. Rol matrisi DEĞİŞMEDİ:
+  danışma görevlisi yine danışmanlık notlarını görmez, stajyer yine yalnız
+  kendi kayıtlarını görür — değişen tek şey şube sınırı.
+- **`Student.branchId` artık "kayıt şubesi" ETİKETİ.** Görünürlüğü
+  belirlemiyor; öğrenci formundan seçilir (varsayılan: ekleyenin şubesi,
+  yöneticide seçili şube) ve düzenlemeden değiştirilebilir. Listede,
+  hızlı aramada, seçicilerde ve profilde şube adıyla görünür; listede
+  "Kayıt şubesi" süzgeci var.
+- **Kayıtlar şubeli kalıyor.** Kaydın şubesi grubundan gelir; kullanıcı
+  öğrenciyi yalnız KENDİ şubesinin grubuna yazar (Güneşli, Ümraniye
+  etiketli çocuğu kendi A1'ine alabilir, Ümraniye'nin A1'ine alamaz).
+  Profilde iki şubenin kayıtları, oturumları, puanlamaları birlikte ve
+  şube rozetiyle görünür; programdan çıkarma ve stajyer atama düğmeleri
+  yalnız çalışılan şubenin kayıtlarında çizilir. Kayıt çakışma uyarısı iki
+  şubenin gruplarına bakar.
+- **Silme:** öğrenciyi yalnız kayıt şubesinin personeli ya da kurum
+  yöneticisi siler; diğer şubede program kaydı olan öğrenci hiç silinemez.
+- **Randevu takvimi, ciro ve adaylar şubede kaldı.** Öğrencinin profilinde
+  diğer şubenin randevusu görünür ama ücret ve not gizli (`satiraCevir`).
+  Randevu ve aday ekranlarındaki öğrenci seçicileri iki şubeyi arar.
+- **Rapor listeleri:** öğrenciye bağlı okumada öğrencinin bütün raporları;
+  şube listesinde (pano) rapor, kapsadığı kayıtlardan biri o şubenin
+  grubundaysa o şubenindir. Rapor kapsamı iki şubenin kayıtlarını birlikte
+  alabilir.
+- **Veli henüz şubeli** (sonraki adım: ortak veli havuzu). Veli bağı
+  öğrencinin kayıt şubesinde eşleşir/açılır.
+- Şube sızıntısı tarayıcısı gevşetildi, kapatılmadı: öğrenci ve ondan
+  türeyen tablolar `SUBEDEN_BAGIMSIZ` listesinde; grup, kayıt, oturum,
+  puan, kullanıcı, aday, veli ve randevu korumada. Öncesinde Neon'da
+  `yedek-ortak-havuz-oncesi` dalı alındı.

@@ -13,11 +13,12 @@ import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 export default async function EskiRaporAdresi(
   props: PageProps<"/koordinator/raporlar/[id]">,
 ) {
-  const kullanici = await yonetimZorunlu("raporlar");
+  await yonetimZorunlu("raporlar");
   const { id } = await props.params;
 
+  // Öğrenciler iki şubede ortak havuzda (Eylül 2026) — şube süzgeci yok.
   const rapor = await db.report.findFirst({
-    where: { id, student: { branchId: kullanici.aktifSubeId } },
+    where: { id },
     select: { studentId: true },
   });
 

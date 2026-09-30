@@ -71,10 +71,9 @@ export default async function DanismanlikSayfasi(
   const suzgecEtkin = Boolean(aramaSorgusu) || terapiTuruSuzgeci !== "tumu";
 
   /**
-   * Aramanın öğrenci koşuluna eklediği parça. Şube kilidi BİLEREK bu nesnenin
-   * dışında, her sorgunun içinde açıkça duruyor: `sube-sizinti.test.ts` şube
-   * süzgecini kaynak metninde arıyor ve değişkene saklanan kilit denetimden
-   * kaçar — kuralın kendisi de "her sorguda gözle görülür olsun" diyor.
+   * Aramanın öğrenci koşuluna eklediği parça. Öğrenciler iki şubede ortak
+   * havuzda (Eylül 2026): liste ve seçici iki şubenin öğrencilerini birlikte
+   * gösterir.
    */
   const aramaKosulu = aramaAnahtari
     ? { searchName: { contains: aramaAnahtari } }
@@ -96,14 +95,20 @@ export default async function DanismanlikSayfasi(
     );
 
   const [ogrenciler, gorusmeler] = await Promise.all([
-    // Ekleme formlarındaki öğrenci seçici — şubenin bütün öğrencileri.
+    // Ekleme formlarındaki öğrenci seçici — iki şubenin bütün öğrencileri;
+    // diğer şubenin öğrencisi adının yanında şube adıyla.
     db.student.findMany({
-      where: { branchId: subeId },
-      select: { id: true, firstName: true, lastName: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        branchId: true,
+        branch: { select: { name: true } },
+      },
     }),
     db.counselingSession.findMany({
       where: {
-        student: { branchId: subeId, ...aramaKosulu },
+        student: aramaKosulu,
         ...(terapiTuruSuzgeci !== "tumu"
           ? { therapyType: TERAPI_TURU_SLUGLARI[terapiTuruSuzgeci] }
           : {}),
@@ -121,7 +126,10 @@ export default async function DanismanlikSayfasi(
   const ogrenciSecenekleri = ogrenciler
     .map((ogrenci) => ({
       id: ogrenci.id,
-      ad: tamAd(ogrenci.firstName, ogrenci.lastName),
+      ad:
+        ogrenci.branchId === subeId
+          ? tamAd(ogrenci.firstName, ogrenci.lastName)
+          : `${tamAd(ogrenci.firstName, ogrenci.lastName)} (${ogrenci.branch.name})`,
     }))
     .sort((a, b) => turkceKarsilastir(a.ad, b.ad));
 

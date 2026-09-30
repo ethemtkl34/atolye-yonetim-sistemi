@@ -19,10 +19,17 @@ export type AramaSonucu =
 
 export type AramaSecenekleri = {
   /**
-   * Zorunlu. Öğrenci arama sistemdeki tek öğrenci giriş kapısı; şube burada
-   * unutulursa bütün ekranlar sızdırır. Bu yüzden varsayılanı yok.
+   * Çalışılan şube. Öğrenciler iki şubede ORTAK havuzda (Eylül 2026) —
+   * arama öğrenciyi şubeyle SÜZMEZ. Bu değer yalnız GRUP tarafında
+   * kullanılıyor: "aktif" kapsam ve program süzgeci bu şubenin gruplarına
+   * bakar, çünkü dönem, kulüp ve grup şubeye aittir.
    */
   subeId: string;
+  /**
+   * İsteğe bağlı kayıt şubesi süzgeci: öğrencinin ETİKETİ (`Student.branchId`).
+   * Boşsa iki şubenin öğrencileri birlikte döner.
+   */
+  kayitSubesiId?: string;
   enFazla?: number;
   /** Sayfalama için atlanacak kayıt sayısı. */
   atla?: number;
@@ -42,13 +49,13 @@ export type AramaSecenekleri = {
 };
 
 /**
- * Aramanın `where` koşulu — sorgudan ve şubeden türetilen SAF parça.
+ * Aramanın `where` koşulu — sorgudan ve süzgeçlerden türetilen SAF parça.
+ * Ayrı fonksiyon olunca koşul testten okunabiliyor (`ogrenci-arama.test.ts`).
  *
- * `ogrenciAra`nın içinden ayrı bir fonksiyona alındı çünkü şube süzgecinin
- * burada durduğunu doğrulayabilen başka bir kontrol yok: `sube-sizinti`
- * tarayıcısı `where`in içine bakamadığı için bu çağrı ona "şube-muaf" olarak
- * yazılı. Ayrı fonksiyon olunca koşul testten okunabiliyor
- * (`ogrenci-arama.test.ts`).
+ * ORTAK HAVUZ (Eylül 2026): öğrenci şubeyle süzülmez; iki şubenin personeli
+ * bütün öğrencileri görür. Şube yalnız iki yerde devrede: grup tarafı
+ * (aktif kapsam, program süzgeci) ve kullanıcının seçtiği kayıt şubesi
+ * etiketi.
  */
 export function ogrenciAramaKosulu(
   sorgu: string,
@@ -57,7 +64,11 @@ export function ogrenciAramaKosulu(
     kapsam = "tumu",
     donemId,
     kulupId,
-  }: Pick<AramaSecenekleri, "subeId" | "kapsam" | "donemId" | "kulupId">,
+    kayitSubesiId,
+  }: Pick<
+    AramaSecenekleri,
+    "subeId" | "kayitSubesiId" | "kapsam" | "donemId" | "kulupId"
+  >,
 ): Prisma.StudentWhereInput {
   const temizSorgu = sorgu.trim();
   const isimAnahtari = normalizeArama(temizSorgu);
@@ -90,8 +101,8 @@ export function ogrenciAramaKosulu(
 
   // Program koşulu AYRI bir `AND` dalında: `kapsam === "aktif"` de
   // `enrollments`e koşul koyuyor ve tek anahtar altında ikisi birbirini
-  // ezerdi. Grup şubesi ayrıca süzülü — dönem ve kulüp iki şubede ortak,
-  // gruplar değil.
+  // ezerdi. Grup şubesi ayrıca süzülü: program listesi çalışılan şubenin
+  // gruplarını anlatır.
   const grupKosulu = donemId
     ? { termId: donemId, branchId: subeId }
     : kulupId
@@ -104,7 +115,8 @@ export function ogrenciAramaKosulu(
   return {
     ...aramaKosulu,
     ...programKosulu,
-    ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : { branchId: subeId }),
+    ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : {}),
+    ...(kayitSubesiId ? { branchId: kayitSubesiId } : {}),
   };
 }
 
@@ -123,10 +135,8 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
   // güncellenip diğeri unutulduğunda sayfa sayısı sessizce yanlış olurdu.
   const kosul = ogrenciAramaKosulu(sorgu, secenekler);
 
-  // şube-muaf: süzgeç `ogrenciAramaKosulu` içinde — `kapsam`a göre ya
-  // `branchId: subeId` ya da `aktifOgrenciKosulu(subeId)`. Tarayıcı `where`in
-  // içine bakamadığı için burada muafiyet yazılı; koşulun kendisi
-  // `ogrenci-arama.test.ts` tarafından doğrulanıyor.
+  // şube-muaf: öğrenciler ortak havuzda; kartlardaki kayıt sayısı
+  // (`_count.enrollments`) bilerek iki şubenin kayıtlarını birlikte sayar.
   const [ogrenciler, toplam] = await Promise.all([
     db.student.findMany({
       where: kosul,
@@ -139,6 +149,7 @@ export async function ogrenciAra(sorgu: string, secenekler: AramaSecenekleri) {
         birthDate: true,
         school: true,
         grade: true,
+        branch: { select: { id: true, name: true } },
         guardians: {
           select: {
             type: true,

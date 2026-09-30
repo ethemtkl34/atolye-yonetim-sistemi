@@ -56,7 +56,6 @@ function yasHesapla(dogumTarihi: Date | null, bugun: Date): number | null {
 export async function raporGovdesiV2Uret(
   ogrenciId: string,
   kayitIdleri: readonly string[],
-  subeId: string,
   bugun: Date,
   secenekler: {
     /**
@@ -72,7 +71,7 @@ export async function raporGovdesiV2Uret(
   } = {},
 ): Promise<RaporGovdesiV2 | null> {
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: ogrenciId },
     select: {
       firstName: true,
       lastName: true,
@@ -83,11 +82,11 @@ export async function raporGovdesiV2Uret(
   });
   if (!ogrenci) return null;
 
+  // şube-muaf: öğrencinin KENDİ kayıtları (ortak havuz — iki şube).
   const kayitlar = await db.enrollment.findMany({
     where: {
       id: { in: [...kayitIdleri] },
       studentId: ogrenciId,
-      group: { branchId: subeId },
     },
     select: {
       id: true,
@@ -465,6 +464,8 @@ export async function raporGovdesiV2Uret(
   // Programın (grubun) tam atölye listesi — öğrencinin puanlanmış atölyeleri
   // programın tamamı olmayabilir (geç kayıt, devamsızlık); model programı
   // öğrencinin verisinden değil buradan tanıtır.
+  // şube-muaf: grup, öğrencinin yukarıda kimliğiyle okunan KENDİ kaydının
+  // grubu (ortak havuzda iki şubeden biri olabilir).
   const programOturumAtolyeleri = await db.session.findMany({
     where: { groupId: kayitlar[0].groupId },
     select: { workshopType: { select: { name: true, sortOrder: true } } },

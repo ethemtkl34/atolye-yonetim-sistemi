@@ -84,10 +84,16 @@ export default async function AdayAyrintiSayfasi(
     await Promise.all([
       yazabilir ? adaySorumlulari(subeId) : Promise.resolve([]),
       donusturebilir
-        ? db.student.findMany({
-            where: { branchId: subeId },
+        ? // Ortak havuz (Eylül 2026): iki şubenin öğrencileri.
+          db.student.findMany({
             orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-            select: { id: true, firstName: true, lastName: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              branchId: true,
+              branch: { select: { name: true } },
+            },
           })
         : Promise.resolve([]),
       randevuPlanlamaVerisiGerekli
@@ -226,7 +232,10 @@ export default async function AdayAyrintiSayfasi(
           donusturebilir={donusturebilir}
           ogrenciSecenekleri={ogrenciler.map((ogrenci) => ({
             id: ogrenci.id,
-            ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
+            ad:
+              ogrenci.branchId === subeId
+                ? `${ogrenci.firstName} ${ogrenci.lastName}`
+                : `${ogrenci.firstName} ${ogrenci.lastName} (${ogrenci.branch.name})`,
           }))}
           asamaDegistir={asamaDegistir}
           ulasilamadiKaydet={ulasilamadiKaydet}

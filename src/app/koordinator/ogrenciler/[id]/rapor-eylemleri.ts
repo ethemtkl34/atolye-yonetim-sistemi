@@ -38,9 +38,9 @@ import type { EylemDurumu as TemelEylemDurumu } from "@/lib/formlar";
  * oluşan raporun kimliğini döndürüyorlar ve pencere kendini o rapora
  * güncelliyor. Kullanıcı böylece öğrencinin sayfasından hiç çıkmıyor.
  *
- * ŞUBE: Rapor id'leri istemciden geliyor, hepsi doğrulanmalı. Bütün okumalar
- * `student.branchId` üzerinden aktif şubeye kilitli; başka şubenin rapor id'si
- * gönderilirse eylem "bulunamadı" der.
+ * ŞUBE: öğrenciler ortak havuzda (Eylül 2026) — rapora ve kapsamdaki
+ * kayıtlara iki şube de erişir. Rapor id'leri istemciden geldiği için
+ * varlıkları yine doğrulanır; seçilen kayıtların bu öğrenciye ait olduğu da.
  */
 
 export type EylemDurumu = TemelEylemDurumu & {
@@ -59,8 +59,7 @@ export async function raporOlustur(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("raporlar", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("raporlar", "TAM");
 
   const kayitIdleri = formVerisi.getAll("kayitlar").map(String).filter(Boolean);
 
@@ -68,13 +67,14 @@ export async function raporOlustur(
     return { hata: "Raporun kapsayacağı en az bir kayıt seçin." };
   }
 
-  // Seçilen kayıtların gerçekten bu öğrenciye ve bu şubeye ait olduğu
-  // sunucuda doğrulanır.
+  // Seçilen kayıtların gerçekten bu öğrenciye ait olduğu sunucuda
+  // doğrulanır. Şube bakılmaz: ortak havuzda iki şubenin kaydı da kapsama
+  // alınabilir.
+  // şube-muaf: öğrencinin KENDİ kayıtları (ortak havuz).
   const gecerliKayitlar = await db.enrollment.findMany({
     where: {
       id: { in: kayitIdleri },
       studentId: ogrenciId,
-      group: { branchId: subeId },
     },
     select: {
       id: true,
@@ -127,8 +127,8 @@ export async function raporOlustur(
   // sürüme düşülür.
   const uretim = await govdeUret(
     async () =>
-      (await raporGovdesiV2Uret(ogrenciId, kayitIdleri, subeId, new Date())) ??
-      (await raporGovdesiUret(ogrenciId, kayitIdleri, subeId)),
+      (await raporGovdesiV2Uret(ogrenciId, kayitIdleri, new Date())) ??
+      (await raporGovdesiUret(ogrenciId, kayitIdleri)),
   );
   if ("hata" in uretim) return uretim;
   const govde = uretim.govde;
@@ -224,10 +224,9 @@ export async function raporYenidenUret(
   duzenlemeleriKoru = true,
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("raporlar", "TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const eski = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: subeId } },
+    where: { id: raporId },
     select: {
       studentId: true,
       bodyJson: true,
@@ -284,12 +283,8 @@ export async function raporYenidenUret(
   const uretimZamani = new Date();
   const uretim = await govdeUret(
     async () =>
-      (await raporGovdesiV2Uret(
-        eski.studentId,
-        kayitIdleri,
-        subeId,
-        new Date(),
-      )) ?? (await raporGovdesiUret(eski.studentId, kayitIdleri, subeId)),
+      (await raporGovdesiV2Uret(eski.studentId, kayitIdleri, new Date())) ??
+      (await raporGovdesiUret(eski.studentId, kayitIdleri)),
   );
   if ("hata" in uretim) return uretim;
   const govde = uretim.govde;
@@ -376,11 +371,10 @@ function tasimaNotu(tasima: {
  * veriye ait (§13.17).
  */
 export async function raporGozlemiUret(raporId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("raporlar", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: subeId } },
+    where: { id: raporId },
     select: {
       studentId: true,
       bodyJson: true,
@@ -403,7 +397,6 @@ export async function raporGozlemiUret(raporId: string): Promise<EylemDurumu> {
     raporGovdesiV2Uret(
       rapor.studentId,
       rapor.enrollmentLinks.map((bag) => bag.enrollmentId),
-      subeId,
       new Date(),
       { gozlemUret: true },
     ),
@@ -452,10 +445,10 @@ export async function raporGozlemiUret(raporId: string): Promise<EylemDurumu> {
  * düzenlense bile eski PDF'in içeriği değişmez (§13.17).
  */
 export async function pdfOlustur(raporId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+  await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    where: { id: raporId },
     select: {
       id: true,
       studentId: true,
@@ -544,7 +537,7 @@ export async function raporMetniDuzenle(
   const kullanici = await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    where: { id: raporId },
     select: { bodyJson: true, studentId: true },
   });
 
@@ -631,7 +624,7 @@ export async function raporBolumunuDuzenle(
   if (!yeniMetin) return { hata: "Metin boş bırakılamaz." };
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    where: { id: raporId },
     select: { bodyJson: true, studentId: true },
   });
   if (!rapor) return { hata: "Rapor bulunamadı." };
@@ -680,7 +673,7 @@ export async function raporBolumunuGeriAl(
   const kullanici = await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    where: { id: raporId },
     select: { bodyJson: true, studentId: true },
   });
   if (!rapor) return { hata: "Rapor bulunamadı." };
@@ -724,10 +717,10 @@ export async function raporBolumunuGeriAl(
  * çalışmaz — onay metni bunu açıkça söyler.
  */
 export async function raporSil(raporId: string): Promise<EylemDurumu> {
-  const kullanici = await yonetimZorunlu("raporlar", "TAM");
+  await yonetimZorunlu("raporlar", "TAM");
 
   const rapor = await db.report.findFirst({
-    where: { id: raporId, student: { branchId: kullanici.aktifSubeId } },
+    where: { id: raporId },
     select: { id: true, studentId: true },
   });
   if (!rapor) return { hata: "Rapor bulunamadı." };
@@ -779,11 +772,10 @@ export async function raporPenceresiVerisi(
   raporId: string,
 ): Promise<RaporPenceresiVerisi | null> {
   const kullanici = await yonetimZorunlu("raporlar", "TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const [detay, pdfler] = await Promise.all([
-    raporDetayi(raporId, subeId),
-    pdfGecmisi({ subeId, raporId }),
+    raporDetayi(raporId),
+    pdfGecmisi({ raporId }),
   ]);
 
   if (!detay) return null;
@@ -801,10 +793,7 @@ export async function raporPenceresiVerisi(
   const [zekaTestleri, gorusmeler] = await Promise.all([
     zekaGorebilir
       ? db.intelligenceTest.findMany({
-          where: {
-            studentId: detay.ozet.ogrenciId,
-            student: { branchId: subeId },
-          },
+          where: { studentId: detay.ozet.ogrenciId },
           orderBy: { date: "desc" },
           // `fileData` SEÇİLMEZ (bkz. `IntelligenceTest` şema notu).
           select: { id: true, testName: true, date: true },
@@ -812,10 +801,7 @@ export async function raporPenceresiVerisi(
       : [],
     gorusmeGorebilir
       ? db.parentMeeting.findMany({
-          where: {
-            studentId: detay.ozet.ogrenciId,
-            student: { branchId: subeId },
-          },
+          where: { studentId: detay.ozet.ogrenciId },
           orderBy: { date: "desc" },
           // İçerik değil yalnızca varlık: tarih yeter.
           select: { date: true },

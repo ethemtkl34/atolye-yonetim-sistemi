@@ -25,12 +25,12 @@ describe("şube süzgeci taşıyan koşullar", () => {
     });
   });
 
-  it("öğrenci koşulu şubeyi HEM öğrencide HEM grupta süzer", () => {
-    // Sızıntının gireceği yer tam olarak burası: öğrenci şubeye
-    // süzülüp de iç içe grup koşulu süzülmezse, kendi şubesindeki bir
-    // öğrenci başka şubenin grubundaki kaydı yüzünden aktif sayılır.
+  it("aktif öğrenci koşulu şubeyi GRUPTA süzer, öğrencinin etiketinde değil", () => {
+    // Ortak havuz (Eylül 2026): Ümraniye etiketli çocuk Güneşli'nin grubunda
+    // okuyorsa Güneşli'nin aktif öğrencisidir. Grup koşulu düşerse öbür
+    // şubenin grubundaki kayıt da "bu şubede aktif" sayılırdı.
     const kosul = aktifOgrenciKosulu(SUBE);
-    expect(kosul.branchId).toBe(SUBE);
+    expect(kosul.branchId).toBeUndefined();
     expect(kosul.enrollments).toEqual({
       some: { status: "AKTIF", group: aktifGrupKosulu(SUBE) },
     });

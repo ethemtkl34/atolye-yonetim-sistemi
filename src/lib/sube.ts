@@ -3,29 +3,33 @@ import { cookies } from "next/headers";
 /**
  * Şube bağlamı.
  *
- * ŞUBE SINIRI NEREDE: yalnızca üç tabloda doğrudan durur — `User`, `Group`,
- * `Student`. Kalan her satırın şubesi ilişkiden türetilir. Sorgu yazarken
- * her model için AŞAĞIDAKİ TEK yolu kullanın; ikinci bir yol icat etmek
- * (örneğin kaydı hem grup hem öğrenci üzerinden süzmek) zamanla ayrışan iki
- * doğruluk kaynağı üretir:
+ * ŞUBE SINIRI NEREDE: operasyonel veride `User` ve `Group` tablolarında
+ * doğrudan durur (CRM ve randevuda `Lead`, `Veli`, `Randevu` da kendi
+ * sütununu taşır). Kalan her satırın şubesi ilişkiden türetilir. Sorgu
+ * yazarken her model için AŞAĞIDAKİ TEK yolu kullanın; ikinci bir yol icat
+ * etmek zamanla ayrışan iki doğruluk kaynağı üretir:
  *
- *   Group, Student, User   → { branchId }
+ *   Group, User            → { branchId }
  *   Enrollment             → { group: { branchId } }
  *   Session                → { group: { branchId } }
  *   Score                  → { enrollment: { group: { branchId } } }
  *   ScoreAnswer            → { score: { enrollment: { group: { branchId } } } }
- *   Guardian, HealthInfo   → { student: { branchId } }
- *   Report                 → { student: { branchId } }
- *   ReportEnrollment       → { report: { student: { branchId } } }
- *   ReportPdf              → { report: { student: { branchId } } }
  *   TermIntern             → { user: { branchId } }
+ *   Student ve ondan türeyenler (Guardian, HealthInfo, görüşmeler, zeka
+ *   testleri, Report, ReportPdf, LegacyReport)
+ *                          → ORTAK HAVUZ (Eylül 2026), süzgeç YOK.
+ *                            `Student.branchId` yalnız "kayıt şubesi"
+ *                            etiketi; öğrencinin KAYITLARI yine grubun
+ *                            şubesine aittir.
  *   Term, Club, TermWeek, TermWorkshop, ClubWorkshop,
  *   WorkshopType, Question → ORTAK, süzgeç YOK
  *
  * ŞUBE ASLA FORM ALANINDAN GELMEZ. Şubeye ait veri yazan her eylem şubeyi
  * oturumdan (koordinatör/stajyer) ya da çerezden (yönetici) çözer. Gizli bir
  * `subeId` input'u, koordinatörün DOM'u düzenleyerek diğer şubeye kayıt
- * açmasına izin verirdi.
+ * açmasına izin verirdi. Tek istisna öğrencinin kayıt şubesi: görünürlüğü
+ * etkilemeyen bir etiket, formdan seçilir ve aktif şubeler arasında
+ * doğrulanır (`kayitSubesiCoz`).
  */
 
 /** Yöneticinin seçtiği şubeyi taşıyan çerez. */

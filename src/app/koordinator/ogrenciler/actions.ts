@@ -19,6 +19,7 @@ import {
   ogrenciSemasi,
 } from "./sema";
 import {
+  kayitSubesiCoz,
   ogrenciAlanlari,
   saglikAlanlari,
   veliGirdileri,
@@ -38,6 +39,10 @@ import {
  * işlemde yapılır: aday KAZANILDI'ya taşınır ve öğrenciye bağlanır. Aşama
  * ancak öğrenci gerçekten yazıldığında değişir; kullanıcı formu yarıda
  * bırakırsa adaya hiçbir şey olmaz.
+ *
+ * KAYIT ŞUBESİ (Eylül 2026): öğrenciler ortak havuzda; formdaki "Kayıt
+ * şubesi" yalnız etiket, varsayılanı çalışılan şube. Program grubu ise
+ * çalışılan şubenin grubu olmak zorunda — grup şubenin.
  */
 export async function ogrenciEkle(
   _oncekiDurum: EylemDurumu,
@@ -57,6 +62,14 @@ export async function ogrenciEkle(
   const veri = cozumlenen.data;
   const groupId = String(formVerisi.get("groupId") ?? "");
 
+  const kayitSubesi = await kayitSubesiCoz(formVerisi, subeId);
+  if (!kayitSubesi) {
+    return {
+      alanHatalari: { kayitSubesi: "Listeden bir şube seçin." },
+      degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+    };
+  }
+
   // Aday bağlamı: yalnız `adaylar` yetkisi olan kullanıcı dönüştürebilir.
   // Yetkisi olmayan biri gizli alanı elle eklese bile dönüşüm yapılmaz,
   // öğrenci normal şekilde açılır.
@@ -72,18 +85,17 @@ export async function ogrenciEkle(
   // `create` ile ifade edilemiyor. İkisi de aynı işlemin içinde.
   const ogrenciVerisi = {
     ...ogrenciAlanlari(veri),
-    branchId: subeId,
+    branchId: kayitSubesi,
     healthInfo: { create: saglikAlanlari(veri) },
   };
   const veliler = veliGirdileri(veri);
 
   if (!groupId) {
     const ogrenciId = await db.$transaction(async (tx) => {
-      // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı; öğrenci
-      // oturumdaki şubeye açılıyor.
       const ogrenci = await tx.student.create({ data: ogrenciVerisi });
+      // Veli, öğrencinin kayıt şubesinde eşleşir/açılır (§17.1).
       await veliBaglariniYaz(tx, {
-        subeId,
+        subeId: kayitSubesi,
         ogrenciId: ogrenci.id,
         girdiler: veliler,
       });
@@ -138,10 +150,9 @@ export async function ogrenciEkle(
     const engel = kayitEngeli(grup);
     if (engel) return { alanHatalari: { groupId: engel } };
 
-    // şube-muaf: `ogrenciVerisi` içinde `branchId: subeId` yazılı.
     const ogrenci = await tx.student.create({ data: ogrenciVerisi });
     await veliBaglariniYaz(tx, {
-      subeId,
+      subeId: kayitSubesi,
       ogrenciId: ogrenci.id,
       girdiler: veliler,
     });
@@ -201,10 +212,17 @@ export async function ogrenciEkle(
  *
  * Kontrol ile silme aynı işlemde: arada girilen bir puanlamanın sessizce
  * silinmesi bu ekranda kabul edilemez bir kayıp olurdu.
+ *
+ * ORTAK HAVUZ (Eylül 2026): öğrenciyi yalnız KAYIT ŞUBESİNİN personeli ya
+ * da kurum yöneticisi silebilir; diğer şubede kaydı olan öğrenci hiç
+ * silinemez (grup o şubenin, kaydı sessizce düşürmek o şubenin verisini
+ * silmek olurdu).
  */
 export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  const yonetici = kullanici.roller.includes("ADMIN");
+  // Yönetici için "kendi şubesi" yok; herhangi bir öğrenciyi silebilir.
+  const silebilecegiSube = yonetici ? undefined : kullanici.aktifSubeId;
 
   type SilmeSonucu =
     | { silindi: false; hata: string }
@@ -212,10 +230,12 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
 
   const sonuc = await db.$transaction(async (tx): Promise<SilmeSonucu> => {
     const ogrenci = await tx.student.findFirst({
-      where: { id: ogrenciId, branchId: subeId },
+      where: { id: ogrenciId },
       select: {
         firstName: true,
         lastName: true,
+        branchId: true,
+        branch: { select: { name: true } },
         _count: {
           select: {
             reports: true,
@@ -225,13 +245,37 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
             randevular: true,
           },
         },
-        enrollments: { select: { _count: { select: { scores: true } } } },
+        enrollments: {
+          select: {
+            _count: { select: { scores: true } },
+            group: {
+              select: { branchId: true, branch: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
     if (!ogrenci) return { silindi: false, hata: "Öğrenci bulunamadı." };
 
     const ad = `${ogrenci.firstName} ${ogrenci.lastName}`;
+
+    if (silebilecegiSube && ogrenci.branchId !== silebilecegiSube) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: öğrenciyi yalnızca kayıt şubesi (${ogrenci.branch.name}) ya da kurum yöneticisi silebilir.`,
+      };
+    }
+
+    const baskaSubeKaydi = ogrenci.enrollments.find(
+      (kayit) => kayit.group.branchId !== ogrenci.branchId,
+    );
+    if (baskaSubeKaydi) {
+      return {
+        silindi: false,
+        hata: `${ad} silinemez: ${baskaSubeKaydi.group.branch.name} şubesinde program kaydı var.`,
+      };
+    }
     const puanlamaSayisi = ogrenci.enrollments.reduce(
       (toplam, kayit) => toplam + kayit._count.scores,
       0,
@@ -283,10 +327,11 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
       };
     }
 
-    // Şube kontrolü silmenin KENDİ where'inde — `ogrenciGuncelle`deki desenle
-    // aynı. Veli, sağlık ve kayıt satırları şemadaki Cascade ile düşüyor.
+    // Kayıt şubesi silmenin KENDİ where'inde de duruyor: kontrol ile silme
+    // arasında şube değiştirilirse silme düşer. Veli, sağlık ve kayıt
+    // satırları şemadaki Cascade ile gidiyor.
     const silinen = await tx.student.deleteMany({
-      where: { id: ogrenciId, branchId: subeId },
+      where: { id: ogrenciId, branchId: ogrenci.branchId },
     });
 
     if (silinen.count === 0) {
@@ -325,24 +370,32 @@ export async function ogrenciGuncelle(
   const veri = cozumlenen.data;
   const veliler = veliGirdileri(veri);
 
-  // Şube kontrolü güncellemenin KENDİ where'inde ve transaction'ın İÇİNDE:
-  // `updateMany` + sayı kontrolü deseni, ayrı bir "önce oku sonra yaz"
-  // adımının bıraktığı yarış koşulunu bırakmıyor. Sıfır satır güncellendiyse
-  // öğrenci ya yok ya da başka şubenin — o hâlde veli ve sağlık satırlarına
-  // da dokunulmadan işlem geri alınır.
+  const kayitSubesi = await kayitSubesiCoz(formVerisi, kullanici.aktifSubeId);
+  if (!kayitSubesi) {
+    return {
+      alanHatalari: { kayitSubesi: "Listeden bir şube seçin." },
+      degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
+    };
+  }
+
+  // Öğrenciler ortak havuzda (Eylül 2026): iki şubenin personeli de her
+  // öğrenciyi düzenler, kayıt şubesi (etiket) de buradan değişir.
+  // `updateMany` + sayı kontrolü: sıfır satırsa öğrenci yok, veli ve sağlık
+  // satırlarına da dokunulmadan işlem geri alınır.
   const bulundu = await db.$transaction(async (tx) => {
     const sonuc = await tx.student.updateMany({
-      where: { id: ogrenciId, branchId: kullanici.aktifSubeId },
-      data: ogrenciAlanlari(veri),
+      where: { id: ogrenciId },
+      data: { ...ogrenciAlanlari(veri), branchId: kayitSubesi },
     });
 
     if (sonuc.count === 0) return false;
 
     // Veli bağları silinip yeniden yazılmıyor, ÜZERİNE yazılıyor: telefonsuz
     // bir veli eşleştirilemediği için her düzenleme yeni bir `Veli` satırı
-    // açar ve sahipsiz kayıtlar birikirdi (bkz. lib/veli.ts).
+    // açar ve sahipsiz kayıtlar birikirdi (bkz. lib/veli.ts). Veli
+    // öğrencinin kayıt şubesinde eşleşir (§17.1).
     await veliBaglariniYaz(tx, {
-      subeId: kullanici.aktifSubeId,
+      subeId: kayitSubesi,
       ogrenciId,
       girdiler: veliler,
     });

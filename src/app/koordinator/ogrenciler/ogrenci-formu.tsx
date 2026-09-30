@@ -33,6 +33,7 @@ export type OgrenciVarsayilanlari = {
   saglikNotu?: string;
   acilDurum?: string;
   stajyerUyarisi?: string;
+  kayitSubesi?: string;
 };
 
 /**
@@ -46,6 +47,7 @@ export function OgrenciFormu({
   iptalYolu,
   programlar,
   gizliAlanlar,
+  subeler,
 }: {
   eylem: (
     oncekiDurum: EylemDurumu,
@@ -67,6 +69,12 @@ export function OgrenciFormu({
    * kayıtlar öğrenci profilinden yönetiliyor.
    */
   programlar?: ProgramSecenegi[];
+  /**
+   * Kayıt şubesi seçicisinin seçenekleri (ortak havuz, Eylül 2026). Tek
+   * şube varsa seçici çizilmez; eylem o zaman çalışılan şubeyi yazar.
+   * Varsayılan değer `varsayilanlar.kayitSubesi`.
+   */
+  subeler?: { id: string; ad: string }[];
 }) {
   const [durum, formEylemi] = useActionState<EylemDurumu, FormData>(
     eylem,
@@ -100,11 +108,16 @@ export function OgrenciFormu({
    */
   const programSecimi = useRef<HTMLSelectElement>(null);
   const grupSecimi = useRef<HTMLSelectElement>(null);
+  const subeSecimi = useRef<HTMLSelectElement>(null);
+  const [kayitSubesi, setKayitSubesi] = useState(
+    varsayilanlar.kayitSubesi ?? subeler?.[0]?.id ?? "",
+  );
 
   useEffect(() => {
     if (programSecimi.current) programSecimi.current.value = programId;
     if (grupSecimi.current) grupSecimi.current.value = grupId;
-  }, [durum, programId, grupId]);
+    if (subeSecimi.current) subeSecimi.current.value = kayitSubesi;
+  }, [durum, programId, grupId, kayitSubesi]);
 
   return (
     <form action={formEylemi} className="space-y-6">
@@ -158,6 +171,28 @@ export function OgrenciFormu({
             />
           </Alan>
         </div>
+
+        {subeler && subeler.length > 1 ? (
+          <Alan
+            etiket="Kayıt şubesi"
+            ipucu="Öğrencinin hangi şubenin öğrencisi olduğu. İki şube de bütün öğrencileri görür; bu yalnızca bir etikettir."
+            hata={h?.kayitSubesi}
+          >
+            <select
+              ref={subeSecimi}
+              name="kayitSubesi"
+              defaultValue={kayitSubesi}
+              onChange={(olay) => setKayitSubesi(olay.target.value)}
+              className={cn(secimStili, "sm:max-w-xs")}
+            >
+              {subeler.map((sube) => (
+                <option key={sube.id} value={sube.id}>
+                  {sube.ad}
+                </option>
+              ))}
+            </select>
+          </Alan>
+        ) : null}
 
         <Alan etiket="Genel notlar" ipucu="İsteğe bağlı." hata={h?.notes}>
           <CokSatirli name="notes" rows={2} defaultValue={deger("notes")} />

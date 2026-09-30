@@ -91,8 +91,11 @@ const kullaniciyiOku = cache(async (kullaniciId: string) =>
   }),
 );
 
-/** Aktif şubeler — üst şeritteki seçici ve yöneticinin şube doğrulaması için. */
-const subeleriOku = cache(async () =>
+/**
+ * Aktif şubeler — üst şeritteki seçici, yöneticinin şube doğrulaması ve
+ * öğrencinin kayıt şubesi seçicisi/süzgeci için.
+ */
+export const subeleriOku = cache(async () =>
   db.branch.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" },
@@ -306,10 +309,12 @@ export async function stajyerZorunlu(): Promise<SubeliKullanici> {
  * İkili belge veren API rotalarının kapısı (rapor PDF'i, zeka testi belgesi).
  *
  * Buradaki diğer fonksiyonlar yönlendirme yapar; indirme isteğine ise 403
- * dönmek gerekir. Kontrol iki katmanlı: rol veritabanından okunur (belirteç
- * 12 saat bayat kalabilir) ve dönen şube kimliği çağıranın sorgusunda süzgeç
- * olarak kullanılır — yöneticide null'dır (bütün şubeler), diğer rollerde
- * zorunludur; boşsa "süzgeç yok" hâline düşmek sızıntı olurdu.
+ * dönmek gerekir. Rol veritabanından okunur (belirteç 12 saat bayat
+ * kalabilir). Dönen şube kimliği yöneticide null'dır, diğer rollerde
+ * zorunludur. Bugünkü dört belge rotası (rapor PDF'i, önizleme, arşiv
+ * raporu, zeka testi) onu SÜZGEÇ olarak kullanmıyor: öğrenciler iki şubede
+ * ortak havuzda (Eylül 2026). Şubeye ait bir belge rotası eklenirse süzgeç
+ * buradan alınır.
  */
 export async function belgeYetkisi(
   modul: Modul,

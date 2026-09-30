@@ -9,8 +9,11 @@ import { normalizeArama } from "@/lib/turkce";
  *
  * `veli-arama.ts`nin öğrenci karşılığı: kayıt oluştururken danışanı bulmak
  * için değil, GEÇMİŞE bakmak için — "bu çocuk hangi haftalarda, hangi
- * hizmete geldi" sorusuna cevap. Şube süzgeci zorunlu (§17.7): danışan
- * bilgisi yalnız kendi şubede.
+ * hizmete geldi" sorusuna cevap.
+ *
+ * Öğrenciler iki şubede ortak havuzda (Eylül 2026): arama iki şubenin
+ * öğrencisini bulur. Randevu geçmişi ise TAKVİMİN şubesiyle sınırlı —
+ * takvim ve ciro şubede kalıyor (§17.7).
  */
 
 export async function ogrenciAra(sorgu: string) {
@@ -22,7 +25,7 @@ export async function ogrenciAra(sorgu: string) {
   const isimAnahtari = normalizeArama(temiz);
 
   const ogrenciler = await db.student.findMany({
-    where: { branchId: kullanici.aktifSubeId, searchName: { contains: isimAnahtari } },
+    where: { searchName: { contains: isimAnahtari } },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     take: 12,
     select: {
@@ -32,7 +35,11 @@ export async function ogrenciAra(sorgu: string) {
       guardians: {
         select: { veli: { select: { fullName: true } } },
       },
-      _count: { select: { randevular: true } },
+      _count: {
+        select: {
+          randevular: { where: { branchId: kullanici.aktifSubeId } },
+        },
+      },
     },
   });
 
@@ -48,17 +55,16 @@ export async function ogrenciAra(sorgu: string) {
 export async function ogrenciRandevuGecmisi(ogrenciId: string) {
   const kullanici = await randevuZorunlu();
 
-  // şube-muaf değil: öğrenci başka şubeden geldiyse hiçbir satır dönmez —
-  // takvimin aksine geçmiş aramasında "başka şubenin randevusu" gösterecek
-  // bir görünüm yok, en güvenlisi hiç göstermemek.
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: kullanici.aktifSubeId },
+    where: { id: ogrenciId },
     select: { id: true, firstName: true, lastName: true },
   });
   if (!ogrenci) return null;
 
+  // Yalnız takvimin şubesindeki randevular: bu görünümde "başka şubenin
+  // randevusu" satırı yok, ücret ve not o şubenin bilgisi (§17.7).
   const randevular = await db.randevu.findMany({
-    where: { ogrenciId },
+    where: { ogrenciId, branchId: kullanici.aktifSubeId },
     orderBy: { baslangic: "desc" },
     select: {
       id: true,

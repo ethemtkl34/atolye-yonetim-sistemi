@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { subeleriOku, yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { kayitAlanProgramlar } from "@/lib/kayit-secenekleri";
 import { ACIK_ASAMALAR } from "@/lib/aday-durumlari";
 import { adiBol } from "@/lib/aday/donusum";
@@ -52,7 +52,10 @@ export default async function YeniOgrenciSayfasi(
       })
     : null;
 
-  const programlar = await kayitAlanProgramlar(kullanici.aktifSubeId);
+  const [programlar, subeler] = await Promise.all([
+    kayitAlanProgramlar(kullanici.aktifSubeId),
+    subeleriOku(),
+  ]);
 
   const cocuk = adiBol(aday?.childName ?? null);
   const varsayilanlar: OgrenciVarsayilanlari = aday
@@ -70,8 +73,9 @@ export default async function YeniOgrenciSayfasi(
         ]
           .filter(Boolean)
           .join("\n"),
+        kayitSubesi: kullanici.aktifSubeId,
       }
-    : {};
+    : { kayitSubesi: kullanici.aktifSubeId };
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -113,6 +117,7 @@ export default async function YeniOgrenciSayfasi(
           aday ? `/koordinator/adaylar/${aday.id}` : "/koordinator/ogrenciler"
         }
         programlar={programlar}
+        subeler={subeler.map((sube) => ({ id: sube.id, ad: sube.name }))}
         varsayilanlar={varsayilanlar}
         gizliAlanlar={
           aday ? { adayId: aday.id, ...(hedef ? { hedef } : {}) } : undefined

@@ -20,28 +20,24 @@ import { join, relative } from "node:path";
 import ts from "typescript";
 
 /**
- * Şube sınırı yalnızca üç tabloda: `User`, `Group`, `Student` (şemada
- * `branchId` taşıyan tek üç model). Aşağıdakiler ise o sınırdan TÜRETİLİYOR —
- * kendi `branchId` sütunları yok ama bir ilişki üzerinden bir şubeye ait
- * oluyorlar, dolayısıyla süzgeçsiz okunduklarında sızdırırlar.
+ * Şube sınırı `User` ve `Group` tablolarında doğrudan duruyor. Aşağıdakiler
+ * o sınırdan TÜRETİLİYOR — kendi `branchId` sütunları yok ama bir ilişki
+ * üzerinden bir şubeye ait oluyorlar, dolayısıyla süzgeçsiz okunduklarında
+ * sızdırırlar.
+ *
+ * `Student` ve ondan türeyen tablolar (veli bağı, sağlık, görüşmeler, zeka
+ * testleri, raporlar) Eylül 2026'dan beri burada DEĞİL: öğrenciler iki
+ * şubede ortak havuzda, `Student.branchId` yalnız kayıt şubesi etiketi
+ * (bkz. `SUBEDEN_BAGIMSIZ`).
  */
 const SUBEYE_AIT = new Set([
   "user",
   "group",
-  "student",
   "enrollment",
   "session",
   "score",
   "scoreAnswer",
-  "report",
-  "reportEnrollment",
-  "reportPdf",
-  "guardian",
-  "healthInfo",
   "termIntern",
-  "counselingSession",
-  "parentMeeting",
-  "intelligenceTest",
   // Aday (CRM) tabloları: Lead şube sınırının dördüncü doğrudan tablosu,
   // etkinlikleri adayından şubelidir. API girişleri (oturumsuz rotalar) da
   // şubeyi payload'dan çözüp SORGUNUN İÇİNE literal yazar — muafiyet yok.
@@ -69,6 +65,22 @@ const SUBEYE_AIT = new Set([
  */
 export const SUBEDEN_BAGIMSIZ = new Set([
   "branch",
+  // Ortak öğrenci havuzu (Eylül 2026): iki şubenin personeli bütün
+  // öğrencileri ve kişisel verilerini görür, değiştirir. `Student.branchId`
+  // yalnız kayıt şubesi etiketi. Öğrencinin KAYITLARI ise şubeli kalıyor —
+  // kaydın şubesi grubundan (`enrollment`, `session`, `score` yukarıda).
+  "student",
+  "guardian",
+  "healthInfo",
+  "therapyIntake",
+  "counselingSession",
+  "parentMeeting",
+  "parentMeetingReferral",
+  "intelligenceTest",
+  "legacyReport",
+  "report",
+  "reportEnrollment",
+  "reportPdf",
   "workshopType",
   "question",
   "term",
@@ -118,7 +130,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|students|reports|guardians|counselingSessions|parentMeetings|intelligenceTests|leads|veliler|randevular)\s*:/;
+  /\b(groups|interns|enrollments|sessions|scores|leads|veliler|randevular)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

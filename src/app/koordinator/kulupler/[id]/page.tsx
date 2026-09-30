@@ -70,14 +70,17 @@ export default async function KulupDetaySayfasi(
     }),
     // Toplu ekleme paneli için şubenin öğrenci listesi ve her öğrencinin BU
     // kulüpteki aktif kayıtları.
+    // Öğrenciler ortak havuzda (Eylül 2026): iki şubenin öğrencileri; diğer
+    // şubenin öğrencisi adının yanında şube adıyla.
     db.student.findMany({
-      where: { branchId: subeId },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: {
         id: true,
         firstName: true,
         lastName: true,
         searchName: true,
+        branchId: true,
+        branch: { select: { name: true } },
         enrollments: {
           where: { status: "AKTIF", group: { clubId: id, branchId: subeId } },
           select: { group: { select: { id: true, name: true } } },
@@ -122,7 +125,10 @@ export default async function KulupDetaySayfasi(
 
   const panelOgrencileri = subeOgrencileri.map((ogrenci) => ({
     id: ogrenci.id,
-    ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
+    ad:
+      ogrenci.branchId === subeId
+        ? `${ogrenci.firstName} ${ogrenci.lastName}`
+        : `${ogrenci.firstName} ${ogrenci.lastName} (${ogrenci.branch.name})`,
     aramaAdi: ogrenci.searchName,
     mevcutGruplar: ogrenci.enrollments.map((kayit) => ({
       id: kayit.group.id,

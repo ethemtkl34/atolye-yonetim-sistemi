@@ -96,12 +96,15 @@ export function aktifGrupKosulu(subeId: string): Prisma.GroupWhereInput {
 }
 
 /**
- * §12.1 "Toplam aktif öğrenci" — aktif bir programda aktif kaydı olan öğrenci.
- * Aynı öğrencinin iki kaydı varsa bir kez sayılır.
+ * §12.1 "Toplam aktif öğrenci" — bu şubenin aktif bir programında aktif
+ * kaydı olan öğrenci. Aynı öğrencinin iki kaydı varsa bir kez sayılır.
+ *
+ * Öğrencinin kayıt şubesi (etiketi) BAKILMAZ: öğrenciler ortak havuzda
+ * (Eylül 2026) ve Ümraniye etiketli bir çocuk Güneşli'nin grubunda
+ * okuyorsa Güneşli'nin aktif öğrencisidir. Şube grup tarafından gelir.
  */
 export function aktifOgrenciKosulu(subeId: string): Prisma.StudentWhereInput {
   return {
-    branchId: subeId,
     enrollments: {
       some: { status: "AKTIF", group: aktifGrupKosulu(subeId) },
     },

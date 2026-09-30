@@ -112,7 +112,7 @@ export async function danisanBasvurusuKaydet(
 
   if (veri.mod === "mevcut") {
     const ogrenci = await db.student.findFirst({
-      where: { id: veri.ogrenciId ?? "", branchId: subeId },
+      where: { id: veri.ogrenciId ?? "" },
       select: { id: true },
     });
     if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
@@ -162,7 +162,7 @@ export async function danisanBasvurusuKaydet(
         school: veri.school,
         grade: veri.grade,
         searchName: normalizeArama(`${veri.firstName} ${veri.lastName}`),
-        // şube-muaf: öğrenci oturumdaki şubeye açılıyor.
+        // Kayıt şubesi (etiket): başvuruyu alan şube.
         branchId: subeId,
         ...(ilacGirildi
           ? { healthInfo: { create: { medications: veri.ilac } } }

@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import { normalizeArama } from "@/lib/turkce";
 import { tarihCozumle } from "@/lib/tarih";
 import type { VeliGirdisi } from "@/lib/veli";
@@ -16,6 +17,29 @@ import type { OgrenciGirdisi } from "./sema";
  * Şema (`sema.ts`) ile eylemler arasındaki katman burasıdır: doğrulama orada,
  * yetki ve yazma eylemde, alan eşlemesi burada.
  */
+
+/**
+ * Formdaki "Kayıt şubesi" seçimini doğrular (ortak havuz, Eylül 2026).
+ *
+ * Kayıt şubesi yalnız bir ETİKET: kimin görebileceğini belirlemiyor (iki
+ * şube de bütün öğrencileri görür), bu yüzden formdan gelmesi güvenlik
+ * açığı değil. Yine de değer AKTİF bir şube olmak zorunda — elle
+ * düzenlenmiş bir form var olmayan bir şubeye yazamaz. Alan hiç
+ * gönderilmediyse (seçici çizilmeyen tek şubeli kurulum) varsayılan döner;
+ * geçersizse null.
+ */
+export async function kayitSubesiCoz(
+  formVerisi: FormData,
+  varsayilan: string,
+): Promise<string | null> {
+  const ham = formVerisi.get("kayitSubesi");
+  if (typeof ham !== "string" || ham === "") return varsayilan;
+  const sube = await db.branch.findFirst({
+    where: { id: ham, active: true },
+    select: { id: true },
+  });
+  return sube?.id ?? null;
+}
 
 /** Öğrencinin ana bilgilerini veritabanı biçimine çevirir. */
 export function ogrenciAlanlari(veri: OgrenciGirdisi) {

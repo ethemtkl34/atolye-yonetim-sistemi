@@ -25,8 +25,10 @@ export default async function OgrenciPuanlamalariSayfasi(
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
+  // Öğrenci ortak havuzda (Eylül 2026); listelenen kayıtlar ise bu şubenin
+  // grupları — puanlama ekranı grubun şubesinin işi.
   const ogrenci = await db.student.findFirst({
-    where: { id, branchId: subeId },
+    where: { id },
     select: { id: true, firstName: true, lastName: true },
   });
   if (!ogrenci) notFound();

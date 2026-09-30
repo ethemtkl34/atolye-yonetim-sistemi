@@ -22,6 +22,11 @@ export type AtamaKaydi = {
   secenekler: { id: string; ad: string }[];
   /** Kadro yüzünden seçenek kalmadıysa gösterilecek açıklama. */
   kadroUyarisi: string | null;
+  /**
+   * Kayıt diğer şubenin grubundaysa o şubenin adı (ortak havuz, Eylül 2026).
+   * Atamayı grubun şubesi yapar; burada yalnızca okunur.
+   */
+  baskaSube: string | null;
 };
 
 /**
@@ -97,7 +102,9 @@ export function StajyerAtamalari({ kayitlar }: { kayitlar: AtamaKaydi[] }) {
 
                 {/* İptal edilmiş kayda atama yapılmaz: puanlama zaten
                     kapalıdır, sorumlusunu değiştirmek anlamsız olurdu. */}
-                {kayit.aktif ? (
+                {kayit.baskaSube ? (
+                  <Rozet tur="pasif">{kayit.baskaSube}</Rozet>
+                ) : kayit.aktif ? (
                   kayit.secenekler.length === 0 ? (
                     <p className="max-w-xs text-xs text-vurgu-700">
                       {kayit.kadroUyarisi ?? "Atanabilecek aktif stajyer yok."}

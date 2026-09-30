@@ -51,10 +51,16 @@ export default async function ZekaTestleriSayfasi(
     typeof parametreler.ogrenci === "string" ? parametreler.ogrenci : "";
 
   const [ogrenciler, testTurleri, testKayitlari] = await Promise.all([
-    // Yükleme formundaki öğrenci seçici — şubenin bütün öğrencileri.
+    // Yükleme formundaki öğrenci seçici — iki şubenin bütün öğrencileri
+    // (ortak havuz); diğer şubenin öğrencisi adının yanında şube adıyla.
     db.student.findMany({
-      where: { branchId: subeId },
-      select: { id: true, firstName: true, lastName: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        branchId: true,
+        branch: { select: { name: true } },
+      },
     }),
     // "Testin adı" açılır listesi — şubeden bağımsız katalog; yönetim ekranı
     // yok, liste veritabanından güncelleniyor (bkz. IntelligenceTestType).
@@ -66,10 +72,7 @@ export default async function ZekaTestleriSayfasi(
     // `fileData` bilinçli olarak SEÇİLMİYOR: liste ekranı megabaytlarca
     // belge verisini taşımamalı, belge yalnızca indirme rotasından okunur.
     db.intelligenceTest.findMany({
-      where: {
-        student: { branchId: subeId },
-        ...(ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {}),
-      },
+      where: ogrenciSuzgeci ? { studentId: ogrenciSuzgeci } : {},
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -92,7 +95,10 @@ export default async function ZekaTestleriSayfasi(
   const ogrenciSecenekleri = ogrenciler
     .map((ogrenci) => ({
       id: ogrenci.id,
-      ad: tamAd(ogrenci.firstName, ogrenci.lastName),
+      ad:
+        ogrenci.branchId === subeId
+          ? tamAd(ogrenci.firstName, ogrenci.lastName)
+          : `${tamAd(ogrenci.firstName, ogrenci.lastName)} (${ogrenci.branch.name})`,
     }))
     .sort((a, b) => turkceKarsilastir(a.ad, b.ad));
 

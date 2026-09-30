@@ -19,23 +19,22 @@ import type { OneriAdayi } from "./urun-onerileri";
  * gidiyor" diye geliyor; hangi kaydın kapsama gireceğini seçtirmek görüşme
  * hazırlığını rapor üretimine çevirirdi.
  *
- * ŞUBE: her sorgu `subeId` zorunlu alır; başka şubenin öğrenci id'si
- * yapıştırılırsa sorgu boş döner.
+ * ŞUBE: öğrenciler ortak havuzda (Eylül 2026) — brief öğrencinin İKİ
+ * şubedeki kayıtlarını birlikte kapsar.
  */
 export async function veliBriefGirdisiHazirla(
   ogrenciId: string,
-  subeId: string,
   gorusmeTarihi: Date,
 ): Promise<RaporGirdisi | null> {
+  // şube-muaf: öğrencinin KENDİ kayıtları (ortak havuz — iki şube).
   const kayitlar = await db.enrollment.findMany({
-    where: { studentId: ogrenciId, group: { branchId: subeId } },
+    where: { studentId: ogrenciId },
     select: { id: true },
   });
 
   return raporGirdisiHazirla(
     ogrenciId,
     kayitlar.map((kayit) => kayit.id),
-    subeId,
     { enGecTarih: gorusmeTarihi },
   );
 }
@@ -51,14 +50,13 @@ export async function veliBriefGirdisiHazirla(
  * cevaplarını ortalamak "şu an nerede" sorusunun cevabını bulandırırdı.
  * Dönem sonu varsa o, yoksa dönem ortası — ikisinden de en yenisi.
  *
- * ŞUBE: `subeId` zorunlu; başka şubenin öğrencisi için boş döner.
+ * ŞUBE: ortak havuz — iki şubenin kayıtları ve gelişim testleri birlikte.
  */
 export async function gorusmeOnerileriHazirla(
   ogrenciId: string,
-  subeId: string,
   gorusmeTarihi: Date,
 ): Promise<GorusmeOnerileri | null> {
-  const girdi = await veliBriefGirdisiHazirla(ogrenciId, subeId, gorusmeTarihi);
+  const girdi = await veliBriefGirdisiHazirla(ogrenciId, gorusmeTarihi);
   if (!girdi) return null;
 
   const analiz = raporAnaliziUret(girdi);
@@ -87,9 +85,7 @@ export async function gorusmeOnerileriHazirla(
   );
 
   const degerlendirme = await db.developmentAssessment.findFirst({
-    where: {
-      enrollment: { studentId: ogrenciId, group: { branchId: subeId } },
-    },
+    where: { enrollment: { studentId: ogrenciId } },
     // Dönem sonu her zaman dönem ortasının önünde; eşitlikte en yeni kayıt.
     orderBy: [{ period: "desc" }, { createdAt: "desc" }],
     select: { period: true, answersJson: true },
@@ -145,21 +141,16 @@ export type GorusmeYardimi = {
 
 export async function gorusmeYardimiHazirla(
   ogrenciId: string,
-  subeId: string,
   gorusmeTarihi: Date,
   secenekler: { zekaTestiGorebilir: boolean },
 ): Promise<GorusmeYardimi | null> {
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: ogrenciId },
     select: { birthDate: true },
   });
   if (!ogrenci) return null;
 
-  const oneriler = await gorusmeOnerileriHazirla(
-    ogrenciId,
-    subeId,
-    gorusmeTarihi,
-  );
+  const oneriler = await gorusmeOnerileriHazirla(ogrenciId, gorusmeTarihi);
   if (!oneriler) return null;
 
   const yas = ogrenci.birthDate
@@ -189,14 +180,14 @@ export async function gorusmeYardimiHazirla(
     }),
     secenekler.zekaTestiGorebilir
       ? db.intelligenceTest.findMany({
-          where: { studentId: ogrenciId, student: { branchId: subeId } },
+          where: { studentId: ogrenciId },
           orderBy: { date: "desc" },
           // `fileData` SEÇİLMEZ — megabaytlarca veri forma taşınmamalı.
           select: { id: true, testName: true, date: true },
         })
       : [],
     db.parentMeetingReferral.findMany({
-      where: { studentId: ogrenciId, student: { branchId: subeId } },
+      where: { studentId: ogrenciId },
       orderBy: { createdAt: "desc" },
       // Geçmiş bir hatırlatma, arşiv değil: son on karar yeter.
       take: 10,

@@ -14,9 +14,8 @@ import { yasYil } from "@/lib/tarih";
  * Sonuç tipi bu yüzden bileşen içinde `Awaited<ReturnType<…>>` ile türetiliyor.
  *
  * YETKİ: `yonetimZorunlu("ogrenciler")` — listeyi görebilen arayabilir.
- * ŞUBE: koşul `ogrenciAramaKosulu` içinde ve oturumun aktif şubesinden
- * geliyor; üst şerit bütün panelde çizildiği için burada şube süzgecini
- * atlamak, her ekranda öbür şubenin çocuklarını aranabilir yapardı.
+ * ŞUBE: öğrenciler iki şubede ortak havuzda (Eylül 2026) — arama iki
+ * şubenin öğrencilerini birlikte bulur, satırda kayıt şubesi yazar.
  *
  * SONUÇ DAR: liste ekranının `ogrenciAra`sı veli bağlarını ve kayıt
  * sayılarını da çekiyor; açılır kutuda bunların hiçbiri görünmüyor, o yüzden
@@ -32,7 +31,6 @@ export async function hizliOgrenciAra(sorgu: string) {
   const temiz = sorgu.trim();
   if (temiz.length < 2) return [];
 
-  // şube-muaf: süzgeç `ogrenciAramaKosulu` içinde (bkz. o fonksiyonun şerhi).
   const ogrenciler = await db.student.findMany({
     where: ogrenciAramaKosulu(temiz, { subeId: kullanici.aktifSubeId }),
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -43,6 +41,7 @@ export async function hizliOgrenciAra(sorgu: string) {
       lastName: true,
       birthDate: true,
       school: true,
+      branch: { select: { name: true } },
     },
   });
 
@@ -50,11 +49,13 @@ export async function hizliOgrenciAra(sorgu: string) {
   return ogrenciler.map((ogrenci) => ({
     id: ogrenci.id,
     ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
-    // Aynı adlı iki çocuğu ayırt etmenin en hızlı yolu yaş ve okul (§6.2).
+    // Aynı adlı iki çocuğu ayırt etmenin en hızlı yolu yaş ve okul (§6.2);
+    // ortak havuzda kayıt şubesi de.
     ayrinti:
       [
         ogrenci.birthDate ? `${yasYil(ogrenci.birthDate, bugun)} yaş` : null,
         ogrenci.school,
+        ogrenci.branch.name,
       ]
         .filter(Boolean)
         .join(" · ") || null,

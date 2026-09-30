@@ -27,12 +27,9 @@ export async function GET(
   const { id } = await params;
 
   const test = await db.intelligenceTest.findFirst({
-    where: {
-      id,
-      ...(yetki.subeId
-        ? { student: { branchId: yetki.subeId } }
-        : {}),
-    },
+    // Öğrenciler iki şubede ortak havuzda (Eylül 2026): belgeye modül
+    // yetkisi olan her şube erişir.
+    where: { id },
     select: {
       date: true,
       testName: true,

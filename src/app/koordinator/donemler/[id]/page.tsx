@@ -85,14 +85,17 @@ export default async function DonemDetaySayfasi(
     // Toplu ekleme paneli için şubenin öğrenci listesi ve her öğrencinin BU
     // dönemdeki aktif kayıtları. İkisi birlikte okunuyor: panel "zaten bu
     // grupta" ile "dönemin başka grubunda" ayrımını gösterebilmeli.
+    // Öğrenciler ortak havuzda (Eylül 2026): iki şubenin öğrencileri; diğer
+    // şubenin öğrencisi adının yanında şube adıyla.
     db.student.findMany({
-      where: { branchId: subeId },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: {
         id: true,
         firstName: true,
         lastName: true,
         searchName: true,
+        branchId: true,
+        branch: { select: { name: true } },
         enrollments: {
           where: { status: "AKTIF", group: { termId: id, branchId: subeId } },
           select: { group: { select: { id: true, name: true } } },
@@ -151,7 +154,10 @@ export default async function DonemDetaySayfasi(
 
   const panelOgrencileri = subeOgrencileri.map((ogrenci) => ({
     id: ogrenci.id,
-    ad: `${ogrenci.firstName} ${ogrenci.lastName}`,
+    ad:
+      ogrenci.branchId === subeId
+        ? `${ogrenci.firstName} ${ogrenci.lastName}`
+        : `${ogrenci.firstName} ${ogrenci.lastName} (${ogrenci.branch.name})`,
     aramaAdi: ogrenci.searchName,
     mevcutGruplar: ogrenci.enrollments.map((kayit) => ({
       id: kayit.group.id,

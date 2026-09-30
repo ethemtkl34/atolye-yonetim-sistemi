@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { yonetimZorunlu } from "@/lib/yetki-kapisi";
+import { subeleriOku, yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { ogrenciAra } from "@/lib/ogrenci-arama";
 import { db } from "@/lib/db";
-import { Bildirim, BosDurum, Girdi, Kart, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
+import { Bildirim, BosDurum, Girdi, Kart, Rozet, SayfaBasligi, baglantiStili, butonStili } from "@/components/ui";
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { Sayfalama, sayfaNumarasiCoz } from "@/components/sayfalama";
 import { tarihBicimle } from "@/lib/tarih";
@@ -30,6 +30,10 @@ const SAYFA_BOYUTU = 25;
  * Arama kutusu sıradan bir GET formu: sorgu adres satırında durur, sonuç
  * sayfası paylaşılabilir ve geri tuşu beklendiği gibi çalışır. Bunun için
  * istemci tarafında durum tutmaya gerek yok.
+ *
+ * ORTAK HAVUZ (Eylül 2026): liste iki şubenin öğrencilerini birlikte
+ * gösterir; her kartta öğrencinin kayıt şubesi rozeti durur ve "Kayıt
+ * şubesi" süzgeciyle daraltılabilir.
  */
 export default async function OgrencilerSayfasi(
   props: PageProps<"/koordinator/ogrenciler">,
@@ -56,7 +60,7 @@ export default async function OgrencilerSayfasi(
    * iki şubede ortak ama gruplar şubeye ait — başka şubenin programını
    * seçmek boş liste üretirdi. Geçersiz parametre yok sayılıyor.
    */
-  const [donemler, kulupler] = await Promise.all([
+  const [donemler, kulupler, subeler] = await Promise.all([
     db.term.findMany({
       where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
       orderBy: [{ createdAt: "desc" }],
@@ -67,7 +71,13 @@ export default async function OgrencilerSayfasi(
       orderBy: [{ createdAt: "desc" }],
       select: { id: true, name: true },
     }),
+    subeleriOku(),
   ]);
+
+  // Kayıt şubesi süzgeci — geçersiz değer yok sayılır ("Tümü").
+  const kayitSubesiId = subeler.some((sube) => sube.id === parametreler.sube)
+    ? (parametreler.sube as string)
+    : undefined;
 
   const KULUP_ONEKI = "kulup:";
   const programParametresi =
@@ -90,6 +100,7 @@ export default async function OgrencilerSayfasi(
   const ara = (sayfa: number) =>
     ogrenciAra(sorgu, {
       subeId: kullanici.aktifSubeId,
+      kayitSubesiId,
       kapsam,
       donemId,
       kulupId,
@@ -113,6 +124,7 @@ export default async function OgrencilerSayfasi(
     ...(sorgu ? { q: sorgu } : {}),
     ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
     ...(programDegeri ? { donem: programDegeri } : {}),
+    ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
   };
 
   const ilkSira = toplam === 0 ? 0 : (sayfa - 1) * SAYFA_BOYUTU + 1;
@@ -145,6 +157,9 @@ export default async function OgrencilerSayfasi(
         {programDegeri ? (
           <input type="hidden" name="donem" value={programDegeri} />
         ) : null}
+        {kayitSubesiId ? (
+          <input type="hidden" name="sube" value={kayitSubesiId} />
+        ) : null}
         <Girdi
           name="q"
           type="search"
@@ -160,7 +175,13 @@ export default async function OgrencilerSayfasi(
         </button>
       </form>
 
-      <SuzgecCubugu etkin={(kapsam === "aktif" ? 1 : 0) + (programDegeri ? 1 : 0)}>
+      <SuzgecCubugu
+        etkin={
+          (kapsam === "aktif" ? 1 : 0) +
+          (programDegeri ? 1 : 0) +
+          (kayitSubesiId ? 1 : 0)
+        }
+      >
         <SuzgecGrubu
           etiket="Kapsam"
           temelYol={TEMEL_YOL}
@@ -173,8 +194,23 @@ export default async function OgrencilerSayfasi(
           digerler={{
             ...(sorgu ? { q: sorgu } : {}),
             ...(programDegeri ? { donem: programDegeri } : {}),
+            ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
           }}
         />
+        {subeler.length > 1 ? (
+          <SuzgecSecici
+            etiket="Kayıt şubesi"
+            temelYol={TEMEL_YOL}
+            anahtar="sube"
+            secili={kayitSubesiId ?? ""}
+            digerler={{
+              ...(sorgu ? { q: sorgu } : {}),
+              ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
+              ...(programDegeri ? { donem: programDegeri } : {}),
+            }}
+            secenekler={subeler.map((sube) => ({ deger: sube.id, etiket: sube.name }))}
+          />
+        ) : null}
         {donemler.length + kulupler.length > 0 ? (
           <SuzgecSecici
             etiket="Program"
@@ -184,6 +220,7 @@ export default async function OgrencilerSayfasi(
             digerler={{
               ...(sorgu ? { q: sorgu } : {}),
               ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
+              ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
             }}
             secenekler={[
               ...donemler.map((donem) => ({ deger: donem.id, etiket: donem.name })),
@@ -270,12 +307,17 @@ export default async function OgrencilerSayfasi(
               // Kartta başka bağlantı veya düğme yok, kaplama kimseyi
               // engellemiyor.
               <Kart key={ogrenci.id} className="relative p-4">
-                <Link
-                  href={`/koordinator/ogrenciler/${ogrenci.id}`}
-                  className="font-medium text-zinc-900 after:absolute after:inset-0 hover:text-marka-700 hover:underline"
-                >
-                  {ogrenci.firstName} {ogrenci.lastName}
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/koordinator/ogrenciler/${ogrenci.id}`}
+                    className="font-medium text-zinc-900 after:absolute after:inset-0 hover:text-marka-700 hover:underline"
+                  >
+                    {ogrenci.firstName} {ogrenci.lastName}
+                  </Link>
+                  {subeler.length > 1 ? (
+                    <Rozet tur="pasif">{ogrenci.branch.name}</Rozet>
+                  ) : null}
+                </div>
 
                 {ayirtEdici.length > 0 ? (
                   <p className="mt-1 text-sm text-zinc-600">

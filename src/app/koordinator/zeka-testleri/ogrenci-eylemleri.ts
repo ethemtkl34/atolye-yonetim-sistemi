@@ -66,7 +66,7 @@ export async function zekaTestiOgrencisiEkle(
   // (§17.1) ve eşleştirmesi sorgu gerektiriyor — iç içe `create` ile
   // yazılamıyor. Yarıda kalması öğrenciyi telefonsuz bırakırdı.
   const ogrenci = await db.$transaction(async (tx) => {
-    // şube-muaf: öğrenci oturumdaki şubeye açılıyor (`branchId: subeId`).
+    // Kayıt şubesi (etiket): öğrenciyi açan şube.
     const kayit = await tx.student.create({
       data: {
         ...ogrenciAlanlari(veri),

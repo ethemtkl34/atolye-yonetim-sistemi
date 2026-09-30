@@ -49,8 +49,9 @@ import type { EylemDurumu } from "@/lib/formlar";
  * gizlidir; bu eylemler ve okuma sorgusu yalnızca koordinatör ekranlarından
  * çağrılır (`yonetimZorunlu`).
  *
- * ŞUBE: Öğrenci ve görüşme id'leri istemciden geliyor; her işlem
- * `branchId`/`student.branchId` ile aktif şubeye kilitli doğrulanır.
+ * ŞUBE: öğrenciler ortak havuzda (Eylül 2026) — iki şubenin personeli her
+ * öğrencinin görüşmesini ekler ve yönetir. İstemciden gelen öğrenci ve
+ * görüşme id'lerinin varlığı yine doğrulanır.
  *
  * ÖNİZLEME ↔ KAYIT: Brief metni deterministik üretiliyor (`veli-gorusmesi.ts`);
  * kayıt eylemi önizlenen metni istemciden geri almak yerine aynı girdiden
@@ -245,10 +246,10 @@ function formuCozumle(
   };
 }
 
-/** Öğrenciyi aktif şubeye kilitli doğrular; yaş ve brief için adını da alır. */
-async function ogrenciyiBul(ogrenciId: string, subeId: string) {
+/** Öğrencinin varlığını doğrular; yaş ve brief için adını da alır. */
+async function ogrenciyiBul(ogrenciId: string) {
   return db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: ogrenciId },
     select: { id: true, firstName: true, birthDate: true },
   });
 }
@@ -327,13 +328,12 @@ export async function veliGorusmesiGonder(
   formVerisi: FormData,
 ): Promise<VeliGorusmesiEylemDurumu> {
   const kullanici = await yonetimZorunlu("danismanlik", "TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const sonuc = formuCozumle(formVerisi);
   if ("durum" in sonuc) return sonuc.durum;
 
   const ogrenciId = sonuc.veri.ogrenciId;
-  const ogrenci = await ogrenciyiBul(ogrenciId, subeId);
+  const ogrenci = await ogrenciyiBul(ogrenciId);
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
 
   // Yaş DOĞUM TARİHİNDEN, görüşme gününe göre hesaplanır — formdan gelen değer
@@ -368,7 +368,6 @@ export async function veliGorusmesiGonder(
 
   const raporGirdisi = await veliBriefGirdisiHazirla(
     ogrenciId,
-    subeId,
     sonuc.veri.tarih,
   );
 
@@ -442,8 +441,7 @@ export async function veliGorusmesiNotuKaydet(
   _oncekiDurum: VeliGorusmesiEylemDurumu,
   formVerisi: FormData,
 ): Promise<VeliGorusmesiEylemDurumu> {
-  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("danismanlik", "TAM");
 
   const ham = formVerisi.get("not");
   const not = typeof ham === "string" ? ham.trim() : "";
@@ -458,7 +456,7 @@ export async function veliGorusmesiNotuKaydet(
   }
 
   const gorusme = await db.parentMeeting.findFirst({
-    where: { id: gorusmeId, student: { branchId: subeId } },
+    where: { id: gorusmeId },
     select: { id: true, studentId: true },
   });
   if (!gorusme) return { hata: "Görüşme bulunamadı." };
@@ -479,11 +477,10 @@ export async function veliGorusmesiNotuKaydet(
 export async function veliGorusmesiSil(
   gorusmeId: string,
 ): Promise<VeliGorusmesiEylemDurumu> {
-  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("danismanlik", "TAM");
 
   const gorusme = await db.parentMeeting.findFirst({
-    where: { id: gorusmeId, student: { branchId: subeId } },
+    where: { id: gorusmeId },
     select: { id: true, studentId: true, date: true },
   });
   if (!gorusme) return { hata: "Görüşme bulunamadı." };
@@ -521,7 +518,7 @@ export async function gorusmeYardimiGetir(
   const kullanici = await yonetimZorunlu("danismanlik", "TAM");
 
   const tarih = tarihCozumle(tarihMetni) ?? bugun();
-  return gorusmeYardimiHazirla(ogrenciId, kullanici.aktifSubeId, tarih, {
+  return gorusmeYardimiHazirla(ogrenciId, tarih, {
     zekaTestiGorebilir: yetkiYeter(kullanici.roller, "zekaTestleri", "LISTE"),
   });
 }

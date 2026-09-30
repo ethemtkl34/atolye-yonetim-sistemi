@@ -128,7 +128,10 @@ function formuOku(formVerisi: FormData) {
 
 /**
  * Randevunun çocuğunu çözer: "yeni öğrenci ekle" doluysa öğrenciyi açar,
- * yoksa seçilen `ogrenciId`nin bu şubede olduğunu doğrular.
+ * yoksa seçilen `ogrenciId`nin var olduğunu doğrular. Öğrenciler ortak
+ * havuzda (Eylül 2026): randevu hangi şubede açılırsa açılsın çocuk iki
+ * şubeden de seçilebilir; YENİ açılan öğrencinin kayıt şubesi randevunun
+ * şubesidir.
  *
  * "Yeni öğrenci" var olan `ogrenciId`nin ÖNÜNE geçer: arayüz ikisini aynı
  * anda göstermiyor, ama iki değer de gelirse yeni açma niyeti (kullanıcının
@@ -159,12 +162,11 @@ async function ogrenciyiCoz(
     return { ogrenciId: yeniOgrenci.id, yeniAcildi: true };
   }
   if (args.ogrenciId) {
-    // şube-muaf: öğrencinin bu şubeye ait olduğu doğrulanıyor.
     const ogrenci = await tx.student.findFirst({
-      where: { id: args.ogrenciId, branchId: args.subeId },
+      where: { id: args.ogrenciId },
       select: { id: true },
     });
-    if (!ogrenci) return { hata: "Seçilen öğrenci bu şubede bulunamadı." };
+    if (!ogrenci) return { hata: "Seçilen öğrenci bulunamadı." };
   }
   return { ogrenciId: args.ogrenciId, yeniAcildi: false };
 }

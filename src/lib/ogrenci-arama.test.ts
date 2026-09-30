@@ -4,30 +4,38 @@ import { aktifOgrenciKosulu } from "./durumlar";
 
 const SUBE = "sube-umraniye";
 
-describe("ogrenciAramaKosulu — şube süzgeci", () => {
-  it("boş sorguda bile şubeyi süzer", () => {
-    // Öğrenci arama sistemdeki tek öğrenci giriş kapısı: burada şube
-    // düşerse liste, seçiciler ve dashboard birlikte sızdırır.
-    expect(ogrenciAramaKosulu("", { subeId: SUBE })).toEqual({
-      branchId: SUBE,
-    });
+describe("ogrenciAramaKosulu — ortak havuz ve kayıt şubesi", () => {
+  it("boş sorgu iki şubenin bütün öğrencilerini getirir", () => {
+    // Eylül 2026: öğrenciler ortak havuzda; çalışılan şube öğrenciyi SÜZMEZ.
+    expect(ogrenciAramaKosulu("", { subeId: SUBE })).toEqual({});
   });
 
-  it("isim aramasında şube kaybolmaz", () => {
+  it("isim aramasına şube karışmaz", () => {
     const kosul = ogrenciAramaKosulu("Şule", { subeId: SUBE });
-    expect(kosul.branchId).toBe(SUBE);
+    expect(kosul.branchId).toBeUndefined();
   });
 
-  it("aktif kapsamda şube süzgeci grup koşuluna da iner", () => {
+  it("kayıt şubesi süzgeci öğrencinin etiketine iner", () => {
+    const kosul = ogrenciAramaKosulu("Şule", {
+      subeId: SUBE,
+      kayitSubesiId: "sube-gunesli",
+    });
+    expect(kosul.branchId).toBe("sube-gunesli");
+    expect(kosul.OR).toBeDefined();
+  });
+
+  it("aktif kapsam çalışılan şubenin GRUPLARINA bakar", () => {
     const kosul = ogrenciAramaKosulu("", { subeId: SUBE, kapsam: "aktif" });
     expect(kosul).toEqual(aktifOgrenciKosulu(SUBE));
   });
 
-  it("aktif kapsamda arama koşulu şube koşulunu ezmez", () => {
-    // İkisi tek nesnede birleşiyor; yayma sırası bozulursa `branchId`
-    // silinebilirdi.
-    const kosul = ogrenciAramaKosulu("Şule", { subeId: SUBE, kapsam: "aktif" });
-    expect(kosul.branchId).toBe(SUBE);
+  it("aktif kapsamda arama ve kayıt şubesi birbirini ezmez", () => {
+    const kosul = ogrenciAramaKosulu("Şule", {
+      subeId: SUBE,
+      kapsam: "aktif",
+      kayitSubesiId: "sube-gunesli",
+    });
+    expect(kosul.branchId).toBe("sube-gunesli");
     expect(kosul.enrollments).toBeDefined();
     expect(kosul.OR).toBeDefined();
   });
@@ -48,9 +56,7 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
   });
 
   it("yalnızca boşluktan oluşan sorgu arama sayılmaz", () => {
-    expect(ogrenciAramaKosulu("   ", { subeId: SUBE })).toEqual({
-      branchId: SUBE,
-    });
+    expect(ogrenciAramaKosulu("   ", { subeId: SUBE })).toEqual({});
   });
 
   it("telefon yazıldığında veli numarası da aranır", () => {
@@ -85,7 +91,7 @@ describe("ogrenciAramaKosulu — sorgunun çözümlenmesi", () => {
 describe("ogrenciAramaKosulu — program süzgeci", () => {
   it("dönem verilince o dönemde AKTİF kaydı olanlar süzülür", () => {
     const kosul = ogrenciAramaKosulu("", { subeId: SUBE, donemId: "donem-1" });
-    expect(kosul.branchId).toBe(SUBE);
+    expect(kosul.branchId).toBeUndefined();
     expect(kosul.AND).toEqual([
       {
         enrollments: {

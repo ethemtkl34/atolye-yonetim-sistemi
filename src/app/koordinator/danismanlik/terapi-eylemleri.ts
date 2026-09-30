@@ -14,7 +14,7 @@ import type { EylemDurumu } from "@/lib/formlar";
  *
  * Bütün yazma işlemleri Danışmanlık sayfasından yapılır; öğrenci profili bu
  * kayıtları yalnızca gösterir. Öğrenci bu yüzden bind ile değil formdaki
- * seçiciden gelir ve şube kapısından geçirilir.
+ * seçiciden gelir; öğrenciler iki şubede ortak havuzda (Eylül 2026).
  *
  * GİZLİLİK: Görüşme notları sağlık bilgisi gibi hassastır ve stajyerden
  * tamamen gizlidir; bu eylemler ve okuma sorguları yalnızca koordinatör
@@ -70,7 +70,6 @@ export async function terapiGorusmesiEkle(
   formVerisi: FormData,
 ): Promise<GorusmeEylemDurumu> {
   const kullanici = await yonetimZorunlu("danismanlik", "TAM");
-  const subeId = kullanici.aktifSubeId;
 
   const cozumlenen = gorusmeSemasi.safeParse({
     ogrenciId: formVerisi.get("ogrenciId"),
@@ -117,7 +116,7 @@ export async function terapiGorusmesiEkle(
   }
 
   const ogrenci = await db.student.findFirst({
-    where: { id: veri.ogrenciId, branchId: subeId },
+    where: { id: veri.ogrenciId },
     select: { id: true },
   });
   if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
@@ -146,11 +145,10 @@ export async function terapiGorusmesiEkle(
 export async function terapiGorusmesiSil(
   gorusmeId: string,
 ): Promise<GorusmeEylemDurumu> {
-  const kullanici = await yonetimZorunlu("danismanlik", "TAM");
-  const subeId = kullanici.aktifSubeId;
+  await yonetimZorunlu("danismanlik", "TAM");
 
   const gorusme = await db.counselingSession.findFirst({
-    where: { id: gorusmeId, student: { branchId: subeId } },
+    where: { id: gorusmeId },
     select: { id: true, studentId: true, date: true },
   });
   if (!gorusme) return { hata: "Görüşme bulunamadı." };

@@ -39,22 +39,29 @@ export async function mevcutOgrenciyeEsle(
   const { ogrenciId, hedef } = cozumlenen.data;
   const subeId = kullanici.aktifSubeId;
 
+  // Öğrenciler ortak havuzda (Eylül 2026): aday bu şubenin, öğrenci
+  // herhangi bir şubenin olabilir.
   const ogrenci = await db.student.findFirst({
-    where: { id: ogrenciId, branchId: subeId },
+    where: { id: ogrenciId },
     select: { id: true, firstName: true, lastName: true },
   });
-  if (!ogrenci) return { hata: "Öğrenci bu şubede bulunamadı." };
+  if (!ogrenci) return { hata: "Öğrenci bulunamadı." };
 
-  // Bir öğrenci en fazla bir adaydan dönüşür (`convertedStudentId` tekil).
-  // Kontrol burada da yapılıyor ki kullanıcı ham veritabanı hatası yerine
-  // anlaşılır bir cümle görsün.
+  // Bir öğrenci en fazla bir adaydan dönüşür (`convertedStudentId` tekil,
+  // şubeden bağımsız). Kontrol İKİ şubeye bakıyor ki diğer şubenin adayına
+  // bağlı öğrencide de kullanıcı ham veritabanı hatası yerine anlaşılır bir
+  // cümle görsün.
+  // şube-muaf: tekillik kuralı şubeler arası; yalnız varlık okunuyor.
   const bagliAday = await db.lead.findFirst({
-    where: { convertedStudentId: ogrenciId, branchId: subeId },
-    select: { id: true },
+    where: { convertedStudentId: ogrenciId },
+    select: { branch: { select: { id: true, name: true } } },
   });
   if (bagliAday) {
     return {
-      hata: "Bu öğrenci zaten başka bir adaya bağlı.",
+      hata:
+        bagliAday.branch.id === subeId
+          ? "Bu öğrenci zaten başka bir adaya bağlı."
+          : `Bu öğrenci zaten ${bagliAday.branch.name} şubesindeki bir adaya bağlı.`,
     };
   }
 

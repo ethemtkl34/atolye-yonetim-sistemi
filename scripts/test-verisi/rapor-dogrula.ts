@@ -57,7 +57,6 @@ async function main() {
     const govde = await raporGovdesiV2Uret(
       kayit.studentId,
       [kayit.id],
-      HEDEF_SUBE,
       new Date(),
     );
 

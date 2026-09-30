@@ -25,10 +25,8 @@ export async function GET(
   const { id } = await params;
 
   const rapor = await db.legacyReport.findFirst({
-    where: {
-      id,
-      ...(yetki.subeId ? { student: { branchId: yetki.subeId } } : {}),
-    },
+    // Ortak havuz (Eylül 2026): modül yetkisi yeter, şube süzgeci yok.
+    where: { id },
     select: {
       termLabel: true,
       reportDate: true,

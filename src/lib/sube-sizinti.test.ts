@@ -76,14 +76,16 @@ describe("yaşanmış sızıntılar yakalanıyor", () => {
     expect(bulgular).toHaveLength(1);
   });
 
-  it("kimliği tahmin edilebilen kayıt: şube kontrolsüz PDF rotası", () => {
-    // Rapor PDF'i yalnızca oturumdaki role bakıyordu; başka şubenin rapor
-    // id'si adrese yazılınca o şubenin öğrenci raporunu servis ediyordu.
+  it("kimliği tahmin edilebilen kayıt: şube kontrolsüz rota", () => {
+    // Rapor PDF rotası yalnızca oturumdaki role bakıyordu; başka şubenin
+    // rapor id'si adrese yazılınca o şubenin raporunu servis ediyordu. Rapor
+    // Eylül 2026'dan beri ortak havuzda (öğrenciden türüyor); aynı kalıp
+    // şubeli kalan her model için geçerli — burada grup kaydı.
     const bulgular = metniTara(`
       export async function GET(istek: Request, { params }) {
         const oturum = await auth();
-        const pdf = await db.reportPdf.findFirst({ where: { id: params.id } });
-        return yanit(pdf);
+        const kayit = await db.enrollment.findFirst({ where: { id: params.id } });
+        return yanit(kayit);
       }
     `);
 
@@ -159,14 +161,14 @@ describe("doğru yazılmış sorgular bulgu üretmiyor", () => {
 describe("muafiyet", () => {
   const SIZAN = `
     export async function hepsi() {
-      return db.student.findMany({ orderBy: { lastName: "asc" } });
+      return db.group.findMany({ orderBy: { name: "asc" } });
     }
   `;
 
   it("gerekçeli muafiyet bulguyu susturur", () => {
     const muaf = SIZAN.replace(
-      "return db.student",
-      "// şube-muaf: sayfa yalnızca yönetici raporu üretiyor\n      return db.student",
+      "return db.group",
+      "// şube-muaf: sayfa yalnızca yönetici raporu üretiyor\n      return db.group",
     );
 
     expect(metniTara(SIZAN)).toHaveLength(1);
@@ -177,8 +179,8 @@ describe("muafiyet", () => {
     // Boş bir `// şube-muaf:` kaçış yolu olurdu: kural, kararın yazıya
     // dökülmesini istiyor.
     const gerekcesiz = SIZAN.replace(
-      "return db.student",
-      "// şube-muaf:\n      return db.student",
+      "return db.group",
+      "// şube-muaf:\n      return db.group",
     );
 
     expect(metniTara(gerekcesiz)).toHaveLength(1);

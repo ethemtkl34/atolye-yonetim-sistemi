@@ -46,8 +46,9 @@ export default async function YeniKayitSayfasi(
   }
 
   const [ogrenci, programlar, stajyerler] = await Promise.all([
+    // Öğrenci ortak havuzda (Eylül 2026); grup ve stajyer bu şubenin.
     db.student.findFirst({
-      where: { id: studentId, branchId: subeId },
+      where: { id: studentId },
       select: { id: true, firstName: true, lastName: true },
     }),
     kayitAlanProgramlar(subeId),

@@ -21,8 +21,8 @@ import { normalizeArama } from "@/lib/turkce";
  *
  * YETKİ: `belgeYetkisi` — raporu görebilen herkes PDF'ini de indirebilir;
  * sabit rol listesi yerine yetki matrisi (danışma görevlisi ve stajyerde
- * raporlar YOK → 403). Önceden yalnızca belirteçteki role bakılıyordu; id
- * tahmin edilebilirse başka şubenin raporu indirilebilirdi.
+ * raporlar YOK → 403). Öğrenciler iki şubede ortak havuzda (Eylül 2026);
+ * şube süzgeci yok.
  */
 export async function GET(
   _istek: Request,
@@ -34,12 +34,7 @@ export async function GET(
   const { id } = await params;
 
   const pdf = await db.reportPdf.findFirst({
-    where: {
-      id,
-      ...(yetki.subeId
-        ? { report: { student: { branchId: yetki.subeId } } }
-        : {}),
-    },
+    where: { id },
     select: {
       createdAt: true,
       snapshotJson: true,

@@ -23,8 +23,8 @@ import type { RaporGovdesiV2 } from "@/lib/rapor-govdesi";
  * "alınmış belge değişmez" güvencesi buraya uygulanmaz ve uygulanmamalı.
  * Bu adres bir belge vermez, bir görüntü verir; `no-store` da bunun için.
  *
- * YETKİ: `belgeYetkisi` — raporu görebilen herkes önizleyebilir; şube
- * süzgeci `student.branchId` üzerinden.
+ * YETKİ: `belgeYetkisi` — raporu görebilen herkes önizleyebilir; öğrenciler
+ * iki şubede ortak havuzda (Eylül 2026), şube süzgeci yok.
  */
 export async function GET(
   _istek: Request,
@@ -36,10 +36,7 @@ export async function GET(
   const { id } = await params;
 
   const rapor = await db.report.findFirst({
-    where: {
-      id,
-      ...(yetki.subeId ? { student: { branchId: yetki.subeId } } : {}),
-    },
+    where: { id },
     select: {
       generatedAt: true,
       bodyJson: true,

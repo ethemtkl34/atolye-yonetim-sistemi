@@ -28,6 +28,8 @@ export type ProfilKaydi = {
   _count: { scores: number };
   group: {
     name: string;
+    branchId: string;
+    branch: { name: string };
     days: Day[];
     timeSlot: "OGLEDEN_ONCE" | "OGLEDEN_SONRA";
     term: { name: string; status: TermStatus } | null;
@@ -82,11 +84,18 @@ export function ProfilKayitListesi({
   bosAciklama,
   cikarilabilir = false,
   gruplarinGunleri,
+  subeId,
 }: {
   kayitlar: ProfilKaydi[];
   bosAciklama: string;
   /** `kayitlar` modülünde TAM yetki — düğme yoksa sunucu eylemi de reddeder. */
   cikarilabilir?: boolean;
+  /**
+   * Çalışılan şube. Öğrenciler ortak havuzda; kayıtlar iki şubeden gelir.
+   * Diğer şubenin kaydı şube rozetiyle çizilir ve çıkarma düğmesi almaz —
+   * grup o şubenin.
+   */
+  subeId: string;
   /** Grup id → grubun eğitim günleri; "son katıldığı gün" listesi. */
   gruplarinGunleri?: Map<string, CikisGunu[]>;
 }) {
@@ -119,6 +128,9 @@ export function ProfilKayitListesi({
                       "Program bulunamadı"}
                   </span>
                   <Rozet>{kayit.group.term ? "Dönem" : "Kulüp"}</Rozet>
+                  {kayit.group.branchId !== subeId ? (
+                    <Rozet tur="pasif">{kayit.group.branch.name}</Rozet>
+                  ) : null}
                   <Rozet tur={kayit.status === "AKTIF" ? "olumlu" : "pasif"}>
                     Kayıt: {kayit.status === "AKTIF" ? "Aktif" : "Ayrıldı"}
                   </Rozet>
@@ -142,7 +154,7 @@ export function ProfilKayitListesi({
                 </p>
               </div>
 
-              {cikarilabilir ? (
+              {cikarilabilir && kayit.group.branchId === subeId ? (
                 <KayitCikarButonu
                   kayitId={kayit.id}
                   aktif={kayit.status === "AKTIF"}

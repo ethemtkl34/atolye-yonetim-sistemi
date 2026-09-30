@@ -53,13 +53,12 @@ import { RandevuGecmisiListesi } from "@/components/randevu-gecmisi-listesi";
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
 ): Promise<Metadata> {
-  // Sekme başlığı da şubeye kapalı: başka şubenin öğrenci id'si yapıştırılınca
-  // sayfa 404 verirken başlıkta çocuğun adının görünmesi sızıntıdır.
-  // `yonetimZorunlu` istek başına önbellekli, ek sorgu maliyeti yok.
-  const kullanici = await yonetimZorunlu("ogrenciler");
+  // Yetki kapısı başlıkta da: `yonetimZorunlu` istek başına önbellekli, ek
+  // sorgu maliyeti yok. Öğrenciler ortak havuzda — şube süzgeci yok.
+  await yonetimZorunlu("ogrenciler");
   const { id } = await props.params;
   const ogrenci = await db.student.findFirst({
-    where: { id, branchId: kullanici.aktifSubeId },
+    where: { id },
     select: { firstName: true, lastName: true },
   });
   return {
@@ -76,6 +75,12 @@ export async function generateMetadata(
  * Önceki düzende sekiz bölüm alt alta ~5 ekran boyu tutuyordu ve koordinatör
  * her seferinde aynı uzun sayfayı kaydırıyordu; oysa günlük iş ilk kattaki
  * dört bölümde geçiyor.
+ *
+ * ORTAK HAVUZ (Eylül 2026): öğrenci ve bütün kişisel verisi (görüşmeler,
+ * testler, raporlar) iki şubeye açık; kayıtlar iki şubeden birlikte ve şube
+ * etiketiyle görünür. Kayda dokunan düğmeler (programdan çıkarma, stajyer
+ * atama) yalnız ÇALIŞILAN şubenin gruplarındaki kayıtlarda çizilir — grup,
+ * kapasitesi ve stajyer kadrosuyla şubenin kendi işi.
  */
 /**
  * Bu sayfadaki sunucu eylemlerinin (rapor üretimi, gözlem metni) süre tavanı.
@@ -131,8 +136,9 @@ export default async function OgrenciProfilSayfasi(
     typeof parametreler.rapor === "string" ? parametreler.rapor : undefined;
 
   const ogrenci = await db.student.findFirst({
-    where: { id, branchId: subeId },
+    where: { id },
     include: {
+      branch: { select: { name: true } },
       // Ad ve telefon `Veli` kaydında (§17.1); `Guardian` yalnızca bağ.
       guardians: { include: { veli: true } },
       healthInfo: true,
@@ -145,6 +151,7 @@ export default async function OgrenciProfilSayfasi(
           _count: { select: { scores: { where: { attended: true } } } },
           group: {
             include: {
+              branch: { select: { name: true } },
               _count: { select: { sessions: true } },
               term: {
                 select: {
@@ -169,6 +176,29 @@ export default async function OgrenciProfilSayfasi(
   });
 
   if (!ogrenci) notFound();
+
+  // Veli görüşmesi formunun Bölüm 3'ü atölye atölye gözlem soruyor. Atölye
+  // listesi SABİT DEĞİL, öğrencinin gerçekten gördüğü atölyeler: oturumlardan
+  // çıkarılıyor çünkü hem dönemi hem kulübü tek okumada kapsayan yer orası.
+  // Form açılmayacaksa sorgu da atılmıyor.
+  // şube-muaf: öğrencinin KENDİ kayıtlarının grupları — ortak havuzda iki
+  // şubede gördüğü atölyelerin hepsi forma gelir.
+  const veliFormuAtolyeSorgusu =
+    gorusmeYazabilir && ogrenci.enrollments.length > 0
+      ? db.session.findMany({
+          where: {
+            groupId: {
+              in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
+            },
+          },
+          distinct: ["workshopTypeId"],
+          orderBy: { workshopType: { name: "asc" } },
+          select: {
+            workshopTypeId: true,
+            workshopType: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]);
 
   const [
     raporlar,
@@ -197,7 +227,7 @@ export default async function OgrenciProfilSayfasi(
     // rollerden gizlidir; yetki yoksa sorgu hiç atılmaz.
     gorusmeGorebilir
       ? db.counselingSession.findMany({
-          where: { studentId: id, student: { branchId: subeId } },
+          where: { studentId: id },
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
           include: { createdBy: { select: { name: true } } },
         })
@@ -205,13 +235,13 @@ export default async function OgrenciProfilSayfasi(
     // GİZLİLİK: danışan başvurusu da görüşme verisiyle aynı kurala tabi.
     gorusmeGorebilir
       ? db.therapyIntake.findFirst({
-          where: { studentId: id, student: { branchId: subeId } },
+          where: { studentId: id },
         })
       : null,
     // GİZLİLİK: veli görüşmeleri de aynı kurala tabidir.
     gorusmeGorebilir
       ? db.parentMeeting.findMany({
-          where: { studentId: id, student: { branchId: subeId } },
+          where: { studentId: id },
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
           include: {
             createdBy: { select: { name: true } },
@@ -229,7 +259,7 @@ export default async function OgrenciProfilSayfasi(
     // seçilmiyor — belge yalnızca indirme rotasından okunur.
     zekaTestiYetkisi !== "YOK"
       ? db.intelligenceTest.findMany({
-          where: { studentId: id, student: { branchId: subeId } },
+          where: { studentId: id },
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
           select: {
             id: true,
@@ -264,32 +294,14 @@ export default async function OgrenciProfilSayfasi(
           select: { groupId: true, date: true, weekNumber: true },
         })
       : [],
-    // Veli görüşmesi formunun Bölüm 3'ü atölye atölye gözlem soruyor.
-    // Atölye listesi SABİT DEĞİL, öğrencinin gerçekten gördüğü atölyeler:
-    // oturumlardan çıkarılıyor çünkü hem dönemi hem kulübü tek okumada
-    // kapsayan yer orası. Form açılmayacaksa sorgu da atılmıyor.
-    gorusmeYazabilir && ogrenci.enrollments.length > 0
-      ? db.session.findMany({
-          where: {
-            groupId: {
-              in: [...new Set(ogrenci.enrollments.map((k) => k.groupId))],
-            },
-            group: { branchId: subeId },
-          },
-          distinct: ["workshopTypeId"],
-          orderBy: { workshopType: { name: "asc" } },
-          select: {
-            workshopTypeId: true,
-            workshopType: { select: { name: true } },
-          },
-        })
-      : [],
+    // Veli formunun atölyeleri — sorgu yukarıda (gerekçeli muafiyetle).
+    veliFormuAtolyeSorgusu,
     // Geçmişten aktarılan raporlar rapor yetkisine tabi (üretilenlerle aynı
     // kapı). `fileData` seçilmiyor — belge yalnızca indirme rotasından okunur,
     // 400 KB'lık bir PDF'i profil sorgusuna almak sayfayı boğardı.
     raporGorebilir
       ? db.legacyReport.findMany({
-          where: { studentId: id, student: { branchId: subeId } },
+          where: { studentId: id },
           orderBy: [{ reportDate: "desc" }, { createdAt: "desc" }],
           select: {
             id: true,
@@ -392,6 +404,10 @@ export default async function OgrenciProfilSayfasi(
    * gösterilmeyen bir stajyer zaten atanamaz.
    */
   const atamaKayitlari: AtamaKaydi[] = ogrenci.enrollments.map((kayit) => {
+    // Diğer şubenin kaydına atama o şubenin işi: seçenek listesi (bu şubenin
+    // stajyerleri) orada anlamsız, sunucu eylemi de reddeder.
+    const baskaSube =
+      kayit.group.branchId === subeId ? null : kayit.group.branch.name;
     const kadro = kayit.group.term?.interns ?? [];
     const kadroluMu = kadro.length > 0;
     const secenekler = kadroluMu
@@ -412,6 +428,7 @@ export default async function OgrenciProfilSayfasi(
         id: stajyer.id,
         ad: stajyer.name,
       })),
+      baskaSube,
       kadroUyarisi:
         kadroluMu && secenekler.length === 0
           ? `"${kayit.group.term?.name}" döneminin kadrosunda aktif stajyer yok. Stajyerin sayfasından bu döneme ekleyin.`
@@ -514,6 +531,9 @@ export default async function OgrenciProfilSayfasi(
             gereken bilgi. Veli telefonları tıklanabilir, koordinatör en çok
             aileyi arıyor. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
+            Kayıt şubesi: {ogrenci.branch.name}
+          </span>
           {ogrenci.birthDate ? (
             <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
               {yasBicimle(ogrenci.birthDate, bugun())}
@@ -620,6 +640,7 @@ export default async function OgrenciProfilSayfasi(
               bosAciklama="Öğrencinin kayıt alan veya devam eden bir programda aktif kaydı yok."
               cikarilabilir={kayitCikarabilir}
               gruplarinGunleri={gruplarinGunleri}
+              subeId={subeId}
             />
           </div>
         </ProfilKutusu>
@@ -845,6 +866,7 @@ export default async function OgrenciProfilSayfasi(
             bosAciklama="Tamamlanmış veya ayrılınmış kayıt yok."
             cikarilabilir={kayitCikarabilir}
             gruplarinGunleri={gruplarinGunleri}
+            subeId={subeId}
           />
         </ProfilKutusu>
 

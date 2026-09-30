@@ -93,9 +93,17 @@ export async function dashboardVerisi({
       : [],
     raporGorebilir ? raporOzetleri({ subeId }) : [],
     // "Toplam rapor" listeden değil count'tan: raporOzetleri en yeni 200
-    // satırla sınırlı, kart ise gerçek toplamı söylemeli.
+    // satırla sınırlı, kart ise gerçek toplamı söylemeli. Şubenin raporu =
+    // kapsadığı kayıtlardan biri bu şubenin grubunda (`raporOzetleri` ile
+    // aynı tanım; öğrenciler ortak havuzda).
     raporGorebilir
-      ? db.report.count({ where: { student: { branchId: subeId } } })
+      ? db.report.count({
+          where: {
+            enrollmentLinks: {
+              some: { enrollment: { group: { branchId: subeId } } },
+            },
+          },
+        })
       : 0,
     // Yaklaşan oturumlar grup ve gün bazında toplanır: bir grubun bir günde
     // 5 (dönem) veya 3 (kulüp) atölyesi var, satır satır çekmeye gerek yok.
