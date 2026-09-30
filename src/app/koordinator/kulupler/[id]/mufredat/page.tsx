@@ -10,9 +10,10 @@ import { MufredatEditoru } from "@/app/koordinator/mufredat/mufredat-editoru";
 export async function generateMetadata(
   props: PageProps<"/koordinator/kulupler/[id]/mufredat">,
 ): Promise<Metadata> {
+  const kullanici = await yonetimZorunlu("mufredat");
   const { id } = await props.params;
-  const kulup = await db.club.findUnique({
-    where: { id },
+  const kulup = await db.club.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { name: true },
   });
   return { title: kulup ? `Müfredat — ${kulup.name}` : "Müfredat" };
@@ -28,9 +29,9 @@ export default async function KulupMufredatSayfasi(
   const kullanici = await yonetimZorunlu("mufredat");
   const { id } = await props.params;
 
-  // Kulüp ve müfredatı ortak (şubeden bağımsız); şube süzgeci bilerek yok.
-  const kulup = await db.club.findUnique({
-    where: { id },
+  // Kulüp ve müfredatı şubeye ait (30 Eylül 2026).
+  const kulup = await db.club.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: {
       id: true,
       name: true,

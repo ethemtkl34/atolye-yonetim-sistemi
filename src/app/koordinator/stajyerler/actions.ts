@@ -171,9 +171,13 @@ export async function stajyerKadroDurumuDegistir(
   const kullanici = await yonetimZorunlu("stajyerler", "TAM");
   const subeId = kullanici.aktifSubeId;
 
-  // Dönem ortak olduğu için süzülmez; stajyer ve kayıtlar şubeye kapalı.
+  // Dönem, stajyer ve kayıtlar şubeye kapalı (dönem 30 Eylül 2026'dan beri
+  // şubeye ait).
   const [donem, stajyer, mevcutKadro] = await Promise.all([
-    db.term.findUnique({ where: { id: donemId }, select: { name: true } }),
+    db.term.findFirst({
+      where: { id: donemId, branchId: subeId },
+      select: { name: true },
+    }),
     db.user.findFirst({
       where: { id: stajyerId, branchId: subeId },
       select: { roles: true, active: true, name: true },

@@ -149,8 +149,8 @@ async function atolyeleriDogrula(
  * stajyer hesabı olduğu doğrulanır; pasif hesap kadroya alınırsa kayıt
  * ekranında hiç listelenmeyen bir "hayalet" stajyer oluşurdu.
  *
- * Şube de burada doğrulanır: dönem iki şubede ortak olduğu için form başka
- * şubenin stajyer id'siyle gönderilebilir.
+ * Şube de burada doğrulanır: dönem şubeye ait ve form elle düzenlenip
+ * başka şubenin stajyer id'siyle gönderilebilir.
  */
 async function stajyerleriDogrula(
   stajyerIdleri: string[],
@@ -261,6 +261,8 @@ export async function donemOlustur(
     // buraya gelmeden hata döndü.
     const olusturulan = await tx.term.create({
       data: {
+        // Dönem şubeye aittir (30 Eylül 2026): açan şubenin dönemi.
+        branchId: kullanici.aktifSubeId,
         name: donem.data.name,
         description: donem.data.description,
         dayMode: donem.data.dayMode,
@@ -331,14 +333,14 @@ export async function donemDurumDegistir(
   donemId: string,
   yeniDurum: (typeof DURUMLAR)[number],
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("donemler", "TAM");
+  const kullanici = await yonetimZorunlu("donemler", "TAM");
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz dönem durumu." };
   }
 
-  const donem = await db.term.findUnique({
-    where: { id: donemId },
+  const donem = await db.term.findFirst({
+    where: { id: donemId, branchId: kullanici.aktifSubeId },
     select: { status: true },
   });
   if (!donem) return { hata: "Dönem bulunamadı." };
@@ -397,8 +399,8 @@ export async function grupEkle(
     };
   }
 
-  const donem = await db.term.findUnique({
-    where: { id: donemId },
+  const donem = await db.term.findFirst({
+    where: { id: donemId, branchId: kullanici.aktifSubeId },
     include: {
       weeks: { orderBy: { weekNumber: "asc" } },
       workshops: { orderBy: { sortOrder: "asc" } },
@@ -508,11 +510,11 @@ export async function donemStajyerleriniGuncelle(
     return { hata: "Aynı stajyer birden fazla kez seçilmiş." };
   }
 
-  // Kadro iki şubenin stajyerlerini birlikte tutuyor (dönem ortak). Bu ekran
-  // yalnızca KENDİ şubesinin kadrosunu yönetir; diğer şubenin satırları ne
-  // okunur ne de silinir.
-  const donem = await db.term.findUnique({
-    where: { id: donemId },
+  // Dönem şubeye ait (30 Eylül 2026), kadro da yalnız o şubenin stajyerleri.
+  // Kadro satırlarındaki `user: { branchId }` süzgeçleri yine duruyor: dönem
+  // ortakken diğer şubenin kadrosunu silmeyi önleyen savunma, zararı yok.
+  const donem = await db.term.findFirst({
+    where: { id: donemId, branchId: subeId },
     select: {
       interns: {
         where: { user: { branchId: subeId } },

@@ -72,9 +72,10 @@ export const KULUP_DURUM_GECISLERI: Record<ClubStatus, ClubStatus[]> = {
  * yere ayrı ayrı yazmak, sonradan biri değişince sessizce ayrışır. Bu yüzden
  * kart da liste de aşağıdaki koşulları kullanır — artık AKTİF ŞUBE içinde.
  *
- * Dönem ve kulüp ORTAK olduğu için onların koşulları sabit kaldı; şubeye ait
- * olan grup, öğrenci ve kayıt koşulları ise şube kimliği alan fonksiyonlara
- * dönüştü. Sabit bırakılsalardı şube süzgeci çağrı yerlerinde tek tek elle
+ * Dönem ve kulüp koşulları yalnız DURUMA bakan sabitler; şube süzgeci
+ * (dönem ve kulüp 30 Eylül 2026'dan beri şubeye ait) çağrı yerinde
+ * `branchId` ile yanına yazılır. Grup ve kayıt koşulları ise şube kimliği
+ * alan fonksiyonlar. Sabit bırakılsalardı şube süzgeci çağrı yerlerinde tek tek elle
  * yazılırdı ve biri unutulduğunda sessizce sızıntı olurdu; fonksiyon olunca
  * şube vermeden çağrılamıyorlar.
  */

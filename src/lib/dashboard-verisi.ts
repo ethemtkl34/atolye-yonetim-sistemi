@@ -29,7 +29,7 @@ import type { Day, TimeSlot } from "@/generated/prisma/enums";
  * aynı koşuldan üretilir. Koşullar `lib/durumlar.ts` içinde tek yerde
  * tanımlı; kartta yazan sayı ile listenin uzunluğu birebir aynı kalır.
  * Sözleşme şubeli yapıda da geçerli: bütün sayılar AKTİF ŞUBE içindir
- * ("aktif dönem" ve "aktif kulüp" istisna — program tanımı iki şubede ortak).
+ * (dönem ve kulüp de 30 Eylül 2026'dan beri şubeye ait).
  *
  * Yetki bayrakları sorguyu da kapatır: yetkisi olmayan modülün verisi HİÇ
  * ÇEKİLMEZ (danışma görevlisi puanlama/rapor verisi çekmez).
@@ -65,8 +65,9 @@ export async function dashboardVerisi({
     acikAdaySayisi,
     bugunkuRandevular,
   ] = await Promise.all([
-    db.term.count({ where: AKTIF_DONEM_KOSULU }),
-    db.club.count({ where: AKTIF_KULUP_KOSULU }),
+    // Dönem ve kulüp şubeye ait (30 Eylül 2026).
+    db.term.count({ where: { branchId: subeId, ...AKTIF_DONEM_KOSULU } }),
+    db.club.count({ where: { branchId: subeId, ...AKTIF_KULUP_KOSULU } }),
     db.group.findMany({
       where: aktifGrupKosulu(subeId),
       select: {

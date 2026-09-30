@@ -95,7 +95,7 @@ export async function kayitOlustur(
         select: {
           name: true,
           status: true,
-          // Dönem ortak; kadro iki şubenin stajyerlerini birlikte tutuyor.
+          // Kadro süzgeci dönem ortakken zorunluydu; savunma olarak duruyor.
           interns: {
             where: { user: { branchId: subeId } },
             select: { userId: true },

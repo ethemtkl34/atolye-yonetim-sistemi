@@ -172,11 +172,12 @@ enum CancelReason {
 
 /// Kurumun fiziksel şubesi (Ümraniye, Güneşli).
 ///
-/// Şube sınırı yalnızca üç tabloda doğrudan durur: `User`, `Group`, `Student`.
-/// Kayıt, oturum, puanlama ve raporun şubesi ilişkiden türetilir — kayıt
-/// grubundan, rapor öğrencisinden. Dönem, kulüp, atölye çeşidi ve
-/// değerlendirme soruları ise ORTAKTIR: kurum aynı programı iki konumda
-/// uyguluyor, her şube o programın içinde kendi gruplarını açıyor.
+/// Şube sınırı operasyonel veride `User`, `Term`, `Club` ve `Group`
+/// tablolarında doğrudan durur (Eylül 2026: her şube kendi dönemini ve
+/// kulübünü açar, tarihleri aynı olsa bile). Kayıt, oturum ve puanlamanın
+/// şubesi grubundan türetilir. Öğrenciler ise iki şubede ORTAK havuzda;
+/// `Student.branchId` yalnız kayıt şubesi etiketi. Atölye çeşidi ve
+/// değerlendirme soruları ortak katalog.
 ///
 /// Silme yok, `active: false` var: bir şubenin kapanması geçmiş öğrenci ve
 /// puanlama verisini yok etmemeli. Bütün ilişkiler bu yüzden `Restrict`.
@@ -195,6 +196,8 @@ model Branch {
 
   users    User[]
   students Student[]
+  terms    Term[]
+  clubs    Club[]
   groups   Group[]
   leads    Lead[]
   veliler  Veli[]
@@ -329,6 +332,13 @@ model Term {
   description String?
   status      TermStatus @default(TASLAK)
 
+  /// Dönem şubeye aittir (30 Eylül 2026). Önceden iki şubede ortaktı ve
+  /// şube yalnız grupta duruyordu; kurum her şubenin kendi dönemini açmasını
+  /// istedi. İki şubede grubu olan eski dönemler migration'da bölündü
+  /// (`20260930120000_donem_kulup_subesi`). Dönemin grupları da aynı şubede.
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   /// Grupların hangi günlerde toplanabileceği. Dönem oluşturulurken seçilir;
   /// takvimdeki hafta gösterimi ve grup formundaki gün listesi buna göre
   /// daralır. Eski dönemlerin hepsi hafta sonu.
@@ -359,6 +369,7 @@ model Term {
   atolyeIcerikleri  AtolyeIcerigi[]
 
   @@index([status])
+  @@index([branchId, status])
 }
 
 /// Dönemin stajyer kadrosu. Her dönemin kendi stajyerleri vardır; bu dönemin
@@ -431,6 +442,10 @@ model Club {
   id   String @id @default(cuid())
   name String
 
+  /// Kulüp şubeye aittir (30 Eylül 2026) — `Term.branchId` ile aynı gerekçe.
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   /// Kulübün İLK toplanma günü. `weekDates`'in ilk elemanıyla aynı tutulur;
   /// listeler ve kartlar tek bir tarih gösterdiği için ayrıca duruyor
   /// (sıralama da bunun üzerinden yapılıyor).
@@ -465,6 +480,7 @@ model Club {
   atolyeIcerikleri  AtolyeIcerigi[]
 
   @@index([status])
+  @@index([branchId, status])
 }
 
 /// §13.6 — Bir kulüpte tam 3 atölye bulunur (uygulama katmanında doğrulanır).

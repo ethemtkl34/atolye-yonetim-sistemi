@@ -64,10 +64,13 @@ type ProgramBilgisi = {
 async function programBilgisi(
   hedef: MufredatHedefi,
   atolyeTipiId: string,
+  subeId: string,
 ): Promise<ProgramBilgisi | null> {
+  // Dönem ve kulüp şubeye ait (30 Eylül 2026): başka şubenin programı
+  // "bulunamadı" sayılır.
   if (hedef.tur === "donem") {
-    const donem = await db.term.findUnique({
-      where: { id: hedef.id },
+    const donem = await db.term.findFirst({
+      where: { id: hedef.id, branchId: subeId },
       select: {
         status: true,
         _count: { select: { weeks: true } },
@@ -85,8 +88,8 @@ async function programBilgisi(
     };
   }
 
-  const kulup = await db.club.findUnique({
-    where: { id: hedef.id },
+  const kulup = await db.club.findFirst({
+    where: { id: hedef.id, branchId: subeId },
     select: {
       status: true,
       weekDates: true,
@@ -130,7 +133,7 @@ export async function mufredatKaydet(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("mufredat", "TAM");
+  const kullanici = await yonetimZorunlu("mufredat", "TAM");
 
   const cozumlenen = mufredatSemasi.safeParse({
     baslik: formVerisi.get("baslik"),
@@ -144,7 +147,11 @@ export async function mufredatKaydet(
     };
   }
 
-  const program = await programBilgisi(hedef, atolyeTipiId);
+  const program = await programBilgisi(
+    hedef,
+    atolyeTipiId,
+    kullanici.aktifSubeId,
+  );
   if (!program) return { hata: "Program bulunamadı." };
   if (program.kilitSebebi) return { hata: program.kilitSebebi };
   if (!program.atolyeProgramda) {
@@ -192,10 +199,16 @@ export async function mufredatKaydet(
 
 /** Bir haftanın konusunu siler. */
 export async function mufredatSil(girdiId: string): Promise<EylemDurumu> {
-  await yonetimZorunlu("mufredat", "TAM");
+  const kullanici = await yonetimZorunlu("mufredat", "TAM");
 
-  const girdi = await db.curriculumEntry.findUnique({
-    where: { id: girdiId },
+  const girdi = await db.curriculumEntry.findFirst({
+    where: {
+      id: girdiId,
+      OR: [
+        { term: { branchId: kullanici.aktifSubeId } },
+        { club: { branchId: kullanici.aktifSubeId } },
+      ],
+    },
     select: {
       termId: true,
       clubId: true,
@@ -236,7 +249,7 @@ export async function ogretmenGuncelle(
   _oncekiDurum: EylemDurumu,
   formVerisi: FormData,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("mufredat", "TAM");
+  const kullanici = await yonetimZorunlu("mufredat", "TAM");
 
   const cozumlenen = ogretmenSemasi.safeParse({
     ogretmenAdi: formVerisi.get("ogretmenAdi"),
@@ -253,7 +266,11 @@ export async function ogretmenGuncelle(
   // iki kimliğin tutarsız bileşimi başka programın satırını değiştirmemeli.
   if (hedef.tur === "donem") {
     const satir = await db.termWorkshop.findFirst({
-      where: { id: programAtolyeId, termId: hedef.id },
+      where: {
+        id: programAtolyeId,
+        termId: hedef.id,
+        term: { branchId: kullanici.aktifSubeId },
+      },
       select: { term: { select: { status: true } } },
     });
     if (!satir) return { hata: "Atölye satırı bulunamadı." };
@@ -266,7 +283,11 @@ export async function ogretmenGuncelle(
     });
   } else {
     const satir = await db.clubWorkshop.findFirst({
-      where: { id: programAtolyeId, clubId: hedef.id },
+      where: {
+        id: programAtolyeId,
+        clubId: hedef.id,
+        club: { branchId: kullanici.aktifSubeId },
+      },
       select: { club: { select: { status: true } } },
     });
     if (!satir) return { hata: "Atölye satırı bulunamadı." };

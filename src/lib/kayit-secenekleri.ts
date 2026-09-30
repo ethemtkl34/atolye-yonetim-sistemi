@@ -64,11 +64,11 @@ export function grupSecenekleri(gruplar: HamGrup[]): GrupSecenegi[] {
 export async function kayitAlanProgramlar(
   subeId: string,
 ): Promise<ProgramSecenegi[]> {
-  // Dönem ve kulübün kendisi ortak — süzülmüyor. Süzülen, içlerindeki gruplar
-  // ve kadro: her şube kendi gruplarına kayıt alır, kendi stajyerlerini görür.
+  // Dönem ve kulüp şubeye ait (30 Eylül 2026): yalnız bu şubenin kayıt alan
+  // programları. Grup ve kadro süzgeçleri savunma olarak duruyor.
   const [donemler, kulupler] = await Promise.all([
     db.term.findMany({
-      where: { status: "KAYIT_ALIYOR" },
+      where: { branchId: subeId, status: "KAYIT_ALIYOR" },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -99,7 +99,7 @@ export async function kayitAlanProgramlar(
       },
     }),
     db.club.findMany({
-      where: { status: "KAYIT_ALIYOR" },
+      where: { branchId: subeId, status: "KAYIT_ALIYOR" },
       orderBy: { date: "asc" },
       select: {
         id: true,

@@ -557,6 +557,15 @@ Karar gerekçeleri:
   şube listesinde (pano) rapor, kapsadığı kayıtlardan biri o şubenin
   grubundaysa o şubenindir. Rapor kapsamı iki şubenin kayıtlarını birlikte
   alabilir.
+- **Dönem ve kulüp şubeye ait** (aynı gün, kurum kararı): her şube kendi
+  dönemini ve kulübünü açar, tarihleri aynı olsa bile. `Term.branchId` ve
+  `Club.branchId` eklendi; iki şubede grubu olan eski programlar
+  migration'da bölündü (`20260930120000_donem_kulup_subesi`): asıl satır
+  Ümraniye'de kaldı, Güneşli için haftaları, atölyeleri, müfredatı ve atölye
+  içerikleriyle birebir kopya açıldı; Güneşli'nin grupları, dönem
+  kadrosundaki Güneşli stajyerleri ve oturumların hafta bağları kopyaya
+  taşındı. Bölünen: 2026-2027 1. Dönem, 2026 Sonbahar, Test Dönemi 1-2,
+  Yaz Bilim Kulübü. Müfredat ve atölye içeriği artık şube başına düzenlenir.
 - **Veli henüz şubeli** (sonraki adım: ortak veli havuzu). Veli bağı
   öğrencinin kayıt şubesinde eşleşir/açılır.
 - Şube sızıntısı tarayıcısı gevşetildi, kapatılmadı: öğrenci ve ondan

@@ -56,18 +56,17 @@ export default async function OgrencilerSayfasi(
    * ("kulup:<id>"); dönem değeri çıplak kimlik olarak kaldı ki daha önce
    * paylaşılmış adresler çalışmaya devam etsin.
    *
-   * Liste yalnız BU ŞUBEDE grubu olan dönem ve kulüpleri gösteriyor: tanım
-   * iki şubede ortak ama gruplar şubeye ait — başka şubenin programını
-   * seçmek boş liste üretirdi. Geçersiz parametre yok sayılıyor.
+   * Liste yalnız BU ŞUBENİN dönem ve kulüplerini gösteriyor (program şubeye
+   * ait, 30 Eylül 2026). Geçersiz parametre yok sayılıyor.
    */
   const [donemler, kulupler, subeler] = await Promise.all([
     db.term.findMany({
-      where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
+      where: { branchId: kullanici.aktifSubeId },
       orderBy: [{ createdAt: "desc" }],
       select: { id: true, name: true },
     }),
     db.club.findMany({
-      where: { groups: { some: { branchId: kullanici.aktifSubeId } } },
+      where: { branchId: kullanici.aktifSubeId },
       orderBy: [{ createdAt: "desc" }],
       select: { id: true, name: true },
     }),

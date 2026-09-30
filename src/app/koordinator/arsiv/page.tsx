@@ -42,8 +42,9 @@ export default async function ArsivSayfasi(
 
   // Seçilmeyen türün sorgusu hiç koşmaz (danışmanlık sayfasındaki desen).
   const [donemler, kulupler] = await Promise.all([
+    // Dönem ve kulüp şubeye ait (30 Eylül 2026): arşiv bu şubenin programları.
     turSuzgeci === "kulup" ? [] : db.term.findMany({
-      where: ARSIV_DONEM_KOSULU,
+      where: { branchId: subeId, ...ARSIV_DONEM_KOSULU },
       orderBy: { createdAt: "desc" },
       include: {
         weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
@@ -70,7 +71,7 @@ export default async function ArsivSayfasi(
       },
     }),
     turSuzgeci === "donem" ? [] : db.club.findMany({
-      where: ARSIV_KULUP_KOSULU,
+      where: { branchId: subeId, ...ARSIV_KULUP_KOSULU },
       orderBy: { date: "desc" },
       include: {
         groups: {

@@ -34,9 +34,12 @@ export async function programAtolyesiniDegistir(
 ): Promise<EylemDurumu> {
   // Bu bir yapı değişikliği; müfredat yetkisi yetmez, programın modül
   // yetkisi gerekir.
-  await yonetimZorunlu(hedef.tur === "donem" ? "donemler" : "kulupler", "TAM");
+  const kullanici = await yonetimZorunlu(
+    hedef.tur === "donem" ? "donemler" : "kulupler",
+    "TAM",
+  );
 
-  const program = await programOku(hedef);
+  const program = await programOku(hedef, kullanici.aktifSubeId);
   if (!program) return { hata: "Program bulunamadı." };
   if (program.kilitSebebi) return { hata: program.kilitSebebi };
 
@@ -60,9 +63,8 @@ export async function programAtolyesiniDegistir(
   const sonuc = await db.$transaction(async (tx) => {
     for (const grupId of grupIdleri) await takvimKilidiAl(tx, grupId);
 
-    // şube-muaf: program iki şubede ortak; diğer şubenin puanlaması da
-    // atölyeyi değiştirilmekten korumalı, sayım bilerek bütün grupları
-    // kapsıyor.
+    // şube-muaf: `grupIdleri` şubesiyle doğrulanan programın (`programOku`)
+    // bütün grupları; program ve grupları aynı şubede.
     const puanlamaSayisi = await tx.score.count({
       where: {
         session: {
@@ -78,7 +80,7 @@ export async function programAtolyesiniDegistir(
     }
 
     // şube-muaf: atölye değişikliği programın BÜTÜN gruplarının oturumlarına
-    // uygulanır (iki şube aynı programı aynı atölyelerle işler).
+    // uygulanır; program `programOku` ile şubesiyle doğrulandı.
     const oturumlar =
       grupIdleri.length > 0
         ? await tx.session.updateMany({
@@ -90,6 +92,7 @@ export async function programAtolyesiniDegistir(
           })
         : { count: 0 };
 
+    // şube-muaf: satır, şubesiyle doğrulanan programın atölye listesinden.
     if (hedef.tur === "donem") {
       await tx.termWorkshop.update({
         where: { id: programAtolyeId },
@@ -108,9 +111,11 @@ export async function programAtolyesiniDegistir(
       hedef.tur === "donem"
         ? { termId: hedef.id }
         : { clubId: hedef.id };
+    // şube-muaf: program `programOku` ile şubesiyle doğrulandı.
     const mufredat = await tx.curriculumEntry.deleteMany({
       where: { ...hedefAnahtari, workshopTypeId: satir.workshopTypeId },
     });
+    // şube-muaf: program `programOku` ile şubesiyle doğrulandı.
     await tx.atolyeIcerigi.deleteMany({
       where: { ...hedefAnahtari, workshopTypeId: satir.workshopTypeId },
     });
@@ -142,12 +147,15 @@ type OkunanProgram = {
   kilitSebebi: string | null;
 };
 
-async function programOku(hedef: MufredatHedefi): Promise<OkunanProgram | null> {
+async function programOku(
+  hedef: MufredatHedefi,
+  subeId: string,
+): Promise<OkunanProgram | null> {
   if (hedef.tur === "donem") {
-    // şube-muaf: değişiklik programın bütün gruplarına uygulanacağı için
-    // grup listesi bilerek süzgeçsiz (kilit ve toplu güncelleme kapsamı).
-    const donem = await db.term.findUnique({
-      where: { id: hedef.id },
+    // Dönem şubeye ait (30 Eylül 2026); grupları da aynı şubede. Değişiklik
+    // programın bütün gruplarına uygulanır (kilit ve toplu güncelleme).
+    const donem = await db.term.findFirst({
+      where: { id: hedef.id, branchId: subeId },
       select: {
         status: true,
         workshops: {
@@ -176,10 +184,9 @@ async function programOku(hedef: MufredatHedefi): Promise<OkunanProgram | null> 
     };
   }
 
-  // şube-muaf: değişiklik programın bütün gruplarına uygulanacağı için grup
-  // listesi bilerek süzgeçsiz (kilit ve toplu güncelleme kapsamı).
-  const kulup = await db.club.findUnique({
-    where: { id: hedef.id },
+  // Kulüp şubeye ait; grupları da aynı şubede.
+  const kulup = await db.club.findFirst({
+    where: { id: hedef.id, branchId: subeId },
     select: {
       status: true,
       workshops: {

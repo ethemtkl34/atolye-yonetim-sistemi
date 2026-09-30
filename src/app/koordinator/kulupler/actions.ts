@@ -177,6 +177,8 @@ export async function kulupOlustur(
   const yeniKulup = await db.$transaction(async (tx) => {
     const olusturulan = await tx.club.create({
       data: {
+        // Kulüp şubeye aittir (30 Eylül 2026): açan şubenin kulübü.
+        branchId: kullanici.aktifSubeId,
         name: kulup.data.name,
         description: kulup.data.description,
         // `date` ilk toplanma günü; listeler ve sıralama onu okuyor.
@@ -238,14 +240,14 @@ export async function kulupDurumDegistir(
   kulupId: string,
   yeniDurum: ClubStatus,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("kulupler", "TAM");
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   if (!DURUMLAR.includes(yeniDurum)) {
     return { hata: "Geçersiz kulüp durumu." };
   }
 
-  const kulup = await db.club.findUnique({
-    where: { id: kulupId },
+  const kulup = await db.club.findFirst({
+    where: { id: kulupId, branchId: kullanici.aktifSubeId },
     select: { status: true },
   });
   if (!kulup) return { hata: "Kulüp bulunamadı." };
@@ -302,8 +304,8 @@ export async function kulupGrupEkle(
     };
   }
 
-  const kulup = await db.club.findUnique({
-    where: { id: kulupId },
+  const kulup = await db.club.findFirst({
+    where: { id: kulupId, branchId: kullanici.aktifSubeId },
     include: { workshops: { orderBy: { sortOrder: "asc" } } },
   });
 

@@ -186,8 +186,10 @@ export async function kayitPuanlamasi(
     },
   });
 
-  // Müfredat şubeden bağımsız (program gibi ortak) ve grubun programına
-  // çapalı; harita "hafta × atölye → konu" eşlemesini bir kez kurar.
+  // Müfredat grubun programına çapalı (program ve grubu aynı şubede); harita
+  // "hafta × atölye → konu" eşlemesini bir kez kurar.
+  // şube-muaf: program kimliği, yukarıda şube süzgeciyle okunan kaydın
+  // grubundan geliyor.
   const mufredatGirdileri = await db.curriculumEntry.findMany({
     where: kayit.group.term
       ? { termId: kayit.group.term.id }

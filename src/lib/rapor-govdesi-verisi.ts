@@ -361,6 +361,8 @@ export async function raporGovdesiV2Uret(
     .map((k) => k.group.club?.id)
     .filter((id): id is string => Boolean(id));
 
+  // şube-muaf: dönem/kulüp kimlikleri öğrencinin kimliğiyle okunan KENDİ
+  // kayıtlarının programları (ortak havuzda iki şubeden biri olabilir).
   const icerikKayitlari = await db.atolyeIcerigi.findMany({
     where: {
       OR: [

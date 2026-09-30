@@ -37,16 +37,16 @@ export default async function DonemlerSayfasi(
 
   const [donemler, arsivSayisi] = await Promise.all([
     db.term.findMany({
+      // Dönem şubeye ait (30 Eylül 2026): liste yalnız bu şubenin dönemleri.
       where:
         kapsam === "aktif"
-          ? AKTIF_DONEM_KOSULU
-          : { status: { not: "ARSIVLENDI" } },
+          ? { branchId: subeId, ...AKTIF_DONEM_KOSULU }
+          : { branchId: subeId, status: { not: "ARSIVLENDI" } },
       orderBy: { createdAt: "desc" },
       include: {
         weeks: { orderBy: { weekNumber: "asc" }, select: { date: true } },
-        // Dönemin KENDİSİ ortak ama kadrosu ve grupları şubeye ait. Bu üç
-        // süzgeç olmadan kart "8 grup, 28 öğrenci" yazar ve diğer şubenin
-        // stajyer adlarını sıralardı — dashboard'la da çelişirdi.
+        // Kadro ve grup süzgeçleri dönem ortakken zorunluydu; dönem artık
+        // şubeye ait ama süzgeçler savunma olarak duruyor.
         interns: {
           where: { user: { branchId: subeId } },
           orderBy: { user: { name: "asc" } },
@@ -70,7 +70,7 @@ export default async function DonemlerSayfasi(
         },
       },
     }),
-    db.term.count({ where: { status: "ARSIVLENDI" } }),
+    db.term.count({ where: { branchId: subeId, status: "ARSIVLENDI" } }),
   ]);
 
   const simdi = bugun().getTime();
@@ -79,7 +79,7 @@ export default async function DonemlerSayfasi(
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Dönemler"
-        aciklama="Her dönem 10 eğitim haftasından ve 5 atölyeden oluşur. Dönemin takvimi ve atölyeleri iki şubede ortaktır; gruplar, kadro ve öğrenci sayıları yalnızca sizin şubenizindir."
+        aciklama="Her dönem 10 eğitim haftasından ve 5 atölyeden oluşur. Dönemler şubeye özeldir: burada yalnızca sizin şubenizin dönemleri, grupları ve kadrosu görünür."
         ustBilgi={<Rozet tur="notr">Takvim bütün şubelerde ortak</Rozet>}
         aksiyon={
           // Salt görüntüleme yetkisinde (danışma görevlisi) düğme çizilmez;

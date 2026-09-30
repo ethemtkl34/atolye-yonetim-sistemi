@@ -30,17 +30,18 @@ export default async function KuluplerSayfasi(
 
   const [kulupler, arsivSayisi] = await Promise.all([
     db.club.findMany({
+    // Kulüp şubeye ait (30 Eylül 2026): liste yalnız bu şubenin kulüpleri.
     where:
       kapsam === "aktif"
-        ? AKTIF_KULUP_KOSULU
-        : { status: { not: "ARSIVLENDI" } },
+        ? { branchId: kullanici.aktifSubeId, ...AKTIF_KULUP_KOSULU }
+        : { branchId: kullanici.aktifSubeId, status: { not: "ARSIVLENDI" } },
     orderBy: { date: "desc" },
     include: {
       workshops: {
         orderBy: { sortOrder: "asc" },
         include: { workshopType: { select: { name: true } } },
       },
-      // Kulüp ortak, grupları şubeye ait: doluluk kendi şubesinin.
+      // Grup süzgeci kulüp ortakken zorunluydu; savunma olarak duruyor.
       groups: {
         where: { branchId: kullanici.aktifSubeId },
         select: {
@@ -51,14 +52,16 @@ export default async function KuluplerSayfasi(
       },
     },
     }),
-    db.club.count({ where: { status: "ARSIVLENDI" } }),
+    db.club.count({
+      where: { branchId: kullanici.aktifSubeId, status: "ARSIVLENDI" },
+    }),
   ]);
 
   return (
     <div className="space-y-6">
       <SayfaBasligi
         baslik="Kulüpler"
-        aciklama="Kulüp, dönemden bağımsız tek yarım günlük hazır programdır: 3 atölye, kendi grubu ve kontenjanı. Kulübün tanımı iki şubede ortaktır; gruplar ve kayıtlar yalnızca sizin şubenizindir. Kulüp öğrencileri dönem gruplarına dahil edilmez."
+        aciklama="Kulüp, dönemden bağımsız tek yarım günlük hazır programdır: 3 atölye, kendi grubu ve kontenjanı. Kulüpler şubeye özeldir: burada yalnızca sizin şubenizin kulüpleri görünür. Kulüp öğrencileri dönem gruplarına dahil edilmez."
         ustBilgi={<Rozet tur="notr">Tanım bütün şubelerde ortak</Rozet>}
         aksiyon={
           // Salt görüntüleme yetkisinde (danışma görevlisi) düğme çizilmez;

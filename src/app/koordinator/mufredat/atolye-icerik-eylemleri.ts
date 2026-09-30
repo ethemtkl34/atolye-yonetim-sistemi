@@ -18,6 +18,10 @@ import type { MufredatHedefi } from "./actions";
  *
  * Her işlem `yonetimZorunlu("mufredat", "TAM")` ile başlar: sayfa kapısı
  * yetmez, Server Action doğrudan çağrılabilir.
+ *
+ * ŞUBE: dönem ve kulüp şubeye ait (30 Eylül 2026). Okumalar `hedefKosulu`
+ * ile programın şubesine süzülür; yazmalardan önce `programSubede` programın
+ * çalışılan şubeye ait olduğunu doğrular.
  */
 
 const metinSemasi = z.object({
@@ -36,11 +40,30 @@ function tazele(hedef: MufredatHedefi) {
   revalidatePath(`/koordinator/${kok(hedef)}/${hedef.id}/mufredat`);
 }
 
-/** Hedefin dönem mi kulüp mü olduğuna göre `where`/`create` anahtarı. */
+/** Hedefin dönem mi kulüp mü olduğuna göre `create` anahtarı. */
 function hedefAnahtari(hedef: MufredatHedefi) {
   return hedef.tur === "donem"
     ? { termId: hedef.id, clubId: null }
     : { clubId: hedef.id, termId: null };
+}
+
+/** `where` koşulu: hedef anahtarı + programın şubesi. */
+function hedefKosulu(hedef: MufredatHedefi, subeId: string) {
+  return hedef.tur === "donem"
+    ? { termId: hedef.id, clubId: null, term: { branchId: subeId } }
+    : { clubId: hedef.id, termId: null, club: { branchId: subeId } };
+}
+
+/** Program çalışılan şubenin mi? Yazmalardan önce çağrılır. */
+async function programSubede(
+  hedef: MufredatHedefi,
+  subeId: string,
+): Promise<boolean> {
+  const bulunan =
+    hedef.tur === "donem"
+      ? await db.term.count({ where: { id: hedef.id, branchId: subeId } })
+      : await db.club.count({ where: { id: hedef.id, branchId: subeId } });
+  return bulunan > 0;
 }
 
 export type AtolyeIcerikKaydi = {
@@ -54,10 +77,10 @@ export type AtolyeIcerikKaydi = {
 export async function atolyeIcerikleriniOku(
   hedef: MufredatHedefi,
 ): Promise<AtolyeIcerikKaydi[]> {
-  await yonetimZorunlu("mufredat");
+  const kullanici = await yonetimZorunlu("mufredat");
 
   const kayitlar = await db.atolyeIcerigi.findMany({
-    where: hedefAnahtari(hedef),
+    where: hedefKosulu(hedef, kullanici.aktifSubeId),
     select: {
       workshopTypeId: true,
       metin: true,
@@ -90,9 +113,13 @@ export async function atolyeIcerigiUretEylem(
   atolyeTipiId: string,
 ): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("mufredat", "TAM");
+  const subeId = kullanici.aktifSubeId;
+  if (!(await programSubede(hedef, subeId))) {
+    return { hata: "Program bulunamadı." };
+  }
 
   const mevcut = await db.atolyeIcerigi.findFirst({
-    where: { ...hedefAnahtari(hedef), workshopTypeId: atolyeTipiId },
+    where: { ...hedefKosulu(hedef, subeId), workshopTypeId: atolyeTipiId },
     select: { id: true, kilitli: true },
   });
 
@@ -116,7 +143,7 @@ export async function atolyeIcerigiUretEylem(
   if (!atolye) return { hata: "Atölye bulunamadı." };
 
   const haftalar = await db.curriculumEntry.findMany({
-    where: { ...hedefAnahtari(hedef), workshopTypeId: atolyeTipiId },
+    where: { ...hedefKosulu(hedef, subeId), workshopTypeId: atolyeTipiId },
     orderBy: { weekNumber: "asc" },
     select: { weekNumber: true, title: true, description: true },
   });
@@ -183,6 +210,9 @@ export async function atolyeIcerigiKaydet(
   if (!cozum.success) {
     return { hata: cozum.error.issues[0]?.message ?? "Metin geçersiz." };
   }
+  if (!(await programSubede(hedef, kullanici.aktifSubeId))) {
+    return { hata: "Program bulunamadı." };
+  }
 
   await db.atolyeIcerigi.upsert({
     where:
@@ -212,10 +242,13 @@ export async function atolyeIcerigiKilidiDegistir(
   atolyeTipiId: string,
   kilitli: boolean,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("mufredat", "TAM");
+  const kullanici = await yonetimZorunlu("mufredat", "TAM");
 
   const kayit = await db.atolyeIcerigi.findFirst({
-    where: { ...hedefAnahtari(hedef), workshopTypeId: atolyeTipiId },
+    where: {
+      ...hedefKosulu(hedef, kullanici.aktifSubeId),
+      workshopTypeId: atolyeTipiId,
+    },
     select: { id: true },
   });
 

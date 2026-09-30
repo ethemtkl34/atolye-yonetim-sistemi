@@ -67,8 +67,9 @@ export default async function StajyerDetaySayfasi(
     }),
     // Program listesi aktif programlardan; stajyer geçmiş bir programa
     // atanacaksa zaten kayıt oradan yönetilir.
+    // Dönem ve kulüp şubeye ait (30 Eylül 2026).
     db.term.findMany({
-      where: AKTIF_DONEM_KOSULU,
+      where: { branchId: subeId, ...AKTIF_DONEM_KOSULU },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -80,7 +81,7 @@ export default async function StajyerDetaySayfasi(
       },
     }),
     db.club.findMany({
-      where: AKTIF_KULUP_KOSULU,
+      where: { branchId: subeId, ...AKTIF_KULUP_KOSULU },
       orderBy: { date: "desc" },
       select: { id: true, name: true, date: true },
     }),

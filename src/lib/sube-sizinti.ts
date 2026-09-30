@@ -20,7 +20,8 @@ import { join, relative } from "node:path";
 import ts from "typescript";
 
 /**
- * Şube sınırı `User` ve `Group` tablolarında doğrudan duruyor. Aşağıdakiler
+ * Şube sınırı `User`, `Term`, `Club` ve `Group` tablolarında doğrudan
+ * duruyor (dönem ve kulüp 30 Eylül 2026'dan beri şubeye ait). Aşağıdakiler
  * o sınırdan TÜRETİLİYOR — kendi `branchId` sütunları yok ama bir ilişki
  * üzerinden bir şubeye ait oluyorlar, dolayısıyla süzgeçsiz okunduklarında
  * sızdırırlar.
@@ -32,6 +33,14 @@ import ts from "typescript";
  */
 const SUBEYE_AIT = new Set([
   "user",
+  "term",
+  "club",
+  // Dönemin/kulübün alt tabloları — şubeleri programdan türüyor.
+  "termWorkshop",
+  "termWeek",
+  "clubWorkshop",
+  "curriculumEntry",
+  "atolyeIcerigi",
   "group",
   "enrollment",
   "session",
@@ -55,9 +64,9 @@ const SUBEYE_AIT = new Set([
 ]);
 
 /**
- * Şubeden bağımsız modeller: programlar ve müfredat iki şubede de ORTAK.
- * Bilinçli bir karar — aynı atölye tanımı, aynı sorular, aynı dönem her iki
- * şubede kullanılıyor; ayrışan şey gruplar ve öğrenciler.
+ * Şubeden bağımsız modeller: atölye kataloğu ve değerlendirme soruları iki
+ * şubede ORTAK, öğrenciler ortak havuzda (Eylül 2026). Dönem ve kulüp
+ * 30 Eylül 2026'dan beri burada DEĞİL — her şube kendi programını açıyor.
  *
  * Bu küme belgeleme amaçlı: tarayıcı `SUBEYE_AIT` dışındaki her modeli zaten
  * atlıyor, ama "unutuldu mu, yoksa bilerek mi dışarıda" sorusunun cevabı
@@ -83,12 +92,6 @@ export const SUBEDEN_BAGIMSIZ = new Set([
   "reportPdf",
   "workshopType",
   "question",
-  "term",
-  "termWorkshop",
-  "termWeek",
-  "club",
-  "clubWorkshop",
-  "curriculumEntry",
   "intelligenceTestType",
   // §17 — Randevu tanımları.
   //
@@ -130,7 +133,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(groups|interns|enrollments|sessions|scores|leads|veliler|randevular)\s*:/;
+  /\b(terms|clubs|groups|interns|enrollments|sessions|scores|leads|veliler|randevular)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

@@ -189,6 +189,10 @@ async function main() {
     select: { id: true, code: true },
   });
   const subeId = new Map(subeler.map((s) => [s.code, s.id]));
+  // Dönem ve kulüp 30 Eylül 2026'dan beri şubeye ait. Bu aktarımın bütün
+  // verisi Ümraniye'ye yazıldı (bkz. `hazirla.py` ALT_BLOK_SUBE); program da
+  // oraya açılır.
+  const programSubesi = subeId.get("umraniye")!;
   for (const kod of subeKodlari) {
     if (!subeId.has(kod)) throw new Error(`Şube bulunamadı: ${kod}`);
   }
@@ -209,6 +213,7 @@ async function main() {
     }
     const yeniDonem = await db.term.create({
       data: {
+        branchId: programSubesi,
         name: donem.name,
         egitimYili: donem.egitimYili,
         status: "ARSIVLENDI",
@@ -239,6 +244,7 @@ async function main() {
     }
     const yeniKulup = await db.club.create({
       data: {
+        branchId: programSubesi,
         name: kulup.name,
         date: KULUP_YER_TUTUCU_TARIH,
         weekDates: [KULUP_YER_TUTUCU_TARIH],

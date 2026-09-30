@@ -158,9 +158,8 @@ export default async function OgrenciProfilSayfasi(
                   name: true,
                   status: true,
                   // Dönem kadrosu: atama seçenekleri buna göre süzülür.
-                  // Dönem iki şubede ortak olduğu için kadro da iki şubenin
-                  // stajyerlerini birlikte tutuyor; kendi şubemizinkiler
-                  // ayıklanmazsa diğer şubenin stajyeri atanabilir hâle gelir.
+                  // Dönem şubeye ait; süzgeç, kaydın diğer şubenin dönemine
+                  // ait olduğu satırda o şubenin kadrosunu dışarıda tutar.
                   interns: {
                     where: { user: { branchId: subeId } },
                     select: { userId: true },

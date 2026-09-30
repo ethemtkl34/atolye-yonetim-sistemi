@@ -29,9 +29,10 @@ import { AtolyeDegistirici } from "@/components/atolye-degistirici";
 export async function generateMetadata(
   props: PageProps<"/koordinator/kulupler/[id]">,
 ): Promise<Metadata> {
+  const kullanici = await yonetimZorunlu("kulupler");
   const { id } = await props.params;
-  const kulup = await db.club.findUnique({
-    where: { id },
+  const kulup = await db.club.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { name: true },
   });
   return { title: kulup?.name ?? "Kulüp" };
@@ -45,10 +46,10 @@ export default async function KulupDetaySayfasi(
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
-  // Kulübün kendisi ortak; her şube kendi gruplarını açar.
+  // Kulüp şubeye ait (30 Eylül 2026); başka şubenin kulüp id'si 404 verir.
   const [kulup, subeOgrencileri, haftaMufredati, aktifAtolyeler] = await Promise.all([
-    db.club.findUnique({
-      where: { id },
+    db.club.findFirst({
+      where: { id, branchId: subeId },
       include: {
         workshops: {
           orderBy: { sortOrder: "asc" },
@@ -89,7 +90,7 @@ export default async function KulupDetaySayfasi(
     }),
     db.curriculumEntry.groupBy({
       by: ["weekNumber"],
-      where: { clubId: id },
+      where: { clubId: id, club: { branchId: subeId } },
       _count: true,
     }),
     // Atölye değiştirici seçenekleri; programdakiler aşağıda eleniyor.

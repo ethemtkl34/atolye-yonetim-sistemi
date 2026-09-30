@@ -20,9 +20,10 @@ import { AtolyeDegistirici } from "@/components/atolye-degistirici";
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]">,
 ): Promise<Metadata> {
+  const kullanici = await yonetimZorunlu("donemler");
   const { id } = await props.params;
-  const donem = await db.term.findUnique({
-    where: { id },
+  const donem = await db.term.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { name: true },
   });
   return { title: donem?.name ?? "Dönem" };
@@ -35,11 +36,10 @@ export default async function DonemDetaySayfasi(
   const subeId = kullanici.aktifSubeId;
   const { id } = await props.params;
 
-  // Dönemin kendisi ortak (iki şube aynı takvimi kullanır); şubeye ait olan
-  // gruplar ve kadro burada süzülüyor.
+  // Dönem şubeye ait (30 Eylül 2026); başka şubenin dönem id'si 404 verir.
   const [donem, aktifStajyerler, donemKayitSayilari, subeOgrencileri, aktifAtolyeler] = await Promise.all([
-    db.term.findUnique({
-      where: { id },
+    db.term.findFirst({
+      where: { id, branchId: subeId },
       include: {
         weeks: { orderBy: { weekNumber: "asc" } },
         workshops: {

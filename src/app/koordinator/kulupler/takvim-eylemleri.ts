@@ -49,12 +49,12 @@ import type { EylemDurumu } from "@/lib/formlar";
  */
 const HAFTA_OFSETI = 10_000;
 
-async function kulubuOku(kulupId: string) {
-  // şube-muaf: kulüp iki şubede ortak ve takvim işlemleri kulübün BÜTÜN
-  // gruplarına uygulanır; grup listesi bilerek süzgeçsiz okunur (kilit ve
-  // toplu güncelleme kapsamı). Yetki kapısı `kulupler: TAM`.
-  return db.club.findUnique({
-    where: { id: kulupId },
+async function kulubuOku(kulupId: string, subeId: string) {
+  // Kulüp şubeye ait (30 Eylül 2026) ve grupları da o şubede; takvim
+  // işlemleri kulübün BÜTÜN gruplarına uygulanır (kilit ve toplu güncelleme
+  // kapsamı). Aşağıdaki yardımcılar bu okumadan geçmiş kulübe dokunur.
+  return db.club.findFirst({
+    where: { id: kulupId, branchId: subeId },
     select: {
       id: true,
       status: true,
@@ -105,13 +105,14 @@ async function kaymalariUygula(
 
   for (const kayma of kaymalar) {
     if (grupIdleri.length > 0) {
-      // şube-muaf: `grupIdleri` kulübün bütün grupları — hafta kayması iki
-      // şubeye birden uygulanmazsa numaralar şubeler arasında ayrışırdı.
+      // şube-muaf: `grupIdleri` kulübün bütün grupları; kulüp çağıran eylemde
+      // `kulubuOku(kulupId, subeId)` ile şubesi doğrulanarak okundu.
       await tx.session.updateMany({
         where: { groupId: { in: [...grupIdleri] }, weekNumber: kayma.eski },
         data: { weekNumber: kayma.yeni + HAFTA_OFSETI },
       });
     }
+    // şube-muaf: kulüp çağıran eylemde şubesiyle doğrulandı (`kulubuOku`).
     await tx.curriculumEntry.updateMany({
       where: { clubId: kulupId, weekNumber: kayma.eski },
       data: { weekNumber: kayma.yeni + HAFTA_OFSETI },
@@ -137,6 +138,7 @@ async function takvimiYaz(
   kulupId: string,
   yeniTarihler: readonly Date[],
 ): Promise<void> {
+  // şube-muaf: kulüp çağıran eylemde şubesiyle doğrulandı (`kulubuOku`).
   await tx.club.update({
     where: { id: kulupId },
     data: { date: yeniTarihler[0], weekDates: [...yeniTarihler] },
@@ -147,8 +149,8 @@ async function takvimiYaz(
   const gunler = gunleriSirala([
     ...new Set(yeniTarihler.map((tarih) => gunundenGun(tarih))),
   ]);
-  // şube-muaf: kulübün takvimi bütün gruplarının ortak günüdür; iki şubenin
-  // grupları birden güncellenir (yetki kapısı `kulupler: TAM`).
+  // şube-muaf: kulübün takvimi bütün gruplarının ortak günüdür; kulüp ve
+  // grupları aynı şubede, kulüp `kulubuOku` ile doğrulandı.
   await tx.group.updateMany({
     where: { clubId: kulupId },
     data: { days: gunler },
@@ -163,12 +165,12 @@ export async function kulupGunuEkle(
   kulupId: string,
   tarihMetni: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("kulupler", "TAM");
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const tarih = tarihCozumle(tarihMetni);
   if (!tarih) return { hata: "Tarih okunamadı." };
 
-  const kulup = await kulubuOku(kulupId);
+  const kulup = await kulubuOku(kulupId, kullanici.aktifSubeId);
   if (!kulup) return { hata: "Kulüp bulunamadı." };
 
   const engel = durumEngeli(kulup);
@@ -242,12 +244,12 @@ export async function kulupGunuSil(
   kulupId: string,
   tarihMetni: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("kulupler", "TAM");
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const tarih = tarihCozumle(tarihMetni);
   if (!tarih) return { hata: "Tarih okunamadı." };
 
-  const kulup = await kulubuOku(kulupId);
+  const kulup = await kulubuOku(kulupId, kullanici.aktifSubeId);
   if (!kulup) return { hata: "Kulüp bulunamadı." };
 
   const engel = durumEngeli(kulup);
@@ -287,6 +289,7 @@ export async function kulupGunuSil(
           })
         : { count: 0 };
 
+    // şube-muaf: kulüp bu eylemin başında `kulubuOku` ile şubesiyle okundu.
     const silinenMufredat = await tx.curriculumEntry.deleteMany({
       where: { clubId: kulupId, weekNumber: plan.haftaNo },
     });
@@ -323,13 +326,13 @@ export async function kulupGununuTasi(
   eskiTarihMetni: string,
   yeniTarihMetni: string,
 ): Promise<EylemDurumu> {
-  await yonetimZorunlu("kulupler", "TAM");
+  const kullanici = await yonetimZorunlu("kulupler", "TAM");
 
   const eski = tarihCozumle(eskiTarihMetni);
   const yeni = tarihCozumle(yeniTarihMetni);
   if (!eski || !yeni) return { hata: "Tarih okunamadı." };
 
-  const kulup = await kulubuOku(kulupId);
+  const kulup = await kulubuOku(kulupId, kullanici.aktifSubeId);
   if (!kulup) return { hata: "Kulüp bulunamadı." };
 
   const engel = durumEngeli(kulup);

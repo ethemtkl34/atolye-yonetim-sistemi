@@ -12,9 +12,10 @@ import { atolyeIcerikleriniOku } from "@/app/koordinator/mufredat/atolye-icerik-
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]/mufredat">,
 ): Promise<Metadata> {
+  const kullanici = await yonetimZorunlu("mufredat");
   const { id } = await props.params;
-  const donem = await db.term.findUnique({
-    where: { id },
+  const donem = await db.term.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: { name: true },
   });
   return { title: donem ? `Müfredat — ${donem.name}` : "Müfredat" };
@@ -31,10 +32,10 @@ export default async function DonemMufredatSayfasi(
   const kullanici = await yonetimZorunlu("mufredat");
   const { id } = await props.params;
 
-  // Dönem ve müfredatı ortak (şubeden bağımsız): iki şube aynı programı aynı
-  // müfredatla uygular, şube süzgeci bilerek yok.
-  const donem = await db.term.findUnique({
-    where: { id },
+  // Dönem ve müfredatı şubeye ait (30 Eylül 2026): her şube kendi dönemini
+  // kendi müfredatıyla yürütür.
+  const donem = await db.term.findFirst({
+    where: { id, branchId: kullanici.aktifSubeId },
     select: {
       id: true,
       name: true,
