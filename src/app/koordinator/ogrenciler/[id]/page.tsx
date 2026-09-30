@@ -49,6 +49,7 @@ import { bugun, tarihBicimle, tarihMetni, yasBicimle } from "@/lib/tarih";
 import { ogrenciRandevulari } from "@/lib/randevu/gecmis-verisi";
 import { istanbulBugunu } from "@/lib/randevu/gecmis-kilidi";
 import { RandevuGecmisiListesi } from "@/components/randevu-gecmisi-listesi";
+import { subeEtiketi } from "@/lib/sube-etiketi";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/ogrenciler/[id]">,
@@ -531,7 +532,7 @@ export default async function OgrenciProfilSayfasi(
             aileyi arıyor. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">
-            Kayıt şubesi: {ogrenci.branch.name}
+            Kayıt şubesi: {subeEtiketi(ogrenci.branch)}
           </span>
           {ogrenci.birthDate ? (
             <span className="kil-cip px-3.5 py-1.5 text-xs font-semibold text-zinc-700">

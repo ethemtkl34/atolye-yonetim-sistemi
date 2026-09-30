@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ProgramSecenegi } from "@/lib/kayit-secenekleri";
 import type { EylemDurumu } from "@/lib/formlar";
+import { SUBESIZ, SUBESIZ_DEGERI } from "@/lib/sube-etiketi";
 
 export type OgrenciVarsayilanlari = {
   firstName?: string;
@@ -211,6 +212,8 @@ export function OgrenciFormu({
                   {sube.ad}
                 </option>
               ))}
+              {/* Şubesi bilinmeyen öğrenci (ör. eski arşivden gelenler). */}
+              <option value={SUBESIZ_DEGERI}>{SUBESIZ} (bilinmiyor)</option>
             </select>
           </Alan>
         ) : null}

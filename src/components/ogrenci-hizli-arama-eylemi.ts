@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { yonetimZorunlu } from "@/lib/yetki-kapisi";
 import { ogrenciAramaKosulu } from "@/lib/ogrenci-arama";
 import { yasYil } from "@/lib/tarih";
+import { subeEtiketi } from "@/lib/sube-etiketi";
 
 /**
  * §6.6 — Üst şeritteki hızlı öğrenci araması (30 Eylül 2026).
@@ -55,7 +56,7 @@ export async function hizliOgrenciAra(sorgu: string) {
       [
         ogrenci.birthDate ? `${yasYil(ogrenci.birthDate, bugun)} yaş` : null,
         ogrenci.school,
-        ogrenci.branch.name,
+        subeEtiketi(ogrenci.branch),
       ]
         .filter(Boolean)
         .join(" · ") || null,

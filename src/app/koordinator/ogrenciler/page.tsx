@@ -7,6 +7,7 @@ import { Bildirim, BosDurum, Girdi, Kart, Rozet, SayfaBasligi, baglantiStili, bu
 import { SuzgecCubugu, SuzgecGrubu, SuzgecSecici } from "@/components/suzgec";
 import { Sayfalama, sayfaNumarasiCoz } from "@/components/sayfalama";
 import { tarihBicimle } from "@/lib/tarih";
+import { SUBESIZ, SUBESIZ_DEGERI, subeEtiketi } from "@/lib/sube-etiketi";
 
 export const metadata: Metadata = {
   title: "Öğrenciler",
@@ -73,10 +74,17 @@ export default async function OgrencilerSayfasi(
     subeleriOku(),
   ]);
 
-  // Kayıt şubesi süzgeci — geçersiz değer yok sayılır ("Tümü").
-  const kayitSubesiId = subeler.some((sube) => sube.id === parametreler.sube)
-    ? (parametreler.sube as string)
-    : undefined;
+  // Kayıt şubesi süzgeci — "yok" şubesizler; geçersiz değer yok sayılır
+  // ("Tümü").
+  const subeParametresi =
+    typeof parametreler.sube === "string" ? parametreler.sube : "";
+  const kayitSubesiId =
+    subeParametresi === SUBESIZ_DEGERI
+      ? null
+      : subeler.some((sube) => sube.id === subeParametresi)
+        ? subeParametresi
+        : undefined;
+  const subeDegeri = kayitSubesiId === undefined ? "" : subeParametresi;
 
   const KULUP_ONEKI = "kulup:";
   const programParametresi =
@@ -123,7 +131,7 @@ export default async function OgrencilerSayfasi(
     ...(sorgu ? { q: sorgu } : {}),
     ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
     ...(programDegeri ? { donem: programDegeri } : {}),
-    ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
+    ...(subeDegeri ? { sube: subeDegeri } : {}),
   };
 
   const ilkSira = toplam === 0 ? 0 : (sayfa - 1) * SAYFA_BOYUTU + 1;
@@ -156,8 +164,8 @@ export default async function OgrencilerSayfasi(
         {programDegeri ? (
           <input type="hidden" name="donem" value={programDegeri} />
         ) : null}
-        {kayitSubesiId ? (
-          <input type="hidden" name="sube" value={kayitSubesiId} />
+        {subeDegeri ? (
+          <input type="hidden" name="sube" value={subeDegeri} />
         ) : null}
         <Girdi
           name="q"
@@ -178,7 +186,7 @@ export default async function OgrencilerSayfasi(
         etkin={
           (kapsam === "aktif" ? 1 : 0) +
           (programDegeri ? 1 : 0) +
-          (kayitSubesiId ? 1 : 0)
+          (subeDegeri ? 1 : 0)
         }
       >
         <SuzgecGrubu
@@ -193,7 +201,7 @@ export default async function OgrencilerSayfasi(
           digerler={{
             ...(sorgu ? { q: sorgu } : {}),
             ...(programDegeri ? { donem: programDegeri } : {}),
-            ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
+            ...(subeDegeri ? { sube: subeDegeri } : {}),
           }}
         />
         {subeler.length > 1 ? (
@@ -201,13 +209,16 @@ export default async function OgrencilerSayfasi(
             etiket="Kayıt şubesi"
             temelYol={TEMEL_YOL}
             anahtar="sube"
-            secili={kayitSubesiId ?? ""}
+            secili={subeDegeri}
             digerler={{
               ...(sorgu ? { q: sorgu } : {}),
               ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
               ...(programDegeri ? { donem: programDegeri } : {}),
             }}
-            secenekler={subeler.map((sube) => ({ deger: sube.id, etiket: sube.name }))}
+            secenekler={[
+              ...subeler.map((sube) => ({ deger: sube.id, etiket: sube.name })),
+              { deger: SUBESIZ_DEGERI, etiket: SUBESIZ },
+            ]}
           />
         ) : null}
         {donemler.length + kulupler.length > 0 ? (
@@ -219,7 +230,7 @@ export default async function OgrencilerSayfasi(
             digerler={{
               ...(sorgu ? { q: sorgu } : {}),
               ...(kapsam === "aktif" ? { kapsam: "aktif" } : {}),
-              ...(kayitSubesiId ? { sube: kayitSubesiId } : {}),
+              ...(subeDegeri ? { sube: subeDegeri } : {}),
             }}
             secenekler={[
               ...donemler.map((donem) => ({ deger: donem.id, etiket: donem.name })),
@@ -314,7 +325,7 @@ export default async function OgrencilerSayfasi(
                     {ogrenci.firstName} {ogrenci.lastName}
                   </Link>
                   {subeler.length > 1 ? (
-                    <Rozet tur="pasif">{ogrenci.branch.name}</Rozet>
+                    <Rozet tur="pasif">{subeEtiketi(ogrenci.branch)}</Rozet>
                   ) : null}
                 </div>
 

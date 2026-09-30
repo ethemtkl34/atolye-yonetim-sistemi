@@ -32,6 +32,7 @@ import {
 import { AdayDuzenleDugmesi } from "../aday-formu";
 import { AdaySilButonu } from "./aday-sil-butonu";
 import { AdayTakipKarti } from "./takip-karti";
+import { adVeSube } from "@/lib/sube-etiketi";
 
 export const metadata: Metadata = {
   title: "Aday",
@@ -232,10 +233,7 @@ export default async function AdayAyrintiSayfasi(
           donusturebilir={donusturebilir}
           ogrenciSecenekleri={ogrenciler.map((ogrenci) => ({
             id: ogrenci.id,
-            ad:
-              ogrenci.branchId === subeId
-                ? `${ogrenci.firstName} ${ogrenci.lastName}`
-                : `${ogrenci.firstName} ${ogrenci.lastName} (${ogrenci.branch.name})`,
+            ad: adVeSube(`${ogrenci.firstName} ${ogrenci.lastName}`, ogrenci, subeId),
           }))}
           asamaDegistir={asamaDegistir}
           ulasilamadiKaydet={ulasilamadiKaydet}

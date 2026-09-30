@@ -191,7 +191,7 @@ async function main() {
    * veliler şube anahtarıyla ayrı tutulur: onları iki şube arasında adla
    * birleştirmek fazla iddialı olurdu.
    */
-  const veliAnahtari = (subeId: string, telefon: string | null) =>
+  const veliAnahtari = (subeId: string | null, telefon: string | null) =>
     telefon ? `tel|${telefon}` : `${subeId}|`;
   const telefonVelileri = new Map<string, { id: string; searchName: string }[]>();
   for (const v of veliler) {

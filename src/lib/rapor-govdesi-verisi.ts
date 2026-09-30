@@ -95,6 +95,7 @@ export async function raporGovdesiV2Uret(
       group: {
         select: {
           name: true,
+          branch: { select: { name: true } },
           term: {
             select: { id: true, name: true, egitimYili: true, _count: { select: { weeks: true } } },
           },
@@ -585,7 +586,9 @@ export async function raporGovdesiV2Uret(
       sinif: ogrenci.grade,
     },
     egitimYili: ilkKayit.group.term?.egitimYili ?? null,
-    subeAdi: ogrenci.branch?.name ?? null,
+    // Kapaktaki şube, programın YAPILDIĞI şube (grubun şubesi): öğrenciler
+    // ortak havuzda, etiketleri başka şube ya da boş olabilir.
+    subeAdi: ilkKayit.group.branch.name,
     grupOgrenciSayisi,
     kapsam: kayitlar.map((kayit) => ({
       programAdi: kayit.group.term?.name ?? kayit.group.club?.name ?? "Program",

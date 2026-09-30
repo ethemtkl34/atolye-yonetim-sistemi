@@ -26,6 +26,7 @@ import {
   saglikAlanlari,
   veliGirdileri,
 } from "./ogrenci-yazma";
+import { subeEtiketi } from "@/lib/sube-etiketi";
 
 /**
  * §7.1 — Yeni öğrenci. Form isteğe bağlı olarak bir program grubu da
@@ -64,13 +65,14 @@ export async function ogrenciEkle(
   const veri = cozumlenen.data;
   const groupId = String(formVerisi.get("groupId") ?? "");
 
-  const kayitSubesi = await kayitSubesiCoz(formVerisi, subeId);
-  if (!kayitSubesi) {
+  const kayitSubesiSecimi = await kayitSubesiCoz(formVerisi, subeId);
+  if (!kayitSubesiSecimi) {
     return {
       alanHatalari: { kayitSubesi: "Listeden bir şube seçin." },
       degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
     };
   }
+  const kayitSubesi = kayitSubesiSecimi.subeId;
 
   // Mükerrer uyarısı (ortak havuz, Eylül 2026): aynı ad-soyadla bir öğrenci
   // iki şubeden birinde zaten varsa kullanıcıya bir kez sorulur. Engel
@@ -97,7 +99,7 @@ export async function ogrenciEkle(
                 ? `doğum ${tarihBicimle(ogrenci.birthDate)}`
                 : "doğum tarihi yok",
               ogrenci.school,
-              ogrenci.branch.name,
+              subeEtiketi(ogrenci.branch),
             ]
               .filter(Boolean)
               .join(" · "),
@@ -256,7 +258,8 @@ export async function ogrenciEkle(
  * ORTAK HAVUZ (Eylül 2026): öğrenciyi yalnız KAYIT ŞUBESİNİN personeli ya
  * da kurum yöneticisi silebilir; diğer şubede kaydı olan öğrenci hiç
  * silinemez (grup o şubenin, kaydı sessizce düşürmek o şubenin verisini
- * silmek olurdu).
+ * silmek olurdu). Şubesiz öğrencinin sahibi yok: iki şube de silebilir,
+ * ama herhangi bir program kaydı varsa silinemez.
  */
 export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
   const kullanici = await yonetimZorunlu("ogrenciler", "TAM");
@@ -300,10 +303,14 @@ export async function ogrenciSil(ogrenciId: string): Promise<EylemDurumu> {
 
     const ad = `${ogrenci.firstName} ${ogrenci.lastName}`;
 
-    if (silebilecegiSube && ogrenci.branchId !== silebilecegiSube) {
+    if (
+      silebilecegiSube &&
+      ogrenci.branchId !== null &&
+      ogrenci.branchId !== silebilecegiSube
+    ) {
       return {
         silindi: false,
-        hata: `${ad} silinemez: öğrenciyi yalnızca kayıt şubesi (${ogrenci.branch.name}) ya da kurum yöneticisi silebilir.`,
+        hata: `${ad} silinemez: öğrenciyi yalnızca kayıt şubesi (${subeEtiketi(ogrenci.branch)}) ya da kurum yöneticisi silebilir.`,
       };
     }
 
@@ -410,13 +417,17 @@ export async function ogrenciGuncelle(
   const veri = cozumlenen.data;
   const veliler = veliGirdileri(veri);
 
-  const kayitSubesi = await kayitSubesiCoz(formVerisi, kullanici.aktifSubeId);
-  if (!kayitSubesi) {
+  const kayitSubesiSecimi = await kayitSubesiCoz(
+    formVerisi,
+    kullanici.aktifSubeId,
+  );
+  if (!kayitSubesiSecimi) {
     return {
       alanHatalari: { kayitSubesi: "Listeden bir şube seçin." },
       degerler: formDegerleri(formVerisi, OGRENCI_FORM_ALANLARI),
     };
   }
+  const kayitSubesi = kayitSubesiSecimi.subeId;
 
   // Öğrenciler ortak havuzda (Eylül 2026): iki şubenin personeli de her
   // öğrenciyi düzenler, kayıt şubesi (etiket) de buradan değişir.

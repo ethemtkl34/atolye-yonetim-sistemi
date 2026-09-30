@@ -16,6 +16,7 @@ import { DurumSecici } from "@/components/durum-secici";
 import { GrupEkleFormu } from "./grup-ekle-formu";
 import { StajyerYonetimi, type KadroStajyeri } from "./stajyer-yonetimi";
 import { AtolyeDegistirici } from "@/components/atolye-degistirici";
+import { adVeSube } from "@/lib/sube-etiketi";
 
 export async function generateMetadata(
   props: PageProps<"/koordinator/donemler/[id]">,
@@ -154,10 +155,7 @@ export default async function DonemDetaySayfasi(
 
   const panelOgrencileri = subeOgrencileri.map((ogrenci) => ({
     id: ogrenci.id,
-    ad:
-      ogrenci.branchId === subeId
-        ? `${ogrenci.firstName} ${ogrenci.lastName}`
-        : `${ogrenci.firstName} ${ogrenci.lastName} (${ogrenci.branch.name})`,
+    ad: adVeSube(`${ogrenci.firstName} ${ogrenci.lastName}`, ogrenci, subeId),
     aramaAdi: ogrenci.searchName,
     mevcutGruplar: ogrenci.enrollments.map((kayit) => ({
       id: kayit.group.id,

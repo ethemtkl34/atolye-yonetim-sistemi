@@ -639,8 +639,13 @@ model Student {
   /// öğrenci iki şubenin gruplarına da yazılabilir (kaydın şubesi grubundan
   /// gelir). Etiket öğrenci formundan değiştirilebilir; silme yetkisini
   /// belirler (yalnız kayıt şubesi ya da kurum yöneticisi siler).
-  branchId String
-  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  ///
+  /// BOŞ = şubesi bilinmiyor (30 Eylül 2026): eski arşivden aktarılan
+  /// öğrencilerin hangi şubede test olduğu bilinmiyor; yanlış etiket yerine
+  /// boş kalır. Şubesiz öğrenciyi iki şube de düzenler ve (öbür kurallar
+  /// izin verirse) siler.
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -684,8 +689,9 @@ model Veli {
 
   /// Kayıt şubesi — yalnız ETİKET (30 Eylül 2026). Veliler de öğrencilerle
   /// birlikte ortak havuzda; iki şubenin personeli bütün velileri görür.
-  branchId String
-  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  /// Boş = şubesi bilinmiyor (şubesiz öğrencinin velisi).
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   fullName String
   phone    String?

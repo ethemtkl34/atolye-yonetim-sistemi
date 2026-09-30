@@ -27,9 +27,10 @@ export type AramaSecenekleri = {
   subeId: string;
   /**
    * İsteğe bağlı kayıt şubesi süzgeci: öğrencinin ETİKETİ (`Student.branchId`).
-   * Boşsa iki şubenin öğrencileri birlikte döner.
+   * `undefined` → iki şubenin ve şubesizlerin hepsi; `null` → yalnız şubesi
+   * bilinmeyenler.
    */
-  kayitSubesiId?: string;
+  kayitSubesiId?: string | null;
   enFazla?: number;
   /** Sayfalama için atlanacak kayıt sayısı. */
   atla?: number;
@@ -116,7 +117,7 @@ export function ogrenciAramaKosulu(
     ...aramaKosulu,
     ...programKosulu,
     ...(kapsam === "aktif" ? aktifOgrenciKosulu(subeId) : {}),
-    ...(kayitSubesiId ? { branchId: kayitSubesiId } : {}),
+    ...(kayitSubesiId !== undefined ? { branchId: kayitSubesiId } : {}),
   };
 }
 

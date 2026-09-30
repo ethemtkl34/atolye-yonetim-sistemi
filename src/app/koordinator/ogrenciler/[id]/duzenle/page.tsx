@@ -8,6 +8,7 @@ import { OgrenciFormu } from "../../ogrenci-formu";
 import { OgrenciSilButonu } from "../../ogrenci-sil-butonu";
 import { ogrenciGuncelle } from "../../actions";
 import { geriBaglantiStili } from "@/components/ui";
+import { SUBESIZ_DEGERI, subeEtiketi } from "@/lib/sube-etiketi";
 
 export const metadata: Metadata = {
   title: "Öğrenciyi düzenle",
@@ -66,8 +67,10 @@ export default async function OgrenciDuzenleSayfasi(
   );
 
   const silmeEngeli =
-    !yonetici && ogrenci.branchId !== kullanici.aktifSubeId
-      ? `Bu öğrenciyi yalnızca kayıt şubesi (${ogrenci.branch.name}) ya da kurum yöneticisi silebilir.`
+    !yonetici &&
+    ogrenci.branchId !== null &&
+    ogrenci.branchId !== kullanici.aktifSubeId
+      ? `Bu öğrenciyi yalnızca kayıt şubesi (${subeEtiketi(ogrenci.branch)}) ya da kurum yöneticisi silebilir.`
       : baskaSubeKaydi
         ? `Bu öğrenci silinemez: ${baskaSubeKaydi.group.branch.name} şubesinde program kaydı var.`
         : puanlamaSayisi > 0
@@ -104,7 +107,7 @@ export default async function OgrenciDuzenleSayfasi(
         iptalYolu={profilYolu}
         subeler={subeler.map((sube) => ({ id: sube.id, ad: sube.name }))}
         varsayilanlar={{
-          kayitSubesi: ogrenci.branchId,
+          kayitSubesi: ogrenci.branchId ?? SUBESIZ_DEGERI,
           firstName: ogrenci.firstName,
           lastName: ogrenci.lastName,
           birthDate: ogrenci.birthDate

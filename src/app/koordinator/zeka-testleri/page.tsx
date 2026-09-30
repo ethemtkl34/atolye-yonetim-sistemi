@@ -10,6 +10,7 @@ import {
   ZekaTestleriBolumu,
   type ZekaTestiSatiri,
 } from "@/components/zeka-testleri-bolumu";
+import { adVeSube } from "@/lib/sube-etiketi";
 
 export const metadata: Metadata = {
   title: "Zeka testleri",
@@ -95,10 +96,7 @@ export default async function ZekaTestleriSayfasi(
   const ogrenciSecenekleri = ogrenciler
     .map((ogrenci) => ({
       id: ogrenci.id,
-      ad:
-        ogrenci.branchId === subeId
-          ? tamAd(ogrenci.firstName, ogrenci.lastName)
-          : `${tamAd(ogrenci.firstName, ogrenci.lastName)} (${ogrenci.branch.name})`,
+      ad: adVeSube(tamAd(ogrenci.firstName, ogrenci.lastName), ogrenci, subeId),
     }))
     .sort((a, b) => turkceKarsilastir(a.ad, b.ad));
 

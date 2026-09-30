@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { normalizeArama } from "@/lib/turkce";
+import { SUBESIZ_DEGERI } from "@/lib/sube-etiketi";
 import { tarihCozumle } from "@/lib/tarih";
 import type { VeliGirdisi } from "@/lib/veli";
 import type { OgrenciGirdisi } from "./sema";
@@ -24,21 +25,23 @@ import type { OgrenciGirdisi } from "./sema";
  * Kayıt şubesi yalnız bir ETİKET: kimin görebileceğini belirlemiyor (iki
  * şube de bütün öğrencileri görür), bu yüzden formdan gelmesi güvenlik
  * açığı değil. Yine de değer AKTİF bir şube olmak zorunda — elle
- * düzenlenmiş bir form var olmayan bir şubeye yazamaz. Alan hiç
+ * düzenlenmiş bir form var olmayan bir şubeye yazamaz. "Şubesiz"
+ * (`SUBESIZ_DEGERI`) şubesi bilinmeyen öğrenci içindir. Alan hiç
  * gönderilmediyse (seçici çizilmeyen tek şubeli kurulum) varsayılan döner;
- * geçersizse null.
+ * geçersiz değerde null.
  */
 export async function kayitSubesiCoz(
   formVerisi: FormData,
   varsayilan: string,
-): Promise<string | null> {
+): Promise<{ subeId: string | null } | null> {
   const ham = formVerisi.get("kayitSubesi");
-  if (typeof ham !== "string" || ham === "") return varsayilan;
+  if (typeof ham !== "string" || ham === "") return { subeId: varsayilan };
+  if (ham === SUBESIZ_DEGERI) return { subeId: null };
   const sube = await db.branch.findFirst({
     where: { id: ham, active: true },
     select: { id: true },
   });
-  return sube?.id ?? null;
+  return sube ? { subeId: sube.id } : null;
 }
 
 /** Öğrencinin ana bilgilerini veritabanı biçimine çevirir. */

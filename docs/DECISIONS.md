@@ -566,6 +566,12 @@ Karar gerekçeleri:
   kadrosundaki Güneşli stajyerleri ve oturumların hafta bağları kopyaya
   taşındı. Bölünen: 2026-2027 1. Dönem, 2026 Sonbahar, Test Dönemi 1-2,
   Yaz Bilim Kulübü. Müfredat ve atölye içeriği artık şube başına düzenlenir.
+- **Şubesiz öğrenci ve veli olabilir** (aynı gün): eski arşivden gelen
+  öğrencilerin hangi şubede test olduğu bilinmiyor; kurum yanlış etiket
+  yerine boş bırakmayı seçti. Formda ve listede "Şubesiz" seçeneği var;
+  şubesi öğrenilince düzenlemeden atanır. Şubesiz öğrenciyi iki şube de
+  düzenler; program kaydı yoksa iki şube de silebilir. Rapor kapağındaki
+  şube adı artık öğrencinin etiketinden değil programın grubundan gelir.
 - **Veliler de ortak havuzda** (aynı gün). `Veli.branchId` kayıt şubesi
   etiketi; kimlik anahtarı "telefon + ad" (şube anahtardan çıktı). İki
   şubede aynı telefon VE aynı adla açılmış 7 veli migration'da birleşti

@@ -66,8 +66,11 @@ function veliAlanlari(girdi: VeliGirdisi) {
 export async function veliBaglariniYaz(
   tx: Prisma.TransactionClient,
   args: {
-    /** Yeni açılacak velinin kayıt şubesi (etiket); eşleştirmeye girmez. */
-    subeId: string;
+    /**
+     * Yeni açılacak velinin kayıt şubesi (etiket); eşleştirmeye girmez.
+     * Boş = şubesi bilinmiyor (şubesiz öğrencinin velisi).
+     */
+    subeId: string | null;
     ogrenciId: string;
     girdiler: VeliGirdisi[];
   },
