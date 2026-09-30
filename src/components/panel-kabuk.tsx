@@ -8,6 +8,7 @@ import {
 import type { MenuOgesi } from "@/lib/navigasyon";
 import { MobilMenu } from "./mobil-menu";
 import { SubeGostergesi } from "./sube-gostergesi";
+import { OgrenciHizliArama } from "./ogrenci-hizli-arama";
 import { YanMenu } from "./yan-menu";
 
 /** Ad soyaddan avatar baş harfleri: "Kurum Koordinatörü" → "KK". */
@@ -111,7 +112,18 @@ export function PanelKabuk({
             </Link>
           </div>
 
-          <div className="order-3 w-full shrink-0 sm:order-2 sm:w-auto">
+          {/* §6.6 — Hızlı öğrenci araması. En sık yapılan iş en uzun yoldan
+              yapılıyordu: bir çocuğun profiline bakmak için önce Öğrenciler
+              ekranına gidip sonra aramak gerekiyordu. Üst şerit her sayfada
+              olduğu için arama da her sayfada. Öğrenci listesini göremeyen
+              rolde hiç çizilmez. */}
+          {kullanici.yetkiler.ogrenciler !== "YOK" ? (
+            <div className="order-4 w-full shrink-0 sm:order-2 sm:w-auto">
+              <OgrenciHizliArama />
+            </div>
+          ) : null}
+
+          <div className="order-3 w-full shrink-0 sm:order-3 sm:w-auto">
             <SubeGostergesi
               aktifSubeId={kullanici.aktifSubeId}
               subeler={kullanici.secilebilirSubeler}
@@ -120,7 +132,7 @@ export function PanelKabuk({
             />
           </div>
 
-          <form action={cikisYap} className="order-2 shrink-0 sm:order-3 sm:ml-3">
+          <form action={cikisYap} className="order-2 shrink-0 sm:order-4 sm:ml-3">
             <button
               type="submit"
               className="kil-buton kil-buton-ikincil min-h-[2.75rem] px-3.5 py-1.5 text-sm sm:min-h-[2.25rem]"

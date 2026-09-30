@@ -82,6 +82,19 @@ Karar gerekçeleri:
 - Her kayıt için grup ve sorumlu stajyer seçilir.
 - Stajyer ataması öğrenci profiline değil, ilgili kayda bağlıdır.
 
+- **Üst şeritte hızlı öğrenci araması** (§6.6, 30 Eylül 2026). En sık
+  yapılan iş en uzun yoldan yapılıyordu: bir çocuğun profiline bakmak için
+  önce Öğrenciler ekranına gidip sonra aramak gerekiyordu. Üst şerit her
+  sayfada olduğu için arama da her sayfada. İki harften sonra açılır kutu
+  çıkar, en fazla sekiz sonuç gösterir (fazlası için liste ekranı var) ve
+  seçilen öğrencinin profiline gider. Tek sonuç varsa Enter onu açar.
+  Sonuçta yaş ve okul yazılı: aynı adlı iki çocuğu ayırt etmenin en hızlı
+  yolu (§6.2 ilkesi). **ŞUBE SÜZGECİ ZORUNLU** ve `ogrenciAramaKosulu`
+  üzerinden geliyor: üst şerit bütün panelde çizildiği için burada şubeyi
+  atlamak, her ekranda öbür şubenin çocuklarını aranabilir yapardı.
+  Sorgu listeninkinden AYRI ve dar — liste ekranının `ogrenciAra`sı veli
+  bağlarını ve kayıt sayılarını da çekiyor, açılır kutuda bunların hiçbiri
+  görünmüyor. Öğrenci modülünü göremeyen rolde kutu hiç çizilmez.
 - **Öğrenci profilinde zaman çizelgesi kartı** (§6.5, 28 Eylül 2026).
   Profilde on iki kart vardı ve hepsi TEK kategorilik: randevular ayrı,
   terapi görüşmeleri ayrı, raporlar ayrı. "Bu çocukla ne zaman ne oldu"
