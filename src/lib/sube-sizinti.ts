@@ -52,9 +52,6 @@ const SUBEYE_AIT = new Set([
   // şubeyi payload'dan çözüp SORGUNUN İÇİNE literal yazar — muafiyet yok.
   "lead",
   "leadActivity",
-  // §17.1 — Veli şube sınırının beşinci doğrudan tablosu: kendi `branchId`
-  // sütununu taşıyor (öğrenciyle aynı gerekçe, §6.1).
-  "veli",
   // §17.4 — Randevu altıncısı: seansın hangi binada verildiği ciro
   // raporunun kırılımı, uzmandan türetilemiyor (uzman çok şubeli).
   //
@@ -79,6 +76,9 @@ export const SUBEDEN_BAGIMSIZ = new Set([
   // yalnız kayıt şubesi etiketi. Öğrencinin KAYITLARI ise şubeli kalıyor —
   // kaydın şubesi grubundan (`enrollment`, `session`, `score` yukarıda).
   "student",
+  // Veli de öğrenciyle birlikte ortak havuzda (30 Eylül 2026); `branchId`
+  // yalnız kayıt şubesi etiketi.
+  "veli",
   "guardian",
   "healthInfo",
   "therapyIntake",
@@ -133,7 +133,7 @@ export const SUBEDEN_BAGIMSIZ = new Set([
  * bu karar yeniden gözden geçirilmeli.
  */
 const SUBELI_ILISKI =
-  /\b(terms|clubs|groups|interns|enrollments|sessions|scores|leads|veliler|randevular)\s*:/;
+  /\b(terms|clubs|groups|interns|enrollments|sessions|scores|leads|randevular)\s*:/;
 
 /**
  * Şube süzgecinin varlığını gösteren belirteçler. `aktifSubeId` gibi bileşik

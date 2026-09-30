@@ -15,12 +15,11 @@ import { randevuHedefSubesi } from "@/lib/randevu/hedef-sube";
  * türetiliyor.
  *
  * ARAMA: ad VEYA telefon, `Veli` kaydının normalize sütunlarından —
- * öğrenci aramasıyla aynı sözleşme (§6.2). Şube süzgeci zorunlu.
+ * öğrenci aramasıyla aynı sözleşme (§6.2).
  *
- * ŞUBE: formda seçilen şube (Eylül 2026, bkz. `lib/randevu/hedef-sube.ts`).
- * Ekranın aktif şubesine sabitlenseydi başka şubeye randevu açan kişi o
- * şubenin velisini HİÇ bulamaz, "kayıtlı değil" sanıp ikinci bir kopya
- * açardı.
+ * ŞUBE: veliler öğrencilerle birlikte ortak havuzda (30 Eylül 2026) — arama
+ * iki şubenin velisini bulur. Formda seçilen şube yalnız doğrulanıyor
+ * (`randevuHedefSubesi`); randevu o şubede açılır.
  */
 
 export async function veliAra(sorgu: string, subeId?: string) {
@@ -35,9 +34,10 @@ export async function veliAra(sorgu: string, subeId?: string) {
   const telefonAnahtari = normalizeTelefon(temiz);
   const telefonAranabilir = telefonAnahtari.length >= 3;
 
+  // şube-muaf: veliler ortak havuzda; satırdaki randevu sayısı velinin iki
+  // şubedeki randevularını birlikte sayar (yalnız sayı, ayrıntı yok).
   const veliler = await db.veli.findMany({
     where: {
-      branchId: hedefSube,
       OR: [
         { searchName: { contains: isimAnahtari } },
         ...(telefonAranabilir

@@ -16,8 +16,10 @@ import { normalizeArama, normalizeTelefon } from "@/lib/turkce";
  * bilinçli — tek kayıt olmasının anlamı bu. Eski davranışta iki kopya vardı
  * ve biri düzeltilince diğeri eski yazımıyla kalıyordu.
  *
- * Eşleştirme (şube, telefon, normalize ad) üçlüsüne göre yapılır. Yalnız
- * telefona bakmak DENENDİ ve yanlış çıktı: canlı verinin kopyasında iki
+ * Eşleştirme (telefon, normalize ad) ikilisine göre yapılır — şubeden
+ * bağımsız: veliler öğrencilerle birlikte ortak havuzda (30 Eylül 2026),
+ * `Veli.branchId` yalnız kayıt şubesi etiketi. Yalnız telefona bakmak
+ * DENENDİ ve yanlış çıktı: canlı verinin kopyasında iki
  * öğrencide anne ile baba aynı telefonu paylaşıyordu ve birleştirme babanın
  * adını siliyordu. Telefon bir cihaz, kimlik değil.
  */
@@ -47,7 +49,7 @@ function veliAlanlari(girdi: VeliGirdisi) {
  * `Veli` satırı açılır ve sahipsiz kayıtlar birikirdi.
  *
  * SIRA ÖNEMLİ — üç durum bu sırayla deneniyor:
- *   1. Aynı kişi zaten kayıtlı mı (şube + telefon + ad)? → ona bağlan.
+ *   1. Aynı kişi zaten kayıtlı mı (telefon + ad)? → ona bağlan.
  *      Kardeş kaydı bu dalda velinin altında birleşiyor.
  *   2. Bu ebeveynin zaten bir bağı var mı? → o veliyi YERİNDE güncelle.
  *      Ad düzeltmesi bu dalda çalışıyor; sıra ters olsaydı "Ayşe" → "Ayşe
@@ -63,12 +65,17 @@ function veliAlanlari(girdi: VeliGirdisi) {
  */
 export async function veliBaglariniYaz(
   tx: Prisma.TransactionClient,
-  args: { subeId: string; ogrenciId: string; girdiler: VeliGirdisi[] },
+  args: {
+    /** Yeni açılacak velinin kayıt şubesi (etiket); eşleştirmeye girmez. */
+    subeId: string;
+    ogrenciId: string;
+    girdiler: VeliGirdisi[];
+  },
 ): Promise<void> {
   const { subeId, ogrenciId, girdiler } = args;
 
   const mevcutBaglar = await tx.guardian.findMany({
-    where: { studentId: ogrenciId, student: { branchId: subeId } },
+    where: { studentId: ogrenciId },
     select: { id: true, type: true, veliId: true },
   });
 
@@ -86,12 +93,9 @@ export async function veliBaglariniYaz(
     const alanlar = veliAlanlari(girdi);
     const mevcutBag = mevcutBaglar.find((bag) => bag.type === girdi.type);
 
-    // şube-muaf: `Veli` okumaları ve yazımlarının hepsi `branchId: subeId`
-    // taşıyor; eşleştirme de şube içinde yapılıyor.
     const eslesen = alanlar.searchPhone
       ? await tx.veli.findFirst({
           where: {
-            branchId: subeId,
             searchPhone: alanlar.searchPhone,
             searchName: alanlar.searchName,
           },
@@ -129,9 +133,10 @@ export async function veliBaglariniYaz(
  *
  * `veliBaglariniYaz` bir işlem ve var olan bir öğrenci istiyor; tohum ve
  * aktarım betikleri ise öğrenciyi velileriyle birlikte tek `create` çağrısında
- * yazıyor. Telefonu olan veli `connectOrCreate` ile ŞUBE İÇİNDE tekilleşir
- * (aynı telefonlu kardeş kaydı ikinci bir veli açmaz); telefonsuz veli
- * eşleştirilemediği için doğrudan açılır.
+ * yazıyor. Telefonu olan veli `connectOrCreate` ile (telefon + ad) üzerinden
+ * tekilleşir (aynı telefonlu kardeş kaydı ikinci bir veli açmaz); telefonsuz
+ * veli eşleştirilemediği için doğrudan açılır. `subeId` yeni velinin kayıt
+ * şubesi etiketi.
  */
 export function veliBagiIcIce(
   subeId: string,
@@ -155,8 +160,7 @@ export function veliBagiIcIce(
     veli: {
       connectOrCreate: {
         where: {
-          branchId_searchPhone_searchName: {
-            branchId: subeId,
+          searchPhone_searchName: {
             searchPhone: alanlar.searchPhone,
             searchName: alanlar.searchName,
           },

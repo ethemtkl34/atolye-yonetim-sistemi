@@ -682,6 +682,8 @@ model Student {
 model Veli {
   id String @id @default(cuid())
 
+  /// Kayıt şubesi — yalnız ETİKET (30 Eylül 2026). Veliler de öğrencilerle
+  /// birlikte ortak havuzda; iki şubenin personeli bütün velileri görür.
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
@@ -689,7 +691,7 @@ model Veli {
   phone    String?
 
   /// §6.2 — Telefonla arama için yalnızca rakamlara indirgenmiş biçim.
-  /// Mükerrer kilidi de bunun üzerinde: aynı şubede aynı telefon tek veli.
+  /// Mükerrer kilidi de bunun üzerinde (ad ile birlikte, şubeden bağımsız).
   searchPhone String?
 
   /// Türkçe karakterden arındırılmış ad — veli araması bu sütundan yapılır
@@ -704,7 +706,9 @@ model Veli {
   guardians  Guardian[]
   randevular Randevu[]
 
-  /// Kimlik anahtarı: şube + telefon + normalize ad.
+  /// Kimlik anahtarı: telefon + normalize ad (30 Eylül 2026'ya kadar şube de
+  /// anahtardaydı; ortak havuzla birlikte iki şubedeki aynı kişi birleştirildi,
+  /// bkz. `20260930150000_ortak_veli_havuzu`).
   ///
   /// Yalnız telefon YETMİYOR. Canlı verinin kopyası üzerinde denendiğinde beş
   /// telefonun iki farklı ada bağlı olduğu, ikisinde de aynı numarayı anne ile
@@ -713,7 +717,7 @@ model Veli {
   ///
   /// Telefonsuz veliler kısıtın dışında kalır: Postgres'te NULL'lar birbirine
   /// eşit sayılmaz, dolayısıyla her telefonsuz veli kendi kaydıdır.
-  @@unique([branchId, searchPhone, searchName])
+  @@unique([searchPhone, searchName])
   @@index([branchId, searchName])
 }
 

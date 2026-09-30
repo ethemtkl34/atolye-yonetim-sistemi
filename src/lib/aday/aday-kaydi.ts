@@ -117,9 +117,11 @@ export async function adayYaz(args: AdayYazArgs): Promise<AdayYazSonucu> {
       // mı" sorusunu soruyor. Veli birden fazla çocuk taşıyabildiği için ilki
       // alınıyor — uyarı metni tek isim gösteriyor, hangisi olduğu kararı
       // değiştirmiyor.
+      // Veliler ortak havuzda (30 Eylül 2026): telefonun iki şubeden birinde
+      // kayıtlı çocuğu varsa aday "zaten öğrenci" sayılır.
       const veli = searchPhone
         ? await tx.veli.findFirst({
-            where: { searchPhone, branchId: args.subeId },
+            where: { searchPhone },
             select: {
               guardians: {
                 take: 1,

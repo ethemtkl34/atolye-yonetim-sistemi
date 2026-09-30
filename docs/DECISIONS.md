@@ -566,8 +566,12 @@ Karar gerekçeleri:
   kadrosundaki Güneşli stajyerleri ve oturumların hafta bağları kopyaya
   taşındı. Bölünen: 2026-2027 1. Dönem, 2026 Sonbahar, Test Dönemi 1-2,
   Yaz Bilim Kulübü. Müfredat ve atölye içeriği artık şube başına düzenlenir.
-- **Veli henüz şubeli** (sonraki adım: ortak veli havuzu). Veli bağı
-  öğrencinin kayıt şubesinde eşleşir/açılır.
+- **Veliler de ortak havuzda** (aynı gün). `Veli.branchId` kayıt şubesi
+  etiketi; kimlik anahtarı "telefon + ad" (şube anahtardan çıktı). İki
+  şubede aynı telefon VE aynı adla açılmış 7 veli migration'da birleşti
+  (`20260930150000_ortak_veli_havuzu`: en eski kayıt kaldı, bağlar ve
+  randevular ona taşındı). Veli eşleştirmesi, randevu formundaki veli
+  araması ve aday "zaten öğrenci" kontrolü iki şubeye bakar.
 - Şube sızıntısı tarayıcısı gevşetildi, kapatılmadı: öğrenci ve ondan
   türeyen tablolar `SUBEDEN_BAGIMSIZ` listesinde; grup, kayıt, oturum,
   puan, kullanıcı, aday, veli ve randevu korumada. Öncesinde Neon'da

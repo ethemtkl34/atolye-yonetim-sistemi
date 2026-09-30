@@ -27,7 +27,8 @@
  *    Danışmanlığı, Ergoterapi → Duyu Bütünleme Programı.
  *  - Sistemde olmayan uzman PASİF açılır (yeni randevuda seçilemez).
  *
- * VELİ: aynı şubede aynı telefonlu veliler aday. Önce tam ad; yoksa İLK ADI
+ * VELİ: aynı telefonlu veliler aday — iki şubeden (veliler 30 Eylül 2026'dan
+ * beri ortak havuzda; telefonsuz velide yalnız aynı şubedeki tam ad). Önce tam ad; yoksa İLK ADI
  * uyan TEK aday (canlıdaki velilerin çoğu yalnız ilk adla girilmiş: "İrem" ↔
  * "İrem Aksu Enginyurt"); o da yoksa yeni veli. Yalnız telefona göre
  * birleştirmek anne ile babayı tek veliye çökertirdi (bkz. DECISIONS "Veli
@@ -185,10 +186,16 @@ async function main() {
   const hizmetHaritasi = new Map(hizmetler.map((h) => [normalizeArama(h.ad), h]));
   const uzmanHaritasi = new Map(uzmanlar.map((u) => [normalizeArama(u.ad), u.id]));
   const kullaniciHaritasi = new Map(kullanicilar.map((k) => [normalizeArama(k.name), k.id]));
-  /** Şube + telefon → o telefonlu veliler (yeni açılanlar da eklenir). */
+  /**
+   * Telefon → o telefonlu veliler (yeni açılanlar da eklenir). Telefonsuz
+   * veliler şube anahtarıyla ayrı tutulur: onları iki şube arasında adla
+   * birleştirmek fazla iddialı olurdu.
+   */
+  const veliAnahtari = (subeId: string, telefon: string | null) =>
+    telefon ? `tel|${telefon}` : `${subeId}|`;
   const telefonVelileri = new Map<string, { id: string; searchName: string }[]>();
   for (const v of veliler) {
-    const k = `${v.branchId}|${v.searchPhone ?? ""}`;
+    const k = veliAnahtari(v.branchId, v.searchPhone);
     telefonVelileri.set(k, [...(telefonVelileri.get(k) ?? []), { id: v.id, searchName: v.searchName }]);
   }
   const ilkAdUyumlu = (a: string, b: string) =>
@@ -315,7 +322,7 @@ async function main() {
     const veliAdi = veliAdHam ? ozelAd(veliAdHam) : "İsimsiz veli";
     const searchName = normalizeArama(veliAdi);
     const searchPhone = /\d/.test(telefonHam) ? normalizeTelefon(telefonHam) : null;
-    const telefonAnahtari = `${subeId}|${searchPhone ?? ""}`;
+    const telefonAnahtari = veliAnahtari(subeId, searchPhone);
     const adaylar = telefonVelileri.get(telefonAnahtari) ?? [];
     const tam = adaylar.find((v) => v.searchName === searchName);
     // Telefonsuz velide ilk ad benzerliği anlamsız: yalnız tam ad.
